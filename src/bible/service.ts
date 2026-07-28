@@ -8,6 +8,9 @@ import { FixtureBibleProvider } from './fixture'
 import { SelfHostedBibleProvider } from './self-hosted'
 import { KjvBibleProvider } from './kjv'
 import { KjvSelfHostedBibleProvider } from './kjv-self-hosted'
+import { EsvBibleProvider } from './esv'
+import { EsvCachedBibleProvider } from './esv-cache'
+import { CodedError } from '../errors'
 
 // The reference-based lookup components already depend on
 // (`api.getBibleVerse(reference) -> BiblePassage | null`). This module owns
@@ -51,11 +54,21 @@ const kjvProvider: BibleProvider = new FallbackBibleProvider(
   new KjvSelfHostedBibleProvider()
 )
 
+// ESV: the key-proxy provider (esv.ts) wrapped in its own size-bounded
+// evicting cache (esv-cache.ts) — deliberately NOT CachedBibleProvider
+// (cache-forever) and NOT wrapped in FallbackBibleProvider, since there is no
+// self-hosted ESV bundle a copyright-restricted translation could legally
+// have (see esv.ts's header). A proxy/quota/offline failure is a plain thrown
+// CodedError; getBibleVerse below catches it and degrades to null rather than
+// silently substituting another translation's text.
+const esvProvider: BibleProvider = new EsvCachedBibleProvider(new EsvBibleProvider())
+
 // One BibleProvider per translation. BSB's `provider` above is unchanged by
 // this map's existence — it's still the only thing a BSB read ever touches.
 const providers: Record<TranslationId, BibleProvider> = {
   BSB: provider,
-  KJV: kjvProvider
+  KJV: kjvProvider,
+  ESV: esvProvider
 }
 
 interface ParsedReference {
@@ -102,10 +115,22 @@ export async function getBibleVerse(
   const parsed = parseReference(reference)
   if (!parsed) return null
 
-  const chapterVerses = await providers[translation].getChapter(
-    parsed.bookNumber,
-    parsed.chapterStart
-  )
+  let chapterVerses
+  try {
+    chapterVerses = await providers[translation].getChapter(parsed.bookNumber, parsed.chapterStart)
+  } catch (err) {
+    // No translation-wide fallback lives here (BSB/KJV already have their own
+    // self-hosted fallback wrapped INSIDE their provider; ESV has none by
+    // design — see service.ts's esvProvider comment). Degrading to null lets
+    // every reading surface show its own "not available" state instead of an
+    // unhandled rejection.
+    console.warn(
+      `[lantern] ${translation} chapter fetch failed`,
+      err instanceof CodedError ? err.code : err,
+      err instanceof CodedError ? err.detailForConsole() : ''
+    )
+    return null
+  }
   if (chapterVerses.length === 0) return null
 
   const verses =

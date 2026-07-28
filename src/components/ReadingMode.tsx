@@ -837,8 +837,22 @@ export default function ReadingMode({
               })}
             </div>
           </>
+        ) : translation === 'ESV' ? (
+          <div className="esv-unavailable">
+            ESV isn&apos;t available yet. Switch to BSB or KJV in Settings, or try again later.
+          </div>
         ) : (
           <div style={{ color: '#CCC', fontSize: 13 }}>Verse text not available.</div>
+        )}
+        {biblePassage && translation === 'ESV' && (
+          <p className="esv-attribution">
+            Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard
+            Version®), copyright © 2001 by Crossway, a publishing ministry of Good News
+            Publishers. Used by permission. All rights reserved. ESV Text Edition: 2016.{' '}
+            <a href="https://www.esv.org" target="_blank" rel="noopener noreferrer">
+              esv.org
+            </a>
+          </p>
         )}
       </div>
 
