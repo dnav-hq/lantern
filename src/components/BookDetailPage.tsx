@@ -996,8 +996,8 @@ function ChapterView({
         {translation === 'ESV' && (
           <p className="esv-attribution">
             Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard
-            Version®), copyright © 2001 by Crossway, a publishing ministry of Good News
-            Publishers. Used by permission. All rights reserved. ESV Text Edition: 2016.{' '}
+            Version®), copyright © 2001 by Crossway, a publishing ministry of Good News Publishers.
+            Used by permission. All rights reserved. ESV Text Edition: 2016.{' '}
             <a href="https://www.esv.org" target="_blank" rel="noopener noreferrer">
               esv.org
             </a>

@@ -88,7 +88,10 @@ export class EsvBibleProvider implements BibleProvider {
 
     const body = (await res.json()) as EsvProxyResponse
     if (!isSuccess(body)) {
-      throw new CodedError('ESV_FETCH_FAILED', `proxy error: ${body.error} (${book.name} ${chapter})`)
+      throw new CodedError(
+        'ESV_FETCH_FAILED',
+        `proxy error: ${body.error} (${book.name} ${chapter})`
+      )
     }
 
     return body.verses.map(v => ({ verse: v.verse, text: v.text }))

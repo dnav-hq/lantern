@@ -704,8 +704,7 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
           <ErrorBoundary variant="pane" key={passage?.reference ?? 'empty'}>
             {translation === 'ESV' && esvUnavailable && !loadingPassage ? (
               <div className="esv-unavailable">
-                ESV isn&apos;t available yet. Switch to BSB or KJV in Settings, or try again
-                later.
+                ESV isn&apos;t available yet. Switch to BSB or KJV in Settings, or try again later.
               </div>
             ) : (
               <PassagePane

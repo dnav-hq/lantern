@@ -25,7 +25,7 @@ async function expectCoded(promise: Promise<unknown>, code: string): Promise<voi
 
 describe('EsvBibleProvider', () => {
   it('parses the proxy response into the BibleVerseLine shape', async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn(async (_url: string) =>
       fakeJsonResponse(200, {
         verses: [
           { verse: 1, text: 'In the beginning was the Word.' },
@@ -40,7 +40,7 @@ describe('EsvBibleProvider', () => {
       { verse: 2, text: 'He was in the beginning with God.' }
     ])
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    const url = fetchMock.mock.calls[0][0] as string
+    const url = fetchMock.mock.calls[0][0]
     expect(url).toContain('book=John')
     expect(url).toContain('chapter=1')
   })
