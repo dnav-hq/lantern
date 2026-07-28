@@ -74,15 +74,6 @@ prioritized.
   alone turns out not to be covering real losses (see the proposal's own
   "Trigger to revisit" section).
 
-- **KJV + translation switcher.** Second `BibleProvider` implementation plus a UI
-  to pick translation. `docs/proposals/translations-esv-niv.md` (2026-07-22)
-  researched the licensing for this in full: KJV is public domain in the US,
-  identical legal shape to BSB, and is the recommended first translation to
-  add — no blocker, ship whenever wanted. The proposal also covers
-  versification papercuts (verse numbers mostly line up, with named
-  exceptions) and the switcher UX (global preference, `berean-theme`-style
-  localStorage key, default stays BSB).
-
 - **ESV provider (single application key, not per-user).** `BibleProvider`
   implementation using Crossway's ESV API. `docs/proposals/translations-esv-niv.md`
   (2026-07-22) resolved this item's own previous premise as wrong: the ESV API
@@ -93,8 +84,14 @@ prioritized.
   required attribution) and what `BibleProvider` needs to change (translation
   param on the seam, a quota-aware evicting cache instead of cache-forever, a
   server-side key proxy, no self-hosted offline fallback — copyrighted text
-  can't ship as a static bundle). Recommended as the second translation to add,
-  after KJV, when a real second translation is wanted.
+  can't ship as a static bundle). **KJV shipped (2026-07-22, see Done) and
+  proved the translation-parameterized seam** (`TranslationId` on
+  `BibleProvider`/`getBibleVerse`, a per-translation provider map in
+  `service.ts`, `berean-translation` localStorage switcher) — ESV is the
+  recommended next translation to add when a real second translation (beyond
+  the zero-friction KJV) is wanted; it still needs the quota-aware cache,
+  key proxy, and no-offline-fallback work the seam refactor alone doesn't
+  cover.
 
 - **NIV provider — researched, not recommended yet.** `docs/proposals/translations-esv-niv.md`
   (2026-07-22) found a free non-commercial path exists (API.Bible / American
@@ -219,6 +216,27 @@ prioritized.
 
 ## Done
 
+- **KJV + translation switcher (2026-07-22).** Closes the item deferred above.
+  `docs/proposals/translations-esv-niv.md`'s KJV verdict ("identical legal
+  shape to BSB, self-hosted static bundle fully legal") is now the shipped
+  second `BibleProvider`. `BibleProvider`/`getBibleVerse` (`src/bible/provider.ts`,
+  `service.ts`) took a `TranslationId` ('BSB' | 'KJV') parameter — BSB's
+  composition and behavior are unchanged; KJV gets the same
+  `FallbackBibleProvider(CachedBibleProvider(HelloaoBibleProvider), SelfHosted)`
+  shape against `bible.helloao.org`'s `eng_kjv` endpoint
+  (`src/bible/kjv.ts`), with a self-hosted complete-KJV bundle fallback
+  (`scripts/build-kjv-bundle.mjs` → `public/bible/kjv.json.gz`,
+  `src/bible/kjv-self-hosted.ts`) built from the same public-domain source
+  KJV's live endpoint serves, plain verse text only. A translation switcher
+  (`src/utils/useTranslation.ts`) lives in Settings, persists to
+  `berean-translation` (following the `berean-theme` localStorage
+  convention), defaults to BSB, and is read by every reading surface
+  (`BookDetailPage`, `ReadingMode`, `StudyMode`). Notes stay anchored by
+  verse number regardless of translation — only the displayed text changes.
+  **ESV is the recommended follow-on** (see the Deferred entry above) — the
+  seam this item built is what ESV needs too, but ESV additionally needs a
+  quota-aware evicting cache, a server-side key proxy, and a no-offline-
+  fallback degrade path that KJV's public-domain shape didn't require.
 - **Telemetry loop proven end to end, producer ↔ HQ ingest (2026-07-21).**
   Closes the "hand HQ the token / re-verify after first deploy" follow-up, which
   is now fully done rather than outstanding. What was verified against the LIVE

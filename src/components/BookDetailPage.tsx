@@ -3,6 +3,8 @@ import { BiblePassage, NoteWithPassageInfo, NoteCategory, Passage } from '../typ
 import { BibleBook, findBookByAlias } from '../utils/bibleBooks'
 import { parseNoteLine } from '../utils/noteParser'
 import { useApi } from '../api/context'
+import { getBibleVerse } from '../bible/service'
+import { useTranslation } from '../utils/useTranslation'
 import InlineTagInput from './InlineTagInput'
 import RichEditInput from './RichEditInput'
 import InlineDeleteConfirm from './InlineDeleteConfirm'
@@ -175,6 +177,7 @@ function ChapterView({
   onNotesChanged
 }: ChapterViewProps): React.ReactElement {
   const api = useApi()
+  const [translation] = useTranslation()
   const [bibleData, setBibleData] = useState<BiblePassage | null>(null)
   const [loading, setLoading] = useState(true)
   const [highlightedNoteIds, setHighlightedNoteIds] = useState<Set<string>>(new Set())
@@ -241,13 +244,12 @@ function ChapterView({
   useEffect(() => {
     setLoading(true)
     setBibleData(null)
-    api
-      .getBibleVerse(`${bookName} ${chapter}`)
+    getBibleVerse(`${bookName} ${chapter}`, translation)
       .then(data => {
         setBibleData(data)
       })
       .finally(() => setLoading(false))
-  }, [bookName, chapter])
+  }, [bookName, chapter, translation])
 
   useEffect(() => {
     setLocalNotes(notes)

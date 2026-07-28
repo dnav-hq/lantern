@@ -3319,6 +3319,37 @@ body.dark .search-backdrop {
   font-weight: 600;
 }
 
+/* ─── Translation picker (Settings) ─────────────────────────────────────────
+   Which scripture text is displayed (see useTranslation.ts). A segmented row,
+   same treatment as the text-size picker above — nothing to preview per
+   option beyond its label. */
+.translation-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.translation-option {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+.translation-option:hover {
+  background: var(--surface-2);
+}
+.translation-option.active {
+  background: var(--accent-weak);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
 /* ─── Theme picker (Settings) ──────────────────────────────────────────────
    Independent of light/dark: picks the color + reading-type direction (see
    useTheme.ts / tokens.css [data-theme]). Each swatch previews its own theme's

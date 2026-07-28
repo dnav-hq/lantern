@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Passage, Note, BiblePassage, NoteCategory } from '../types'
 import { parseNoteLine } from '../utils/noteParser'
 import { useApi } from '../api/context'
+import { getBibleVerse } from '../bible/service'
+import { useTranslation } from '../utils/useTranslation'
 import InlineTagInput from './InlineTagInput'
 import RichEditInput from './RichEditInput'
 import InlineDeleteConfirm from './InlineDeleteConfirm'
@@ -126,6 +128,7 @@ export default function ReadingMode({
   onPassageDeleted
 }: ReadingModeProps): React.ReactElement {
   const api = useApi()
+  const [translation] = useTranslation()
   const [biblePassage, setBiblePassage] = useState<BiblePassage | null>(null)
   const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
@@ -162,13 +165,17 @@ export default function ReadingMode({
     setHighlightedVerses(new Set())
     setEditingNoteId(null)
 
-    Promise.all([api.getBibleVerse(passage.reference_label), api.getNotesByPassage(passage.id)])
+    Promise.all([
+      getBibleVerse(passage.reference_label, translation),
+      api.getNotesByPassage(passage.id)
+    ])
       .then(([bp, ns]) => {
         if (bp) setBiblePassage(bp)
         setNotes(ns)
       })
       .finally(() => setLoading(false))
-  }, [passage.id])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [passage.id, translation])
 
   // Escape clears every highlight/selection everywhere.
   useEffect(() => {

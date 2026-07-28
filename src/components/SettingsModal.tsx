@@ -3,6 +3,7 @@ import { useApi } from '../api/context'
 import { exportAllNotesAsZip } from '../platform/export'
 import { THEMES, type ThemeId } from '../utils/useTheme'
 import { TEXT_SIZES, type TextSizeId } from '../utils/useTextSize'
+import { TRANSLATIONS, useTranslation } from '../utils/useTranslation'
 import { isTelemetryOptedOut, setTelemetryOptedOut } from '../telemetry/client'
 
 interface SettingsModalProps {
@@ -31,6 +32,7 @@ export default function SettingsModal({
   onSignOut
 }: SettingsModalProps): React.ReactElement | null {
   const api = useApi()
+  const [translation, setTranslation] = useTranslation()
   const [exportState, setExportState] = useState<'idle' | 'exporting' | 'error'>('idle')
   const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(() => !isTelemetryOptedOut())
 
@@ -128,6 +130,29 @@ export default function SettingsModal({
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="smodal-divider" />
+
+          {/* Translation — which scripture text is displayed, independent of
+              theme/text size. Global preference (see
+              docs/proposals/translations-esv-niv.md section 3): applies to
+              every reading surface, defaults to BSB. */}
+          <div className="smodal-section">
+            <div className="smodal-section-label">Translation</div>
+            <div className="translation-picker" role="radiogroup" aria-label="Bible translation">
+              {TRANSLATIONS.map(t => (
+                <button
+                  key={t.id}
+                  className={`translation-option${translation === t.id ? ' active' : ''}`}
+                  onClick={() => setTranslation(t.id)}
+                  role="radio"
+                  aria-checked={translation === t.id}
+                >
+                  {t.label}
                 </button>
               ))}
             </div>

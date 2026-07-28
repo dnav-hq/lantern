@@ -1,11 +1,13 @@
 import type { BiblePassage } from '../types'
-import type { BibleProvider } from './provider'
+import type { BibleProvider, TranslationId } from './provider'
 import { findBookByAlias, normalizeReference } from '../utils/bibleBooks'
 import { HelloaoBibleProvider } from './helloao'
 import { CachedBibleProvider } from './cache'
 import { FallbackBibleProvider } from './fallback'
 import { FixtureBibleProvider } from './fixture'
 import { SelfHostedBibleProvider } from './self-hosted'
+import { KjvBibleProvider } from './kjv'
+import { KjvSelfHostedBibleProvider } from './kjv-self-hosted'
 
 // The reference-based lookup components already depend on
 // (`api.getBibleVerse(reference) -> BiblePassage | null`). This module owns
@@ -38,6 +40,23 @@ const provider: BibleProvider = import.meta.env.DEV
       selfHosted
     )
   : production
+
+// KJV: same shape as BSB's production composition — helloao PRIMARY, the
+// self-hosted complete KJV bundle as FALLBACK. No dev fixture layer: unlike
+// BSB, the self-hosted bundle is served locally by Vite in dev too (it's a
+// static file under public/), so it already works with no network egress —
+// a four-chapter fixture would add nothing a contributor needs.
+const kjvProvider: BibleProvider = new FallbackBibleProvider(
+  new CachedBibleProvider(new KjvBibleProvider(), 'KJV'),
+  new KjvSelfHostedBibleProvider()
+)
+
+// One BibleProvider per translation. BSB's `provider` above is unchanged by
+// this map's existence — it's still the only thing a BSB read ever touches.
+const providers: Record<TranslationId, BibleProvider> = {
+  BSB: provider,
+  KJV: kjvProvider
+}
 
 interface ParsedReference {
   bookNumber: number
@@ -75,12 +94,18 @@ function parseReference(reference: string): ParsedReference | null {
   }
 }
 
-export async function getBibleVerse(reference: string): Promise<BiblePassage | null> {
+export async function getBibleVerse(
+  reference: string,
+  translation: TranslationId = 'BSB'
+): Promise<BiblePassage | null> {
   if (!reference.trim()) return null
   const parsed = parseReference(reference)
   if (!parsed) return null
 
-  const chapterVerses = await provider.getChapter(parsed.bookNumber, parsed.chapterStart)
+  const chapterVerses = await providers[translation].getChapter(
+    parsed.bookNumber,
+    parsed.chapterStart
+  )
   if (chapterVerses.length === 0) return null
 
   const verses =

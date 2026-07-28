@@ -7,6 +7,8 @@ import { BiblePassage, Note } from '../types'
 import { parseNoteLine, parseReferenceLabel } from '../utils/noteParser'
 import { findBookByAlias } from '../utils/bibleBooks'
 import { useApi } from '../api/context'
+import { getBibleVerse } from '../bible/service'
+import { useTranslation } from '../utils/useTranslation'
 import {
   draftKey,
   draftLinesEqual,
@@ -112,6 +114,7 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
   ref
 ) {
   const api = useApi()
+  const [translation] = useTranslation()
   const [reference, setReference] = useState(initialReference)
   const [passage, setPassage] = useState<BiblePassage | null>(null)
   const [loadingPassage, setLoadingPassage] = useState(false)
@@ -307,7 +310,7 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
     if (!ref.trim()) return
     setLoadingPassage(true)
     try {
-      const result = await api.getBibleVerse(ref.trim())
+      const result = await getBibleVerse(ref.trim(), translation)
       if (result) setPassage(result)
     } catch (e) {
       console.error(e)
@@ -315,6 +318,20 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
       setLoadingPassage(false)
     }
   }
+
+  // Switching translation while a passage pane is already open re-fetches its
+  // text in place (StudyMode has no single load-on-mount effect the way
+  // BookDetailPage/ReadingMode do — loadPassageByReference is called
+  // imperatively from several places — so this is the one spot that reacts to
+  // the global preference changing). Guarded against firing on mount, since
+  // the initial load is already handled by the effects above.
+  const lastTranslationRef = useRef(translation)
+  useEffect(() => {
+    if (lastTranslationRef.current === translation) return
+    lastTranslationRef.current = translation
+    if (reference.trim()) void loadPassageByReference(reference)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [translation])
 
   // Reference-commit (Enter/Tab in the field): validate the reference
   // *synchronously*, move focus to the first note line immediately, and kick the
