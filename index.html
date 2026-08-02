@@ -3,7 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Kept in sync with the app's dark/light toggle at runtime — see
+         src/utils/useDarkMode.ts, which flips these to the dark canvas token
+         from tokens.css (body.dark --bg) whenever body.dark changes, and back
+         to this cream on light. The value here is just the light-mode/initial
+         paint default. -->
     <meta name="theme-color" content="#f4f0e8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!-- Browser-tab favicon (SVG, so it stays crisp at any size) and the iOS
          "add to home screen" icon. The PWA manifest (vite.config.ts) references
          the PNGs separately for installed-app icons. -->
