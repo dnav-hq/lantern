@@ -5,11 +5,12 @@ const STORAGE_KEY = 'berean-translation'
 
 export const TRANSLATIONS: { id: TranslationId; label: string }[] = [
   { id: 'BSB', label: 'Berean Standard Bible (BSB)' },
-  { id: 'KJV', label: 'King James Version (KJV)' }
+  { id: 'KJV', label: 'King James Version (KJV)' },
+  { id: 'ESV', label: 'English Standard Version (ESV)' }
 ]
 
 function isTranslationId(value: string | null): value is TranslationId {
-  return value === 'BSB' || value === 'KJV'
+  return value === 'BSB' || value === 'KJV' || value === 'ESV'
 }
 
 // Global, not per-passage (see docs/proposals/translations-esv-niv.md section

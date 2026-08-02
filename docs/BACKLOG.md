@@ -97,11 +97,9 @@ prioritized.
   client retry). **The only remaining step is Dennis running
   `supabase secrets set ESV_API_KEY=<key from api.esv.org/account/>` and
   deploying the function** (`supabase functions deploy esv-proxy --no-verify-jwt`)
-  — no code change needed once that's done. Not yet wired: exposing `ESV` as a
-  choice in the Settings translation switcher needs `src/utils/useTranslation.ts`
-  (`TRANSLATIONS` list + the `isTranslationId` guard), which sat outside this
-  task's `files_in_scope` — see the escalation on this task for the one-line
-  fix.
+  — no code change needed once that's done. ESV is now selectable in the
+  Settings translation switcher (`src/utils/useTranslation.ts`'s `TRANSLATIONS`
+  list + `isTranslationId` guard).
 
 - **NIV provider — researched, not recommended yet.** `docs/proposals/translations-esv-niv.md`
   (2026-07-22) found a free non-commercial path exists (API.Bible / American
