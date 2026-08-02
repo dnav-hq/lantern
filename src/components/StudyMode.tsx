@@ -118,6 +118,14 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
   const [reference, setReference] = useState(initialReference)
   const [passage, setPassage] = useState<BiblePassage | null>(null)
   const [loadingPassage, setLoadingPassage] = useState(false)
+  // ESV-specific: getBibleVerse degrades to `null` rather than throwing (see
+  // service.ts), which normally just leaves `passage` at its last value so a
+  // bad reference doesn't blank out a passage already on screen. That's wrong
+  // for ESV: a stale BSB/KJV passage must not keep showing once the user has
+  // switched to ESV and it turns out to be unavailable, so this tracks that
+  // case explicitly and PassagePane is swapped out for a distinct message
+  // (see the esvUnavailable render below) rather than touching PassagePane.tsx.
+  const [esvUnavailable, setEsvUnavailable] = useState(false)
   const [lines, setLines] = useState<LineData[]>([{ id: makeLineId(), text: '', indent: 0 }])
   const [focusedLineId, setFocusedLineId] = useState<string | null>(lines[0].id)
   const [highlightedVerses, setHighlightedVerses] = useState<Set<number>>(new Set())
@@ -311,7 +319,13 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
     setLoadingPassage(true)
     try {
       const result = await getBibleVerse(ref.trim(), translation)
-      if (result) setPassage(result)
+      if (result) {
+        setPassage(result)
+        setEsvUnavailable(false)
+      } else if (translation === 'ESV') {
+        setPassage(null)
+        setEsvUnavailable(true)
+      }
     } catch (e) {
       console.error(e)
     } finally {
@@ -688,13 +702,29 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
         </button>
         <div className="study-scripture-body" ref={scriptureBodyRef}>
           <ErrorBoundary variant="pane" key={passage?.reference ?? 'empty'}>
-            <PassagePane
-              passage={passage}
-              loading={loadingPassage}
-              highlightedVerses={highlightedVerses}
-              hasAnyHighlight={hasHighlight}
-            />
+            {translation === 'ESV' && esvUnavailable && !loadingPassage ? (
+              <div className="esv-unavailable">
+                ESV isn&apos;t available yet. Switch to BSB or KJV in Settings, or try again later.
+              </div>
+            ) : (
+              <PassagePane
+                passage={passage}
+                loading={loadingPassage}
+                highlightedVerses={highlightedVerses}
+                hasAnyHighlight={hasHighlight}
+              />
+            )}
           </ErrorBoundary>
+          {translation === 'ESV' && passage && !esvUnavailable && (
+            <p className="esv-attribution">
+              Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard
+              Version®), copyright © 2001 by Crossway, a publishing ministry of Good News
+              Publishers. Used by permission. All rights reserved. ESV Text Edition: 2016.{' '}
+              <a href="https://www.esv.org" target="_blank" rel="noopener noreferrer">
+                esv.org
+              </a>
+            </p>
+          )}
         </div>
         {/* Mobile-only manual resize handle — overlaid on the bottom edge
             (position:absolute in CSS) rather than taking its own flex row,

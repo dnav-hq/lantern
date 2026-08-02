@@ -62,6 +62,9 @@ export type ErrorCode =
   | 'BIBLE_BUNDLE_FETCH_FAILED'
   | 'BIBLE_BUNDLE_CHAPTER_MISSING'
   | 'BIBLE_FIXTURE_CHAPTER_MISSING'
+  // ESV (key-proxy) read path — see src/bible/esv.ts
+  | 'ESV_NOT_CONFIGURED'
+  | 'ESV_FETCH_FAILED'
   // In-memory stub (dev / no-Supabase fallback)
   | 'NOTE_NOT_FOUND'
 

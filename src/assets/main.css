@@ -3350,6 +3350,31 @@ body.dark .search-backdrop {
   font-weight: 600;
 }
 
+/* ─── ESV degrade + attribution ─────────────────────────────────────────────
+   .esv-unavailable: shown in place of scripture text when the esv-proxy edge
+   function has no key configured, or is unreachable — distinct from BSB's
+   silent self-hosted fallback, since ESV has none (see src/bible/esv.ts).
+   .esv-attribution: Crossway's required copyright/mark/link, rendered
+   wherever ESV text renders (ReadingMode, BookDetailPage, StudyMode). */
+.esv-unavailable {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 16px 0;
+  line-height: 1.5;
+}
+.esv-attribution {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.esv-attribution a {
+  color: var(--text-faint);
+  text-decoration: underline;
+}
+
 /* ─── Theme picker (Settings) ──────────────────────────────────────────────
    Independent of light/dark: picks the color + reading-type direction (see
    useTheme.ts / tokens.css [data-theme]). Each swatch previews its own theme's

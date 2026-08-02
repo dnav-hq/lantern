@@ -74,24 +74,32 @@ prioritized.
   alone turns out not to be covering real losses (see the proposal's own
   "Trigger to revisit" section).
 
-- **ESV provider (single application key, not per-user).** `BibleProvider`
-  implementation using Crossway's ESV API. `docs/proposals/translations-esv-niv.md`
-  (2026-07-22) resolved this item's own previous premise as wrong: the ESV API
-  authenticates ONE application-level key (`api.esv.org/account/`), not a key
-  per end user — there is no per-user settings UI to build. The proposal
-  covers what the free non-commercial tier actually allows (500-verse/half-book
-  cache and per-query caps, 5,000 queries/day shared across the whole app,
-  required attribution) and what `BibleProvider` needs to change (translation
-  param on the seam, a quota-aware evicting cache instead of cache-forever, a
-  server-side key proxy, no self-hosted offline fallback — copyrighted text
-  can't ship as a static bundle). **KJV shipped (2026-07-22, see Done) and
-  proved the translation-parameterized seam** (`TranslationId` on
-  `BibleProvider`/`getBibleVerse`, a per-translation provider map in
-  `service.ts`, `berean-translation` localStorage switcher) — ESV is the
-  recommended next translation to add when a real second translation (beyond
-  the zero-friction KJV) is wanted; it still needs the quota-aware cache,
-  key proxy, and no-offline-fallback work the seam refactor alone doesn't
-  cover.
+- **ESV provider — built, pending the secret (2026-07-28).** `BibleProvider`
+  implementation using Crossway's ESV API, per `docs/proposals/translations-esv-niv.md`
+  (2026-07-22): the ESV API authenticates ONE application-level key
+  (`api.esv.org/account/`), never a key per end user — there is no per-user
+  settings UI, and there never was; the previous wording of this item ("licensing
+  requires per-user keys") was the wrong premise the proposal corrected. What
+  shipped: a Deno edge function (`supabase/functions/esv-proxy`) that holds
+  `ESV_API_KEY` server-side and fails closed with a structured "not configured"
+  response when it's unset, mirroring `supabase/functions/hq-telemetry`'s
+  pattern; a client `EsvBibleProvider` (`src/bible/esv.ts`) that calls ONLY the
+  proxy, never `api.esv.org` directly; a size-bounded FIFO-evicting cache
+  (`src/bible/esv-cache.ts`, 500-verse cap, documented) instead of the
+  cache-forever layer BSB/KJV use; and `ESV` added to `TranslationId`
+  (`provider.ts`) with its own no-fallback composition in `service.ts` (no
+  self-hosted bundle exists for ESV, and none legally can). ReadingMode,
+  BookDetailPage, and StudyMode all show the required Crossway attribution
+  wherever ESV text renders, and a distinct "ESV isn't available yet" message
+  (never a raw error) when the proxy has no key or is unreachable. Unit tests
+  (`src/bible/esv.test.ts`) cover response parsing, cache eviction, the
+  no-key degrade, the offline degrade, and the 429/quota degrade (asserting no
+  client retry). **The only remaining step is Dennis running
+  `supabase secrets set ESV_API_KEY=<key from api.esv.org/account/>` and
+  deploying the function** (`supabase functions deploy esv-proxy --no-verify-jwt`)
+  — no code change needed once that's done. ESV is now selectable in the
+  Settings translation switcher (`src/utils/useTranslation.ts`'s `TRANSLATIONS`
+  list + `isTranslationId` guard).
 
 - **NIV provider — researched, not recommended yet.** `docs/proposals/translations-esv-niv.md`
   (2026-07-22) found a free non-commercial path exists (API.Bible / American
