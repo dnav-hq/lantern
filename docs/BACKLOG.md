@@ -224,6 +224,23 @@ prioritized.
 
 ## Done
 
+- **Dark-mode status bar / theme-color on mobile (2026-08-02).** The `theme-color`
+  meta was a single static light cream, so the browser chrome / status bar
+  stayed light on phones even after switching to dark mode in-app. Since
+  Lantern's dark mode is an explicit toggle (`berean-theme` via
+  `useDarkMode.ts`), not just `prefers-color-scheme`, a media-query-only fix
+  wouldn't track it — `useDarkMode.ts`'s existing effect (the one that
+  toggles `body.dark`) now also flips `theme-color` between the dark canvas
+  token from tokens.css (`body.dark`'s `--bg: #17140f`) and the light
+  `#f4f0e8`, live, on every toggle. `apple-mobile-web-app-capable` +
+  `apple-mobile-web-app-status-bar-style` were added to `index.html` (that
+  meta only accepts `default`/`black`/`black-translucent`, no arbitrary hex,
+  so it flips to `black` in dark) for the installed-PWA/iOS-standalone status
+  bar. The manifest `theme_color` in `vite.config.ts` is untouched on
+  purpose — it's a single static value baked into the installed manifest and
+  can't be media-queried live. Verified with Playwright dark-mode emulation
+  at mobile width; real-device confirmation of the iOS standalone status bar
+  is still outstanding.
 - **KJV + translation switcher (2026-07-22).** Closes the item deferred above.
   `docs/proposals/translations-esv-niv.md`'s KJV verdict ("identical legal
   shape to BSB, self-hosted static bundle fully legal") is now the shipped
