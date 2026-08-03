@@ -5462,15 +5462,43 @@ body.dark .mobile-menu-btn:active {
   font-size: 13px;
   padding: 16px 0;
 }
-/* A guest reads; there is nothing to select a verse FOR (the note sandbox is a
-   later, separate piece of work). Neutralise the signed-in reader's
-   verse-row affordance rather than leaving a pointer cursor over a row that
-   does nothing when clicked. */
-.guest-scripture .reading-verse-row {
-  cursor: default;
+/* Tapping a verse opens the ephemeral note sandbox (GuestReader.tsx, G2), so
+   the signed-in reader's verse-row affordance (pointer cursor, hover wash,
+   `.selected` highlight) applies unchanged here — no override needed. */
+
+/* ─── Guest note sandbox ───────────────────────────────────────────────────────
+   The one place a guest is invited to sign in (§2a), scoped to the moment they
+   reach for the note editor. Reuses .quick-edit-card/.inline-note-row/
+   .quick-edit-body/.quick-edit-footer wholesale (QuickEditCard.tsx's chrome)
+   so it never visually drifts from the real editor; only the label and the
+   footer action are bespoke, since "Save note" would misstate what happens
+   here. Same visual language as StudyMode's draft-recovery notice (an
+   explicit, permanent state label, never a toast) — see the proposal §3. */
+.guest-sandbox-label {
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--cat-application);
+  background: var(--cat-application-weak);
+  border: 1px solid var(--cat-application);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin: 0 0 8px;
 }
-.guest-scripture .reading-verse-row:hover {
-  background: transparent;
+/* Colored + underlined like the app's other inline text links (e.g.
+   .verse-action-secondary) rather than `color: inherit` from the notice
+   text: the notice is already tinted, so a same-colored underline read as
+   part of the sentence rather than a tappable action. The accent color
+   makes it unmistakably a link. */
+.guest-sandbox-signin-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent-ink);
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 /* TEMPORARY entry into guest mode from the landing surface. Fixed and
