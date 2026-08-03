@@ -31,6 +31,27 @@ prioritized.
   insufficient; guest preview itself ships BSB/KJV only, ESV stays
   signed-in-only until/unless that changes. See the proposal's own MVP slice
   and "Trigger to revisit" for sequencing.
+  **Settled stance added 2026-08-03 (proposal §2a/§2b):** sign-in stays the
+  primary flow; guest is a durable, never-nagged free *reading* app (installing
+  the PWA and reading forever without an account is a legitimate end state, not
+  a failed conversion); the sign-in prompt is scoped to the note-taking moment
+  only, so pure readers are never prompted; true offline reading stays deferred
+  (guest reading is BSB/KJV, which is also the only offline-capable shape).
+
+- **Account-synced preferences (jsonb on `profiles`).** From
+  `docs/proposals/guest-preview-mode.md` §2b (2026-08-03). Preferences
+  (theme/dark mode, visual theme, translation, "hide all notes") are
+  `localStorage`-only today. Make them account-owned for signed-in users so
+  they sync across devices — lightest path is a `settings jsonb` column on the
+  existing `profiles` table (already own-row RLS via `profiles_select`/
+  `profiles_update`, so no new policy) plus a `getSettings`/`updateSettings`
+  pair on `BereanApi`; `localStorage` stays as the write-through cache/offline
+  mirror. On a guest's first sign-in, seed the account from local prefs if the
+  account has none yet ("your settings came with you"), then account is source
+  of truth (last-write-wins, fine for low-stakes prefs). This is an *account*
+  data model, not a second guest one, so it doesn't reintroduce the two-user-
+  type cost the guest proposal rejects. Queued independently of guest mode —
+  it benefits existing signed-in users on its own.
 
 - **Internal `Berean*` identifiers stay — standing decision, not pending work.**
   `BereanApi`, `berean-api.ts`, `SupabaseBereanApi`, and the persisted keys

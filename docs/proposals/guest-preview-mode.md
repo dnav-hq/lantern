@@ -120,6 +120,78 @@ in to keep it," not "you're in demo mode" or "this won't be saved unless you
 sign in first." The former sells the account; the latter apologizes for the
 product.
 
+## 2a. The settled product stance: guest is a durable free reader, not a trial (2026-08-03)
+
+Added after the review discussion with Dennis. The brief above reads guest as a
+*preview that converts*; the stance below refines it, and where the two differ
+this section wins.
+
+**Sign-in stays the primary flow.** For anyone indifferent to signing in, the
+account is the best path — a broad, genuinely free feature set unlocked with
+minimal effort — so the landing leads with sign-in, prominently, exactly as it
+does today. Guest access is the *generous alternative*, not the headline.
+
+**Guest is a Bible *reading* app, and reading is never nagged.** A signed-out
+visitor can read scripture smoothly and indefinitely: no wall, no forced
+logout, no ambient "sign in" pressure while they are only reading. Someone who
+just wants a free, ad-free Bible reader — including installing the PWA and
+using it that way forever — is a *legitimate, satisfied end state*, not a
+failed conversion. This is a stronger evangelism story than a trial, and it
+costs nothing, because the study account still sits right there as the upsell.
+
+**The sign-in nudge is scoped to the note-taking moment, not the chrome.** The
+prompt to sign in appears *around note-taking* — when a guest reaches for the
+note editor (the §3 sandbox is precisely this: typing in it, with the honest
+"nothing saved here — sign in to keep it" label, *is* the contextual invitation).
+A guest who never touches notes is therefore never prompted at all. This is the
+mechanism that lets reading stay un-nagged while still converting the people who
+want the write side. It is fully consistent with the "account = benefit, framed
+at the write moment" rule in §2 — the write moment is the *only* moment.
+
+**The strategic goal is unchanged: everyone signed in, eventually** — reached
+by generosity and one contextual prompt rather than by gates. Guest reading is
+the on-ramp, not a competing product.
+
+**What this stance explicitly de-scopes.** Because guest is *smooth reading*
+and not a marketed "downloadable offline reader," **true offline reading stays
+a deferred item** (`docs/BACKLOG.md`, "Full-Bible offline prefetch"), not
+near-term core. A genuinely offline guest today still only re-reads
+lazily-cached chapters; that is an acceptable gap under this stance and becomes
+worth closing only if the free-reader persona turns out to want offline
+specifically. Guest reading remains BSB/KJV (public-domain, self-hostable,
+cache-forever) — which, not coincidentally, is the only translation shape that
+could ever read offline, so excluding ESV from guests (§8) and deferring
+offline reinforce rather than fight each other.
+
+## 2b. Preferences: account-owned for signed-in users, local cache for guests
+
+Dennis's call, and it sharpens the "one user model" principle rather than
+bending it. Preferences (theme/dark mode, visual theme, translation choice,
+"hide all notes while reading") are `localStorage`-only today
+(`berean-theme`, `berean-visual-theme`, `berean-translation`,
+`berean.hideAllNotes`).
+
+- **Signed-in: preferences belong to the account and sync across devices.** The
+  lightest implementation is a **`settings jsonb` column on the existing
+  `profiles` table** — no new table, and `profiles` already carries own-row-only
+  RLS (`profiles_select` / `profiles_update` in `0001_init.sql`), so it needs
+  **zero new policies**. `BereanApi` gains a `getSettings` / `updateSettings`
+  pair. This is an *account* data model, not a second *guest* one, so it does
+  not reintroduce the two-user-type cost §2 rejected.
+- **Guests: `localStorage`, exactly as today.** Unchanged.
+- **`localStorage` stays as the write-through cache / offline mirror** for
+  signed-in users too (same shape as `src/offline/mirror.ts`), so a preference
+  read is instant and never blocks on the network.
+- **Adopt-on-sign-in continuity.** On a guest's first sign-in, if the account
+  has no settings yet, seed the account from the local prefs — a guest who set
+  dark mode + KJV then signs in keeps them ("your settings came with you").
+  After that the account is source of truth; last-write-wins is fine for these
+  low-stakes values (unlike notes, which are never last-write-wins).
+
+This is queued as its **own** implementation task, not part of the guest reader:
+it benefits existing signed-in users (cross-device sync) independent of guest
+mode, and can ship on its own timeline.
+
 ## 3. Option (A) vs (B), and the recommendation
 
 Both options satisfy §2's constraints equally — this is not the axis that
