@@ -55,6 +55,19 @@ prioritized.
     parsing only (no `pushState`-as-you-browse for v1). The guest reader's
     location state is already book-number + chapter, which is the shape a URL
     parser needs to produce.
+  - **G4b — edge-rendered per-passage previews + crawlable HTML.**
+    `docs/proposals/guest-deep-link-seo.md` (2026-08-03) covers the layer on
+    top of G4a's URLs: recommends a Cloudflare Pages Function intercepting
+    `/read/*` that serves crawlers/unfurlers real per-passage meta + BSB/KJV
+    verse text (humans still get the SPA), over build-time static
+    prerendering of all ~1,189 chapters or an SSR/framework migration — both
+    rejected as disproportionate to the problem. ESV stays out of any
+    server/edge-rendered HTML per the licensing terms in
+    `docs/proposals/translations-esv-niv.md`. Separates link-preview value
+    (high, achievable) from search-ranking value (low near-term, saturated
+    niche against BibleGateway/YouVersion — explicitly not promised). Pairs
+    with a static sitemap/robots.txt/canonical pass. Depends on G4a landing
+    first. Not started.
 
 - **Internal `Berean*` identifiers stay — standing decision, not pending work.**
   `BereanApi`, `berean-api.ts`, `SupabaseBereanApi`, and the persisted keys
