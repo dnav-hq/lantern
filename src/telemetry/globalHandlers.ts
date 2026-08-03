@@ -18,6 +18,30 @@ import { reportError } from './client'
 
 let installed = false
 
+// A dynamic import() that fails is most often a STALE-CHUNK failure: a client
+// running a cached index.html whose hashed chunk a newer deploy has purged. The
+// SPA catch-all in public/_redirects serves that chunk URL back as index.html
+// (HTML, 200 — not a 404), so import() gets HTML where it expects a module and
+// throws (in Safari, a TypeError with a null stack). Vite fires
+// `vite:preloadError` for exactly this. The only real cure is a fresh
+// navigation: public/_headers keeps index.html no-cache, so a reload pulls a
+// current shell whose chunks still exist. A same-URL retry cannot help — the
+// purged URL deterministically returns HTML again — which is why we reload
+// rather than retry.
+const CHUNK_RELOAD_KEY = 'berean.chunk-reload-at'
+// Suppress a second reload within this window so a genuinely unrecoverable
+// failure surfaces to the error boundary instead of looping forever.
+export const CHUNK_RELOAD_COOLDOWN_MS = 10_000
+
+/**
+ * Pure decision so the loop-guard is unit-testable without touching `window`.
+ * Reload if we have never reloaded for this reason, or the last reload was long
+ * enough ago that a fresh failure is a new event rather than a loop.
+ */
+export function shouldReloadOnChunkError(now: number, lastReloadAt: number | null): boolean {
+  return lastReloadAt === null || now - lastReloadAt > CHUNK_RELOAD_COOLDOWN_MS
+}
+
 /**
  * Idempotent. Safe to call from a module that may be evaluated twice under HMR.
  */
@@ -38,5 +62,39 @@ export function installGlobalErrorHandlers(): void {
   window.addEventListener('unhandledrejection', event => {
     if (!event.reason) return
     reportError(toTelemetrySafe(event.reason), 'unhandled-rejection')
+  })
+
+  // Dynamic-import (lazy chunk) load failure — see the note above. Reported
+  // under its own boundary label so this failure mode is unambiguous in HQ:
+  // the previous occurrence arrived as a bare TypeError with a null Safari
+  // stack, indistinguishable from any other TypeError. Content-free, same as
+  // every other report — only the class and stripped frames leave the browser.
+  window.addEventListener('vite:preloadError', (event: Event) => {
+    const payload = (event as Event & { payload?: unknown }).payload
+    if (payload) reportError(toTelemetrySafe(payload), 'chunk-load-error')
+
+    let lastReloadAt: number | null = null
+    try {
+      const raw = sessionStorage.getItem(CHUNK_RELOAD_KEY)
+      lastReloadAt = raw ? Number(raw) : null
+    } catch {
+      // Storage blocked (some in-app webviews): with no way to remember that we
+      // already reloaded, auto-reloading risks an infinite loop. Let the error
+      // boundary show its recoverable "reload" UI instead.
+      return
+    }
+
+    if (shouldReloadOnChunkError(Date.now(), lastReloadAt)) {
+      try {
+        sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()))
+      } catch {
+        // ignore — best effort
+      }
+      // Stop Vite from surfacing the raw error; we are recovering via reload.
+      event.preventDefault()
+      window.location.reload()
+    }
+    // else: we reloaded moments ago and it still failed — a genuine problem, so
+    // let it reach the error boundary rather than reload again.
   })
 }

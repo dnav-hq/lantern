@@ -288,6 +288,50 @@ prioritized.
 
 ## Done
 
+- **Stale-chunk production crash + verse-action-bar centring (2026-08-03).** Two
+  unrelated fixes from a real user report (an international friend-of-a-friend
+  opened a shared link in a WhatsApp in-app browser on iOS and got the
+  full-screen "Something didn't load right" boundary).
+  - **The crash.** Telemetry showed an `app-boundary` `TypeError` with a **null
+    stack** on the current build — a synchronous render-time throw, `code
+    UNKNOWN_ERROR` (a raw JS error, not one of ours). Root cause, confirmed
+    against live production: `Landing` is the app's only lazy `import()` and is
+    loaded **only on the signed-out path** (so the signed-in friend never
+    exercised it). When a client runs a stale `index.html` whose hashed chunk a
+    newer deploy has purged, the request for that chunk hits the SPA catch-all in
+    `public/_redirects` (`/*  /index.html  200`) and returns the **HTML shell
+    with a 200, not a 404** (verified: `curl` of a nonexistent
+    `/assets/Landing-DEADBEEF.js` → `200 text/html`). `import()` then receives
+    HTML where it expects a JS module and throws — in Safari a `TypeError` with
+    no usable stack — which nothing caught. A cold client (in-app webview, no
+    service worker) is the most exposed. **Fix, defense-in-depth:** (1) new
+    `public/_headers` serves `index.html`/SPA routes `Cache-Control: no-cache`
+    and `/assets/*` `immutable`, so a client always revalidates to a shell that
+    points at chunks the current deploy still hosts; (2) a `vite:preloadError`
+    handler in `src/telemetry/globalHandlers.ts` does a **one-time** guarded
+    `location.reload()` (a same-URL retry can't help — the purged URL returns
+    HTML again — so reload, not retry; the guard is a 10s `sessionStorage`
+    cooldown, unit-tested via the pure `shouldReloadOnChunkError`, and it skips
+    the reload entirely when storage is blocked so it can never loop); (3) the
+    same handler reports the failure under its own `chunk-load-error` boundary
+    label so this mode is unambiguous in HQ next time — the previous occurrence
+    was indistinguishable from any other `TypeError` because our telemetry
+    strips messages for privacy and the Safari stack came through null.
+    **Standing lesson:** the SPA catch-all makes a missing asset look like a
+    200-HTML success, not a 404 — so keep `index.html` `no-cache` forever, and a
+    dynamic-import failure is a caching/deploy problem first, a code bug second.
+  - **The centring.** Unrelated bug found the same session: the floating
+    verse-selection action bar rendered right-of-centre on desktop (and wrapped
+    its buttons at narrower widths). `springIn` in `motion.css` set the
+    `transform` shorthand in its `to` frame, and with `animation-fill-mode: both`
+    that stuck after the entrance, overriding the bar's base
+    `transform: translateX(-50%)`. Same landmine the `.bottomnav` boot animation
+    hit. Fixed at the root: `springIn` now animates the independent
+    `translate`/`scale` properties, which compose with the base `transform`
+    instead of replacing it (the other springIn users have no base transform, so
+    they render identically). Verified live via computed style: settled bar
+    centre offset 0px.
+
 - **Translation-version chip in the top bar (2026-08-03).** A minimal,
   always-visible YouVersion-style chip (`TranslationChip.tsx`) shows the active
   translation's abbreviation and doubles as a quick switcher — tap it, pick

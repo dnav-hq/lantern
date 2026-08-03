@@ -1,0 +1,21 @@
+# Cloudflare Pages response headers.
+#
+# WHY THIS FILE EXISTS: a production TypeError with a null stack was traced to a
+# stale-chunk failure. When a client runs a cached index.html whose hashed JS
+# chunk a newer deploy has purged, the request for that chunk hits the SPA
+# catch-all in public/_redirects (/*  /index.html  200) and comes back as the
+# HTML shell with a 200 — NOT a 404. A dynamic import() then receives HTML where
+# it expects a JS module and throws (in Safari: a TypeError with no usable
+# stack), which the app's top-level error boundary shows as "Something didn't
+# load right." A cold client (e.g. a WhatsApp in-app browser opening a shared
+# link) with no service worker is the most exposed.
+#
+# The fix: never let the HTML shell be served stale. index.html (and any SPA
+# route that resolves to it) must be revalidated on every load, so the client
+# always runs a shell that points at chunks the current deploy still hosts. The
+# hashed, content-addressed build assets under /assets/* are immutable by
+# construction (their name changes when their content does), so they cache hard.
+/*
+  Cache-Control: no-cache
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
