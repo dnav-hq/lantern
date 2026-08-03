@@ -101,6 +101,27 @@ prioritized.
   Settings translation switcher (`src/utils/useTranslation.ts`'s `TRANSLATIONS`
   list + `isTranslationId` guard).
 
+- **ESV usage metering — built, activates with the migration/deploy above
+  (2026-08-03).** Before making ESV the default, Dennis needs real data on how
+  much of the shared 5,000/day + 1,000/hour + 60/minute Crossway quota is
+  actually being consumed. `supabase/functions/esv-proxy` now meters every
+  real upstream call (a client cache miss, never a cache hit) into a new
+  `public.esv_api_usage` table (`supabase/migrations/0008_esv_usage.sql`) —
+  timestamp + coarse ok/quota/error status only, never a passage, book,
+  chapter, user, or install id, so `public/privacy.html` needed no change.
+  Checked api.esv.org's docs for an authoritative rate-limit response header
+  first; none is documented, hence the dedicated counting store. Metering is
+  fire-and-forget (`EdgeRuntime.waitUntil`, errors swallowed) so it can never
+  slow, block, or fail a chapter fetch. Rows are pruned after ~48h by an
+  hourly pg_cron job, same pattern as 0007. Two new project-defined scalars,
+  `esv_api_queries_24h` / `esv_api_queries_1h`, are exposed via
+  `hq_telemetry_scalars()` to compare against the 5,000/day and 1,000/hour
+  caps. Deliberately NOT routed through the `telemetry_events` buffer (0004):
+  its per-install burst/daily caps exist to protect against a hostile client
+  and would silently drop real usage under exactly the volume this needs to
+  measure accurately. Activates the same way the ESV provider above does —
+  `supabase db push` + redeploying `esv-proxy`, no further code change needed.
+
 - **NIV provider — researched, not recommended yet.** `docs/proposals/translations-esv-niv.md`
   (2026-07-22) found a free non-commercial path exists (API.Bible / American
   Bible Society) but NIV is the worst fit of the three translations it
