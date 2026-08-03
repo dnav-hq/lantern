@@ -16,3 +16,11 @@ setup:
   install: npm ci
   dev_server: npm run dev
   port: 5173
+
+telemetry:
+  # HQ pulls pre-aggregated scalars + error events from this Supabase Edge
+  # Function (GET ?since=<ISO8601>, Bearer-authed). token_secret names the
+  # GitHub secret on dnav-hq/hq that holds the same token as the function's
+  # HQ_TELEMETRY_TOKEN Supabase secret on the berean project.
+  endpoint: https://dyfyxrcwxyvknupkugiv.supabase.co/functions/v1/hq-telemetry
+  token_secret: LANTERN_TELEMETRY_TOKEN
