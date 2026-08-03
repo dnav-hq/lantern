@@ -43,10 +43,16 @@ prioritized.
   reader; a corner "Sign in" clears the flag and hands back to the landing page.
   What remains of guest preview, each its own piece of work:
 
-  - **G2 — the ephemeral note sandbox** (proposal §3 option B): an in-memory-only
-    note editor on the guest reader, with the upfront "nothing here is saved —
-    sign in to keep it" framing. This is the *only* place a guest is invited to
-    sign in (§2a), so it is the conversion piece, not a nicety.
+  **G2 — the ephemeral note sandbox — is DONE (2026-08-03).** Tapping a verse
+  in `GuestReader.tsx` opens an inline editor (reusing `InlineTagInput` and the
+  `.quick-edit-card` chrome QuickEditCard.tsx also uses) backed by plain
+  `useState` inside `GuestChapter` — no `BereanApi`, no `localStorage`, no
+  IndexedDB, nothing that outlives the render; closing the tab or reloading
+  drops it completely. A permanent ambient label ("You're trying this out —
+  nothing here is saved. Sign in to keep it.") sits on the editor from the
+  moment it opens, never a toast, mirroring `StudyMode.tsx`'s draft-recovery
+  notice shape. This is the *only* place a guest is invited to sign in (§2a);
+  reading stays un-nagged.
   - **G3 — the real landing CTA** (§7). G1 ships a deliberately temporary
     entry button so the guest tree is reachable now; the designed hero CTA
     ("Read the Bible free — no account needed") replaces it and is a design

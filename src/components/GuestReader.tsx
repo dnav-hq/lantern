@@ -6,6 +6,7 @@ import { useDarkMode } from '../utils/useDarkMode'
 import { GUEST_TRANSLATIONS, useGuestTranslation } from '../utils/useTranslation'
 import { adjacentChapter, chapterLabel } from '../utils/useChapterNavigation'
 import BibleLibrary from './BibleLibrary'
+import InlineTagInput from './InlineTagInput'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import Wordmark from './Wordmark'
 
@@ -25,9 +26,12 @@ import Wordmark from './Wordmark'
 
    Reading is never nagged (§2a): a guest who only ever reads is a legitimate,
    satisfied end state, so the only account affordance is one quiet, always-
-   available "Sign in" in the corner. The note sandbox — the one place the
-   sign-in invitation belongs — is a separate task (G2), as are the landing CTA
-   (G3) and deep-link routing (G4a); this file is the seam they extend.
+   available "Sign in" in the corner. Tapping a verse opens the ephemeral note
+   sandbox (§3 option B, G2) — the one place a guest is invited to sign in.
+   It is pure `useState` inside GuestChapter: no BereanApi, no localStorage, no
+   IndexedDB, nothing that outlives this render. The landing CTA (G3) and
+   deep-link routing (G4a) remain separate tasks; this file is the seam they
+   extend.
    ──────────────────────────────────────────────────────────────────────────── */
 
 interface GuestReaderProps {
@@ -152,19 +156,36 @@ function GuestChapter({
   chapter,
   onSelectChapter,
   onGo,
-  onBack
+  onBack,
+  onSignIn
 }: {
   book: BibleBook
   chapter: number
   onSelectChapter: (chapter: number) => void
   onGo: (delta: number) => void
   onBack: () => void
+  onSignIn: () => void
 }): React.ReactElement {
   const [translation] = useGuestTranslation()
   const [passage, setPassage] = useState<BiblePassage | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sandboxVerse, setSandboxVerse] = useState<number | null>(null)
+  const [sandboxText, setSandboxText] = useState('')
   const contentRef = useRef<HTMLDivElement>(null)
   const selectorRef = useRef<HTMLDivElement>(null)
+
+  // The sandbox is scoped to the chapter it was opened on: verse numbers are
+  // only meaningful within the current chapter, so a note "open" for v4 of the
+  // old chapter must not silently reappear over v4 of the new one.
+  useEffect(() => {
+    setSandboxVerse(null)
+    setSandboxText('')
+  }, [book.number, chapter])
+
+  const handleVerseSelect = useCallback((verseNum: number) => {
+    setSandboxVerse(prev => (prev === verseNum ? null : verseNum))
+    setSandboxText('')
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -254,10 +275,57 @@ function GuestChapter({
                   className="reading-verse-block"
                   style={{ gridRow: i + 1, '--stagger-i': i } as React.CSSProperties}
                 >
-                  <div className="reading-verse-row">
+                  <div
+                    className={`reading-verse-row${sandboxVerse === v.verse ? ' selected' : ''}`}
+                    onClick={() => handleVerseSelect(v.verse)}
+                  >
                     <span className="verse-number">{v.verse}</span>
                     <span className="verse-text">{v.text}</span>
                   </div>
+
+                  {sandboxVerse === v.verse && (
+                    <div className="inline-note-row">
+                      <div className="quick-edit-card guest-sandbox-card">
+                        {/* Permanent, ambient state label — present the instant the
+                            editor opens, before any keystroke. Never a toast, never
+                            "unsaved": this is the ONE place a guest is invited to
+                            sign in (§2a), scoped to this note-taking moment only. */}
+                        <div className="guest-sandbox-label" role="status">
+                          You&apos;re trying this out — nothing here is saved.{' '}
+                          <button
+                            type="button"
+                            className="guest-sandbox-signin-link"
+                            onClick={() => onSignIn()}
+                          >
+                            Sign in to keep it
+                          </button>
+                        </div>
+                        <div className="quick-edit-body">
+                          <InlineTagInput
+                            value={sandboxText}
+                            onChange={setSandboxText}
+                            onEscape={() => handleVerseSelect(v.verse)}
+                            className="inline-note-input"
+                            placeholder={`v${v.verse} type a note…`}
+                            autoFocus
+                            multiline
+                          />
+                        </div>
+                        <div className="quick-edit-footer">
+                          <span className="quick-edit-hint">
+                            <kbd>@</kbd> category · <kbd>v4</kbd> verse · <kbd>esc</kbd> close
+                          </span>
+                          <button
+                            type="button"
+                            className="quick-edit-btn quick-edit-btn-cancel"
+                            onClick={() => handleVerseSelect(v.verse)}
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -358,6 +426,7 @@ export default function GuestReader({ onSignIn }: GuestReaderProps): React.React
             onSelectChapter={ch => setLocation({ bookNumber: book.number, chapter: ch })}
             onGo={handleGo}
             onBack={() => setLocation(null)}
+            onSignIn={onSignIn}
           />
         ) : (
           // `passages` is the empty array on purpose, not a fetch that returns
