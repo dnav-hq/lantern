@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Wordmark from './Wordmark'
+import TranslationChip from './TranslationChip'
 import { useApi } from '../api/context'
 import { exportAllNotesAsZip } from '../platform/export'
 
@@ -118,6 +119,12 @@ export default function NavBar({
   }, [api])
 
   const initial = (displayName || '?').trim().charAt(0).toUpperCase() || '?'
+
+  // Same surfaces the Focus toggle gates (a book chapter or a saved passage),
+  // plus Study's own reading pane — Study has no auto-hiding chrome of its
+  // own, so the chip there just stays put rather than riding a hide/show it
+  // doesn't participate in.
+  const showTranslationChip = showFocusToggle || destination === 'study'
 
   // Measure the active tab (Bible/Journal only) and position the sliding
   // indicator to match — before paint, so it never visibly snaps into its
@@ -387,6 +394,8 @@ export default function NavBar({
               </svg>
             </button>
           )}
+
+          <TranslationChip visible={showTranslationChip} />
 
           <div className="topnav-trail">
             <div className="profile-menu-host" ref={profileRef}>
