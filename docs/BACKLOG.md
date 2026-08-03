@@ -245,6 +245,29 @@ prioritized.
 
 ## Done
 
+- **Cross-chapter reading — swipe + prev/next with preloaded neighbours
+  (2026-08-03).** Reading on no longer means stopping to pick from the chapter
+  strip. A horizontal swipe (touch only — a mouse drag over scripture is
+  already the marquee verse selection), persistent edge arrows, and a named
+  end-of-chapter control ("Next: John 4") all turn the page, and the adjacent
+  chapters are fetched at idle through the existing provider seam so the
+  incoming chapter is real text on its first frame rather than a skeleton.
+  Explicitly NOT infinite scroll — that was considered and rejected because
+  notes are anchored per chapter and a continuous scroll makes "whose notes am
+  I looking at" ambiguous: exactly one chapter is current, at most one
+  neighbour is mounted, and only for the length of the transition. The
+  resolution (book boundaries; a graceful stop at Genesis 1 and Revelation 22)
+  and the gesture feel (axis lock, flick-vs-drag commit, edge rubber-band) are
+  pure functions in `src/utils/useChapterNavigation.ts` with 17 unit tests; the
+  drag writes a transform straight to the track (never through React state), so
+  the finger and the page move in the same frame. App owns the chapter now, so
+  a book-crossing swipe, the chapter strip and a search jump are one state
+  change and the view state always names the chapter on screen. Reduced motion
+  swaps instantly with no slide and never mounts a neighbour. ESV is excluded
+  from the preload on purpose — it is metered upstream per query, and a chapter
+  the reader never opens must not spend their quota. NOT DONE here: restoring
+  the last-read chapter across a full page reload (nothing persists reading
+  position today — a separate item if it's wanted).
 - **Mobile reading mode — auto-hiding chrome + distraction-free reading
   (2026-08-03).** On a reading surface (a chapter, or a saved passage) the top
   bar and bottom tab bar now slide away as you scroll down and come straight

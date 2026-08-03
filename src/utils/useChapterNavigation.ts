@@ -352,7 +352,12 @@ export function useChapterSwipe(options: ChapterSwipeOptions): ChapterSwipeState
   const commit = useCallback(
     (delta: number): void => {
       const el = trackRef.current
-      const width = el?.offsetWidth ?? 0
+      // How far the pane must travel to put the neighbour exactly where the
+      // real chapter will render. MEASURED from the mounted neighbour rather
+      // than assumed to be the pane width, so the gutter between chapters can
+      // change in CSS without the landing drifting by that many pixels.
+      const peekPane = el?.querySelector('.chapter-pane--peek') as HTMLElement | null
+      const width = peekPane ? Math.abs(peekPane.offsetLeft) : (el?.offsetWidth ?? 0)
       if (!el || width === 0 || latest.current.reducedMotion) {
         clearTrack()
         setPeek(0)

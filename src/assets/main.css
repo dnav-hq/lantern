@@ -5135,6 +5135,11 @@ body.dark .mobile-menu-btn:active {
    chapter is simply swapped. */
 .chapter-deck {
   position: relative;
+  /* Breathing room between two chapters mid-turn, so the outgoing last line
+     and the incoming first line never read as one paragraph. The settle
+     animation MEASURES this (see useChapterSwipe) rather than assuming a bare
+     pane width, so changing it here cannot desync the landing. */
+  --chapter-gutter: 26px;
   /* Vertical stays the browser's job (reading); horizontal is ours (turning). */
   touch-action: pan-y;
   /* `clip`, not `hidden`: hidden would make this a scroll container and break
@@ -5162,10 +5167,26 @@ body.dark .mobile-menu-btn:active {
   user-select: none;
 }
 .chapter-pane--peek.is-next {
-  left: 100%;
+  left: calc(100% + var(--chapter-gutter));
 }
 .chapter-pane--peek.is-prev {
-  right: 100%;
+  right: calc(100% + var(--chapter-gutter));
+}
+/* A hairline in the gutter: the seam between two discrete chapters, visible
+   only while one is actually passing. */
+.chapter-pane--peek::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0.5px;
+  background: var(--border);
+}
+.chapter-pane--peek.is-next::before {
+  left: calc(var(--chapter-gutter) / -2);
+}
+.chapter-pane--peek.is-prev::before {
+  right: calc(var(--chapter-gutter) / -2);
 }
 
 /* ── End-of-chapter continue control ──
