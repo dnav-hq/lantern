@@ -3,8 +3,6 @@ import Wordmark from '../Wordmark'
 import SignIn from '../SignIn'
 import HeroFlythrough from './HeroFlythrough'
 import FeatureClips from './FeatureClips'
-import GoogleMark from './GoogleMark'
-import { signInWithGoogle } from '../../api/auth'
 import '../../assets/landing.css'
 
 // The public landing page — what an unauthenticated visitor sees. Root's
@@ -26,29 +24,23 @@ import '../../assets/landing.css'
 //     by the three feature clips, one of which is Four lenses (owner's call —
 //     newest spec wins, no duplicated section).
 //
-// On the buttons: there is exactly ONE action here. First sign-in doubles as
-// sign-up (`shouldCreateUser: true`), so the usual "Get started" vs "Sign in"
-// pair would be one door wearing two labels — a SaaS funnel convention borrowed
-// into a product with no funnel. The only real choice is *how* to sign in, so
-// that is the only choice offered: Google (one click) or email.
+// Two intents, one primary each. Someone ready to commit takes the single
+// "Start your study" primary, which opens the sign-in dialog — the place the
+// *method* choice (Google or email) actually belongs, deferred until after the
+// intent, so the hero is one button rather than a row of method choices.
+// Someone who only wants to look takes the quiet "Read without signing in" link
+// into the guest reader. Sign-in stays the visually dominant path; reading is
+// free beside it, and the account is a benefit (keeping your study), never a
+// wall. First sign-in still doubles as sign-up inside the dialog.
 
-export default function Landing(): React.JSX.Element {
+interface LandingProps {
+  /** Enter the signed-out guest reader (Root flips to its `guest` phase). */
+  onReadAsGuest: () => void
+}
+
+export default function Landing({ onReadAsGuest }: LandingProps): React.JSX.Element {
   const [login, setLogin] = useState<null | { emailFirst: boolean }>(null)
   const openLogin = (): void => setLogin({ emailFirst: false })
-  const openEmailLogin = (): void => setLogin({ emailFirst: true })
-
-  const handleGoogle = async (): Promise<void> => {
-    try {
-      // The browser leaves for Supabase/Google here and does not come back to
-      // this line. Only a client-side failure (misconfigured Supabase) lands in
-      // the catch — a rejected *provider* shows as JSON on Supabase's own page,
-      // which nothing here can intercept. See api/auth.ts.
-      await signInWithGoogle()
-    } catch {
-      // Fall back to the dialog, which offers email.
-      setLogin({ emailFirst: false })
-    }
-  }
 
   return (
     <div className="landing">
@@ -58,7 +50,9 @@ export default function Landing(): React.JSX.Element {
           {/* No section links: "Four lenses" / "Find and return" only mean
               something once you have already read the page they jump to. The page
               is short enough to scroll. */}
-          <button className="ll-btn ll-btn-primary" type="button" onClick={openLogin}>
+          {/* Secondary next to the hero's filled primary: this is the returning
+              visitor's door, not the page's main call to action. */}
+          <button className="ll-btn ll-btn-ghost" type="button" onClick={openLogin}>
             Sign in
           </button>
         </div>
@@ -80,16 +74,22 @@ export default function Landing(): React.JSX.Element {
                 time you open the passage.
               </p>
               <div className="ll-hero-actions">
-                <button className="ll-btn ll-btn-primary" type="button" onClick={handleGoogle}>
-                  {/* The white chip is the spec's own fix: Google's mark keeps its
-                      own colours, which do not sit on an indigo fill. */}
-                  <span className="ll-g-chip">
-                    <GoogleMark />
-                  </span>
-                  Continue with Google
+                <button
+                  className="ll-btn ll-btn-primary ll-btn-lg"
+                  type="button"
+                  onClick={openLogin}
+                >
+                  Get started
                 </button>
-                <button className="ll-btn ll-btn-ghost" type="button" onClick={openEmailLogin}>
-                  Continue with email
+                {/* The quieter second intent, inline to the right of the primary
+                    (the conventional place for a subordinate action). Kept short
+                    and lighter than the primary on purpose: a longer, more
+                    articulate label here would out-weigh "Get started" and read
+                    as the main action. Exploration register ("take a look"), not
+                    the mechanic ("without signing in"), and no arrow — both would
+                    hand it weight it should not have. */}
+                <button className="ll-guest-link" type="button" onClick={onReadAsGuest}>
+                  Take a look first
                 </button>
               </div>
               <p className="ll-hero-fine">Nothing to buy. Your notes stay private to you.</p>
