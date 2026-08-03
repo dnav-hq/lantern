@@ -29,9 +29,27 @@
 // Unlike hq-telemetry (server-to-server, called only by HQ), this is called
 // directly from the browser at a different origin than the Supabase project,
 // so it has to answer CORS preflight itself — nothing in front of it does.
+//
+// ─── USAGE METERING ───────────────────────────────────────────────────────────
+//
+// Every real call to Crossway below is metered into public.esv_api_usage (see
+// supabase/migrations/0008_esv_usage.sql), so how much of the shared 5,000/day
+// + 1,000/hour + 60/minute quota is actually being consumed can be seen before
+// making ESV the default. Checked api.esv.org's docs for a rate-limit response
+// header first (an X-RateLimit-* style header would be the authoritative
+// source) — none is documented, so this falls back to counting queries here.
+// Only a timestamp and a coarse ok/quota/error status are ever stored: no
+// passage, book, chapter, user, or install. Client cache hits never reach this
+// function at all, so they can't be counted here by construction — this only
+// ever meters a real upstream call, which is exactly what the quota meters.
+
+import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const ESV_API_KEY = Deno.env.get('ESV_API_KEY') ?? ''
 const ESV_API_BASE = 'https://api.esv.org/v3/passage/text/'
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -44,6 +62,30 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
   })
+}
+
+// Fire-and-forget: recording usage must NEVER slow, block, or fail a chapter
+// fetch. This is never awaited on the response path — it only swallows its
+// own errors. EdgeRuntime.waitUntil (a Deno Deploy / Supabase Edge Functions
+// global, no bundled types — hence the guard) lets the write finish after the
+// response has already gone out instead of racing the isolate tearing down;
+// without it this is still best-effort, just with worse odds of completing.
+function recordEsvUsage(status: 'ok' | 'quota' | 'error'): void {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return
+
+  const write = (async () => {
+    try {
+      const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false }
+      })
+      await db.from('esv_api_usage').insert({ status })
+    } catch {
+      // Swallowed on purpose — see the header above.
+    }
+  })()
+
+  // @ts-expect-error EdgeRuntime has no bundled type declarations here.
+  if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(write)
 }
 
 // ESV's plain-text passage response embeds verse numbers as "[16]" markers,
@@ -101,6 +143,10 @@ Deno.serve(async req => {
       headers: { Authorization: `Token ${ESV_API_KEY}` }
     })
   } catch {
+    // Reached this catch WITHOUT a response, so it's unclear whether Crossway
+    // ever saw the request — metered as 'error' rather than skipped, since an
+    // attempted call is the thing worth seeing, not just the successful ones.
+    recordEsvUsage('error')
     return json({ error: 'upstream_unreachable' }, 502)
   }
 
@@ -108,11 +154,19 @@ Deno.serve(async req => {
     // Shared per-application quota (5,000/day, 1,000/hr, 60/min) — pass the
     // 429 straight through rather than retrying. See src/bible/esv.ts: the
     // client treats this as a one-shot failure, never a retry trigger.
+    // Still metered: Crossway counted this request against the quota same as
+    // any other, it just didn't like it.
+    recordEsvUsage('quota')
     return json({ error: 'quota_exceeded' }, 429)
   }
   if (!upstream.ok) {
+    recordEsvUsage('error')
     return json({ error: 'upstream_failed' }, 502)
   }
+
+  // A real, successful upstream call — this is what consumes the shared
+  // quota, metered here regardless of whether parsing the body below succeeds.
+  recordEsvUsage('ok')
 
   let data: { passages?: string[] }
   try {
