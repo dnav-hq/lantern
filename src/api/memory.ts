@@ -1,4 +1,4 @@
-import type { BereanApi } from './types'
+import type { BereanApi, UserSettings } from './types'
 import { CodedError } from '../errors'
 import type {
   Passage,
@@ -32,6 +32,9 @@ const now = (): string => new Date().toISOString()
 const passages = new Map<string, Passage>()
 const sessions = new Map<string, Session>()
 const notes = new Map<string, Note>()
+// Account-synced preferences stub: one blob, same reset-on-reload lifetime as
+// everything else here.
+let settings: UserSettings = {}
 
 function passageInfo(p: Passage): Omit<NoteWithPassageInfo, keyof Note> {
   return {
@@ -215,6 +218,14 @@ export function createMemoryApi(): BereanApi {
 
     async getBibleVerse(reference) {
       return getBibleVerse(reference)
+    },
+
+    async getSettings() {
+      return { ...settings }
+    },
+
+    async updateSettings(patch: Partial<UserSettings>) {
+      settings = { ...settings, ...patch }
     }
   }
 }

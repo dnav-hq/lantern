@@ -15,7 +15,9 @@ import { BIBLE_BOOKS } from './utils/bibleBooks'
 import { useApi } from './api/context'
 import { useDarkMode } from './utils/useDarkMode'
 import { useTheme } from './utils/useTheme'
+import { useTranslation } from './utils/useTranslation'
 import { useTextSize } from './utils/useTextSize'
+import { resolveSettingsAdoption, type UserSettings } from './api/types'
 
 // Persisted "hide all notes" preference — the standalone reading control, kept
 // separate from the transient Focus toggle (which hides notes for the session
@@ -42,6 +44,11 @@ interface AppProps {
   displayName: string | null
   // Sign-out handler, or null when there is no auth (memory stub / dev).
   onSignOut: (() => Promise<void>) | null
+  // Account settings fetched once at Root's profile-load point (null for the
+  // memory stub, where there is no account to sync — see the sync effect
+  // below). Undefined is not a valid state once signed in; Root always
+  // resolves this to at least `{}` before rendering App.
+  accountSettings?: UserSettings | null
 }
 
 interface AppState {
@@ -59,10 +66,15 @@ interface AppState {
   studyPassageId: string | null
 }
 
-export default function App({ displayName, onSignOut }: AppProps): React.ReactElement {
+export default function App({
+  displayName,
+  onSignOut,
+  accountSettings = null
+}: AppProps): React.ReactElement {
   const api = useApi()
-  const [isDark, toggleDark] = useDarkMode()
+  const [isDark, toggleDark, setDark] = useDarkMode()
   const [theme, setTheme] = useTheme()
+  const [translation, setTranslation] = useTranslation()
   const [textSize, setTextSize] = useTextSize()
   const [settingsOpen, setSettingsOpen] = useState(false)
   // Reading surface state. `hideNotes` is the persisted Settings preference;
@@ -76,6 +88,61 @@ export default function App({ displayName, onSignOut }: AppProps): React.ReactEl
   useEffect(() => {
     writeHideNotes(hideNotes)
   }, [hideNotes])
+
+  // Account-synced preferences (docs/proposals/guest-preview-mode.md §2b).
+  // localStorage (via the writes above and each hook's own effect) stays the
+  // instant, network-independent read path for every caller; this only adds a
+  // background account mirror for a signed-in user. onSignOut is null exactly
+  // for the guest/memory-stub case, which is untouched by design — no API
+  // calls, no second data model.
+  const isSignedIn = onSignOut !== null
+  const lastSyncedRef = useRef<UserSettings | null>(null)
+
+  useEffect(() => {
+    if (!isSignedIn || accountSettings === null || lastSyncedRef.current) return
+    const local: UserSettings = {
+      darkMode: isDark,
+      visualTheme: theme,
+      translation,
+      hideAllNotes: hideNotes
+    }
+    const { action, settings } = resolveSettingsAdoption(local, accountSettings)
+    if (action === 'hydrate') {
+      if (settings.darkMode !== undefined) setDark(settings.darkMode)
+      if (settings.visualTheme !== undefined) setTheme(settings.visualTheme)
+      if (settings.translation !== undefined) setTranslation(settings.translation)
+      if (settings.hideAllNotes !== undefined) setHideNotes(settings.hideAllNotes)
+    } else {
+      void api.updateSettings(settings)
+    }
+    lastSyncedRef.current = settings
+    // Only ever run once per sign-in (guarded by lastSyncedRef above) — a
+    // live-session preference change is handled by the push effect below, not
+    // by re-running adoption.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn, accountSettings])
+
+  useEffect(() => {
+    if (!isSignedIn || !lastSyncedRef.current) return
+    const snapshot: UserSettings = {
+      darkMode: isDark,
+      visualTheme: theme,
+      translation,
+      hideAllNotes: hideNotes
+    }
+    const last = lastSyncedRef.current
+    const changed =
+      last.darkMode !== snapshot.darkMode ||
+      last.visualTheme !== snapshot.visualTheme ||
+      last.translation !== snapshot.translation ||
+      last.hideAllNotes !== snapshot.hideAllNotes
+    if (!changed) return
+    const timer = setTimeout(() => {
+      lastSyncedRef.current = snapshot
+      void api.updateSettings(snapshot)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [isDark, theme, translation, hideNotes, isSignedIn, api])
 
   const [state, setState] = useState<AppState>({
     destination: 'bible',

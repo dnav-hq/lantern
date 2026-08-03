@@ -11,6 +11,36 @@ import type {
   UpdateNoteInput,
   DeleteNoteResult
 } from '../types'
+import type { ThemeId } from '../utils/useTheme'
+import type { TranslationId } from '../bible/provider'
+
+// The four existing localStorage-only preferences, mirrored onto the account
+// for a signed-in user (docs/proposals/guest-preview-mode.md §2b). Each is
+// optional: an account that has never synced has none of them yet, and a
+// patch only ever sets the keys it's changing.
+export interface UserSettings {
+  darkMode?: boolean
+  visualTheme?: ThemeId
+  translation?: TranslationId
+  hideAllNotes?: boolean
+}
+
+// Adopt-on-first-sign-in: an account with no settings yet has never synced, so
+// seed it from the device's current local values ("your settings came with
+// you"). Once the account has any settings, it is the source of truth and
+// local should adopt its values instead (last-write-wins is fine for these
+// low-stakes prefs). Pure on purpose — this is the one piece of the sync flow
+// worth unit-testing without a live database or a rendered component; see
+// src/api/settings.test.ts.
+export function resolveSettingsAdoption(
+  local: UserSettings,
+  account: UserSettings
+): { action: 'seed' | 'hydrate'; settings: UserSettings } {
+  const accountIsEmpty = Object.keys(account).length === 0
+  return accountIsEmpty
+    ? { action: 'seed', settings: local }
+    : { action: 'hydrate', settings: account }
+}
 
 // BereanApi is the single choke point for all data access and mutation.
 // Components consume it via useApi() (src/api/context.tsx) — never a global.
@@ -53,4 +83,11 @@ export interface BereanApi {
 
   // Scripture
   getBibleVerse(reference: string): Promise<BiblePassage | null>
+
+  // Account-synced preferences (docs/proposals/guest-preview-mode.md §2b).
+  // localStorage stays the write-through cache/offline mirror in every
+  // implementation; these two only exist for the signed-in, account-backed
+  // path — updateSettings is a merge patch, not a full replace.
+  getSettings(): Promise<UserSettings>
+  updateSettings(patch: Partial<UserSettings>): Promise<void>
 }
