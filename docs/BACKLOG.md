@@ -48,11 +48,14 @@ prioritized.
   `.quick-edit-card` chrome QuickEditCard.tsx also uses) backed by plain
   `useState` inside `GuestChapter` — no `BereanApi`, no `localStorage`, no
   IndexedDB, nothing that outlives the render; closing the tab or reloading
-  drops it completely. A permanent ambient label ("You're trying this out —
-  nothing here is saved. Sign in to keep it.") sits on the editor from the
-  moment it opens, never a toast, mirroring `StudyMode.tsx`'s draft-recovery
-  notice shape. This is the *only* place a guest is invited to sign in (§2a);
-  reading stays un-nagged.
+  drops it completely. A permanent ambient label ("You're trying this out.
+  Nothing you type here is saved. Sign in to keep it.") sits on the editor
+  from the moment it opens, never a toast, mirroring `StudyMode.tsx`'s
+  draft-recovery notice shape. The sign-in call to action is styled like the
+  app's other inline text links (accent color + underline) rather than
+  inheriting the notice's own tint, so it reads as tappable rather than as
+  part of the sentence. This is the *only* place a guest is invited to sign
+  in (§2a); reading stays un-nagged.
   - **G3 — the real landing CTA** (§7). G1 ships a deliberately temporary
     entry button so the guest tree is reachable now; the designed hero CTA
     ("Read the Bible free — no account needed") replaces it and is a design

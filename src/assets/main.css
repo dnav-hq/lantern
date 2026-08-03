@@ -5485,13 +5485,18 @@ body.dark .mobile-menu-btn:active {
   padding: 6px 10px;
   margin: 0 0 8px;
 }
+/* Colored + underlined like the app's other inline text links (e.g.
+   .verse-action-secondary) rather than `color: inherit` from the notice
+   text: the notice is already tinted, so a same-colored underline read as
+   part of the sentence rather than a tappable action. The accent color
+   makes it unmistakably a link. */
 .guest-sandbox-signin-link {
   border: none;
   background: none;
   padding: 0;
   font: inherit;
   font-weight: 600;
-  color: inherit;
+  color: var(--accent-ink);
   text-decoration: underline;
   cursor: pointer;
 }

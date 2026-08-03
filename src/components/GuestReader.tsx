@@ -291,7 +291,7 @@ function GuestChapter({
                             "unsaved": this is the ONE place a guest is invited to
                             sign in (§2a), scoped to this note-taking moment only. */}
                         <div className="guest-sandbox-label" role="status">
-                          You&apos;re trying this out — nothing here is saved.{' '}
+                          You&apos;re trying this out. Nothing you type here is saved.{' '}
                           <button
                             type="button"
                             className="guest-sandbox-signin-link"
