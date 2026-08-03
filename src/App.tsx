@@ -135,7 +135,10 @@ export default function App({ displayName, onSignOut }: AppProps): React.ReactEl
     }))
   }
 
-  // Search jump (section 1): open the Bible view at a specific book + chapter.
+  // Open the Bible view at a specific book + chapter. Three callers land here:
+  // a search jump, the chapter strip, and swiping/tapping to the next chapter —
+  // so the app's view state is always the chapter actually on screen, even when
+  // the reader crosses into a different book without going near the library.
   const handleJumpToChapter = (bookName: string, chapter: number): void => {
     setSearchOpen(false)
     setState(prev => ({
@@ -265,9 +268,13 @@ export default function App({ displayName, onSignOut }: AppProps): React.ReactEl
     if (selectedBibleBook) {
       return (
         <BookDetailPage
-          key={`${selectedBibleBook.id}-${selectedChapter ?? 1}`}
+          // Keyed on the BOOK only: moving between chapters is a state change,
+          // not a remount, so the reader keeps a live surface to slide. A new
+          // book legitimately starts fresh (different notes, different length).
+          key={selectedBibleBook.id}
           bibleBook={selectedBibleBook}
-          initialChapter={selectedChapter ?? 1}
+          chapter={selectedChapter ?? 1}
+          onNavigateChapter={handleJumpToChapter}
           onBack={() =>
             setState(prev => ({ ...prev, selectedBookName: null, selectedChapter: null }))
           }
