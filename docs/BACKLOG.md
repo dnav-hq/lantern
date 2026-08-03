@@ -304,22 +304,37 @@ prioritized.
     `/assets/Landing-DEADBEEF.js` → `200 text/html`). `import()` then receives
     HTML where it expects a JS module and throws — in Safari a `TypeError` with
     no usable stack — which nothing caught. A cold client (in-app webview, no
-    service worker) is the most exposed. **Fix, defense-in-depth:** (1) new
-    `public/_headers` serves `index.html`/SPA routes `Cache-Control: no-cache`
-    and `/assets/*` `immutable`, so a client always revalidates to a shell that
-    points at chunks the current deploy still hosts; (2) a `vite:preloadError`
-    handler in `src/telemetry/globalHandlers.ts` does a **one-time** guarded
-    `location.reload()` (a same-URL retry can't help — the purged URL returns
-    HTML again — so reload, not retry; the guard is a 10s `sessionStorage`
-    cooldown, unit-tested via the pure `shouldReloadOnChunkError`, and it skips
-    the reload entirely when storage is blocked so it can never loop); (3) the
-    same handler reports the failure under its own `chunk-load-error` boundary
-    label so this mode is unambiguous in HQ next time — the previous occurrence
-    was indistinguishable from any other `TypeError` because our telemetry
-    strips messages for privacy and the Safari stack came through null.
-    **Standing lesson:** the SPA catch-all makes a missing asset look like a
-    200-HTML success, not a 404 — so keep `index.html` `no-cache` forever, and a
-    dynamic-import failure is a caching/deploy problem first, a code bug second.
+    service worker) is the most exposed. **Reproduced live** while verifying the
+    deploy: the browser fetched the new `index.html` before this edge had served
+    the new `Landing` chunk, hit the exact error, and recovered seconds later
+    once the chunk propagated — so even a *fresh* navigation in the brief
+    per-deploy propagation window triggers it, not only stale caches. **Fix,
+    defense-in-depth:** (1) `public/_redirects` now 404s a missing `/assets/*`
+    instead of letting the SPA catch-all serve it back as HTML — the root evil:
+    a missing chunk was returning a cacheable HTML-200, and (found the hard way)
+    under the immutable `Cache-Control` in (2) the browser would cache that
+    broken HTML for a **year**, so even a reload couldn't recover; a real 404 is
+    clean and uncacheable. A tiny `public/404.html` is its body (never rendered
+    for a module fetch — the browser just sees the 404 and fails the import
+    cleanly). (2) new `public/_headers` serves `index.html`/SPA routes
+    `Cache-Control: no-cache` (the default was already `max-age=0,
+    must-revalidate`, so this strengthens it for misbehaving in-app caches) and
+    `/assets/*` `immutable`; (3) a `vite:preloadError` handler in
+    `src/telemetry/globalHandlers.ts` does a **one-time** guarded
+    `location.reload()` (reload, not same-URL retry; a 10s `sessionStorage`
+    cooldown unit-tested via the pure `shouldReloadOnChunkError`; skips the
+    reload when storage is blocked so it can never loop; deliberately does NOT
+    `preventDefault()` — that made `__vitePreload` resolve `undefined` and
+    `React.lazy` then threw a confusing second `TypeError` on `.default`); (4)
+    the same handler reports under its own `chunk-load-error` boundary label so
+    this mode is unambiguous in HQ next time — the original occurrence was
+    indistinguishable from any other `TypeError` because telemetry strips
+    messages for privacy and the Safari stack came through null.
+    **Standing lessons:** the SPA catch-all makes a missing asset look like a
+    200-HTML *success*, not a 404 — so exclude `/assets/*` from it and keep
+    `index.html` `no-cache`; NEVER let a path that can transiently 404-as-HTML be
+    `immutable`-cached; and a dynamic-import failure is a caching/deploy problem
+    first, a code bug second.
   - **The centring.** Unrelated bug found the same session: the floating
     verse-selection action bar rendered right-of-centre on desktop (and wrapped
     its buttons at narrower widths). `springIn` in `motion.css` set the

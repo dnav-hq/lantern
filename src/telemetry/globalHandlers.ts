@@ -19,15 +19,14 @@ import { reportError } from './client'
 let installed = false
 
 // A dynamic import() that fails is most often a STALE-CHUNK failure: a client
-// running a cached index.html whose hashed chunk a newer deploy has purged. The
-// SPA catch-all in public/_redirects serves that chunk URL back as index.html
-// (HTML, 200 — not a 404), so import() gets HTML where it expects a module and
-// throws (in Safari, a TypeError with a null stack). Vite fires
-// `vite:preloadError` for exactly this. The only real cure is a fresh
-// navigation: public/_headers keeps index.html no-cache, so a reload pulls a
-// current shell whose chunks still exist. A same-URL retry cannot help — the
-// purged URL deterministically returns HTML again — which is why we reload
-// rather than retry.
+// running a cached index.html whose hashed chunk a newer deploy has purged, or
+// a chunk that has not finished propagating to this edge yet. public/_redirects
+// now 404s a missing /assets/* (rather than letting the SPA catch-all serve it
+// back as HTML), so the failure is clean and uncacheable. Vite fires
+// `vite:preloadError` for it. The cure is a fresh navigation: public/_headers
+// keeps index.html no-cache, so a reload pulls a current shell whose chunks
+// exist. We reload rather than retry the same URL because a purged URL stays
+// 404 until the client is on a newer shell, which only a reload provides.
 const CHUNK_RELOAD_KEY = 'berean.chunk-reload-at'
 // Suppress a second reload within this window so a genuinely unrecoverable
 // failure surfaces to the error boundary instead of looping forever.
@@ -90,8 +89,12 @@ export function installGlobalErrorHandlers(): void {
       } catch {
         // ignore — best effort
       }
-      // Stop Vite from surfacing the raw error; we are recovering via reload.
-      event.preventDefault()
+      // Deliberately do NOT event.preventDefault(): preventing Vite's throw
+      // makes __vitePreload resolve to `undefined`, and React.lazy then reads
+      // `.default` of undefined and throws a second, more confusing TypeError
+      // before the navigation completes. Letting it throw is harmless — the
+      // reload below aborts rendering — and it keeps the boundary as the clean
+      // fallback on the no-reload branch.
       window.location.reload()
     }
     // else: we reloaded moments ago and it still failed — a genuine problem, so

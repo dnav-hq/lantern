@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Not found — Lantern</title>
+    <!-- Primarily the 404 body for a MISSING /assets/* request (see
+         public/_redirects): the browser fetching a chunk as a module never
+         renders this, it just sees the 404 and fails the import cleanly, which
+         is the whole point. It doubles as a minimal human 404 for the rare
+         direct hit. Intentionally tiny and dependency-free. -->
+    <style>
+      html {
+        background: #f4f0e8;
+        color: #17140f;
+        font-family: Georgia, 'Times New Roman', serif;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+      }
+      a {
+        color: #5b4fc7;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h1>Not found</h1>
+      <p>That page or file doesn’t exist. <a href="/">Return to Lantern</a>.</p>
+    </div>
+  </body>
+</html>
