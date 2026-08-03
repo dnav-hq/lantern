@@ -31,7 +31,7 @@
 // so it has to answer CORS preflight itself — nothing in front of it does.
 
 const ESV_API_KEY = Deno.env.get('ESV_API_KEY') ?? ''
-const ESV_API_BASE = 'https://api.esv.org/v3/passage_text/'
+const ESV_API_BASE = 'https://api.esv.org/v3/passage/text/'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
