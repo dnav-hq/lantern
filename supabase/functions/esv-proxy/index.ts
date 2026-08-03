@@ -22,13 +22,25 @@
 // --no-verify-jwt is required for the same reason hq-telemetry needs it: the
 // browser calls this with the anon key, not a user's Supabase JWT, so the
 // platform's default gateway check would reject every request with a 401
-// before this code runs.
+// before this code runs. This is a JWT check, NOT a caller-abuse check — the
+// rate limit below is what stands in for the latter, and redeploying without
+// --no-verify-jwt would still break every legitimate call regardless of the
+// rate limit's own state.
 //
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 //
 // Unlike hq-telemetry (server-to-server, called only by HQ), this is called
 // directly from the browser at a different origin than the Supabase project,
 // so it has to answer CORS preflight itself — nothing in front of it does.
+//
+// ─── RATE LIMITING ────────────────────────────────────────────────────────────
+//
+// A coarse per-IP cap runs BEFORE any of the above, in handler.ts, backed by
+// ratelimit.ts's in-memory IpRateLimiter — see that file for the threshold,
+// the reasoning, and why nothing IP-derived is ever persisted (so this needs
+// no public/privacy.html update; stated here explicitly per the task's own
+// acceptance criteria, since no IP-derived value is stored in any table or
+// log — it only ever lives in this instance's process memory).
 //
 // ─── USAGE METERING ───────────────────────────────────────────────────────────
 //
@@ -41,28 +53,18 @@
 // Only a timestamp and a coarse ok/quota/error status are ever stored: no
 // passage, book, chapter, user, or install. Client cache hits never reach this
 // function at all, so they can't be counted here by construction — this only
-// ever meters a real upstream call, which is exactly what the quota meters.
+// ever meters a real upstream call, which is exactly what the quota meters. A
+// request this function rejects for being over the rate limit is, for the
+// same reason, never metered as 'ok' — see handler.ts.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { createEsvProxyHandler } from './handler.ts'
+import { IpRateLimiter } from './ratelimit.ts'
 
 const ESV_API_KEY = Deno.env.get('ESV_API_KEY') ?? ''
-const ESV_API_BASE = 'https://api.esv.org/v3/passage/text/'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS'
-}
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
-  })
-}
 
 // Fire-and-forget: recording usage must NEVER slow, block, or fail a chapter
 // fetch. This is never awaited on the response path — it only swallows its
@@ -88,102 +90,17 @@ function recordEsvUsage(status: 'ok' | 'quota' | 'error'): void {
   if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(write)
 }
 
-// ESV's plain-text passage response embeds verse numbers as "[16]" markers,
-// one immediately before each verse's text, with headings/whitespace/poetic
-// indentation around them. This splits on those markers rather than trying to
-// use ESV's `passage_meta` (which gives chapter-level, not per-verse, ranges).
-function parseEsvText(raw: string): { verse: number; text: string }[] {
-  const parts = raw.split(/\[(\d+)\]/)
-  const verses: { verse: number; text: string }[] = []
-  // parts[0] is anything before the first verse marker (headings) — discard.
-  for (let i = 1; i < parts.length; i += 2) {
-    const verse = parseInt(parts[i], 10)
-    const text = (parts[i + 1] ?? '').replace(/\s+/g, ' ').trim()
-    if (Number.isFinite(verse) && text) verses.push({ verse, text })
-  }
-  return verses
-}
+// Well under Crossway's documented 60 requests/minute application-wide
+// ceiling — see ratelimit.ts's header for why a normal reader can't approach
+// this, and 20 minutes (2 * windowMs) is the sweep's stale-entry cutoff.
+const RATE_LIMIT_WINDOW_MS = 60_000
+const RATE_LIMIT_MAX = 20
 
-Deno.serve(async req => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS_HEADERS })
-  }
-  if (req.method !== 'GET') {
-    return json({ error: 'method_not_allowed' }, 405)
-  }
-
-  // Fail closed: an unset key must never mean "proxy through anyway" — see
-  // the header. This is checked before parsing input so a missing secret
-  // never depends on the request being well-formed.
-  if (!ESV_API_KEY) {
-    return json({ error: 'not_configured' }, 503)
-  }
-
-  const url = new URL(req.url)
-  const book = url.searchParams.get('book')?.trim()
-  const chapter = url.searchParams.get('chapter')?.trim()
-  if (!book || !chapter || !/^\d+$/.test(chapter)) {
-    return json({ error: 'invalid_request' }, 400)
-  }
-
-  const reference = `${book} ${chapter}`
-  const query = new URLSearchParams({
-    q: reference,
-    'include-headings': 'false',
-    'include-footnotes': 'false',
-    'include-footnote-body': 'false',
-    'include-short-copyright': 'false',
-    'include-passage-references': 'false',
-    'include-verse-numbers': 'true'
-  })
-
-  let upstream: Response
-  try {
-    upstream = await fetch(`${ESV_API_BASE}?${query.toString()}`, {
-      headers: { Authorization: `Token ${ESV_API_KEY}` }
-    })
-  } catch {
-    // Reached this catch WITHOUT a response, so it's unclear whether Crossway
-    // ever saw the request — metered as 'error' rather than skipped, since an
-    // attempted call is the thing worth seeing, not just the successful ones.
-    recordEsvUsage('error')
-    return json({ error: 'upstream_unreachable' }, 502)
-  }
-
-  if (upstream.status === 429) {
-    // Shared per-application quota (5,000/day, 1,000/hr, 60/min) — pass the
-    // 429 straight through rather than retrying. See src/bible/esv.ts: the
-    // client treats this as a one-shot failure, never a retry trigger.
-    // Still metered: Crossway counted this request against the quota same as
-    // any other, it just didn't like it.
-    recordEsvUsage('quota')
-    return json({ error: 'quota_exceeded' }, 429)
-  }
-  if (!upstream.ok) {
-    recordEsvUsage('error')
-    return json({ error: 'upstream_failed' }, 502)
-  }
-
-  // A real, successful upstream call — this is what consumes the shared
-  // quota, metered here regardless of whether parsing the body below succeeds.
-  recordEsvUsage('ok')
-
-  let data: { passages?: string[] }
-  try {
-    data = await upstream.json()
-  } catch {
-    return json({ error: 'upstream_bad_json' }, 502)
-  }
-
-  const passage = data.passages?.[0]
-  if (!passage) {
-    return json({ error: 'not_found' }, 404)
-  }
-
-  const verses = parseEsvText(passage)
-  if (verses.length === 0) {
-    return json({ error: 'not_found' }, 404)
-  }
-
-  return json({ verses })
+const handleRequest = createEsvProxyHandler({
+  apiKey: ESV_API_KEY,
+  fetchImpl: fetch,
+  rateLimiter: new IpRateLimiter(RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX),
+  recordUsage: recordEsvUsage
 })
+
+Deno.serve(handleRequest)
