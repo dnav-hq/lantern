@@ -10,7 +10,7 @@ prioritized.
 
 ## Deferred
 
-- **Guest preview mode + ESV proxy protection.**
+- **Guest preview mode.**
   `docs/proposals/guest-preview-mode.md` (2026-08-03) resolves the guest-write
   question Dennis was unsure about: recommends (B), an ephemeral client-only
   sandbox note editor (nothing persisted, no data model, resets on reload —
@@ -21,16 +21,11 @@ prioritized.
   an account/stored data/other people is gated by default, with a named
   explicit opt-in escape hatch for future public features) rather than a
   maintain-forever allowlist. Confirms the RLS/telemetry surfaces add no new
-  risk but the ESV proxy is exposed **today**, live, independent of guest
-  preview shipping — `supabase/functions/esv-proxy` has no JWT check
-  (`--no-verify-jwt`) and `src/bible/esv.ts` calls it with the public anon
-  key, so any bot with the bundle's anon key can already burn the shared
-  Crossway quota. Recommends shipping a per-IP rate limit at the proxy ahead
-  of the rest of this proposal (small, server-only, no client change) with
-  session-required ESV as the escalation if the rate limit proves
-  insufficient; guest preview itself ships BSB/KJV only, ESV stays
-  signed-in-only until/unless that changes. See the proposal's own MVP slice
-  and "Trigger to revisit" for sequencing.
+  risk. It also flagged that the ESV proxy was exposed with no per-IP
+  protection — that piece has since shipped, see "ESV proxy rate limiting" in
+  Done. Guest preview itself ships BSB/KJV only; ESV stays signed-in-only
+  until/unless that changes. See the proposal's own MVP slice and "Trigger to
+  revisit" for sequencing.
   **Settled stance added 2026-08-03 (proposal §2a/§2b):** sign-in stays the
   primary flow; guest is a durable, never-nagged free *reading* app (installing
   the PWA and reading forever without an account is a legitimate end state, not
@@ -347,6 +342,30 @@ prioritized.
     they render identically). Verified live via computed style: settled bar
     centre offset 0px.
 
+- **ESV proxy rate limiting (2026-08-03).** `supabase/functions/esv-proxy`
+  was live with no JWT check (`--no-verify-jwt`, by design) and no caller
+  limit, so any bot holding the bundle's public anon key could burn the
+  entire shared Crossway quota (5,000/day, 1,000/hour, 60/minute, per
+  application) by itself — flagged by
+  `docs/proposals/guest-preview-mode.md`. Fixed with a coarse per-IP fixed-
+  window cap (20 req/min, well under Crossway's 60/min ceiling) that runs
+  BEFORE the upstream fetch in a new `handler.ts`/`ratelimit.ts` split (same
+  DI shape as `hq-telemetry/symbolicate.ts`, so the limiter and the whole
+  request flow are unit-testable under vitest with no live deploy —
+  `ratelimit.test.ts` / `handler.test.ts`). Over-cap requests get the same
+  429 JSON shape Crossway's own quota 429 already used, so `src/bible/esv.ts`
+  needed no change — it already degrades any 429 to the existing "ESV isn't
+  available right now" state with no retry (extended `esv.test.ts` to cover
+  the rate-limit body specifically, not just Crossway's). A rejected request
+  is never metered into `esv_api_usage`, so `esv_api_queries_24h/_1h` keep
+  reflecting only real Crossway consumption. The limiter is in-memory, per
+  warm function instance, keyed on a non-reversible hash of the caller's IP
+  (never the raw IP) — deliberately no new table and no DB round trip on the
+  hot path; nothing IP-derived is ever persisted anywhere (no row, no log),
+  so `public/privacy.html` needed no update. Being per-instance rather than a
+  single global counter is a known trade for staying off the request's fast
+  path; the escalation if it ever proves insufficient is still
+  session-required ESV, as the proposal above already named.
 - **Translation-version chip in the top bar (2026-08-03).** A minimal,
   always-visible YouVersion-style chip (`TranslationChip.tsx`) shows the active
   translation's abbreviation and doubles as a quick switcher — tap it, pick
