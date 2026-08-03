@@ -82,6 +82,19 @@ describe('EsvBibleProvider', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  it('degrades gracefully on a 429 rate-limit response WITHOUT retrying', async () => {
+    // supabase/functions/esv-proxy/handler.ts returns the same 429 shape for
+    // its own per-IP rate limit as it does for Crossway's own quota 429 (the
+    // client's status check doesn't distinguish the two — see the test
+    // above) — this proves the rate-limit body specifically degrades the
+    // same way rather than relying on that being incidental.
+    const fetchMock = vi.fn(async () => fakeJsonResponse(429, { error: 'rate_limited' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const p = new EsvBibleProvider('https://fake.supabase.co/functions/v1/esv-proxy')
+    await expectCoded(p.getChapter(43, 1), 'ESV_FETCH_FAILED')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it('throws ESV_FETCH_FAILED on any other non-ok proxy response', async () => {
     vi.stubGlobal(
       'fetch',
