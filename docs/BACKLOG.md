@@ -33,6 +33,29 @@ prioritized.
   only, so pure readers are never prompted; true offline reading stays deferred
   (guest reading is BSB/KJV, which is also the only offline-capable shape).
 
+  **G1 — the guest reading surface + the boundary — is DONE (2026-08-03).**
+  `Root.tsx` gained a `guest` phase rendered OUTSIDE `ApiProvider` (the §4
+  inverted rule made structural, not a check), and `src/components/GuestReader.tsx`
+  reads scripture through the `BibleProvider` seam only — library → book →
+  chapter, prev/next across book boundaries, BSB/KJV (never ESV), with no
+  notes/study/journal/account UI reachable from it. `berean.guest`
+  (`src/components/guestMode.ts`) makes a reload or PWA relaunch return to the
+  reader; a corner "Sign in" clears the flag and hands back to the landing page.
+  What remains of guest preview, each its own piece of work:
+
+  - **G2 — the ephemeral note sandbox** (proposal §3 option B): an in-memory-only
+    note editor on the guest reader, with the upfront "nothing here is saved —
+    sign in to keep it" framing. This is the *only* place a guest is invited to
+    sign in (§2a), so it is the conversion piece, not a nicety.
+  - **G3 — the real landing CTA** (§7). G1 ships a deliberately temporary
+    entry button so the guest tree is reachable now; the designed hero CTA
+    ("Read the Bible free — no account needed") replaces it and is a design
+    pass on `src/components/landing/`, untouched by G1 on purpose.
+  - **G4a — one deep-linkable route** (§7), `/read/<book>/<chapter>`, on-load
+    parsing only (no `pushState`-as-you-browse for v1). The guest reader's
+    location state is already book-number + chapter, which is the shape a URL
+    parser needs to produce.
+
 - **Internal `Berean*` identifiers stay — standing decision, not pending work.**
   `BereanApi`, `berean-api.ts`, `SupabaseBereanApi`, and the persisted keys
   (`berean.onboarded`, `berean-theme`, `berean-visual-theme`,
