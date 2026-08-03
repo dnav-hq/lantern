@@ -56,10 +56,17 @@ prioritized.
   inheriting the notice's own tint, so it reads as tappable rather than as
   part of the sentence. This is the *only* place a guest is invited to sign
   in (§2a); reading stays un-nagged.
-  - **G3 — the real landing CTA** (§7). G1 ships a deliberately temporary
-    entry button so the guest tree is reachable now; the designed hero CTA
-    ("Read the Bible free — no account needed") replaces it and is a design
-    pass on `src/components/landing/`, untouched by G1 on purpose.
+  **G3 — the real landing CTA — is DONE (2026-08-03).** `Landing.tsx` gained
+  a second, separate intent below the sign-in choices: an "or" divider and a
+  ghost-styled "Read the Bible free — no account needed" button
+  (`Root.tsx`'s `onGuestEnter` callback still owns `enterGuestMode()` +
+  the phase change, unchanged from G1). This replaces G1's temporary
+  `guest-entry-fab`, which is gone from `Root.tsx`; its now-orphaned CSS in
+  `src/assets/main.css` (`.guest-entry-fab*`) is a small leftover cleanup,
+  left in place since `main.css` is outside this task's scope. Sign-in keeps
+  the only accent-filled button and the nav's "Sign in", so it stays visually
+  primary; the guest CTA is its own row, not a third button crowded into the
+  Google/email group, so it reads as present rather than buried.
   - **G4a — one deep-linkable route** (§7), `/read/<book>/<chapter>`, on-load
     parsing only (no `pushState`-as-you-browse for v1). The guest reader's
     location state is already book-number + chapter, which is the shape a URL

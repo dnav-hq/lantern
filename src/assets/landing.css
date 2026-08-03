@@ -217,6 +217,23 @@
   font-size: var(--text-sm);
   color: var(--text-faint);
 }
+/* The guest CTA reads as a second intent, not a lesser third sign-in button:
+   its own row, its own "or", ghost-styled so sign-in keeps the only
+   accent-filled button on the page. */
+.ll-hero-guest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 26px;
+}
+.ll-hero-guest-divider {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
 .ll-hero-verse {
   margin-top: 40px;
   padding-top: 22px;

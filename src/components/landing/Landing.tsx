@@ -31,8 +31,19 @@ import '../../assets/landing.css'
 // pair would be one door wearing two labels — a SaaS funnel convention borrowed
 // into a product with no funnel. The only real choice is *how* to sign in, so
 // that is the only choice offered: Google (one click) or email.
+//
+// The guest CTA below the sign-in choices is a second, separate intent, not a
+// third sign-in option (docs/proposals/guest-preview-mode.md §2a/§7): reading
+// stays a legitimate destination on its own, so it gets its own "or" and its
+// own quieter button rather than joining the Google/email row. Sign-in keeps
+// the accent-filled primary button; the guest CTA is deliberately ghost-styled
+// so the hierarchy reads at a glance without the guest path being buried.
 
-export default function Landing(): React.JSX.Element {
+export interface LandingProps {
+  onGuestEnter: () => void
+}
+
+export default function Landing({ onGuestEnter }: LandingProps): React.JSX.Element {
   const [login, setLogin] = useState<null | { emailFirst: boolean }>(null)
   const openLogin = (): void => setLogin({ emailFirst: false })
   const openEmailLogin = (): void => setLogin({ emailFirst: true })
@@ -93,6 +104,16 @@ export default function Landing(): React.JSX.Element {
                 </button>
               </div>
               <p className="ll-hero-fine">Nothing to buy. Your notes stay private to you.</p>
+
+              <div className="ll-hero-guest">
+                <span className="ll-hero-guest-divider" aria-hidden="true">
+                  or
+                </span>
+                <button className="ll-btn ll-btn-ghost" type="button" onClick={onGuestEnter}>
+                  Read the Bible free — no account needed
+                </button>
+              </div>
+
               <div className="ll-hero-verse">
                 <span className="ll-v serif">
                   "Your word is a lamp to my feet and a light to my path."
