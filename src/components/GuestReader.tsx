@@ -37,6 +37,13 @@ import Wordmark from './Wordmark'
 interface GuestReaderProps {
   /** Leave guest mode and return to the signed-out landing surface to sign in. */
   onSignIn: () => void
+  /**
+   * Where to open on first mount — a resolved G4a deep link (App.tsx passes
+   * the same shape to the signed-in reading surface). null opens the library,
+   * same as before deep-linking existed. Read once; this is not kept in sync
+   * with in-app navigation (v1 is on-load parsing only).
+   */
+  initialLocation?: GuestLocation | null
 }
 
 /** Where the guest is reading. Book-relative so prev/next can cross books. */
@@ -397,9 +404,12 @@ function GuestChapter({
   )
 }
 
-export default function GuestReader({ onSignIn }: GuestReaderProps): React.ReactElement {
+export default function GuestReader({
+  onSignIn,
+  initialLocation = null
+}: GuestReaderProps): React.ReactElement {
   const [isDark, toggleDark] = useDarkMode()
-  const [location, setLocation] = useState<GuestLocation | null>(null)
+  const [location, setLocation] = useState<GuestLocation | null>(initialLocation)
 
   const book = location ? bookByNumber(location.bookNumber) : undefined
 
