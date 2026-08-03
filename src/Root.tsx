@@ -7,7 +7,7 @@ import { createMemoryApi, seedMemoryApi } from './api/memory'
 import { supabase, isSupabaseConfigured } from './api/supabase'
 import { SupabaseBereanApi } from './api/berean-api'
 import { getProfile, getSession, onAuthStateChange, signOut, type Profile } from './api/auth'
-import type { BereanApi } from './api/types'
+import type { BereanApi, UserSettings } from './api/types'
 
 // Root decides which backend the app runs against:
 //   - Supabase configured -> auth-gated app (sign-in -> onboarding -> App).
@@ -39,14 +39,23 @@ function SupabaseRoot(): React.ReactElement {
   const [phase, setPhase] = useState<Phase>('loading')
   const [api, setApi] = useState<BereanApi | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  // Account-synced preferences (docs/proposals/guest-preview-mode.md §2b):
+  // fetched once here, at the same profile-load point as `profile` itself, and
+  // handed to App as a prop so it can seed-or-hydrate on first render rather
+  // than flashing local values before an async fetch resolves.
+  const [accountSettings, setAccountSettings] = useState<UserSettings | null>(null)
 
   // Resolve api + profile for a signed-in user and pick the phase.
   const enter = React.useCallback(async (): Promise<void> => {
     try {
       const nextApi = await SupabaseBereanApi.create(supabase!)
-      const prof = await getProfile()
+      const [prof, settings] = await Promise.all([
+        getProfile(),
+        nextApi.getSettings().catch(() => ({}) as UserSettings)
+      ])
       setApi(nextApi)
       setProfile(prof)
+      setAccountSettings(settings)
       const done = prof?.onboarding_done || localStorage.getItem('berean.onboarded') === '1'
       setPhase(done ? 'ready' : 'onboarding')
     } catch {
@@ -106,7 +115,11 @@ function SupabaseRoot(): React.ReactElement {
   // ready
   return (
     <ApiProvider api={api!}>
-      <App displayName={profile?.display_name || null} onSignOut={handleSignOut} />
+      <App
+        displayName={profile?.display_name || null}
+        onSignOut={handleSignOut}
+        accountSettings={accountSettings}
+      />
     </ApiProvider>
   )
 }

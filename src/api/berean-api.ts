@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { BereanApi } from './types'
+import type { BereanApi, UserSettings } from './types'
 import type {
   Passage,
   Session,
@@ -424,5 +424,38 @@ export class SupabaseBereanApi implements BereanApi {
     // mirror here. Delegate to the shared lookup so both this and the memory
     // stub share one implementation.
     return getBibleVerse(reference)
+  }
+
+  async getSettings(): Promise<UserSettings> {
+    return this.read('getSettings', undefined, async () => {
+      const { data, error } = await this.db
+        .from('profiles')
+        .select('settings')
+        .eq('id', this.userId)
+        .single()
+      if (error) throw new Error(error.message)
+      return (data?.settings ?? {}) as UserSettings
+    })
+  }
+
+  async updateSettings(patch: Partial<UserSettings>): Promise<void> {
+    return this.write(async () => {
+      // Merge-patch, not a full replace: read the current blob and apply the
+      // patch on top before writing back. Fine to be read-modify-write rather
+      // than a single atomic statement — these are low-stakes, last-write-wins
+      // prefs (docs/proposals/guest-preview-mode.md §2b), never notes.
+      const { data: current, error: readError } = await this.db
+        .from('profiles')
+        .select('settings')
+        .eq('id', this.userId)
+        .single()
+      if (readError) throw new Error(readError.message)
+      const merged = { ...((current?.settings ?? {}) as UserSettings), ...patch }
+      const { error } = await this.db
+        .from('profiles')
+        .update({ settings: merged })
+        .eq('id', this.userId)
+      if (error) throw new Error(error.message)
+    })
   }
 }
