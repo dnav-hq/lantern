@@ -395,7 +395,7 @@ export default function NavBar({
             </button>
           )}
 
-          {showTranslationChip && <TranslationChip />}
+          <TranslationChip visible={showTranslationChip} />
 
           <div className="topnav-trail">
             <div className="profile-menu-host" ref={profileRef}>
