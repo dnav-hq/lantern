@@ -561,3 +561,28 @@
       opacity var(--dur-2) var(--ease-out);
   }
 }
+
+/* ── Cross-chapter reading ──
+   The page-turn slide itself is an inline transform written by useChapterSwipe
+   (a transition CSS can't own, because its duration is decided by whether the
+   reader flicked or dragged) — and it is never written at all under reduced
+   motion, so the chapter simply swaps. What belongs here is only the chrome
+   around it: the affordances fading in and out. */
+@media (prefers-reduced-motion: no-preference) {
+  .chapter-edge-nav {
+    transition:
+      opacity var(--dur-2) var(--ease-out),
+      color var(--dur-1) var(--ease-out),
+      border-color var(--dur-1) var(--ease-out);
+  }
+  .chapter-flow-btn {
+    transition:
+      border-color var(--dur-1) var(--ease-out),
+      color var(--dur-1) var(--ease-out),
+      box-shadow var(--dur-2) var(--ease-out),
+      transform var(--dur-1) var(--ease-out);
+  }
+  .chapter-flow-btn:active {
+    transform: scale(0.985);
+  }
+}

@@ -5117,3 +5117,208 @@ body.dark .offline-toast {
 body.dark .mobile-menu-btn:active {
   background: rgba(255, 255, 255, 0.06);
 }
+
+/* ─── Cross-chapter reading: the chapter deck ────────────────────────────────
+   Reading on should not mean going back to a picker. A horizontal swipe (or
+   either persistent affordance) turns to the next chapter, with the neighbour
+   already fetched so the text is there the instant it arrives.
+
+   Explicitly NOT infinite scroll — that was considered and rejected: Lantern's
+   notes are anchored per chapter, and a continuous scroll makes "which
+   chapter's notes am I looking at" ambiguous. So exactly one chapter is
+   current, at most one neighbour is mounted, and it lives only for the length
+   of the transition.
+
+   Only the STRUCTURE lives here; the slide itself is written to the track's
+   transform in JS (see useChapterSwipe) so the finger and the pane move in the
+   same frame. A reduced-motion reader never gets a transform at all — the
+   chapter is simply swapped. */
+.chapter-deck {
+  position: relative;
+  /* Breathing room between two chapters mid-turn, so the outgoing last line
+     and the incoming first line never read as one paragraph. The settle
+     animation MEASURES this (see useChapterSwipe) rather than assuming a bare
+     pane width, so changing it here cannot desync the landing. */
+  --chapter-gutter: 26px;
+  /* Vertical stays the browser's job (reading); horizontal is ours (turning). */
+  touch-action: pan-y;
+  /* `clip`, not `hidden`: hidden would make this a scroll container and break
+     the sticky reading chrome above it. */
+  overflow-x: clip;
+}
+.chapter-deck-track {
+  position: relative;
+}
+/* Only hint the compositor while something is actually moving — a permanent
+   will-change keeps a layer alive (and a containing block for fixed children)
+   for a surface that is static 99% of the time. */
+.chapter-deck[data-sliding='true'] .chapter-deck-track {
+  will-change: transform;
+}
+
+/* The neighbour, parked exactly one pane-width away so the settle animation
+   (translate by that same width) lands it precisely where the real chapter
+   renders — the swap is invisible. Inert: it is scenery, not a surface. */
+.chapter-pane--peek {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+.chapter-pane--peek.is-next {
+  left: calc(100% + var(--chapter-gutter));
+}
+.chapter-pane--peek.is-prev {
+  right: calc(100% + var(--chapter-gutter));
+}
+/* A hairline in the gutter: the seam between two discrete chapters, visible
+   only while one is actually passing. */
+.chapter-pane--peek::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0.5px;
+  background: var(--border);
+}
+.chapter-pane--peek.is-next::before {
+  left: calc(var(--chapter-gutter) / -2);
+}
+.chapter-pane--peek.is-prev::before {
+  right: calc(var(--chapter-gutter) / -2);
+}
+
+/* ── End-of-chapter continue control ──
+   The named next chapter, where you finish reading rather than where you
+   started. Dead ends are text, not disabled buttons: at Genesis 1 there is
+   nothing to press. */
+.chapter-flow-nav {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 720px;
+  margin: 40px auto 0;
+  padding-top: 22px;
+  border-top: 0.5px solid var(--border);
+}
+.chapter-flow-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: left;
+}
+.chapter-flow-btn.is-next {
+  justify-content: flex-end;
+  text-align: right;
+}
+.chapter-flow-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: var(--elev-1);
+}
+.chapter-flow-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.chapter-flow-btn.is-next .chapter-flow-labels {
+  align-items: flex-end;
+}
+.chapter-flow-dir {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.chapter-flow-ref {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chapter-flow-end {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-faint);
+}
+
+/* ── Persistent prev/next ──
+   Always reachable without scrolling to the end — and the desktop answer to
+   the swipe, which is deliberately touch-only (a mouse drag over scripture is
+   already the marquee verse selection). Quiet until wanted. */
+.chapter-edge-nav {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 35;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  box-shadow: var(--elev-1);
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: pointer;
+}
+.chapter-edge-nav:hover {
+  opacity: 1;
+  color: var(--text);
+  border-color: var(--accent);
+}
+.chapter-edge-nav.is-prev {
+  left: 14px;
+}
+.chapter-edge-nav.is-next {
+  right: 14px;
+}
+
+@media (max-width: 768px) {
+  .chapter-flow-nav {
+    margin-top: 32px;
+    gap: 10px;
+  }
+  .chapter-flow-btn {
+    min-height: 52px;
+    padding: 8px 12px;
+  }
+  /* Small, at the very edge, and — like every other piece of reading chrome —
+     gone the moment the reader is actually reading. */
+  .chapter-edge-nav {
+    width: 30px;
+    height: 30px;
+    opacity: 0.38;
+  }
+  .chapter-edge-nav.is-prev {
+    left: 4px;
+  }
+  .chapter-edge-nav.is-next {
+    right: 4px;
+  }
+  .app-shell.reading-surface.chrome-hidden .chapter-edge-nav {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
