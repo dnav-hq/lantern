@@ -140,7 +140,7 @@ export default function Landing({ onReadAsGuest }: LandingProps): React.JSX.Elem
               <p>One passage and a few notes. It will be here when you come back.</p>
             </div>
             <button className="ll-btn ll-btn-primary ll-btn-lg" type="button" onClick={openLogin}>
-              Start your first study
+              Get started
             </button>
           </div>
         </div>
