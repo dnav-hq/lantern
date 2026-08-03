@@ -115,21 +115,12 @@ function SupabaseRoot(): React.ReactElement {
   if (phase === 'signedOut') {
     return (
       <Suspense fallback={<div className="app-boot" />}>
-        <Landing />
-        {/* TEMPORARY entry into guest mode. The real, designed CTA belongs in
-            the landing hero and is its own task (G3, proposal §7); this exists
-            so the guest tree is reachable and reviewable now, without editing
-            the landing page out from under that task. */}
-        <button
-          type="button"
-          className="guest-entry-fab"
-          onClick={() => {
+        <Landing
+          onReadAsGuest={() => {
             enterGuestMode()
             setPhase('guest')
           }}
-        >
-          Read the Bible free — no account needed
-        </button>
+        />
       </Suspense>
     )
   }
