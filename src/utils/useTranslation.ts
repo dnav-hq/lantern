@@ -21,9 +21,16 @@ function isTranslationId(value: string | null): value is TranslationId {
 // App.tsx-level lifting), so plain per-component useState isn't enough — every
 // call site needs to observe the SAME value the moment it changes anywhere.
 // useSyncExternalStore gives that without a Context provider.
+// Guarded the same way App's hideAllNotes preference is: a browser that denies
+// storage (hardened profile, private-mode quota) must fall back to the default
+// translation, never take the app down on a preference read.
 function readStored(): TranslationId {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  return isTranslationId(stored) ? stored : 'BSB'
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    return isTranslationId(stored) ? stored : 'BSB'
+  } catch {
+    return 'BSB'
+  }
 }
 
 let current: TranslationId = readStored()
@@ -42,11 +49,39 @@ function getSnapshot(): TranslationId {
 function setTranslation(next: TranslationId): void {
   if (next === current) return
   current = next
-  localStorage.setItem(STORAGE_KEY, next)
+  try {
+    localStorage.setItem(STORAGE_KEY, next)
+  } catch {
+    /* the choice still applies to this session, it just isn't remembered */
+  }
   listeners.forEach(l => l())
 }
 
 export function useTranslation(): [TranslationId, (t: TranslationId) => void] {
   const translation = useSyncExternalStore(subscribe, getSnapshot)
   return [translation, setTranslation]
+}
+
+// ─── Guest reading ───────────────────────────────────────────────────────────
+// A signed-out visitor gets BSB/KJV only. ESV is deliberately excluded: it is a
+// key-proxied, quota-limited path shared across every Lantern user (see
+// docs/proposals/guest-preview-mode.md §8 and the esv-proxy rate limit), so it
+// stays signed-in-only. BSB/KJV are also the only public-domain, self-hostable
+// — i.e. offline-capable — shape, which is why the two decisions reinforce
+// rather than fight each other.
+export const GUEST_TRANSLATIONS = TRANSLATIONS.filter(t => t.id !== 'ESV')
+
+/**
+ * The translation a guest actually reads in. The store is shared with the
+ * signed-in app, so a browser that already chose ESV would otherwise hand a
+ * guest a translation they are not allowed to fetch — coerce, rather than
+ * rewriting the stored preference, so signing in later still lands back on ESV.
+ */
+export function toGuestTranslation(translation: TranslationId): TranslationId {
+  return translation === 'ESV' ? 'BSB' : translation
+}
+
+export function useGuestTranslation(): [TranslationId, (t: TranslationId) => void] {
+  const [translation, set] = useTranslation()
+  return [toGuestTranslation(translation), set]
 }

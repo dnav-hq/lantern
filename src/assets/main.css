@@ -5379,3 +5379,135 @@ body.dark .mobile-menu-btn:active {
     pointer-events: none;
   }
 }
+
+/* ─── Guest reading surface ───────────────────────────────────────────────────
+   The signed-out reader (src/components/GuestReader.tsx). Deliberately thin:
+   the reader reuses the signed-in chapter presentation wholesale
+   (.book-detail-layout / .chapter-selector / .scripture-grid / .chapter-flow-nav)
+   so the two never drift apart visually. Only the chrome a guest has instead of
+   the app's nav — and the affordances a guest must NOT have — live here. */
+.guest-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 52px;
+  padding: 0 16px;
+  background: var(--surface-2);
+  border-bottom: 0.5px solid var(--border);
+  flex-shrink: 0;
+  user-select: none;
+  /* Same stacking rationale as .topnav: the translation menu is a positioned
+     child, so the bar needs a real elevated z-index rather than an accidental
+     auto one from a boot animation. */
+  position: relative;
+  z-index: 140;
+}
+.guest-topbar-lead,
+.guest-topbar-trail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.guest-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.guest-icon-btn:hover {
+  background: var(--surface);
+  color: var(--accent-ink);
+}
+.guest-signin-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 13px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter 0.12s;
+}
+.guest-signin-btn:hover {
+  filter: brightness(1.06);
+}
+
+.guest-chapter-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  margin-bottom: 20px;
+}
+.guest-scripture-error {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 16px 0;
+}
+/* A guest reads; there is nothing to select a verse FOR (the note sandbox is a
+   later, separate piece of work). Neutralise the signed-in reader's
+   verse-row affordance rather than leaving a pointer cursor over a row that
+   does nothing when clicked. */
+.guest-scripture .reading-verse-row {
+  cursor: default;
+}
+.guest-scripture .reading-verse-row:hover {
+  background: transparent;
+}
+
+/* TEMPORARY entry into guest mode from the landing surface. Fixed and
+   self-contained so it touches nothing in the landing tree — the designed hero
+   CTA that replaces it is task G3. */
+.guest-entry-fab {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 900;
+  padding: 11px 20px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14);
+}
+.guest-entry-fab:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+@media (max-width: 768px) {
+  .guest-topbar {
+    padding: 0 12px;
+  }
+  .guest-topbar-trail {
+    gap: 8px;
+  }
+  .guest-entry-fab {
+    max-width: calc(100vw - 32px);
+    font-size: 12.5px;
+    padding: 10px 16px;
+  }
+}
