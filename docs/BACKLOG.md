@@ -245,6 +245,23 @@ prioritized.
 
 ## Done
 
+- **Translation-version chip in the top bar (2026-08-03).** A minimal,
+  always-visible YouVersion-style chip (`TranslationChip.tsx`) shows the active
+  translation's abbreviation and doubles as a quick switcher — tap it, pick
+  BSB/KJV/ESV, done, no trip to Settings. It reads and writes the same
+  `useTranslation` store Settings does (the `TRANSLATIONS` list), so there is
+  one preference either surface can change and both stay in sync live. Lives in
+  `NavBar`'s top-right chrome rather than being duplicated per surface: it's
+  gated on the same "reading surface" flag that already shows the Focus toggle
+  (a chapter or a saved passage), plus Study's own reading pane, so it appears
+  consistently across ReadingMode, BookDetailPage's chapter view and StudyMode
+  without three separate placements to keep in sync. Because it's a child of
+  `.topnav`, it automatically hides/shows with the rest of the auto-hiding
+  chrome on mobile (mobile reading mode) for free — no separate wiring needed;
+  Study has no auto-hiding chrome of its own, so there the chip just stays put.
+  The picker menu reuses the existing `.nav-menu`/`.nav-menu-item` dropdown
+  styling (same as the workspace/profile menus) rather than inventing new
+  chrome.
 - **Cross-chapter reading — swipe + prev/next with preloaded neighbours
   (2026-08-03).** Reading on no longer means stopping to pick from the chapter
   strip. A horizontal swipe (touch only — a mouse drag over scripture is

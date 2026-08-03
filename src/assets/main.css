@@ -2958,6 +2958,50 @@ body.dark .search-backdrop {
   color: var(--accent-ink);
 }
 
+/* Translation chip — the always-visible version indicator + quick switcher.
+   Deliberately quieter than the Focus pill (no label, just the abbreviation):
+   this is furniture you glance at, not a control you're meant to notice. */
+.translation-chip-host {
+  position: relative;
+}
+.translation-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  min-width: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    color 0.12s;
+}
+.translation-chip-btn:hover {
+  color: var(--accent-ink);
+  border-color: var(--accent-weak);
+}
+.translation-chip-menu {
+  right: 0;
+  min-width: 224px;
+}
+.translation-chip-menu-abbr {
+  display: inline-flex;
+  align-items: center;
+  min-width: 30px;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
 .btn-study-chapter {
   display: inline-flex;
   align-items: center;
