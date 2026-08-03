@@ -17,13 +17,26 @@ function useClickOutside(
   }, [ref, onOutside, active])
 }
 
+interface TranslationChipProps {
+  // Kept mounted with a constant layout footprint even when logically
+  // hidden (visibility, not a conditional unmount) — the desktop top bar's
+  // search box measures its own "rest" position once on mount and never
+  // re-measures on navigation, so a chip that mounts/unmounts as the route
+  // changes would shift that measurement out from under it and end up
+  // hidden beneath the search box's now-stale fixed overlay. Reserving the
+  // space unconditionally sidesteps that instead of chasing it.
+  visible?: boolean
+}
+
 /**
  * The YouVersion-style corner chip: always shows the active translation
  * abbreviation, and doubles as a picker so switching never requires a trip
  * to Settings. Reads and writes the same useTranslation store Settings does
  * (TRANSLATIONS), so there is exactly one list and one persisted choice.
  */
-export default function TranslationChip(): React.ReactElement {
+export default function TranslationChip({
+  visible = true
+}: TranslationChipProps): React.ReactElement {
   const [translation, setTranslation] = useTranslation()
   const [open, setOpen] = useState(false)
   const hostRef = useRef<HTMLDivElement>(null)
@@ -31,24 +44,29 @@ export default function TranslationChip(): React.ReactElement {
   useClickOutside(
     hostRef,
     useCallback(() => setOpen(false), []),
-    open
+    open && visible
   )
 
   const current = TRANSLATIONS.find(t => t.id === translation)
 
   return (
-    <div className="translation-chip-host" ref={hostRef}>
+    <div
+      className={`translation-chip-host${visible ? '' : ' translation-chip-host--hidden'}`}
+      ref={hostRef}
+    >
       <button
         type="button"
         className="translation-chip-btn"
         onClick={() => setOpen(o => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-hidden={!visible}
+        tabIndex={visible ? 0 : -1}
         title={current ? `Switch translation (now ${current.label})` : 'Switch translation'}
       >
         {translation}
       </button>
-      {open && (
+      {open && visible && (
         <div className="nav-menu translation-chip-menu" role="menu">
           {TRANSLATIONS.map(t => (
             <button
