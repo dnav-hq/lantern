@@ -122,6 +122,21 @@ prioritized.
   measure accurately. Activates the same way the ESV provider above does —
   `supabase db push` + redeploying `esv-proxy`, no further code change needed.
 
+- **Guest read-only preview + ESV proxy protection — planned, not started
+  (2026-08-03).** `docs/proposals/guest-preview-mode.md` plans letting an
+  unauthenticated visitor read BSB/KJV scripture with no account (one user
+  model stays account-only; deliberately no guest data layer or local note
+  persistence — see the proposal's §1), gated to a sign-in prompt at the
+  first write gesture. It also confirms a live exposure that predates this
+  feature and is unrelated to whether the guest UX ships: `esv-proxy` is
+  deployed `--no-verify-jwt` and the client calls it with the public anon
+  key, not a session token (`src/bible/esv.ts`), so the shared Crossway quota
+  is currently protected by nothing but obscurity. Recommends fixing that
+  first (require a real signed-in session at the proxy, switch the client to
+  the user's access token, layer a per-user rate limit on top) independent of
+  the guest reading MVP — see the proposal's "Recommendation, MVP, and what
+  to defer."
+
 - **NIV provider — researched, not recommended yet.** `docs/proposals/translations-esv-niv.md`
   (2026-07-22) found a free non-commercial path exists (API.Bible / American
   Bible Society) but NIV is the worst fit of the three translations it
