@@ -10,6 +10,28 @@ prioritized.
 
 ## Deferred
 
+- **Guest preview mode + ESV proxy protection.**
+  `docs/proposals/guest-preview-mode.md` (2026-08-03) resolves the guest-write
+  question Dennis was unsure about: recommends (B), an ephemeral client-only
+  sandbox note editor (nothing persisted, no data model, resets on reload —
+  not the rejected local-persistence or second-user-type shapes) over pure
+  read-only, since it lets a guest feel the read-notice-write loop rather than
+  just read about it. Defines the guest boundary as one inverted, gated-by-
+  default rule (unauthenticated = scripture + sandbox only; anything touching
+  an account/stored data/other people is gated by default, with a named
+  explicit opt-in escape hatch for future public features) rather than a
+  maintain-forever allowlist. Confirms the RLS/telemetry surfaces add no new
+  risk but the ESV proxy is exposed **today**, live, independent of guest
+  preview shipping — `supabase/functions/esv-proxy` has no JWT check
+  (`--no-verify-jwt`) and `src/bible/esv.ts` calls it with the public anon
+  key, so any bot with the bundle's anon key can already burn the shared
+  Crossway quota. Recommends shipping a per-IP rate limit at the proxy ahead
+  of the rest of this proposal (small, server-only, no client change) with
+  session-required ESV as the escalation if the rate limit proves
+  insufficient; guest preview itself ships BSB/KJV only, ESV stays
+  signed-in-only until/unless that changes. See the proposal's own MVP slice
+  and "Trigger to revisit" for sequencing.
+
 - **Internal `Berean*` identifiers stay — standing decision, not pending work.**
   `BereanApi`, `berean-api.ts`, `SupabaseBereanApi`, and the persisted keys
   (`berean.onboarded`, `berean-theme`, `berean-visual-theme`,
