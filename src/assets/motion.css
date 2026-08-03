@@ -400,8 +400,14 @@
       transform: translateY(0);
     }
   }
+  /* `backwards`, not `both`: with `both` the finished animation keeps
+     contributing `transform: translateY(0)` forever, and an animation always
+     beats a plain declaration in the cascade — which silently blocked the
+     reading-chrome hide below from ever moving this bar. There is no delay
+     here, so `backwards` gives the identical intro and then gets out of the
+     way. */
   .bottomnav {
-    animation: navSettleUp var(--dur-5) var(--ease-calm) both;
+    animation: navSettleUp var(--dur-5) var(--ease-calm) backwards;
   }
 
   /* App boot, continued: Bible Library (the default destination) fades in
@@ -523,5 +529,35 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* ── Auto-hiding reading chrome (mobile) ──
+   The bars are moved with transform ONLY — never a height, margin or padding —
+   so the whole hide/reveal is a compositor job and not one line of scripture
+   relayouts. The structural rules (what goes fixed/sticky, and the translated
+   end state) live in main.css so a reduced-motion reader still gets the space
+   back, just without the slide; this file only supplies the slide itself.
+
+   Asymmetric on purpose: the reveal is quicker and lands on --ease-out so the
+   bar feels like it was already on its way back, while the hide takes the
+   calmer curve — it should read as politely stepping aside, not as the UI
+   snatching itself away mid-sentence. */
+@media (prefers-reduced-motion: no-preference) {
+  .app-shell.reading-surface .topnav,
+  .app-shell.reading-surface .bottomnav,
+  .app-shell.reading-surface .book-detail-chrome {
+    transition: transform var(--dur-2) var(--ease-out);
+  }
+  .app-shell.reading-surface.chrome-hidden .topnav,
+  .app-shell.reading-surface.chrome-hidden .bottomnav,
+  .app-shell.reading-surface.chrome-hidden .book-detail-chrome {
+    transition: transform var(--dur-3) var(--ease-calm);
+  }
+  /* The selection bar rides down into the space the tab bar vacates. */
+  .app-shell.reading-surface .verse-action-bar {
+    transition:
+      bottom var(--dur-3) var(--ease-out),
+      opacity var(--dur-2) var(--ease-out);
   }
 }

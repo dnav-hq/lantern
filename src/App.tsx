@@ -17,6 +17,26 @@ import { useDarkMode } from './utils/useDarkMode'
 import { useTheme } from './utils/useTheme'
 import { useTextSize } from './utils/useTextSize'
 
+// Persisted "hide all notes" preference — the standalone reading control, kept
+// separate from the transient Focus toggle (which hides notes for the session
+// only). Plain localStorage, guarded the same way the verse hint is: a storage
+// failure means "not hidden", never a crash.
+const HIDE_NOTES_KEY = 'berean.hideAllNotes'
+function readHideNotes(): boolean {
+  try {
+    return localStorage.getItem(HIDE_NOTES_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+function writeHideNotes(value: boolean): void {
+  try {
+    localStorage.setItem(HIDE_NOTES_KEY, value ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
+}
+
 interface AppProps {
   // Signed-in display name for the "Welcome back" touch. null on the memory stub.
   displayName: string | null
@@ -45,6 +65,17 @@ export default function App({ displayName, onSignOut }: AppProps): React.ReactEl
   const [theme, setTheme] = useTheme()
   const [textSize, setTextSize] = useTextSize()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // Reading surface state. `hideNotes` is the persisted Settings preference;
+  // `focusReading` is the transient distraction-free toggle (notes hidden +
+  // scripture widened) that resets when you leave the passage; `chromeVisible`
+  // is driven by the reader's own scrolling (see useScrollDirection).
+  const [hideNotes, setHideNotes] = useState(readHideNotes)
+  const [focusReading, setFocusReading] = useState(false)
+  const [chromeVisible, setChromeVisible] = useState(true)
+
+  useEffect(() => {
+    writeHideNotes(hideNotes)
+  }, [hideNotes])
 
   const [state, setState] = useState<AppState>({
     destination: 'bible',
@@ -176,6 +207,32 @@ export default function App({ displayName, onSignOut }: AppProps): React.ReactEl
     ? BIBLE_BOOKS.find(b => b.name === selectedBookName) || null
     : null
 
+  // The two surfaces that are "just reading": a chapter and a saved passage.
+  // Only these get the auto-hiding chrome and the Focus toggle — hiding the nav
+  // on the library or the journal would be hiding it from someone navigating.
+  const readingSurface =
+    destination === 'bible' && (selectedBibleBook !== null || selectedPassage !== null)
+
+  // Focus is deliberately transient (per the spec: the persisted control is the
+  // Settings one), so leaving the passage always drops back to normal chrome.
+  useEffect(() => {
+    if (!readingSurface) {
+      setFocusReading(false)
+      setChromeVisible(true)
+    }
+  }, [readingSurface])
+
+  const notesHidden = hideNotes || focusReading
+  const shellClass = [
+    'app-shell',
+    readingSurface ? 'reading-surface' : '',
+    readingSurface && !chromeVisible ? 'chrome-hidden' : '',
+    focusReading ? 'focus-reading' : '',
+    notesHidden ? 'notes-hidden' : ''
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   function renderMain(): React.ReactElement {
     if (destination === 'study') {
       return (
@@ -220,6 +277,7 @@ export default function App({ displayName, onSignOut }: AppProps): React.ReactEl
           }}
           onOpenStudy={handleOpenStudy}
           onRefresh={refresh}
+          onChromeVisibleChange={setChromeVisible}
         />
       )
     }
@@ -239,6 +297,7 @@ export default function App({ displayName, onSignOut }: AppProps): React.ReactEl
             await refresh()
             setState(prev => ({ ...prev, selectedPassageId: null }))
           }}
+          onChromeVisibleChange={setChromeVisible}
         />
       )
     }
@@ -254,7 +313,7 @@ export default function App({ displayName, onSignOut }: AppProps): React.ReactEl
   }
 
   return (
-    <div className="app-shell">
+    <div className={shellClass}>
       <NavBar
         destination={destination}
         onNavigate={handleNavigate}
@@ -262,6 +321,9 @@ export default function App({ displayName, onSignOut }: AppProps): React.ReactEl
         onOpenSettings={() => setSettingsOpen(true)}
         onSignOut={onSignOut}
         onOpenSearch={() => setSearchOpen(true)}
+        showFocusToggle={readingSurface}
+        focusReading={focusReading}
+        onToggleFocusReading={() => setFocusReading(f => !f)}
         searchSlot={
           <GlobalSearch
             variant="bar"
@@ -304,6 +366,8 @@ export default function App({ displayName, onSignOut }: AppProps): React.ReactEl
         onSetTheme={setTheme}
         textSize={textSize}
         onSetTextSize={setTextSize}
+        hideNotes={hideNotes}
+        onSetHideNotes={setHideNotes}
         onSignOut={onSignOut}
       />
 

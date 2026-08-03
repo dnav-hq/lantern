@@ -224,6 +224,31 @@ prioritized.
 
 ## Done
 
+- **Mobile reading mode — auto-hiding chrome + distraction-free reading
+  (2026-08-03).** On a reading surface (a chapter, or a saved passage) the top
+  bar and bottom tab bar now slide away as you scroll down and come straight
+  back the moment you scroll up. The mechanism is mobile Safari's, not a
+  toggle's: the bars OVERLAY the scroll container (`.topnav` fixed, the book
+  header + chapter strip fused into one sticky `.book-detail-chrome` inside a
+  now-scrollable `.book-detail-layout`), so hiding them is a transform on
+  compositor-only properties and moves no scripture at all — no reflow, no
+  content jump. The scroll decision is a pure reducer (`nextChromeState` in
+  `src/utils/useScrollDirection.ts`, 10 unit tests): it accumulates travel since
+  the last direction flip rather than reacting per event, so a flick hides once
+  and jitter does nothing; revealing costs less travel than hiding; rubber-band
+  overscroll is clamped away; and content that barely overflows never hides at
+  all. Two note-visibility controls, deliberately separate: a persisted **Hide
+  all notes while reading** checkbox in Settings (`berean.hideAllNotes`), and a
+  transient **Focus** pill in the top bar that hides notes AND widens the
+  measure for the session only. Reduced motion falls out of motion.css's
+  existing kill-switch plus the structural/motion split (main.css owns the
+  translated end state, motion.css only the slide), so a reduced-motion reader
+  still gets the space back, instantly. One pre-existing trap fixed on the way:
+  `.bottomnav`'s boot animation used `animation-fill-mode: both`, which kept
+  contributing `translateY(0)` forever and outranked any later transform —
+  switched to `backwards`. DEFERRED from this pass: cross-chapter navigation
+  (its own chained task), and any auto-hide behaviour on desktop (the rules are
+  scoped to `max-width: 768px` on purpose).
 - **Dark-mode status bar / theme-color on mobile (2026-08-02).** The `theme-color`
   meta was a single static light cream, so the browser chrome / status bar
   stayed light on phones even after switching to dark mode in-app. Since

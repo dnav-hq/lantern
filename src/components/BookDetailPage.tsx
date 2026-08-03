@@ -13,6 +13,7 @@ import ErrorBoundary from './ErrorBoundary'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
+import { useChromeAutoHide } from '../utils/useScrollDirection'
 
 // ─── tiny helpers ────────────────────────────────────────────────────────────
 
@@ -1059,6 +1060,9 @@ interface BookDetailPageProps {
   onStudy: (reference: string, passageId?: string) => void
   onOpenStudy: (passageId: string) => void
   onRefresh?: () => void
+  // Reports which way the reader is scrolling, so the app shell can slide the
+  // top bar / bottom tabs out of the way. See useScrollDirection.
+  onChromeVisibleChange?: (visible: boolean) => void
 }
 
 export default function BookDetailPage({
@@ -1067,7 +1071,8 @@ export default function BookDetailPage({
   onBack,
   onStudy,
   onOpenStudy,
-  onRefresh
+  onRefresh,
+  onChromeVisibleChange
 }: BookDetailPageProps): React.ReactElement {
   const api = useApi()
   const [selectedChapter, setSelectedChapter] = useState(initialChapter ?? 1)
@@ -1078,6 +1083,12 @@ export default function BookDetailPage({
   // always starting blank. See findOverlappingPassage.
   const [bookPassages, setBookPassages] = useState<Passage[]>([])
   const chapterSelectorRef = useRef<HTMLDivElement>(null)
+  // The scroll container. On mobile the whole layout scrolls (the header +
+  // chapter strip are sticky inside it, so they can slide away without moving a
+  // single line of scripture); on desktop it stays overflow:hidden and this
+  // never fires. See .app-shell.reading-surface .book-detail-layout.
+  const layoutRef = useRef<HTMLDivElement>(null)
+  useChromeAutoHide(layoutRef, true, onChromeVisibleChange)
 
   const reloadNotes = useCallback(async (): Promise<void> => {
     const [notes, passages] = await Promise.all([
@@ -1113,93 +1124,98 @@ export default function BookDetailPage({
   const studiedCount = chaptersWithNotes.size
 
   return (
-    <div className="book-detail-layout">
-      <div className="book-detail-header">
-        <div className="book-detail-header-inner">
-          <button className="book-detail-back" onClick={onBack}>
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            Library
-          </button>
-          <div>
-            <h1 className="book-detail-title">{bibleBook.name}</h1>
-            <div className="book-detail-meta">
-              {bibleBook.chapters} chapters
-              {studiedCount > 0 && (
-                <>
-                  {' '}
-                  · <span style={{ color: 'var(--accent)' }}>{studiedCount} with notes</span>
-                </>
-              )}
+    <div className="book-detail-layout" ref={layoutRef}>
+      {/* One sticky chrome block (header + chapter strip) so the pair slides
+          away as a single unit. `display: contents` on desktop keeps the old
+          flex layout byte-for-byte; only the mobile rules make it a real box. */}
+      <div className="book-detail-chrome">
+        <div className="book-detail-header">
+          <div className="book-detail-header-inner">
+            <button className="book-detail-back" onClick={onBack}>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              Library
+            </button>
+            <div>
+              <h1 className="book-detail-title">{bibleBook.name}</h1>
+              <div className="book-detail-meta">
+                {bibleBook.chapters} chapters
+                {studiedCount > 0 && (
+                  <>
+                    {' '}
+                    · <span style={{ color: 'var(--accent)' }}>{studiedCount} with notes</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="chapter-selector-wrap">
-        <div className="chapter-selector-wrap-inner">
-          <button
-            className="chapter-nav-btn"
-            onClick={() => scrollChapters(-1)}
-            aria-label="Scroll left"
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+        <div className="chapter-selector-wrap">
+          <div className="chapter-selector-wrap-inner">
+            <button
+              className="chapter-nav-btn"
+              onClick={() => scrollChapters(-1)}
+              aria-label="Scroll left"
             >
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <div className="chapter-selector" ref={chapterSelectorRef}>
-            {Array.from({ length: bibleBook.chapters }, (_, i) => i + 1).map(ch => {
-              const hasNotes = chaptersWithNotes.has(ch)
-              const isActive = ch === selectedChapter
-              return (
-                <button
-                  key={ch}
-                  className={`chapter-pill${isActive ? ' active' : ''}${hasNotes ? ' has-notes' : ''}`}
-                  onClick={() => setSelectedChapter(ch)}
-                >
-                  {ch}
-                  {hasNotes && !isActive && <span className="chapter-note-dot" />}
-                </button>
-              )
-            })}
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+            <div className="chapter-selector" ref={chapterSelectorRef}>
+              {Array.from({ length: bibleBook.chapters }, (_, i) => i + 1).map(ch => {
+                const hasNotes = chaptersWithNotes.has(ch)
+                const isActive = ch === selectedChapter
+                return (
+                  <button
+                    key={ch}
+                    className={`chapter-pill${isActive ? ' active' : ''}${hasNotes ? ' has-notes' : ''}`}
+                    onClick={() => setSelectedChapter(ch)}
+                  >
+                    {ch}
+                    {hasNotes && !isActive && <span className="chapter-note-dot" />}
+                  </button>
+                )
+              })}
+            </div>
+            <button
+              className="chapter-nav-btn"
+              onClick={() => scrollChapters(1)}
+              aria-label="Scroll right"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
           </div>
-          <button
-            className="chapter-nav-btn"
-            onClick={() => scrollChapters(1)}
-            aria-label="Scroll right"
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
         </div>
       </div>
 
