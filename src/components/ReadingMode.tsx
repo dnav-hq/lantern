@@ -12,6 +12,7 @@ import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import { formatRelativeTime } from '../utils/relativeTime'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
+import { useChromeAutoHide } from '../utils/useScrollDirection'
 import { bookByNumber } from '../utils/bibleBooks'
 
 interface ReadingModeProps {
@@ -22,6 +23,9 @@ interface ReadingModeProps {
   // Always present — a quick note graduates into a full study by being opened.
   onOpenStudy: () => void
   onPassageDeleted?: () => void
+  // Reports which way the reader is scrolling, so the app shell can slide the
+  // top bar / bottom tabs out of the way. See useScrollDirection.
+  onChromeVisibleChange?: (visible: boolean) => void
 }
 
 const CATEGORY_LABELS: Record<NoteCategory, string> = {
@@ -125,7 +129,8 @@ export default function ReadingMode({
   onStudy,
   onRefresh,
   onOpenStudy,
-  onPassageDeleted
+  onPassageDeleted,
+  onChromeVisibleChange
 }: ReadingModeProps): React.ReactElement {
   const api = useApi()
   const [translation] = useTranslation()
@@ -156,6 +161,11 @@ export default function ReadingMode({
   // The full-width reading container the marquee is scoped to, so a drag starting
   // in the side whitespace (not just over the verse grid) begins a selection.
   const containerRef = useRef<HTMLDivElement>(null)
+  // .reading-layout is also the scroll container, so the marquee surface and the
+  // chrome auto-hide share one ref. Gated on `loading` because the skeleton
+  // renders a different tree — the ref only points at the real scroller once
+  // the passage has landed.
+  useChromeAutoHide(containerRef, !loading, onChromeVisibleChange)
 
   useEffect(() => {
     setLoading(true)

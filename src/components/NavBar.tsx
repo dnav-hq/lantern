@@ -24,6 +24,13 @@ interface NavBarProps {
   // Opens the dedicated mobile search surface (a tap target in the top bar,
   // shown only under the breakpoint).
   onOpenSearch?: () => void
+  // Distraction-free reading toggle. Rendered only on a reading surface (a
+  // chapter or a saved passage) — it lives in the top bar rather than inside
+  // each reading component so there is ONE place to find it and one place to
+  // get back out of, whichever surface you are on.
+  showFocusToggle?: boolean
+  focusReading?: boolean
+  onToggleFocusReading?: () => void
 }
 
 /** Closes the dropdown when a click lands outside `ref`. */
@@ -57,7 +64,10 @@ export default function NavBar({
   onOpenSettings,
   onSignOut,
   searchSlot,
-  onOpenSearch
+  onOpenSearch,
+  showFocusToggle = false,
+  focusReading = false,
+  onToggleFocusReading
 }: NavBarProps): React.ReactElement {
   const api = useApi()
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
@@ -304,6 +314,59 @@ export default function NavBar({
             makes the center tabs land on the true viewport center regardless
             of the logo vs. search+avatar's own (unequal) natural widths. */}
         <div className="topnav-right">
+          {/* Focus (distraction-free reading). The label switches to the way
+              OUT while active — an icon alone can say "you are in a mode" but
+              not "tap here to leave it", and this is the only exit. */}
+          {showFocusToggle && onToggleFocusReading && (
+            <button
+              className={`topnav-focus-btn${focusReading ? ' active' : ''}`}
+              onClick={onToggleFocusReading}
+              aria-pressed={focusReading}
+              title={
+                focusReading
+                  ? 'Leave distraction-free reading'
+                  : 'Read distraction-free — hides your notes and gives scripture the screen'
+              }
+            >
+              {focusReading ? (
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="9 3 9 9 3 9" />
+                  <polyline points="15 3 15 9 21 9" />
+                  <polyline points="9 21 9 15 3 15" />
+                  <polyline points="15 21 15 15 21 15" />
+                </svg>
+              ) : (
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="4 9 4 4 9 4" />
+                  <polyline points="20 9 20 4 15 4" />
+                  <polyline points="4 15 4 20 9 20" />
+                  <polyline points="20 15 20 20 15 20" />
+                </svg>
+              )}
+              <span className="topnav-focus-label">{focusReading ? 'Exit' : 'Focus'}</span>
+            </button>
+          )}
+
           {searchSlot && <div className="topnav-search">{searchSlot}</div>}
 
           {/* Mobile-only search trigger — opens the dedicated search surface. */}

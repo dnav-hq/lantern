@@ -2869,6 +2869,95 @@ body.dark .search-backdrop {
   max-width: 940px;
 }
 
+/* ─── Distraction-free reading ───────────────────────────────────────────────
+   Two independent controls land here. The persisted Settings preference ("hide
+   all notes") and the transient Focus toggle in the top bar both put
+   `notes-hidden` on the shell; Focus additionally sets `focus-reading`, which
+   is what widens the measure and drops the teaching hint. Keeping them separate
+   is the point: one is a standing choice about how you read, the other is a
+   moment.
+
+   Notes are hidden with `display: none` rather than unmounted so toggling is
+   instant and the reader keeps their place — verse rows are placed on the grid
+   by explicit numeric grid-row (see .scripture-grid), so removing notes cannot
+   shift a single verse. */
+.book-detail-chrome {
+  /* Desktop: a pure grouping wrapper — the book header and chapter strip stay
+     direct flex children of .book-detail-layout exactly as before. Only the
+     mobile reading surface turns it into a real, sticky, slide-away box. */
+  display: contents;
+}
+
+.app-shell.notes-hidden .reading-note-card,
+.app-shell.notes-hidden .rail-note,
+.app-shell.notes-hidden .rail-passage-notes,
+.app-shell.notes-hidden .inline-verse-notes,
+.app-shell.notes-hidden .mobile-range-notes,
+.app-shell.notes-hidden .verse-span-bracket,
+.app-shell.notes-hidden .verse-add-btn {
+  display: none;
+}
+/* With the rail empty there is nothing to reserve 260px for; collapse it so
+   scripture actually gains the width instead of sitting left-of-centre beside
+   a blank column. The `:has()` selectors above stay authoritative for the
+   no-notes width, so these restate them at higher specificity. */
+.app-shell.notes-hidden .scripture-grid {
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 0;
+}
+.app-shell.notes-hidden .reading-content:has(.scripture-grid:not(.no-rail)) {
+  max-width: 760px;
+}
+.app-shell.notes-hidden .book-chapter-content:has(.scripture-grid:not(.no-rail)) {
+  max-width: 720px;
+}
+
+/* Focus mode: the one-time "tap a verse to select it" hint is a teaching aid,
+   not reading — it is the one piece of chrome that has no business here. */
+.app-shell.focus-reading .verse-select-hint {
+  display: none;
+}
+.app-shell.focus-reading .reading-content,
+.app-shell.focus-reading .book-chapter-content,
+.app-shell.focus-reading .reading-content:has(.scripture-grid:not(.no-rail)),
+.app-shell.focus-reading .book-chapter-content:has(.scripture-grid:not(.no-rail)) {
+  max-width: 820px;
+}
+
+/* Focus toggle in the top bar. A labelled pill, not a bare glyph: it is the
+   only way back out, and an icon alone can say "you are in a mode" without
+   saying "tap here to leave it". */
+.topnav-focus-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    color 0.12s;
+}
+.topnav-focus-btn:hover {
+  color: var(--accent-ink);
+  border-color: var(--accent-weak);
+}
+.topnav-focus-btn.active {
+  background: var(--accent-weaker);
+  border-color: var(--accent-weak);
+  color: var(--accent-ink);
+}
+
 .btn-study-chapter {
   display: inline-flex;
   align-items: center;
@@ -4704,6 +4793,88 @@ body.dark .upd-popover-btn-ghost:hover {
   .welcome-card {
     padding: 36px 24px 32px;
     border-radius: 16px;
+  }
+
+  /* ── Reading surfaces: auto-hiding chrome ─────────────────────────────────
+     Mobile Safari's model, not a toggle. The bars OVERLAY the scroll container
+     instead of sitting above it, so sliding them away moves no scripture at
+     all — the reader simply sees more of the text they were already reading,
+     and sliding them back covers it again. Nothing here animates a size, a
+     margin or a padding, so there is no reflow for the hide to be janky about
+     and no content jump when it returns.
+
+     .topnav goes fixed. The book header + chapter strip become ONE sticky
+     block inside the scroller (.book-detail-chrome), padded to clear the fixed
+     bar, so the pair travels as a single unit rather than two things racing.
+     Transforming .topnav is safe here and only here: the fixed-position
+     GlobalSearch box that motion.css warns about lives in .topnav-search,
+     which is display:none at this width. */
+  .app-shell.reading-surface {
+    /* The tab bar overlays too, so the strip it used to reserve goes back to
+       scripture; each scroll container pads its own tail instead. */
+    padding-bottom: 0;
+  }
+  .app-shell.reading-surface .topnav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 400;
+  }
+  .app-shell.reading-surface.chrome-hidden .topnav {
+    transform: translateY(-100%);
+  }
+  .app-shell.reading-surface.chrome-hidden .bottomnav {
+    transform: translateY(100%);
+  }
+
+  /* Book/chapter surface: the LAYOUT scrolls rather than the content pane, so
+     the header and chapter strip are sticky siblings of the scripture instead
+     of fixed rows above it. */
+  .app-shell.reading-surface .book-detail-layout {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+  .app-shell.reading-surface .book-detail-content {
+    flex: 0 0 auto;
+    overflow: visible;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  .app-shell.reading-surface .book-detail-chrome {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--bg);
+    padding-top: calc(52px + env(safe-area-inset-top));
+  }
+  .app-shell.reading-surface.chrome-hidden .book-detail-chrome {
+    transform: translateY(-100%);
+  }
+
+  /* Saved-passage surface: .reading-layout is itself the scroller and its own
+     heading scrolls normally, so only the fixed top bar needs clearing. */
+  .app-shell.reading-surface .reading-layout {
+    padding-top: calc(72px + env(safe-area-inset-top));
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+    overscroll-behavior-y: contain;
+  }
+
+  /* Ride down into the space the tab bar vacates, so the selection actions
+     never float above an empty strip. */
+  .app-shell.reading-surface.chrome-hidden .verse-action-bar {
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  /* Focus: hand the side margins back to the text. At 375px this is the only
+     width left to win — the rail is already desktop-only here, so the real
+     gain on a phone is vertical (the note cards) plus these 12px. */
+  .app-shell.focus-reading .reading-content {
+    padding: 0 12px;
+  }
+  .app-shell.focus-reading .book-detail-content {
+    padding-left: 12px;
+    padding-right: 12px;
   }
 }
 

@@ -15,6 +15,11 @@ interface SettingsModalProps {
   onSetTheme: (theme: ThemeId) => void
   textSize: TextSizeId
   onSetTextSize: (size: TextSizeId) => void
+  // Persisted "hide all notes" preference. Deliberately separate from the top
+  // bar's transient Focus toggle: this one is a standing choice about how you
+  // read, and it survives a reload.
+  hideNotes: boolean
+  onSetHideNotes: (hidden: boolean) => void
   // Sign-out handler, or null when there is no auth (memory stub / dev).
   onSignOut: (() => Promise<void>) | null
 }
@@ -29,6 +34,8 @@ export default function SettingsModal({
   onSetTheme,
   textSize,
   onSetTextSize,
+  hideNotes,
+  onSetHideNotes,
   onSignOut
 }: SettingsModalProps): React.ReactElement | null {
   const api = useApi()
@@ -178,6 +185,28 @@ export default function SettingsModal({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="smodal-divider" />
+
+          {/* Reading — how much of your own work shows up alongside scripture.
+              The top bar's Focus button does this too, but only for the moment;
+              this is the standing preference. */}
+          <div className="smodal-section">
+            <div className="smodal-section-label">Reading</div>
+            <label className="smodal-checkbox-row">
+              <input
+                type="checkbox"
+                className="smodal-checkbox"
+                checked={hideNotes}
+                onChange={e => onSetHideNotes(e.target.checked)}
+              />
+              <span className="smodal-checkbox-label">Hide all notes while reading</span>
+            </label>
+            <p className="smodal-vault-desc">
+              Leaves only scripture on the reading screens. Your notes are untouched — open a study
+              to see and edit them.
+            </p>
           </div>
 
           <div className="smodal-divider" />
