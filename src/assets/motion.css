@@ -106,14 +106,27 @@
       transform: translateY(0);
     }
   }
+  /* Animate the independent `translate`/`scale` properties, NOT the `transform`
+     shorthand: with `animation-fill-mode: both` a shorthand `transform` in the
+     `to` frame STICKS after the entrance and overrides the element's own base
+     `transform`. That silently wiped `.verse-action-bar`'s `translateX(-50%)`
+     centering (base rule in main.css), leaving the bar pinned left-edge-at-50%
+     i.e. right-of-centre on desktop — the same `animation-fill-mode` landmine
+     the `.bottomnav` boot animation hit. `translate`/`scale` compose WITH the
+     base `transform` (individual transform properties apply first, then
+     `transform`), so the centering survives; for the other springIn users
+     (search surface/results, quick-edit card) their base `transform` is `none`,
+     so the rendered result is identical to the old shorthand. */
   @keyframes springIn {
     from {
       opacity: 0;
-      transform: translateY(6px) scale(0.94);
+      translate: 0 6px;
+      scale: 0.94;
     }
     to {
       opacity: 1;
-      transform: translateY(0) scale(1);
+      translate: 0 0;
+      scale: 1;
     }
   }
 
