@@ -38,21 +38,6 @@ prioritized.
   only, so pure readers are never prompted; true offline reading stays deferred
   (guest reading is BSB/KJV, which is also the only offline-capable shape).
 
-- **Account-synced preferences (jsonb on `profiles`).** From
-  `docs/proposals/guest-preview-mode.md` §2b (2026-08-03). Preferences
-  (theme/dark mode, visual theme, translation, "hide all notes") are
-  `localStorage`-only today. Make them account-owned for signed-in users so
-  they sync across devices — lightest path is a `settings jsonb` column on the
-  existing `profiles` table (already own-row RLS via `profiles_select`/
-  `profiles_update`, so no new policy) plus a `getSettings`/`updateSettings`
-  pair on `BereanApi`; `localStorage` stays as the write-through cache/offline
-  mirror. On a guest's first sign-in, seed the account from local prefs if the
-  account has none yet ("your settings came with you"), then account is source
-  of truth (last-write-wins, fine for low-stakes prefs). This is an *account*
-  data model, not a second guest one, so it doesn't reintroduce the two-user-
-  type cost the guest proposal rejects. Queued independently of guest mode —
-  it benefits existing signed-in users on its own.
-
 - **Internal `Berean*` identifiers stay — standing decision, not pending work.**
   `BereanApi`, `berean-api.ts`, `SupabaseBereanApi`, and the persisted keys
   (`berean.onboarded`, `berean-theme`, `berean-visual-theme`,
@@ -288,6 +273,24 @@ prioritized.
 
 ## Done
 
+- **Account-synced preferences (jsonb on `profiles`) (2026-08-03).** From
+  `docs/proposals/guest-preview-mode.md` §2b. The four preferences (theme/dark
+  mode, visual theme, translation, "hide all notes") now sync across devices
+  for signed-in users via a `settings jsonb` column on `profiles`
+  (`supabase/migrations/0009_profile_settings.sql` — no new table, no new RLS;
+  `profiles_select`/`profiles_update` already cover it) plus a typed
+  `getSettings`/`updateSettings` pair on `BereanApi`, implemented in both
+  `SupabaseBereanApi` (merge-patch read-modify-write) and the memory stub.
+  `localStorage` stays the write-through cache — every read is still instant
+  and network-independent. On sign-in (`Root.tsx`'s profile-load point), the
+  account is fetched once: an empty account seeds itself from the signed-in
+  device's current local values ("your settings came with you"); a non-empty
+  account hydrates local instead (`resolveSettingsAdoption` in
+  `src/api/types.ts`, unit-tested against the memory stub). Every later change
+  patches the account, debounced 500ms (`src/App.tsx`). Guests (no session)
+  are untouched — `localStorage` only, zero API calls, no second data model.
+  **Activation**: `supabase db push` to apply the new migration to the live
+  `berean` project — not run as part of this change.
 - **Translation-version chip in the top bar (2026-08-03).** A minimal,
   always-visible YouVersion-style chip (`TranslationChip.tsx`) shows the active
   translation's abbreviation and doubles as a quick switcher — tap it, pick

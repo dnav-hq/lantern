@@ -8,7 +8,10 @@ const STORAGE_KEY = 'berean-theme'
 const DARK_BG = '#17140f'
 const LIGHT_BG = '#f4f0e8'
 
-export function useDarkMode(): [boolean, () => void] {
+// Third element is a direct setter (bypassing toggle), used only by the
+// account-settings sync in App.tsx to hydrate from an account value on
+// sign-in — every other caller keeps using the toggle.
+export function useDarkMode(): [boolean, () => void, (value: boolean) => void] {
   const [isDark, setIsDark] = useState<boolean>(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored !== null) return stored === 'dark'
@@ -36,5 +39,5 @@ export function useDarkMode(): [boolean, () => void] {
 
   const toggle = (): void => setIsDark(prev => !prev)
 
-  return [isDark, toggle]
+  return [isDark, toggle, setIsDark]
 }
