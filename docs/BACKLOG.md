@@ -88,6 +88,24 @@ prioritized.
     niche against BibleGateway/YouVersion — explicitly not promised). Pairs
     with a static sitemap/robots.txt/canonical pass. G4a has landed; not
     started.
+  - **G4c — shareable passage cards (verse + note), link and image shares.**
+    `docs/proposals/shareable-passage-cards.md` (2026-08-04) recommends
+    against a generic verse-on-a-gradient image (a saturated category
+    YouVersion and others already own) and centres Lantern's real
+    differentiation instead: the verse rendered together with the user's own
+    note, the read-notice-write loop made shareable. Sharing a note is an
+    explicit, per-share "share this one publicly" opt-in, never automatic and
+    never a blanket setting — verse-only shares stay trivially public. Two
+    modalities: a LINK share that upgrades G4b's edge Pages Function with an
+    `og:image` renderer (satori/resvg-style, same BSB-bundle data source) so
+    the beautiful card IS the OG image rather than a second system, and an
+    IMAGE share (client-canvas or edge-rendered PNG) for Instagram/stories
+    where links don't unfurl. BSB/KJV only, same as G4b, per the ESV
+    licensing constraint. Recommends readable deep links over a URL
+    shortener. Demand-gated: build after G4a (done) and G4b land and there's
+    real usage to share to, not speculatively now — smallest slice is G4b's
+    `og:image` upgrade, then the note-carrying share path, then the PNG
+    composer last. Not started.
 
 - **Internal `Berean*` identifiers stay — standing decision, not pending work.**
   `BereanApi`, `berean-api.ts`, `SupabaseBereanApi`, and the persisted keys
