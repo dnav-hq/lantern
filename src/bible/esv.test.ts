@@ -165,4 +165,35 @@ describe('EsvCachedBibleProvider', () => {
     await cached.getChapter(43, 3)
     expect(calls).toHaveLength(7) // chapter 3 was never evicted
   })
+
+  it('keeps a REVISITED chapter cached ahead of one only ever read once (LRU, not FIFO)', async () => {
+    const { provider, calls } = makeInner(100)
+    const cached = new EsvCachedBibleProvider(provider)
+
+    // Five 100-verse chapters exactly fill the 500-verse cap.
+    for (let ch = 1; ch <= 5; ch++) await cached.getChapter(43, ch)
+    expect(calls).toHaveLength(5)
+
+    // The reader goes BACK to chapter 1 — a cache hit — before moving on.
+    // Under plain FIFO this would not change chapter 1's eviction order at
+    // all, since FIFO only tracks insertion time; under LRU this is exactly
+    // what should protect it.
+    await cached.getChapter(43, 1)
+    expect(calls).toHaveLength(5) // still a hit, no re-fetch
+
+    // A sixth chapter pushes total stored verses over the cap. Chapter 2 is
+    // now the least-recently-used entry (chapter 1 was just touched), so it
+    // must be evicted instead of chapter 1.
+    await cached.getChapter(43, 6)
+    expect(calls).toHaveLength(6)
+
+    // Chapter 1 (revisited) is still cached — no re-fetch.
+    await cached.getChapter(43, 1)
+    expect(calls).toHaveLength(6)
+
+    // Chapter 2 (never revisited) was evicted in its place.
+    await cached.getChapter(43, 2)
+    expect(calls).toHaveLength(7)
+    expect(calls[6]).toEqual([43, 2])
+  })
 })
