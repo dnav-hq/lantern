@@ -163,9 +163,12 @@ prioritized.
   `ESV_API_KEY` server-side and fails closed with a structured "not configured"
   response when it's unset, mirroring `supabase/functions/hq-telemetry`'s
   pattern; a client `EsvBibleProvider` (`src/bible/esv.ts`) that calls ONLY the
-  proxy, never `api.esv.org` directly; a size-bounded FIFO-evicting cache
-  (`src/bible/esv-cache.ts`, 500-verse cap, documented) instead of the
-  cache-forever layer BSB/KJV use; and `ESV` added to `TranslationId`
+  proxy, never `api.esv.org` directly; a size-bounded, LRU-evicting cache
+  (`src/bible/esv-cache.ts`, 500-verse cap — already the license ceiling,
+  documented; eviction switched from FIFO to LRU 2026-08-04 so a chapter the
+  reader keeps returning to stays cached instead of aging out on insertion
+  order alone) instead of the cache-forever layer BSB/KJV use; and `ESV`
+  added to `TranslationId`
   (`provider.ts`) with its own no-fallback composition in `service.ts` (no
   self-hosted bundle exists for ESV, and none legally can). ReadingMode,
   BookDetailPage, and StudyMode all show the required Crossway attribution
