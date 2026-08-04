@@ -250,33 +250,37 @@ export default function NavBar({
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
-            {workspaceOpen && (
-              <div className="nav-menu workspace-menu" role="menu">
-                <button
-                  className="nav-menu-item active"
-                  role="menuitem"
-                  onClick={() => setWorkspaceOpen(false)}
+            {/* Kept mounted so it can animate closed as well as open — shared
+                menu-motion pattern (see .nav-menu in motion.css). */}
+            <div
+              className={`nav-menu workspace-menu${workspaceOpen ? ' open' : ''}`}
+              role="menu"
+              aria-hidden={!workspaceOpen}
+            >
+              <button
+                className="nav-menu-item active"
+                role="menuitem"
+                onClick={() => setWorkspaceOpen(false)}
+              >
+                <span className="workspace-dot" />
+                Personal
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ marginLeft: 'auto' }}
                 >
-                  <span className="workspace-dot" />
-                  Personal
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={{ marginLeft: 'auto' }}
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </button>
-                <div className="nav-menu-divider" />
-                <div className="nav-menu-hint">Shared group spaces — coming later</div>
-              </div>
-            )}
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </button>
+              <div className="nav-menu-divider" />
+              <div className="nav-menu-hint">Shared group spaces — coming later</div>
+            </div>
           </div>
         </div>
 
@@ -336,42 +340,45 @@ export default function NavBar({
               >
                 {initial}
               </button>
-              {profileOpen && (
-                <div className="nav-menu profile-menu" role="menu">
-                  <div className="nav-menu-name">{displayName || 'Studying locally'}</div>
-                  <div className="nav-menu-divider" />
-                  <button
-                    className="nav-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setProfileOpen(false)
-                      onOpenSettings()
-                    }}
-                  >
-                    Settings
-                  </button>
-                  <button
-                    className="nav-menu-item"
-                    role="menuitem"
-                    disabled={exportState === 'exporting'}
-                    onClick={() => void handleExport()}
-                  >
-                    {exportState === 'exporting' ? 'Exporting…' : 'Export notes'}
-                  </button>
-                  {onSignOut && (
-                    <>
-                      <div className="nav-menu-divider" />
-                      <button
-                        className="nav-menu-item"
-                        role="menuitem"
-                        onClick={() => void onSignOut()}
-                      >
-                        Sign out
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
+              {/* Kept mounted for the shared open/close menu motion. */}
+              <div
+                className={`nav-menu profile-menu${profileOpen ? ' open' : ''}`}
+                role="menu"
+                aria-hidden={!profileOpen}
+              >
+                <div className="nav-menu-name">{displayName || 'Studying locally'}</div>
+                <div className="nav-menu-divider" />
+                <button
+                  className="nav-menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setProfileOpen(false)
+                    onOpenSettings()
+                  }}
+                >
+                  Settings
+                </button>
+                <button
+                  className="nav-menu-item"
+                  role="menuitem"
+                  disabled={exportState === 'exporting'}
+                  onClick={() => void handleExport()}
+                >
+                  {exportState === 'exporting' ? 'Exporting…' : 'Export notes'}
+                </button>
+                {onSignOut && (
+                  <>
+                    <div className="nav-menu-divider" />
+                    <button
+                      className="nav-menu-item"
+                      role="menuitem"
+                      onClick={() => void onSignOut()}
+                    >
+                      Sign out
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

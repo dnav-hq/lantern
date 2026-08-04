@@ -102,7 +102,12 @@ export function nextChromeState(state: ChromeScrollState, sample: ScrollSample):
 export function useChromeAutoHide(
   ref: React.RefObject<HTMLElement | null>,
   enabled: boolean,
-  onChange?: (visible: boolean) => void
+  onChange?: (visible: boolean) => void,
+  // Changing this re-initialises the machine to fully-visible. Pass the current
+  // chapter so navigating (click OR swipe) always lands with the chrome shown,
+  // deterministically — instead of the auto-hide flip-flopping as the scroll
+  // position resets under it on each chapter change.
+  resetKey?: unknown
 ): boolean {
   const [visible, setVisible] = useState(true)
   // Kept in a ref so the listener never needs re-binding as state advances.
@@ -120,6 +125,8 @@ export function useChromeAutoHide(
     }
 
     stateRef.current = initialChromeState(el.scrollTop)
+    setVisible(true)
+    onChangeRef.current?.(true)
     let frame = 0
 
     const sample = (): void => {
@@ -150,7 +157,7 @@ export function useChromeAutoHide(
       // Leaving the surface must never strand the chrome off-screen.
       onChangeRef.current?.(true)
     }
-  }, [ref, enabled])
+  }, [ref, enabled, resetKey])
 
   return visible
 }

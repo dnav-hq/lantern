@@ -501,6 +501,13 @@ body.dark .bible-library-greeting {
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
   padding: 5px;
   z-index: 500;
+  /* Every menu stays mounted (closed by default) so it can animate open AND
+     closed — the shared motion lives in motion.css. Reduced-motion users just
+     get this display flip with no transition. */
+  display: none;
+}
+.nav-menu.open {
+  display: block;
 }
 .workspace-menu {
   left: 0;
@@ -1135,6 +1142,14 @@ body.dark .search-backdrop {
 .study-scripture-body {
   display: contents;
 }
+/* The translation chip sits at the top-right of the scripture pane. On desktop
+   the body is display:contents, so this row lands directly in .study-right's
+   padded flow; on mobile it's the first row of the scrollable body. */
+.study-scripture-controls {
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 20px 0;
+}
 
 .study-right::-webkit-scrollbar {
   width: 4px;
@@ -1567,6 +1582,13 @@ body.dark .search-backdrop {
 
 .reading-heading {
   margin-bottom: 32px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.reading-heading-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .reading-heading h1 {
@@ -1789,9 +1811,16 @@ body.dark .search-backdrop {
    in a separate block above it. */
 .scripture-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
+  /* Scripture column is a FIXED measure (not 1fr) on purpose: when Focus
+     collapses the rail, a flexible column would grow into the freed space and
+     re-wrap the text every frame — the "words scrambling as it expands" jank.
+     Pinning it means the rail can come and go while the reading measure never
+     changes; the grid simply recenters (a smooth x-drift, no reflow). It still
+     shrinks below 640 on narrow viewports via minmax's lower bound. */
+  grid-template-columns: minmax(0, 640px) 260px;
   column-gap: 28px;
   align-items: start;
+  justify-content: center;
   /* Positioning context for the marquee selection overlay. */
   position: relative;
 }
@@ -2695,47 +2724,94 @@ body.dark .search-backdrop {
   border-bottom: 0.5px solid var(--border);
   flex-shrink: 0;
 }
+/* Three columns — back (left), a centered reference (Reading Mode only),
+   controls (right) — so the reference sits truly centered regardless of how
+   wide the side groups are. */
 .book-detail-header-inner {
   max-width: var(--shell-max);
   margin: 0 auto;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
 }
-.book-detail-header-main {
+.book-detail-header-lead {
+  grid-column: 1;
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 14px;
   min-width: 0;
+}
+.book-detail-header-center {
+  grid-column: 2;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+/* Reading Mode's compact "‹ John 1 ›": hidden in normal mode, where the title
+   block above carries the reference. */
+.book-detail-ref-group {
+  display: none;
+  align-items: center;
+  gap: 10px;
+}
+.book-detail-header-controls {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+/* The title + meta sit CENTERED in the middle of the banner (back left,
+   controls right) — using the horizontal space instead of stacking down the
+   left edge, and lining up with Reading Mode's centered reference. A real
+   max-height (not `none`) so Reading Mode can EASE it closed — a transition
+   to/from `none` can't interpolate. */
+.book-detail-titles {
+  text-align: center;
+  max-height: 64px;
+  overflow: hidden;
 }
 /* Reading-context controls (translation label + Focus), hosted in the reading
    header rather than the global top bar — quiet, right-aligned, sitting with
    the passage. See ReadingControls.tsx. */
+/* The two toggles read as ONE quiet cluster: tight, icon-only, and muted so at
+   rest they recede into the header rather than announcing themselves as a
+   toolbar. They brighten on hover and take the accent when active. */
 .reading-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 2px;
   flex-shrink: 0;
-  margin-top: 6px;
 }
-.reading-focus-btn {
+.reading-ctl-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 6px;
-  margin: -6px;
   border: 0;
   background: none;
-  color: var(--text-muted);
+  color: var(--text-faint);
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 7px;
   -webkit-tap-highlight-color: transparent;
   transition:
     color 0.15s var(--ease-out),
     background 0.15s var(--ease-out);
 }
-.reading-focus-btn:hover {
-  color: var(--text);
+/* Hover only on real pointers — on touch, :hover "sticks" after a tap until you
+   tap elsewhere, leaving a button stuck in its hover look. */
+@media (hover: hover) {
+  .reading-ctl-btn:hover {
+    color: var(--text);
+    background: var(--surface-2);
+  }
 }
-.reading-focus-btn.active {
+.reading-ctl-btn.active {
   color: var(--accent-ink);
 }
 
@@ -2750,7 +2826,7 @@ body.dark .search-backdrop {
   cursor: pointer;
   font-family: inherit;
   padding: 0;
-  margin-bottom: 10px;
+  flex-shrink: 0;
   transition: color 0.1s;
 }
 
@@ -2771,11 +2847,44 @@ body.dark .search-backdrop {
   color: var(--text-muted);
 }
 
+/* Reading-mode one-bar bits: the inline reference + chapter nav that live in the
+   header lead only while Reading Mode is on (hidden in normal mode, where the
+   big title below carries the book/chapter). */
+.reading-chapter-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  border-radius: 6px;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 0.12s var(--ease-out),
+    background 0.12s var(--ease-out);
+}
+@media (hover: hover) {
+  .reading-chapter-nav-btn:hover:not(:disabled) {
+    color: var(--text);
+    background: var(--surface-2);
+  }
+}
+.reading-chapter-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 /* Chapter selector */
 .chapter-selector-wrap {
   padding: 8px 16px;
   border-bottom: 0.5px solid var(--border);
   flex-shrink: 0;
+  /* Real max-height so Reading Mode can ease the strip closed (see the collapse
+     rules); a transition from `none` would snap instead of animate. */
+  max-height: 60px;
 }
 .chapter-selector-wrap-inner {
   display: flex;
@@ -2839,9 +2948,11 @@ body.dark .search-backdrop {
   padding: 0 6px;
 }
 
-.chapter-pill:hover {
-  background: var(--surface-2);
-  color: var(--text-muted);
+@media (hover: hover) {
+  .chapter-pill:hover {
+    background: var(--surface-2);
+    color: var(--text-muted);
+  }
 }
 
 .chapter-pill.active {
@@ -2916,10 +3027,14 @@ body.dark .search-backdrop {
    is the point: one is a standing choice about how you read, the other is a
    moment.
 
-   Notes are hidden with `display: none` rather than unmounted so toggling is
-   instant and the reader keeps their place — verse rows are placed on the grid
-   by explicit numeric grid-row (see .scripture-grid), so removing notes cannot
-   shift a single verse. */
+   Notes are hidden by fading to `opacity: 0` and collapsing (rather than
+   `display: none`) so the change is a calm reveal, not a blink — the notes
+   fade and their space eases closed while the scripture measure eases wider.
+   The end state here is unconditional; the TIMING lives in motion.css (gated
+   on `prefers-reduced-motion: no-preference`), so a reduced-motion reader lands
+   on exactly this end state instantly with no transition. Verse rows are placed
+   on the grid by explicit numeric grid-row (see .scripture-grid), so the rail
+   collapsing cannot shift a single verse. */
 .book-detail-chrome {
   /* Desktop: a pure grouping wrapper — the book header and chapter strip stay
      direct flex children of .book-detail-layout exactly as before. Only the
@@ -2927,6 +3042,10 @@ body.dark .search-backdrop {
   display: contents;
 }
 
+/* Fade every notes affordance out. `pointer-events: none` so a faded note is
+   never clickable during or after the fade; `visibility: hidden` (a discrete
+   transition, flipped at the end in motion.css) drops it from the a11y tree
+   once gone, matching the old display:none end state. */
 .app-shell.notes-hidden .reading-note-card,
 .app-shell.notes-hidden .rail-note,
 .app-shell.notes-hidden .rail-passage-notes,
@@ -2934,21 +3053,72 @@ body.dark .search-backdrop {
 .app-shell.notes-hidden .mobile-range-notes,
 .app-shell.notes-hidden .verse-span-bracket,
 .app-shell.notes-hidden .verse-add-btn {
-  display: none;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
 }
-/* With the rail empty there is nothing to reserve 260px for; collapse it so
-   scripture actually gains the width instead of sitting left-of-centre beside
-   a blank column. The `:has()` selectors above stay authoritative for the
-   no-notes width, so these restate them at higher specificity. */
-.app-shell.notes-hidden .scripture-grid {
-  grid-template-columns: minmax(0, 1fr);
+/* Notes that sit in the vertical flow (inline under a verse, mobile range
+   notes, the passage-notes block) must also collapse their HEIGHT so the verses
+   below glide up and close the gap — the rail notes instead collapse
+   horizontally with the grid column below.
+
+   The collapse is done with the `grid-template-rows: 1fr → 0fr` technique: each
+   of these containers is a single-row grid whose one child (`.note-collapse`,
+   `min-height:0; overflow:hidden`) is the 1fr track. Animating the track to 0fr
+   eases the real content height down to nothing — unlike `max-height`, which
+   can't interpolate from `none` and snaps at the tail. This works in every
+   modern engine including iOS Safari (unlike `interpolate-size`/`calc-size`). */
+/* `.mobile-range-notes` is display:none on desktop (the rail is used there), so
+   it opts into the grid collapse inside the mobile media query instead — adding
+   it here would override that `display: none` and reveal it on desktop. */
+.inline-verse-notes,
+.rail-passage-notes {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+.note-collapse {
+  min-height: 0;
+  overflow: hidden;
+}
+.app-shell.notes-hidden .rail-passage-notes,
+.app-shell.notes-hidden .inline-verse-notes,
+.app-shell.notes-hidden .mobile-range-notes {
+  grid-template-rows: 0fr;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+/* Collapse the 260px rail to a 0px track (keeping BOTH tracks so
+   grid-template-columns interpolates track-for-track — a 2-track → 1-track
+   change cannot animate). The scripture track is FIXED (640px, see
+   .scripture-grid), so it does NOT grow into the freed space — the reading
+   measure never changes and the text never re-wraps. The grid's total width
+   just shrinks and `justify-content: center` slides the scripture column to
+   the centre: a calm x-drift, not a reflow. `overflow: hidden` on the rail
+   items keeps their content from spilling out of the 0px column mid-collapse.
+   The container max-width stays put (940 — see the :has() rules above) so
+   there is room to recentre into. */
+.app-shell.notes-hidden .scripture-grid:not(.no-rail) {
+  grid-template-columns: minmax(0, 640px) 0px;
   column-gap: 0;
 }
-.app-shell.notes-hidden .reading-content:has(.scripture-grid:not(.no-rail)) {
-  max-width: 760px;
+/* Rail notes collapse with their column (width → 0). Left uncapped, a rail note
+   squeezed into a 0px column re-wraps to an extreme height and balloons the grid
+   rows it spans, tearing gaps into the scripture beside it. A max-height cap
+   fixes that — but the "open" value MUST be a real length (not `none`): `none`
+   is not interpolatable, so a delayed transition to it flips IMMEDIATELY, which
+   is exactly the reopen-gap bug (the cap lifted at t=0 while the column was
+   still narrow). A large px value is effectively no cap for any real note, yet
+   lets the delayed cap in motion.css actually hold until the column has
+   finished opening/closing. */
+.rail-note {
+  max-height: 1500px;
 }
-.app-shell.notes-hidden .book-chapter-content:has(.scripture-grid:not(.no-rail)) {
-  max-width: 720px;
+.app-shell.notes-hidden .rail-note {
+  max-height: 0;
+  overflow: hidden;
+}
+.app-shell.notes-hidden .rail-passage-notes {
+  overflow: hidden;
 }
 
 /* Focus mode: the one-time "tap a verse to select it" hint is a teaching aid,
@@ -2956,11 +3126,64 @@ body.dark .search-backdrop {
 .app-shell.focus-reading .verse-select-hint {
   display: none;
 }
-.app-shell.focus-reading .reading-content,
-.app-shell.focus-reading .book-chapter-content,
-.app-shell.focus-reading .reading-content:has(.scripture-grid:not(.no-rail)),
-.app-shell.focus-reading .book-chapter-content:has(.scripture-grid:not(.no-rail)) {
-  max-width: 820px;
+
+/* ─── Reading Mode: collapse everything into ONE bar ─────────────────────────
+   Reading Mode's reward: the three stacked bars (global top bar, book banner,
+   chapter strip) collapse into a single slim reading bar. The global top bar
+   (wordmark / workspace / nav tabs / search) isn't needed while reading, so it
+   is hidden outright; the book banner becomes that one bar, restructured to a
+   single row — back, an inline "John 1" reference + chapter nav, then the
+   translation chip and the two toggles. The big title, the meta, and the full
+   chapter strip all fold away. Exit (the ⛶ toggle) brings everything back.
+   Scoped to focus-reading only (never the hide-notes preference).
+
+   Everything collapses by ANIMATABLE properties (height / max-height / opacity),
+   NOT `display: none` — so entering and leaving Reading Mode (and going back to
+   the library) eases smoothly instead of snapping/jolting. motion.css owns the
+   timing; a reduced-motion reader lands on these end states instantly. */
+.app-shell.focus-reading .topnav {
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-bottom-width: 0;
+}
+.app-shell.focus-reading .book-detail-header {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.app-shell.focus-reading .book-detail-titles {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  overflow: hidden;
+}
+.app-shell.focus-reading .chapter-selector-wrap {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom-width: 0;
+  overflow: hidden;
+}
+.app-shell.focus-reading .book-detail-ref-group {
+  display: inline-flex;
+}
+.app-shell.focus-reading .book-detail-ref-inline {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+/* Mobile: the bottom tab bar STAYS in Reading Mode (you still want to move
+   around) but goes minimal — icon-only and shorter, so it reads as a quiet
+   strip rather than a full labelled bar. The height eases via the reading-
+   surface transition (motion.css). */
+.app-shell.focus-reading .bottomnav {
+  height: calc(46px + env(safe-area-inset-bottom));
+}
+.app-shell.focus-reading .bottomnav .nav-tab-label {
+  display: none;
 }
 
 /* Focus toggle in the top bar. A labelled pill, not a bare glyph: it is the
@@ -4704,9 +4927,14 @@ body.dark .upd-popover-btn-ghost:hover {
   /* Range notes sit under the last verse they cover, indented like inline notes
      and set off with a top hairline so they read as belonging to that span. */
   .mobile-range-notes {
-    display: block;
+    display: grid;
+    grid-template-rows: 1fr;
     padding-left: 24px;
     margin: 4px 0 8px;
+  }
+  /* The top hairline + padding live on the collapsing child so they close with
+     it (on the container they'd leave a residual gap when Focus collapses it). */
+  .mobile-range-notes .note-collapse {
     border-top: 0.5px solid var(--border);
     padding-top: 6px;
   }
@@ -4943,6 +5171,11 @@ body.dark .upd-popover-btn-ghost:hover {
     background: var(--bg);
     padding-top: calc(52px + env(safe-area-inset-top));
   }
+  /* Reading Mode collapses the fixed top bar, so drop the 52px it was reserving
+     — otherwise it leaves an empty band at the top of the one-bar. */
+  .app-shell.reading-surface.focus-reading .book-detail-chrome {
+    padding-top: env(safe-area-inset-top);
+  }
   .app-shell.reading-surface.chrome-hidden .book-detail-chrome {
     transform: translateY(-100%);
   }
@@ -4961,16 +5194,10 @@ body.dark .upd-popover-btn-ghost:hover {
     bottom: calc(12px + env(safe-area-inset-bottom));
   }
 
-  /* Focus: hand the side margins back to the text. At 375px this is the only
-     width left to win — the rail is already desktop-only here, so the real
-     gain on a phone is vertical (the note cards) plus these 12px. */
-  .app-shell.focus-reading .reading-content {
-    padding: 0 12px;
-  }
-  .app-shell.focus-reading .book-detail-content {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
+  /* (Focus deliberately does NOT change the reading padding/measure here. We
+     dropped the "widen the text" idea: any width change re-wraps the lines,
+     which reads as scrambling, however small. On a phone the Focus gain is the
+     notes easing away and the chrome receding — never the measure moving.) */
 }
 
 @keyframes sheetUp {

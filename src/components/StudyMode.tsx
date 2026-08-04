@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHand
 import NoteEditor, { makeLineId } from './NoteEditor'
 import ErrorBoundary from './ErrorBoundary'
 import PassagePane from './PassagePane'
+import TranslationChip from './TranslationChip'
 import ReferenceInput from './ReferenceInput'
 import { BiblePassage, Note } from '../types'
 import { parseNoteLine, parseReferenceLabel } from '../utils/noteParser'
@@ -701,6 +702,14 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
           </svg>
         </button>
         <div className="study-scripture-body" ref={scriptureBodyRef}>
+          {/* Translation indicator + switcher for the study reading pane. No
+              Focus/hide-notes here — Study has no distraction-free mode (the
+              note editor is the point). Only shown once there's a passage. */}
+          {passage && (
+            <div className="study-scripture-controls">
+              <TranslationChip />
+            </div>
+          )}
           <ErrorBoundary variant="pane" key={passage?.reference ?? 'empty'}>
             {translation === 'ESV' && esvUnavailable && !loadingPassage ? (
               <div className="esv-unavailable">

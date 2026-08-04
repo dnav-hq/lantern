@@ -132,11 +132,17 @@
 
   /* ── Entrance: rail/margin notes fade-rise on first mount only (the note's
      own id is the React key, so toggling `.highlighted` never replays this). */
+  /* `backwards`, not `both`: `both` keeps the entrance animation contributing
+     `opacity: 1` forever, and an animation always beats a plain declaration —
+     which silently blocked the Focus fade from ever dimming these notes (the
+     rail note in particular never faded, it only clipped). No delay-independent
+     end state is needed after the intro, so `backwards` gives the identical
+     staggered entrance and then hands opacity back to the CSS transitions. */
   .rail-note {
-    animation: fadeRise var(--dur-3) var(--ease-out) both;
+    animation: fadeRise var(--dur-3) var(--ease-out) backwards;
   }
   .inline-verse-notes .reading-note-card {
-    animation: fadeRise var(--dur-2) var(--ease-out) both;
+    animation: fadeRise var(--dur-2) var(--ease-out) backwards;
   }
 
   /* ── Entrance: the floating verse-selection action bar — the single most
@@ -239,6 +245,130 @@
   }
   .study-right--resizing {
     transition: none;
+  }
+
+  /* ── Distraction-free reading: fade, THEN settle ──
+     Toggling Focus (or "hide all notes") is TWO phases, sequenced so you never
+     watch a note squash shut or the text scramble:
+       HIDE:  notes fade out (fast) → then the gap they left eases closed and
+              the scripture settles into place.
+       SHOW:  the space eases open → then the notes fade back in.
+     main.css owns the end state (opacity:0 + collapsed rows/rail cap); this file
+     owns the timing, so a reduced-motion reader lands on that end state with no
+     motion at all. The reading measure is FIXED (see .scripture-grid), so
+     nothing here animates scripture width — the settle is the rail column easing
+     closed (grid recenters) and the in-flow notes' grid-rows collapsing, never a
+     re-wrap.
+
+     The phases are FULLY sequential (no overlap), timed with per-direction
+     transition-delays — the transition that applies is the one on the state
+     being transitioned TO:
+       SHOW: the space eases open on --dur-4 at delay 0; the opacity fade-in AND
+             the rail max-height cap-lift both wait the full --dur-4, so notes
+             only appear once the layout has finished opening. The delayed cap is
+             load-bearing: lifting it early would un-cap a rail note while its
+             column is still narrow, re-ballooning it into a big transient gap.
+       HIDE: notes fade out over --dur-4 at delay 0; then the --dur-4 settle
+             (and the cap) apply after --dur-4, so the gap closes only once notes
+             are fully gone.
+     Deliberately slow and SOFT: both the fade and the settle ride --dur-4 on
+     --ease-calm (a symmetric slow-in/slow-out), so notes emerge and dissolve
+     gently rather than snapping in — one unhurried, intentional gesture. */
+  .reading-note-card,
+  .rail-note,
+  .rail-passage-notes,
+  .inline-verse-notes,
+  .mobile-range-notes,
+  .verse-span-bracket {
+    transition:
+      opacity var(--dur-4) var(--ease-calm) var(--dur-4),
+      grid-template-rows var(--dur-4) var(--ease-calm),
+      max-height 0s var(--dur-4),
+      margin-top var(--dur-4) var(--ease-calm),
+      margin-bottom var(--dur-4) var(--ease-calm),
+      visibility 0s;
+  }
+  .app-shell.notes-hidden .reading-note-card,
+  .app-shell.notes-hidden .rail-note,
+  .app-shell.notes-hidden .rail-passage-notes,
+  .app-shell.notes-hidden .inline-verse-notes,
+  .app-shell.notes-hidden .mobile-range-notes,
+  .app-shell.notes-hidden .verse-span-bracket {
+    transition:
+      opacity var(--dur-4) var(--ease-calm),
+      grid-template-rows var(--dur-4) var(--ease-calm) var(--dur-4),
+      max-height 0s var(--dur-4),
+      margin-top var(--dur-4) var(--ease-calm) var(--dur-4),
+      margin-bottom var(--dur-4) var(--ease-calm) var(--dur-4),
+      visibility 0s calc(var(--dur-4) + var(--dur-4));
+  }
+  /* The rail column easing closed (scripture drifts to centre as it does).
+     grid-template-columns interpolates track-for-track; the scripture track is
+     fixed so only the rail track and the grid's centring move — no text reflow.
+     On SHOW it opens immediately (delay 0); on HIDE it waits out the fade. Runs
+     on the same slow --dur-4 settle as the rows so the whole close moves as one
+     calm gesture. */
+  .scripture-grid {
+    transition:
+      grid-template-columns var(--dur-4) var(--ease-calm),
+      column-gap var(--dur-4) var(--ease-calm);
+  }
+  .app-shell.notes-hidden .scripture-grid:not(.no-rail) {
+    transition:
+      grid-template-columns var(--dur-4) var(--ease-calm) var(--dur-4),
+      column-gap var(--dur-4) var(--ease-calm) var(--dur-4);
+  }
+
+  /* Collapse-on-scroll title fold (and Reading Mode's start-collapsed state). */
+  .book-detail-title {
+    transition:
+      max-height var(--dur-3) var(--ease-calm),
+      opacity var(--dur-3) var(--ease-calm),
+      margin-bottom var(--dur-3) var(--ease-calm);
+  }
+
+  /* ── Menu motion pattern (the reading-header translation switcher) ──
+     Calm in character but deliberately SHORT: a menu is a direct response to a
+     tap, so it lands on --dur-2/--ease-out (quick start, soft settle), not the
+     --dur-3 calm-reveal curve the notes use — the app should feel sharp here,
+     not sleepy. It grows from its top-right anchor with a small fade + scale on
+     open AND reverses on close, using `display` as a discrete transition
+     (`allow-discrete`) plus `@starting-style` for the enter-from values, so no
+     keyframe/fill-mode is pinned and the element can animate out while still
+     unmounting cleanly. Everything visual lives here (not main.css) so a
+     reduced-motion reader just gets the instant display flip. This is the shared
+     pattern the NavBar workspace/profile menus should adopt next. */
+  .nav-menu {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.97);
+    transition:
+      opacity var(--dur-2) var(--ease-out),
+      transform var(--dur-2) var(--ease-out),
+      display var(--dur-2) allow-discrete;
+  }
+  .nav-menu.open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  @starting-style {
+    .nav-menu.open {
+      opacity: 0;
+      transform: translateY(-5px) scale(0.97);
+    }
+  }
+  /* Each menu grows from the corner it's anchored to. */
+  .translation-chip-menu,
+  .profile-menu {
+    transform-origin: top right;
+  }
+  .workspace-menu {
+    transform-origin: top left;
+  }
+  .translation-chip-caret {
+    transition: transform var(--dur-1) var(--ease-out);
+  }
+  .translation-chip-btn[aria-expanded='true'] .translation-chip-caret {
+    transform: rotate(180deg);
   }
 
   /* ── Tactile press/hover system — a small, consistent lift-on-hover /
@@ -401,7 +531,12 @@
      focus" mechanism for as long as the animation is applying. .bottomnav
      has no such descendant, so it keeps the fuller settle-up motion. */
   .topnav {
-    animation: navFadeIn var(--dur-5) var(--ease-calm) both;
+    /* `backwards`, not `both`: `both` keeps the finished animation contributing
+       `opacity: 1` forever, and an animation always beats a plain declaration —
+       which would silently block the Focus chrome-recede below from ever dimming
+       this bar (same trap the .bottomnav note calls out). No delay here, so
+       `backwards` gives the identical intro then gets out of the way. */
+    animation: navFadeIn var(--dur-5) var(--ease-calm) backwards;
   }
   @keyframes navSettleUp {
     from {
@@ -557,15 +692,42 @@
    calmer curve — it should read as politely stepping aside, not as the UI
    snatching itself away mid-sentence. */
 @media (prefers-reduced-motion: no-preference) {
+  /* Base (unscoped) so the top bar's Reading-Mode collapse animates even as the
+     `.reading-surface` class itself is dropping — i.e. when returning to the
+     library, which is exactly where it used to jolt. */
+  .topnav {
+    transition:
+      height var(--dur-3) var(--ease-calm),
+      opacity var(--dur-3) var(--ease-calm);
+  }
   .app-shell.reading-surface .topnav,
   .app-shell.reading-surface .bottomnav,
   .app-shell.reading-surface .book-detail-chrome {
-    transition: transform var(--dur-2) var(--ease-out);
+    /* Adds the auto-hide transform slide on top of the height/opacity collapse;
+       padding-top eases the mobile top-band closing as the top bar collapses. */
+    transition:
+      transform var(--dur-2) var(--ease-out),
+      height var(--dur-3) var(--ease-calm),
+      opacity var(--dur-3) var(--ease-calm),
+      padding-top var(--dur-3) var(--ease-calm);
+  }
+  /* Reading Mode: the big title block + full chapter strip ease closed as the
+     one bar forms (and ease back open on exit). */
+  .app-shell.reading-surface .book-detail-titles,
+  .app-shell.reading-surface .chapter-selector-wrap {
+    transition:
+      max-height var(--dur-3) var(--ease-calm),
+      opacity var(--dur-3) var(--ease-calm),
+      margin-top var(--dur-3) var(--ease-calm),
+      padding-top var(--dur-3) var(--ease-calm),
+      padding-bottom var(--dur-3) var(--ease-calm);
   }
   .app-shell.reading-surface.chrome-hidden .topnav,
   .app-shell.reading-surface.chrome-hidden .bottomnav,
   .app-shell.reading-surface.chrome-hidden .book-detail-chrome {
-    transition: transform var(--dur-3) var(--ease-calm);
+    transition:
+      transform var(--dur-3) var(--ease-calm),
+      opacity var(--dur-3) var(--ease-calm);
   }
   /* The selection bar rides down into the space the tab bar vacates. */
   .app-shell.reading-surface .verse-action-bar {

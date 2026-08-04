@@ -1,20 +1,28 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { TRANSLATIONS, useTranslation } from '../utils/useTranslation'
 
-/** Closes the picker when a click lands outside `ref`. Mirrors NavBar's own click-outside helper. */
-function useClickOutside(
+/** Closes the picker on an outside click OR any scroll (the menu is anchored to
+ * a position that scrolls away, so it should dismiss rather than float). Mirrors
+ * NavBar's own click-outside helper. */
+function useDismissMenu(
   ref: React.RefObject<HTMLElement | null>,
-  onOutside: () => void,
+  onDismiss: () => void,
   active: boolean
 ): void {
   useEffect(() => {
     if (!active) return
-    const handler = (e: MouseEvent): void => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onOutside()
+    const onPointer = (e: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onDismiss()
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [ref, onOutside, active])
+    // Capture-phase so a scroll on any inner container (not just window) closes it.
+    const onScroll = (): void => onDismiss()
+    document.addEventListener('mousedown', onPointer)
+    window.addEventListener('scroll', onScroll, true)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      window.removeEventListener('scroll', onScroll, true)
+    }
+  }, [ref, onDismiss, active])
 }
 
 interface TranslationChipProps {
@@ -41,7 +49,7 @@ export default function TranslationChip({
   const [open, setOpen] = useState(false)
   const hostRef = useRef<HTMLDivElement>(null)
 
-  useClickOutside(
+  useDismissMenu(
     hostRef,
     useCallback(() => setOpen(false), []),
     open && visible
@@ -80,8 +88,17 @@ export default function TranslationChip({
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
-      {open && visible && (
-        <div className="nav-menu translation-chip-menu" role="menu">
+      {visible && (
+        <div
+          className={`nav-menu translation-chip-menu${open ? ' open' : ''}`}
+          role="menu"
+          // Kept mounted so it can animate CLOSED as well as open — the
+          // enter/exit is pure CSS (opacity/transform + `display` as a discrete
+          // transition, see motion.css). Hidden via `display: none` when closed,
+          // so its items stay out of the tab order. This is the shared menu
+          // motion pattern; NavBar's menus should adopt the same shape.
+          aria-hidden={!open}
+        >
           {TRANSLATIONS.map(t => (
             <button
               key={t.id}

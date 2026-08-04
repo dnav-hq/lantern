@@ -13,6 +13,7 @@ import ErrorBoundary from './ErrorBoundary'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import ReadingControls from './ReadingControls'
+import TranslationChip from './TranslationChip'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
 import { useChromeAutoHide } from '../utils/useScrollDirection'
 import {
@@ -184,6 +185,8 @@ interface ChapterViewProps {
   // present the view renders text on its FIRST frame — no skeleton, no await.
   // This is the whole reason a swipe to the next chapter feels instant.
   preloaded?: BiblePassage | null
+  // Verses to highlight + scroll to once loaded (after a "Save & Read").
+  initialHighlightVerses?: number[]
 }
 
 function ChapterView({
@@ -194,7 +197,8 @@ function ChapterView({
   onStudyChapter,
   onOpenStudy,
   onNotesChanged,
-  preloaded
+  preloaded,
+  initialHighlightVerses
 }: ChapterViewProps): React.ReactElement {
   const api = useApi()
   const [translation] = useTranslation()
@@ -317,6 +321,24 @@ function ChapterView({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // After "Save & Read": once the chapter's verses have rendered, highlight the
+  // just-written verses and scroll them into view. Consumed once per distinct
+  // highlight request (keyed on the verse list) so it never re-fires on an
+  // unrelated re-render.
+  const consumedHighlightRef = useRef<string>('')
+  useEffect(() => {
+    if (!initialHighlightVerses || initialHighlightVerses.length === 0) return
+    if (!bibleData || bibleData.verses.length === 0) return
+    const key = initialHighlightVerses.join(',')
+    if (consumedHighlightRef.current === key) return
+    consumedHighlightRef.current = key
+    setHighlightedVerses(new Set(initialHighlightVerses))
+    const first = initialHighlightVerses[0]
+    requestAnimationFrame(() => {
+      verseRowRefs.current.get(first)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }, [initialHighlightVerses, bibleData])
 
   // Current selection as an inclusive [start, end] range, or null.
   const selRange: [number, number] | null =
@@ -801,15 +823,10 @@ function ChapterView({
       if (!bracketByVerse.has(v)) bracketByVerse.set(v, g.main.category)
     }
   }
+  const lastVerse = verses[verses.length - 1]?.verse
   // Mobile: range notes render inline right after their LAST anchored verse (the
   // rail is desktop-only), so a note about vv.2-6 sits under v6 — with the verses
   // it covers — rather than being dumped at the bottom of the whole chapter.
-  const lastVerse = verses[verses.length - 1]?.verse
-  // Same overlap check as the selection action bar, applied to the whole
-  // chapter — "Study chapter" silently reopens an existing passage the same
-  // way "Start study on {ref}" does, so it needs the same verb treatment.
-  const chapterOverlap =
-    lastVerse !== undefined ? findOverlappingPassage(passages, chapter, 1, lastVerse) : undefined
   const mobileRangeByVerse = new Map<number, NoteGroup[]>()
   for (const g of rangeGroups) {
     const s = g.main.anchor_start_verse!
@@ -858,30 +875,6 @@ function ChapterView({
           >
             CHAPTER {chapter}
           </div>
-          <button
-            className="btn-study-chapter"
-            onClick={() => {
-              onStudyChapter(
-                chapterOverlap?.reference_label ?? `${bookName} ${chapter}`,
-                chapterOverlap?.id
-              )
-            }}
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            {chapterOverlap ? 'Continue chapter study' : 'Study chapter'}
-          </button>
         </div>
 
         {showVerseHint && (
@@ -910,9 +903,11 @@ function ChapterView({
         {/* Passage-level (anchorless) notes render above the grid, not bracketed. */}
         {passageGroups.length > 0 && (
           <div className="rail-passage-notes">
-            <div className="rail-passage-notes-label">Passage notes</div>
-            <div className="reading-notes-group">
-              {passageGroups.map(group => renderNoteGroup(group))}
+            <div className="note-collapse">
+              <div className="rail-passage-notes-label">Passage notes</div>
+              <div className="reading-notes-group">
+                {passageGroups.map(group => renderNoteGroup(group))}
+              </div>
             </div>
           </div>
         )}
@@ -962,7 +957,9 @@ function ChapterView({
                 {/* Single-verse notes render inline beneath their verse row. */}
                 {inlineHere && inlineHere.length > 0 && (
                   <div className="reading-notes-group inline-verse-notes">
-                    {inlineHere.map(group => renderNoteGroup(group))}
+                    <div className="note-collapse">
+                      {inlineHere.map(group => renderNoteGroup(group))}
+                    </div>
                   </div>
                 )}
 
@@ -970,7 +967,9 @@ function ChapterView({
                   (desktop uses the rail; this is display:none there). */}
                 {mobileRangeHere && mobileRangeHere.length > 0 && (
                   <div className="reading-notes-group mobile-range-notes">
-                    {mobileRangeHere.map(group => renderNoteGroup(group, { chip: true }))}
+                    <div className="note-collapse">
+                      {mobileRangeHere.map(group => renderNoteGroup(group, { chip: true }))}
+                    </div>
                   </div>
                 )}
 
@@ -1173,12 +1172,18 @@ interface BookDetailPageProps {
   onOpenStudy: (passageId: string) => void
   onRefresh?: () => void
   // Reading-context controls, hosted in this surface's own header rather than
-  // the global top bar (see ReadingControls).
+  // the global top bar (see ReadingControls). Reading Mode (chrome) and Hide
+  // Notes (content) are separate concerns.
   focusReading: boolean
   onToggleFocusReading: () => void
+  hideNotes: boolean
+  onToggleHideNotes: () => void
   // Reports which way the reader is scrolling, so the app shell can slide the
   // top bar / bottom tabs out of the way. See useScrollDirection.
   onChromeVisibleChange?: (visible: boolean) => void
+  // Verses to highlight + scroll to once the chapter loads (set after a
+  // "Save & Read" so the just-written notes are seen in context). Consumed once.
+  initialHighlightVerses?: number[]
 }
 
 export default function BookDetailPage({
@@ -1191,7 +1196,10 @@ export default function BookDetailPage({
   onRefresh,
   focusReading,
   onToggleFocusReading,
-  onChromeVisibleChange
+  hideNotes,
+  onToggleHideNotes,
+  onChromeVisibleChange,
+  initialHighlightVerses
 }: BookDetailPageProps): React.ReactElement {
   const api = useApi()
   const [translation] = useTranslation()
@@ -1207,7 +1215,9 @@ export default function BookDetailPage({
   // single line of scripture); on desktop it stays overflow:hidden and this
   // never fires. See .app-shell.reading-surface .book-detail-layout.
   const layoutRef = useRef<HTMLDivElement>(null)
-  useChromeAutoHide(layoutRef, true, onChromeVisibleChange)
+  // Reset to fully-visible chrome on every chapter change (see resetKey) — this
+  // is what stops the auto-hide from flip-flopping as you move between chapters.
+  useChromeAutoHide(layoutRef, true, onChromeVisibleChange, selectedChapter)
 
   const reloadNotes = useCallback(async (): Promise<void> => {
     const [notes, passages] = await Promise.all([
@@ -1326,7 +1336,7 @@ export default function BookDetailPage({
       <div className="book-detail-chrome" ref={chromeRef}>
         <div className="book-detail-header">
           <div className="book-detail-header-inner">
-            <div className="book-detail-header-main">
+            <div className="book-detail-header-lead">
               <button className="book-detail-back" onClick={onBack}>
                 <svg
                   width="14"
@@ -1342,7 +1352,14 @@ export default function BookDetailPage({
                 </svg>
                 Library
               </button>
-              <div>
+            </div>
+            {/* The centered reference area. Normal mode shows the big title +
+                meta; Reading Mode collapses those and shows a compact
+                "‹ John 1 ›" (reference centered, a chapter arrow on either side
+                — the Bible-app convention). Both centered, so the transition
+                between them is clean. */}
+            <div className="book-detail-header-center">
+              <div className="book-detail-titles">
                 <h1 className="book-detail-title">{bibleBook.name}</h1>
                 <div className="book-detail-meta">
                   {bibleBook.chapters} chapters
@@ -1354,11 +1371,66 @@ export default function BookDetailPage({
                   )}
                 </div>
               </div>
+              <div className="book-detail-ref-group" aria-hidden={!focusReading}>
+                <button
+                  className="reading-chapter-nav-btn"
+                  onClick={() =>
+                    selectedChapter > 1 && onNavigateChapter(bibleBook.name, selectedChapter - 1)
+                  }
+                  disabled={selectedChapter <= 1}
+                  aria-label="Previous chapter"
+                >
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                </button>
+                <span className="book-detail-ref-inline">
+                  {bibleBook.name} {selectedChapter}
+                </span>
+                <button
+                  className="reading-chapter-nav-btn"
+                  onClick={() =>
+                    selectedChapter < bibleBook.chapters &&
+                    onNavigateChapter(bibleBook.name, selectedChapter + 1)
+                  }
+                  disabled={selectedChapter >= bibleBook.chapters}
+                  aria-label="Next chapter"
+                >
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+              </div>
             </div>
-            <ReadingControls
-              focusReading={focusReading}
-              onToggleFocusReading={onToggleFocusReading}
-            />
+            <div className="book-detail-header-controls">
+              {/* Translation as a subtle top-right chip (the Bible-app
+                  convention), then the two muted toggles. */}
+              <TranslationChip />
+              <ReadingControls
+                focusReading={focusReading}
+                onToggleFocusReading={onToggleFocusReading}
+                hideNotes={hideNotes}
+                onToggleHideNotes={onToggleHideNotes}
+              />
+            </div>
           </div>
         </div>
 
@@ -1443,6 +1515,7 @@ export default function BookDetailPage({
                   onOpenStudy={onOpenStudy}
                   onNotesChanged={reloadNotes}
                   preloaded={getPreloaded(current)}
+                  initialHighlightVerses={initialHighlightVerses}
                 />
               </ErrorBoundary>
               <ChapterFlowNav prev={prev} next={next} onGo={swipe.go} />
