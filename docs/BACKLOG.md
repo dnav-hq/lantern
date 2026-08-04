@@ -60,10 +60,21 @@ prioritized.
     entry button so the guest tree is reachable now; the designed hero CTA
     ("Read the Bible free — no account needed") replaces it and is a design
     pass on `src/components/landing/`, untouched by G1 on purpose.
-  - **G4a — one deep-linkable route** (§7), `/read/<book>/<chapter>`, on-load
-    parsing only (no `pushState`-as-you-browse for v1). The guest reader's
-    location state is already book-number + chapter, which is the shape a URL
-    parser needs to produce.
+  - **G4a — one deep-linkable route — is DONE (2026-08-03).** `src/utils/deepLink.ts`
+    is a pure `parseDeepLink(pathname)` parsing `/read/<book>/<chapter>` (book
+    by name/alias/slug via `bibleBooks.ts`, case-insensitive, multi-word and
+    numbered books like `1-john` / `1 John`; chapter numeric and range-checked)
+    — unit-tested for a plain book, a numbered book, a multi-word book, an
+    unknown book, an out-of-range chapter, and trailing/casing variants; any
+    miss is `null`, never a throw. `Root.tsx` reads it once at startup
+    (module-level — v1 is on-load parsing only, no `pushState`-as-you-browse)
+    and threads it to whichever surface actually renders: a signed-out visitor
+    is dropped straight into guest reading on that passage with no sign-in
+    wall (`enterGuestMode()` fires even without the persisted flag), a
+    signed-in visitor's `App` opens directly on the equivalent reading
+    surface, and `GuestReader`/`App` both already had the book-number +
+    chapter shape this needed. No hosting/redirect-config change — this rides
+    the existing SPA fallback, per the spec.
   - **G4b — edge-rendered per-passage previews + crawlable HTML.**
     `docs/proposals/guest-deep-link-seo.md` (2026-08-03) covers the layer on
     top of G4a's URLs: recommends a Cloudflare Pages Function intercepting
@@ -75,8 +86,8 @@ prioritized.
     `docs/proposals/translations-esv-niv.md`. Separates link-preview value
     (high, achievable) from search-ranking value (low near-term, saturated
     niche against BibleGateway/YouVersion — explicitly not promised). Pairs
-    with a static sitemap/robots.txt/canonical pass. Depends on G4a landing
-    first. Not started.
+    with a static sitemap/robots.txt/canonical pass. G4a has landed; not
+    started.
 
 - **Internal `Berean*` identifiers stay — standing decision, not pending work.**
   `BereanApi`, `berean-api.ts`, `SupabaseBereanApi`, and the persisted keys

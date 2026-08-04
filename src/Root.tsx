@@ -9,6 +9,7 @@ import { SupabaseBereanApi } from './api/berean-api'
 import { getProfile, getSession, onAuthStateChange, signOut, type Profile } from './api/auth'
 import { enterGuestMode, exitGuestMode, isGuestMode } from './components/guestMode'
 import type { BereanApi, UserSettings } from './api/types'
+import { parseDeepLink, type DeepLinkTarget } from './utils/deepLink'
 
 // Root decides which backend the app runs against:
 //   - Supabase configured -> auth-gated app (sign-in -> onboarding -> App).
@@ -39,6 +40,14 @@ function signedOutPhase(): Phase {
   return isGuestMode() ? 'guest' : 'signedOut'
 }
 
+// G4a (docs/BACKLOG.md, docs/proposals/guest-preview-mode.md §7): read once at
+// startup, module-level rather than in a hook, because v1 is on-load parsing
+// ONLY — there is no pushState-as-you-navigate to keep this in sync with, so
+// re-deriving it on a later render would be pointless. A miss (unknown book,
+// out-of-range chapter, anything malformed) is just `null`, and every reader
+// below already has a no-deep-link path — that's the whole degrade story.
+const deepLinkTarget: DeepLinkTarget | null = parseDeepLink(window.location.pathname)
+
 // ─── Memory (dev) path ───────────────────────────────────────────────────────
 function MemoryRoot(): React.ReactElement {
   const [api] = useState<BereanApi>(() => {
@@ -48,7 +57,7 @@ function MemoryRoot(): React.ReactElement {
   })
   return (
     <ApiProvider api={api}>
-      <App displayName={null} onSignOut={null} />
+      <App displayName={null} onSignOut={null} initialDeepLink={deepLinkTarget} />
     </ApiProvider>
   )
 }
@@ -87,7 +96,13 @@ function SupabaseRoot(): React.ReactElement {
     getSession().then(session => {
       if (!active) return
       if (session) void enter()
-      else setPhase(signedOutPhase())
+      else {
+        // A deep link always opens guest reading with no wall (G4a,
+        // guest-preview-mode.md §7) — including for a first-ever visitor who
+        // never tapped "Read as guest" and so has no persisted flag yet.
+        if (deepLinkTarget) enterGuestMode()
+        setPhase(signedOutPhase())
+      }
     })
     const unsub = onAuthStateChange(user => {
       if (!active) return
@@ -137,6 +152,7 @@ function SupabaseRoot(): React.ReactElement {
             exitGuestMode()
             setPhase('signedOut')
           }}
+          initialLocation={deepLinkTarget}
         />
       </Suspense>
     )
@@ -160,6 +176,7 @@ function SupabaseRoot(): React.ReactElement {
         displayName={profile?.display_name || null}
         onSignOut={handleSignOut}
         accountSettings={accountSettings}
+        initialDeepLink={deepLinkTarget}
       />
     </ApiProvider>
   )

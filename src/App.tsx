@@ -18,6 +18,7 @@ import { useTheme } from './utils/useTheme'
 import { useTranslation } from './utils/useTranslation'
 import { useTextSize } from './utils/useTextSize'
 import { resolveSettingsAdoption, type UserSettings } from './api/types'
+import type { DeepLinkTarget } from './utils/deepLink'
 
 // Persisted "hide all notes" preference — the standalone reading control, kept
 // separate from the transient Focus toggle (which hides notes for the session
@@ -49,6 +50,11 @@ interface AppProps {
   // below). Undefined is not a valid state once signed in; Root always
   // resolves this to at least `{}` before rendering App.
   accountSettings?: UserSettings | null
+  // A resolved G4a deep link (Root.tsx parses `/read/<book>/<chapter>` once at
+  // startup) — where a signed-in visitor's reading surface should open instead
+  // of the library. Read once, into the initial state below; v1 is on-load
+  // parsing only, so this is never consulted again after mount.
+  initialDeepLink?: DeepLinkTarget | null
 }
 
 interface AppState {
@@ -72,7 +78,8 @@ interface AppState {
 export default function App({
   displayName,
   onSignOut,
-  accountSettings = null
+  accountSettings = null,
+  initialDeepLink = null
 }: AppProps): React.ReactElement {
   const api = useApi()
   const [isDark, toggleDark, setDark] = useDarkMode()
@@ -150,15 +157,23 @@ export default function App({
     return () => clearTimeout(timer)
   }, [isDark, theme, translation, hideNotes, isSignedIn, api])
 
-  const [state, setState] = useState<AppState>({
-    destination: 'bible',
-    passages: [],
-    selectedBookName: null,
-    selectedPassageId: null,
-    selectedChapter: null,
-    studyReference: '',
-    studyPassageId: null,
-    highlightAfterSave: null
+  // A deep link resolves to a valid book/chapter by construction (Root.tsx
+  // only ever passes what parseDeepLink accepted), but a defensive lookup miss
+  // still falls back to the ordinary library start state rather than crash.
+  const [state, setState] = useState<AppState>(() => {
+    const deepLinkBook = initialDeepLink
+      ? BIBLE_BOOKS.find(b => b.number === initialDeepLink.bookNumber)
+      : undefined
+    return {
+      destination: 'bible',
+      passages: [],
+      selectedBookName: deepLinkBook?.name ?? null,
+      selectedPassageId: null,
+      selectedChapter: deepLinkBook ? initialDeepLink!.chapter : null,
+      studyReference: '',
+      studyPassageId: null,
+      highlightAfterSave: null
+    }
   })
   // Mobile-only: the dedicated search surface (an overlay). Desktop search is
   // the always-present top-bar input, so this stays false there.
