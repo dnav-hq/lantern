@@ -129,10 +129,27 @@ export function useChromeAutoHide(
     onChangeRef.current?.(true)
     let frame = 0
 
+    // Just after (re)mount and every chapter change (resetKey re-runs this
+    // effect), the view programmatically scrolls to the top and reflows. Those
+    // are NOT the reader hiding the chrome, so we swallow them for a short
+    // settle window — the chrome stays put and never flickers on navigation.
+    let settling = true
+    const settleTimer = setTimeout(() => {
+      settling = false
+      const node = ref.current
+      if (node) stateRef.current = initialChromeState(node.scrollTop)
+    }, 400)
+
     const sample = (): void => {
       frame = 0
       const node = ref.current
       if (!node) return
+      if (settling) {
+        // Track the position so travel starts clean once settling ends, but
+        // never change visibility during the window.
+        stateRef.current = initialChromeState(node.scrollTop)
+        return
+      }
       const next = nextChromeState(stateRef.current, {
         y: node.scrollTop,
         maxY: node.scrollHeight - node.clientHeight
@@ -152,6 +169,7 @@ export function useChromeAutoHide(
 
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => {
+      clearTimeout(settleTimer)
       el.removeEventListener('scroll', onScroll)
       if (frame !== 0) cancelAnimationFrame(frame)
       // Leaving the surface must never strand the chrome off-screen.

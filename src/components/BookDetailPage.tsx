@@ -187,6 +187,10 @@ interface ChapterViewProps {
   preloaded?: BiblePassage | null
   // Verses to highlight + scroll to once loaded (after a "Save & Read").
   initialHighlightVerses?: number[]
+  // Skip the verse-by-verse entrance reveal — set when this chapter arrived via
+  // a swipe/edge-arrow (its text was already slid on screen), so it doesn't
+  // flicker by fading in again on commit.
+  suppressEntrance?: boolean
 }
 
 function ChapterView({
@@ -198,10 +202,16 @@ function ChapterView({
   onOpenStudy,
   onNotesChanged,
   preloaded,
-  initialHighlightVerses
+  initialHighlightVerses,
+  suppressEntrance
 }: ChapterViewProps): React.ReactElement {
   const api = useApi()
   const [translation] = useTranslation()
+  // Frozen at mount: this instance is keyed per chapter, so whether it arrived
+  // via a swipe is decided once. Freezing it means a later re-render (notes
+  // loading) can't drop the class and accidentally trigger the entrance
+  // animation mid-life.
+  const entranceSuppressed = useRef(suppressEntrance).current
   const [bibleData, setBibleData] = useState<BiblePassage | null>(preloaded ?? null)
   const [loading, setLoading] = useState(!preloaded)
   // Read inside the fetch effect rather than listed as a dependency: a
@@ -840,7 +850,7 @@ function ChapterView({
   return (
     <div
       ref={containerRef}
-      className="chapter-marquee-surface"
+      className={`chapter-marquee-surface${entranceSuppressed ? ' no-entrance' : ''}`}
       onPointerDown={containerPointerDown}
       onClick={handleBackgroundClick}
     >
@@ -1217,7 +1227,12 @@ export default function BookDetailPage({
   const layoutRef = useRef<HTMLDivElement>(null)
   // Reset to fully-visible chrome on every chapter change (see resetKey) — this
   // is what stops the auto-hide from flip-flopping as you move between chapters.
-  useChromeAutoHide(layoutRef, true, onChromeVisibleChange, selectedChapter)
+  // Disabled in Reading Mode: the one bar shouldn't auto-hide, and — key for the
+  // exit flicker — toggling `enabled` re-initialises the machine, so leaving
+  // Reading Mode always starts fresh/visible instead of re-asserting a stale
+  // scrolled-away state. `selectedChapter` as the reset key keeps navigation
+  // from flip-flopping the chrome.
+  useChromeAutoHide(layoutRef, !focusReading, onChromeVisibleChange, selectedChapter)
 
   const reloadNotes = useCallback(async (): Promise<void> => {
     const [notes, passages] = await Promise.all([
@@ -1281,6 +1296,14 @@ export default function BookDetailPage({
   const chromeRef = useRef<HTMLDivElement>(null)
   const reducedMotion = usePrefersReducedMotion()
 
+  // A chapter reached by SWIPING (or the edge arrows) has already slid its text
+  // onto the screen, so replaying the verse-by-verse entrance on commit makes
+  // the text visibly disappear and reappear. We record the chapter the deck is
+  // heading to; the entrance is then suppressed only for the mount whose chapter
+  // matches it (a pill/search jump targets a different chapter, so it still gets
+  // the reveal). No reset/timing needed — the match is naturally one-shot.
+  const deckTargetRef = useRef<number | null>(null)
+
   const canGo = useCallback(
     (delta: number): boolean => adjacentChapter(bibleBook.number, selectedChapter, delta) !== null,
     [bibleBook.number, selectedChapter]
@@ -1289,6 +1312,7 @@ export default function BookDetailPage({
     (delta: number): void => {
       const target = adjacentChapter(bibleBook.number, selectedChapter, delta)
       if (!target) return
+      deckTargetRef.current = target.chapter
       onNavigateChapter(target.bookName, target.chapter)
     },
     [bibleBook.number, selectedChapter, onNavigateChapter]
@@ -1316,6 +1340,9 @@ export default function BookDetailPage({
     layoutRef.current?.scrollTo({ top: 0 })
     contentRef.current?.scrollTo({ top: 0 })
   }, [selectedChapter])
+
+  // Suppress the entrance only when this chapter is the one the deck slid to.
+  const suppressEntrance = deckTargetRef.current === selectedChapter
 
   // The neighbour is absolutely positioned inside a deck that may be scrolled
   // far past its own top, so it is offset to start at the reader's eye line —
@@ -1516,6 +1543,7 @@ export default function BookDetailPage({
                   onNotesChanged={reloadNotes}
                   preloaded={getPreloaded(current)}
                   initialHighlightVerses={initialHighlightVerses}
+                  suppressEntrance={suppressEntrance}
                 />
               </ErrorBoundary>
               <ChapterFlowNav prev={prev} next={next} onGo={swipe.go} />

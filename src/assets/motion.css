@@ -221,6 +221,16 @@
     animation: fadeRise var(--dur-2) var(--ease-out) both;
     animation-delay: min(calc(var(--stagger-i, 0) * 18ms), 320ms);
   }
+  /* A chapter reached by swiping/edge-arrows already slid its content on screen,
+     so its verses and notes must NOT replay the entrance reveal (that reads as
+     the text disappearing and flashing back). See suppressEntrance/no-entrance
+     in BookDetailPage. */
+  .no-entrance .reading-verse-block,
+  .no-entrance .passage-verse,
+  .no-entrance .rail-note,
+  .no-entrance .inline-verse-notes .reading-note-card {
+    animation: none;
+  }
 
   /* NOTE: page-content entrance animation (library header/grid, journal
      header/list) was tried across several rounds — mechanical stagger, a
