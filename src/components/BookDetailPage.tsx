@@ -18,6 +18,7 @@ import { useVerseMarquee } from '../utils/useVerseMarquee'
 import { useChromeAutoHide } from '../utils/useScrollDirection'
 import {
   adjacentChapter,
+  chapterKeyOf,
   chapterLabel,
   useChapterPreload,
   useChapterSwipe,
@@ -1252,11 +1253,29 @@ export default function BookDetailPage({
 
   const chaptersWithNotes = new Set(allNotes.map(n => n.chapter_start))
 
+  // Keep the active pill in view along the STRIP'S OWN axis, and only that axis.
+  // This used to be scrollIntoView({ inline: 'nearest' }) — whose `block`
+  // silently defaults to 'start', so it also scrolled the reading surface until
+  // the pill reached the top. The pill lives in sticky chrome and therefore
+  // never can, so every chapter change quietly stole ~the chrome's height of
+  // vertical scroll: land on a new chapter and verse 1 was already tucked up
+  // under the header. Measured, not guessed — 144px on a 390px viewport.
   useEffect(() => {
-    const sel = chapterSelectorRef.current?.querySelector(
-      '.chapter-pill.active'
-    ) as HTMLElement | null
-    sel?.scrollIntoView({ inline: 'nearest', behavior: 'smooth' })
+    const strip = chapterSelectorRef.current
+    const pill = strip?.querySelector('.chapter-pill.active') as HTMLElement | null
+    if (!strip || !pill) return
+    const left =
+      pill.getBoundingClientRect().left - strip.getBoundingClientRect().left + strip.scrollLeft
+    const right = left + pill.offsetWidth
+    // Stop a pill short of the edge, so the neighbour you'd tap next is visible.
+    const margin = pill.offsetWidth
+    const from = strip.scrollLeft
+    const max = Math.max(0, strip.scrollWidth - strip.clientWidth)
+    let to = from
+    if (left - margin < from) to = left - margin
+    else if (right + margin > from + strip.clientWidth) to = right + margin - strip.clientWidth
+    to = Math.min(Math.max(to, 0), max)
+    if (to !== from) strip.scrollTo({ left: to, behavior: 'smooth' })
   }, [selectedChapter])
 
   const scrollChapters = (dir: number): void => {
@@ -1327,7 +1346,16 @@ export default function BookDetailPage({
     enabled: true
   })
 
-  const peekTarget = swipe.peek === 1 ? next : swipe.peek === -1 ? prev : null
+  // On the handover render the neighbour on screen has just BECOME the current
+  // chapter, so it is rendered as the primary pane (below) and no new neighbour
+  // is mounted — one built and discarded a frame later is pure jank.
+  const peekTarget = swipe.promoting
+    ? null
+    : swipe.peek === 1
+      ? next
+      : swipe.peek === -1
+        ? prev
+        : null
 
   // A new chapter starts at its first verse, not wherever the last one was
   // left. Layout effect so this lands in the same frame the chapter does.
@@ -1348,9 +1376,19 @@ export default function BookDetailPage({
   // far past its own top, so it is offset to start at the reader's eye line —
   // otherwise sliding one in from the side reveals blank space above it.
   useLayoutEffect(() => {
-    const pane = deckRef.current?.querySelector('.chapter-pane--peek') as HTMLElement | null
-    if (!swipe.peek || !pane || !deckRef.current) return
-    const deckTop = deckRef.current.getBoundingClientRect().top
+    const deck = deckRef.current
+    if (!deck) return
+    const pane = swipe.peek
+      ? (deck.querySelector('.chapter-pane--peek') as HTMLElement | null)
+      : null
+    // A promoted pane is back in normal flow but still wearing the inline offset
+    // it was given as the neighbour. Written imperatively, so React won't clear
+    // it for us.
+    for (const other of deck.querySelectorAll('.chapter-pane')) {
+      if (other !== pane) (other as HTMLElement).style.top = ''
+    }
+    if (!pane) return
+    const deckTop = deck.getBoundingClientRect().top
     const chromeBottom = chromeRef.current?.getBoundingClientRect().bottom ?? 0
     pane.style.top = `${Math.max(0, Math.max(0, chromeBottom) - deckTop)}px`
   }, [swipe.peek])
@@ -1531,49 +1569,57 @@ export default function BookDetailPage({
           onPointerDown={swipe.onPointerDown}
         >
           <div className="chapter-deck-track" ref={trackRef}>
-            <div className="chapter-pane">
-              <ErrorBoundary variant="pane" key={`${bibleBook.name}-${selectedChapter}`}>
-                <ChapterView
-                  bookName={bibleBook.name}
-                  chapter={selectedChapter}
-                  notes={allNotes}
-                  passages={bookPassages}
-                  onStudyChapter={onStudy}
-                  onOpenStudy={onOpenStudy}
-                  onNotesChanged={reloadNotes}
-                  preloaded={getPreloaded(current)}
-                  initialHighlightVerses={initialHighlightVerses}
-                  suppressEntrance={suppressEntrance}
-                />
-              </ErrorBoundary>
-              <ChapterFlowNav prev={prev} next={next} onGo={swipe.go} />
-            </div>
-
-            {peekTarget && (
-              <div
-                className={`chapter-pane chapter-pane--peek ${swipe.peek === 1 ? 'is-next' : 'is-prev'}`}
-                aria-hidden="true"
-              >
-                <ErrorBoundary
-                  variant="pane"
-                  key={`peek-${peekTarget.bookName}-${peekTarget.chapter}`}
+            {/* Both panes are keyed by CHAPTER, not by their role, and that is
+                the whole trick: when a swipe commits, the neighbour's key is
+                the one the primary pane now carries, so React reuses that exact
+                subtree — the scripture already slid into view simply becomes
+                the chapter, in place. Keying the primary by chapter (as this
+                did) instead unmounted the incoming pane and rebuilt it from
+                scratch in the same frame, which is the flash on settle. */}
+            {[
+              { ref: current, peek: false },
+              ...(peekTarget ? [{ ref: peekTarget, peek: true }] : [])
+            ].map(({ ref, peek }) => {
+              const sameBook = ref.bookNumber === bibleBook.number
+              return (
+                <div
+                  key={chapterKeyOf(ref)}
+                  className={
+                    peek
+                      ? `chapter-pane chapter-pane--peek ${swipe.peek === 1 ? 'is-next' : 'is-prev'}`
+                      : 'chapter-pane'
+                  }
+                  aria-hidden={peek ? 'true' : undefined}
                 >
-                  <ChapterView
-                    bookName={peekTarget.bookName}
-                    chapter={peekTarget.chapter}
-                    // Notes are per book: a neighbour in ANOTHER book has none
-                    // loaded yet, and this pane only exists for the length of
-                    // the transition — the real chapter loads them on arrival.
-                    notes={peekTarget.bookNumber === bibleBook.number ? allNotes : []}
-                    passages={peekTarget.bookNumber === bibleBook.number ? bookPassages : []}
-                    onStudyChapter={noop}
-                    onOpenStudy={noop}
-                    onNotesChanged={noop}
-                    preloaded={getPreloaded(peekTarget)}
-                  />
-                </ErrorBoundary>
-              </div>
-            )}
+                  {/* Keyed by the pane, so a chapter that throws still gets a
+                      clean boundary — without a key of its own, which would
+                      remount the very subtree we are preserving. */}
+                  <ErrorBoundary variant="pane">
+                    <ChapterView
+                      bookName={ref.bookName}
+                      chapter={ref.chapter}
+                      // Notes are per book: a neighbour in ANOTHER book has none
+                      // loaded yet, and it only wears that state for the length
+                      // of the transition — arriving reloads them for real.
+                      notes={sameBook ? allNotes : []}
+                      passages={sameBook ? bookPassages : []}
+                      onStudyChapter={peek ? noop : onStudy}
+                      onOpenStudy={peek ? noop : onOpenStudy}
+                      onNotesChanged={peek ? noop : reloadNotes}
+                      preloaded={getPreloaded(ref)}
+                      initialHighlightVerses={peek ? undefined : initialHighlightVerses}
+                      // Scenery reveals nothing: the neighbour must not play the
+                      // verse-by-verse entrance while it is sliding in, and it
+                      // keeps this decision after it is promoted (the flag is
+                      // frozen at mount). A pill or search jump mounts a fresh
+                      // pane instead, and still gets the reveal.
+                      suppressEntrance={peek ? true : suppressEntrance}
+                    />
+                  </ErrorBoundary>
+                  {!peek && <ChapterFlowNav prev={prev} next={next} onGo={swipe.go} />}
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>

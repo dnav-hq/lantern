@@ -2946,24 +2946,47 @@ body.dark .search-backdrop {
   position: relative;
   transition: all 0.1s;
   padding: 0 6px;
+  /* A tap must leave no mark of its own: the grey plate mobile browsers paint
+     over a pressed button is a second, competing highlight on the pill you just
+     selected — the reason a TAPPED chapter looked different from a SWIPED one.
+     Every other tappable control here already does this. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Hover is a border/text cue only — NOT a grey fill. A fill reads as a second
    selection next to the active pill's accent fill (e.g. when the pointer sits on
    one pill while a swipe moves the active state to another), which is the
-   "two highlights" confusion. Only .active fills. */
-@media (hover: hover) {
+   "two highlights" confusion. Only .active fills.
+   `pointer: fine` as well as `hover: hover`: a hybrid device (touch screen with
+   a mouse attached) reports hover support, and the sticky :hover a tap leaves
+   behind there is the same phantom second highlight. */
+@media (hover: hover) and (pointer: fine) {
   .chapter-pill:hover:not(.active) {
+    border-color: var(--text-faint);
+    color: var(--text);
+  }
+  body.dark .chapter-pill:hover:not(.active) {
     border-color: var(--text-faint);
     color: var(--text);
   }
 }
 
-.chapter-pill.active {
+/* dark.css still carries the pre-fix `body.dark .chapter-pill:hover` grey fill.
+   It is guarded by neither `:not(.active)` nor a hover media query, and being
+   more specific than `.chapter-pill.active` it BEATS the accent fill outright —
+   so on a phone in dark mode the sticky :hover left by a tap repainted the
+   just-tapped pill grey while a swiped one kept the accent. Neutralised here by
+   specificity (which makes the order of the two sheets irrelevant) rather than
+   edited there, because dark.css is outside this change's scope; the tidier fix
+   is to delete that rule at the source. */
+body.dark .chapter-pill:hover:not(.active) {
+  background: transparent;
+  color: var(--text-faint);
+}
+body.dark .chapter-pill.active:hover {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
-  font-weight: 600;
 }
 
 .chapter-pill.has-notes {
@@ -2971,8 +2994,17 @@ body.dark .search-backdrop {
   border-color: var(--accent-weak);
 }
 
+/* .active LAST, and it owns every visual dimension it sets. It used to sit
+   above .has-notes at equal specificity, so a studied chapter's active pill
+   silently kept the weak .has-notes border — the accent-filled highlight came
+   in two slightly different shapes depending on whether the chapter had notes,
+   which is not "exactly one highlight". */
+.chapter-pill.active,
 .chapter-pill.active.has-notes {
+  background: var(--accent);
+  border-color: var(--accent);
   color: var(--on-accent);
+  font-weight: 600;
 }
 
 .chapter-note-dot {

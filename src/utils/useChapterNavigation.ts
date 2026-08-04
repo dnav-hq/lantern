@@ -270,6 +270,17 @@ export interface ChapterSwipeState {
   peek: number
   /** True while a finger owns the gesture or a settle is running. */
   sliding: boolean
+  /**
+   * True for exactly the render in which a committed swipe's destination has
+   * become the current chapter but `peek` has not been torn down yet.
+   *
+   * That single render is the handover: the neighbour already on screen IS the
+   * new chapter, so the caller must render it as the primary pane (same React
+   * key, hence the same DOM — no remount, no flash) and must NOT mount a fresh
+   * neighbour for the chapter beyond it, which would be built and thrown away
+   * one frame later.
+   */
+  promoting: boolean
   onPointerDown: (e: React.PointerEvent) => void
   /** Same transition, driven by the prev/next affordances. */
   go: (delta: number) => void
@@ -310,9 +321,13 @@ export function useChapterSwipe(options: ChapterSwipeOptions): ChapterSwipeState
   // A `go()` that has mounted its neighbour and is waiting for the layout
   // effect below to start the animation.
   const queued = useRef(0)
+  // The chapter the deck was showing when the current commit started. While the
+  // settle runs it equals `chapterKey`; the moment the navigation lands they
+  // differ, and that difference is the handover render (see `promoting`).
+  const committedFrom = useRef<string | null>(null)
 
-  const latest = useRef({ canGo, onNavigate, reducedMotion, enabled })
-  latest.current = { canGo, onNavigate, reducedMotion, enabled }
+  const latest = useRef({ canGo, onNavigate, reducedMotion, enabled, chapterKey })
+  latest.current = { canGo, onNavigate, reducedMotion, enabled, chapterKey }
 
   const writeTransform = useCallback(
     (x: number): void => {
@@ -344,6 +359,7 @@ export function useChapterSwipe(options: ChapterSwipeOptions): ChapterSwipeState
   useLayoutEffect(() => {
     if (!settling.current) return
     settling.current = false
+    committedFrom.current = null
     clearTrack()
     setPeek(0)
     setSliding(false)
@@ -367,6 +383,7 @@ export function useChapterSwipe(options: ChapterSwipeOptions): ChapterSwipeState
       }
 
       settling.current = true
+      committedFrom.current = latest.current.chapterKey
       setSliding(true)
       el.style.transition = `transform ${SWIPE_SETTLE_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`
       // One frame of headroom so the browser has a start value to animate FROM
@@ -545,5 +562,11 @@ export function useChapterSwipe(options: ChapterSwipeOptions): ChapterSwipeState
 
   useEffect(() => clearTrack, [clearTrack])
 
-  return { peek, sliding, onPointerDown, go }
+  // Read, never written, during render — the refs it consults are only ever
+  // written from effects and handlers, so a StrictMode double render sees the
+  // same answer twice.
+  const promoting =
+    settling.current && committedFrom.current !== null && committedFrom.current !== chapterKey
+
+  return { peek, sliding, promoting, onPointerDown, go }
 }
