@@ -1372,6 +1372,16 @@ export default function BookDetailPage({
   // Suppress the entrance only when this chapter is the one the deck slid to.
   const suppressEntrance = deckTargetRef.current === selectedChapter
 
+  // ...and only for THAT arrival. The match is one-shot per navigation, not per
+  // chapter: leave the chapter and come back to it by tapping its pill and the
+  // stale target would still match, silently swallowing the reveal that a
+  // pill/search jump is supposed to get. Cleared after the commit that consumed
+  // it — ChapterView freezes the flag at mount, so this can't unsuppress a pane
+  // mid-life.
+  useEffect(() => {
+    deckTargetRef.current = null
+  }, [selectedChapter])
+
   // The neighbour is absolutely positioned inside a deck that may be scrolled
   // far past its own top, so it is offset to start at the reader's eye line —
   // otherwise sliding one in from the side reveals blank space above it.

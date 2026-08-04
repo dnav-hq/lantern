@@ -2735,13 +2735,17 @@ body.dark .search-backdrop {
   align-items: center;
   gap: 12px;
 }
+/* No `min-width: 0` here on purpose: the lead track must never be squeezed
+   narrower than the back button, because the button doesn't shrink — it just
+   prints over whatever the centre column holds. At 320px (and on any phone once
+   the book name is long) that put "Library" straight on top of the ‹ chapter
+   arrow. The CENTRE gives way instead; see .book-detail-ref-inline. */
 .book-detail-header-lead {
   grid-column: 1;
   justify-self: start;
   display: flex;
   align-items: center;
   gap: 14px;
-  min-width: 0;
 }
 .book-detail-header-center {
   grid-column: 2;
@@ -2757,6 +2761,9 @@ body.dark .search-backdrop {
   display: none;
   align-items: center;
   gap: 10px;
+  /* Shrinkable, so the grid can hand the space back to the back button and the
+     controls rather than letting the reference overrun them. */
+  min-width: 0;
 }
 .book-detail-header-controls {
   grid-column: 3;
@@ -3183,11 +3190,19 @@ body.dark .chapter-pill.active.has-notes {
    NOT `display: none` — so entering and leaving Reading Mode (and going back to
    the library) eases smoothly instead of snapping/jolting. motion.css owns the
    timing; a reduced-motion reader lands on these end states instantly. */
+/* `visibility: hidden` as well as height/opacity: a collapsed bar still holds
+   real buttons (the whole chapter strip below is ~150 of them), and a bar that
+   is only 0px tall and transparent keeps every one of them in the TAB ORDER and
+   in the a11y tree — a keyboard reader in Reading Mode tabbed through controls
+   they could not see. `visibility` is a discrete property, so motion.css flips
+   it at the END of the collapse and at the START of the reveal; the animation
+   itself is unchanged, and a reduced-motion reader just lands here instantly. */
 .app-shell.focus-reading .topnav {
   height: 0;
   opacity: 0;
   overflow: hidden;
   pointer-events: none;
+  visibility: hidden;
   border-bottom-width: 0;
 }
 .app-shell.focus-reading .book-detail-header {
@@ -3199,6 +3214,7 @@ body.dark .chapter-pill.active.has-notes {
   opacity: 0;
   margin-top: 0;
   overflow: hidden;
+  visibility: hidden;
 }
 .app-shell.focus-reading .chapter-selector-wrap {
   max-height: 0;
@@ -3207,6 +3223,7 @@ body.dark .chapter-pill.active.has-notes {
   padding-bottom: 0;
   border-bottom-width: 0;
   overflow: hidden;
+  visibility: hidden;
 }
 .app-shell.focus-reading .book-detail-ref-group {
   display: inline-flex;
@@ -3216,6 +3233,13 @@ body.dark .chapter-pill.active.has-notes {
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
+  /* The one thing in the bar that may give way when the three groups can't all
+     fit (a 320px screen, or a long book name like "1 Thessalonians"): it
+     ellipsizes rather than pushing the arrows and the back button into each
+     other. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* Mobile: the bottom tab bar STAYS in Reading Mode (you still want to move
    around) but goes minimal — icon-only and shorter, so it reads as a quiet
@@ -4943,6 +4967,21 @@ body.dark .upd-popover-btn-ghost:hover {
 
   .book-detail-header {
     padding: 16px 18px 12px;
+  }
+  /* Small phones (320-360px): the one bar's three groups only just fit, so buy
+     the reference back the ~20px it needs to stay whole rather than ellipsized.
+     Left alone at 390+ (an iPhone 12-15), where there is room already. */
+  @media (max-width: 380px) {
+    .book-detail-header {
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+    .book-detail-header-inner {
+      gap: 8px;
+    }
+    .book-detail-ref-group {
+      gap: 6px;
+    }
   }
   .book-detail-title {
     font-size: 20px;

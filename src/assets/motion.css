@@ -708,7 +708,8 @@
   .topnav {
     transition:
       height var(--dur-3) var(--ease-calm),
-      opacity var(--dur-3) var(--ease-calm);
+      opacity var(--dur-3) var(--ease-calm),
+      visibility 0s;
   }
   .app-shell.reading-surface .topnav,
   .app-shell.reading-surface .bottomnav,
@@ -719,7 +720,8 @@
       transform var(--dur-2) var(--ease-out),
       height var(--dur-3) var(--ease-calm),
       opacity var(--dur-3) var(--ease-calm),
-      padding-top var(--dur-3) var(--ease-calm);
+      padding-top var(--dur-3) var(--ease-calm),
+      visibility 0s;
   }
   /* Reading Mode: the big title block + full chapter strip ease closed as the
      one bar forms (and ease back open on exit). */
@@ -730,7 +732,31 @@
       opacity var(--dur-3) var(--ease-calm),
       margin-top var(--dur-3) var(--ease-calm),
       padding-top var(--dur-3) var(--ease-calm),
-      padding-bottom var(--dur-3) var(--ease-calm);
+      padding-bottom var(--dur-3) var(--ease-calm),
+      visibility 0s;
+  }
+  /* Entering Reading Mode, the collapsed chrome only becomes `visibility:
+     hidden` once it has finished easing shut (leaving, it reappears at once —
+     the rules above, delay 0). `visibility` is discrete, so this is purely
+     about WHEN it flips: nothing about the collapse itself changes. It is what
+     takes the hidden bars out of the tab order (see main.css). */
+  .app-shell.reading-surface.focus-reading .topnav {
+    transition:
+      transform var(--dur-2) var(--ease-out),
+      height var(--dur-3) var(--ease-calm),
+      opacity var(--dur-3) var(--ease-calm),
+      padding-top var(--dur-3) var(--ease-calm),
+      visibility 0s var(--dur-3);
+  }
+  .app-shell.reading-surface.focus-reading .book-detail-titles,
+  .app-shell.reading-surface.focus-reading .chapter-selector-wrap {
+    transition:
+      max-height var(--dur-3) var(--ease-calm),
+      opacity var(--dur-3) var(--ease-calm),
+      margin-top var(--dur-3) var(--ease-calm),
+      padding-top var(--dur-3) var(--ease-calm),
+      padding-bottom var(--dur-3) var(--ease-calm),
+      visibility 0s var(--dur-3);
   }
   .app-shell.reading-surface.chrome-hidden .topnav,
   .app-shell.reading-surface.chrome-hidden .bottomnav,
