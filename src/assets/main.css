@@ -2948,10 +2948,14 @@ body.dark .search-backdrop {
   padding: 0 6px;
 }
 
+/* Hover is a border/text cue only — NOT a grey fill. A fill reads as a second
+   selection next to the active pill's accent fill (e.g. when the pointer sits on
+   one pill while a swipe moves the active state to another), which is the
+   "two highlights" confusion. Only .active fills. */
 @media (hover: hover) {
-  .chapter-pill:hover {
-    background: var(--surface-2);
-    color: var(--text-muted);
+  .chapter-pill:hover:not(.active) {
+    border-color: var(--text-faint);
+    color: var(--text);
   }
 }
 
