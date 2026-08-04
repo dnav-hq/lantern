@@ -2994,13 +2994,19 @@ body.dark .chapter-pill.active:hover {
   border-color: var(--accent-weak);
 }
 
-/* .active LAST, and it owns every visual dimension it sets. It used to sit
-   above .has-notes at equal specificity, so a studied chapter's active pill
-   silently kept the weak .has-notes border — the accent-filled highlight came
-   in two slightly different shapes depending on whether the chapter had notes,
-   which is not "exactly one highlight". */
+/* .active LAST, and it owns every visual dimension it sets, in both themes and
+   whether or not the chapter has notes. It used to be outgunned from two sides:
+   .has-notes matched it on specificity and came later (so a studied chapter's
+   active pill silently kept the weak note border), and `body.dark
+   .chapter-pill` outranked it outright (so in dark mode an UNstudied chapter's
+   active pill kept faint grey text on the accent fill). The highlight therefore
+   arrived in three different shapes — and which one you got depended on whether
+   the chapter had notes, which is exactly the difference between a chapter you
+   TAP and one you SWIPE to. One rule, one highlight. */
 .chapter-pill.active,
-.chapter-pill.active.has-notes {
+.chapter-pill.active.has-notes,
+body.dark .chapter-pill.active,
+body.dark .chapter-pill.active.has-notes {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
