@@ -2698,6 +2698,45 @@ body.dark .search-backdrop {
 .book-detail-header-inner {
   max-width: var(--shell-max);
   margin: 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.book-detail-header-main {
+  min-width: 0;
+}
+/* Reading-context controls (translation label + Focus), hosted in the reading
+   header rather than the global top bar — quiet, right-aligned, sitting with
+   the passage. See ReadingControls.tsx. */
+.reading-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+.reading-focus-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  margin: -6px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 8px;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 0.15s var(--ease-out),
+    background 0.15s var(--ease-out);
+}
+.reading-focus-btn:hover {
+  color: var(--text);
+}
+.reading-focus-btn.active {
+  color: var(--accent-ink);
 }
 
 .book-detail-back {
@@ -2977,31 +3016,30 @@ body.dark .search-backdrop {
   visibility: hidden;
   pointer-events: none;
 }
+/* A subtle indication, not a button: flat, borderless, reads as metadata (like
+   the "16 chapters" line) rather than a control. The tiny caret is the only
+   affordance that it's tappable. */
 .translation-chip-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  height: 26px;
-  min-width: 26px;
-  padding: 0 9px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
+  gap: 3px;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: 12px;
+  font-weight: 400;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition:
-    background 0.12s,
-    border-color 0.12s,
-    color 0.12s;
+  transition: color 0.15s var(--ease-out);
+}
+.translation-chip-caret {
+  opacity: 0.55;
 }
 .translation-chip-btn:hover {
-  color: var(--accent-ink);
-  border-color: var(--accent-weak);
+  color: var(--text);
 }
 .translation-chip-menu {
   right: 0;
@@ -5361,22 +5399,11 @@ body.dark .mobile-menu-btn:active {
     min-height: 52px;
     padding: 8px 12px;
   }
-  /* Small, at the very edge, and — like every other piece of reading chrome —
-     gone the moment the reader is actually reading. */
+  /* Hidden on phones: with no side margin the floating arrows overlap the
+     verse text, and chapter navigation is already covered here by swipe and the
+     numbered chapter strip. Desktop keeps them — it has the margin to spare. */
   .chapter-edge-nav {
-    width: 30px;
-    height: 30px;
-    opacity: 0.38;
-  }
-  .chapter-edge-nav.is-prev {
-    left: 4px;
-  }
-  .chapter-edge-nav.is-next {
-    right: 4px;
-  }
-  .app-shell.reading-surface.chrome-hidden .chapter-edge-nav {
-    opacity: 0;
-    pointer-events: none;
+    display: none;
   }
 }
 

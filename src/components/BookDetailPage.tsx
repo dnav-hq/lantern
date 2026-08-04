@@ -12,6 +12,7 @@ import CrossRefPill from './CrossRefPill'
 import ErrorBoundary from './ErrorBoundary'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
+import ReadingControls from './ReadingControls'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
 import { useChromeAutoHide } from '../utils/useScrollDirection'
 import {
@@ -1171,6 +1172,10 @@ interface BookDetailPageProps {
   onStudy: (reference: string, passageId?: string) => void
   onOpenStudy: (passageId: string) => void
   onRefresh?: () => void
+  // Reading-context controls, hosted in this surface's own header rather than
+  // the global top bar (see ReadingControls).
+  focusReading: boolean
+  onToggleFocusReading: () => void
   // Reports which way the reader is scrolling, so the app shell can slide the
   // top bar / bottom tabs out of the way. See useScrollDirection.
   onChromeVisibleChange?: (visible: boolean) => void
@@ -1184,6 +1189,8 @@ export default function BookDetailPage({
   onStudy,
   onOpenStudy,
   onRefresh,
+  focusReading,
+  onToggleFocusReading,
   onChromeVisibleChange
 }: BookDetailPageProps): React.ReactElement {
   const api = useApi()
@@ -1319,33 +1326,39 @@ export default function BookDetailPage({
       <div className="book-detail-chrome" ref={chromeRef}>
         <div className="book-detail-header">
           <div className="book-detail-header-inner">
-            <button className="book-detail-back" onClick={onBack}>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-              Library
-            </button>
-            <div>
-              <h1 className="book-detail-title">{bibleBook.name}</h1>
-              <div className="book-detail-meta">
-                {bibleBook.chapters} chapters
-                {studiedCount > 0 && (
-                  <>
-                    {' '}
-                    · <span style={{ color: 'var(--accent)' }}>{studiedCount} with notes</span>
-                  </>
-                )}
+            <div className="book-detail-header-main">
+              <button className="book-detail-back" onClick={onBack}>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+                Library
+              </button>
+              <div>
+                <h1 className="book-detail-title">{bibleBook.name}</h1>
+                <div className="book-detail-meta">
+                  {bibleBook.chapters} chapters
+                  {studiedCount > 0 && (
+                    <>
+                      {' '}
+                      · <span style={{ color: 'var(--accent)' }}>{studiedCount} with notes</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
+            <ReadingControls
+              focusReading={focusReading}
+              onToggleFocusReading={onToggleFocusReading}
+            />
           </div>
         </div>
 

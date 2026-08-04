@@ -341,6 +341,8 @@ export default function App({
           key={selectedBibleBook.id}
           bibleBook={selectedBibleBook}
           chapter={selectedChapter ?? 1}
+          focusReading={focusReading}
+          onToggleFocusReading={() => setFocusReading(f => !f)}
           onNavigateChapter={handleJumpToChapter}
           onBack={() =>
             setState(prev => ({ ...prev, selectedBookName: null, selectedChapter: null }))
@@ -395,9 +397,6 @@ export default function App({
         onOpenSettings={() => setSettingsOpen(true)}
         onSignOut={onSignOut}
         onOpenSearch={() => setSearchOpen(true)}
-        showFocusToggle={readingSurface}
-        focusReading={focusReading}
-        onToggleFocusReading={() => setFocusReading(f => !f)}
         searchSlot={
           <GlobalSearch
             variant="bar"
