@@ -10,6 +10,18 @@ prioritized.
 
 ## Deferred
 
+- **In-app PWA install prompt — not building yet.**
+  `docs/proposals/pwa-install-prompt.md` (2026-08-05) researches the
+  Android `beforeinstallprompt` path and the iOS-Safari no-programmatic-
+  install reality, and recommends **not building a prompt yet**: there is
+  currently zero telemetry on what fraction of readers are already
+  standalone vs. still on a browser tab, so "some people miss the install
+  option" is an anecdote, not a measured problem. Cheapest next step (not
+  itself a prompt) is adding a `display-mode: standalone` /
+  `navigator.standalone` boolean to existing telemetry, which is what would
+  turn this from a guess into a number. See the proposal's "Trigger to
+  revisit" and its sketch of the two-platform design if it's ever built.
+
 - **Guest preview mode.**
   `docs/proposals/guest-preview-mode.md` (2026-08-03) resolves the guest-write
   question Dennis was unsure about: recommends (B), an ephemeral client-only
