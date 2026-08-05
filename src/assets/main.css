@@ -3855,6 +3855,75 @@ body.dark .chapter-pill.active.has-notes {
   text-decoration: underline;
 }
 
+/* ─── Translation footer (the quiet translation line) ───────────────────────
+   Deliberately the least prominent thing on the reading surface: a thin,
+   left-aligned, faint line under the prev/next nav that names the translation
+   and doubles as the switcher (so it left the reading header — see
+   TranslationFooter.tsx). Almost nobody reads it after the first couple of
+   chapters, so it minimises to just the name for BSB/KJV; ESV additionally
+   carries Crossway's required copyright line, which licensing won't let us
+   drop. No box, no border, tight vertical footprint. */
+.translation-footer {
+  margin-top: 22px;
+  padding-top: 16px;
+  padding-bottom: 2px;
+  border-top: 0.5px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.translation-footer-switch {
+  position: relative;
+  display: inline-flex;
+}
+/* Reads as metadata, not a control: flat, faint, small. The tiny caret is the
+   only hint it's tappable at all. */
+.translation-footer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--text-faint);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s var(--ease-out);
+}
+.translation-footer-btn:hover {
+  color: var(--text-muted);
+}
+.translation-footer-caret {
+  opacity: 0.5;
+}
+/* Same list menu as the header chip, but pinned ABOVE the switch and
+   left-anchored — the footer is at the bottom of the scroll, so it opens
+   upward. */
+.translation-chip-menu.translation-footer-menu {
+  top: auto;
+  right: auto;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  margin-left: -112px;
+}
+.translation-footer-fine {
+  margin: 0 auto;
+  max-width: 58ch;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+.translation-footer-fine a {
+  color: var(--text-faint);
+  text-decoration: underline;
+}
+
 /* ─── Theme picker (Settings) ──────────────────────────────────────────────
    Independent of light/dark: picks the color + reading-type direction (see
    useTheme.ts / tokens.css [data-theme]). Each swatch previews its own theme's
@@ -5250,6 +5319,14 @@ body.dark .upd-popover-btn-ghost:hover {
     flex: 0 0 auto;
     overflow: visible;
     padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  /* When the tab bar slides away on scroll-down, drop the space it was
+     reserving too — otherwise it leaves an empty band under the last content
+     (the translation footer). The tail shrinks to a small resting margin, in
+     sync with the bar (motion.css owns the timing), so the footer glides up as
+     the bar leaves rather than stranding a gap. Grows back when chrome returns. */
+  .app-shell.reading-surface.chrome-hidden .book-detail-content {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
   }
   .app-shell.reading-surface .book-detail-chrome {
     display: block;

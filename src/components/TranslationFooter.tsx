@@ -1,0 +1,127 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { TRANSLATIONS, useTranslation } from '../utils/useTranslation'
+
+/** Closes the picker on an outside click OR any scroll (the menu is anchored to
+ * a position that scrolls away, so it should dismiss rather than float). Mirrors
+ * TranslationChip's own helper. */
+function useDismissMenu(
+  ref: React.RefObject<HTMLElement | null>,
+  onDismiss: () => void,
+  active: boolean
+): void {
+  useEffect(() => {
+    if (!active) return
+    const onPointer = (e: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onDismiss()
+    }
+    const onScroll = (): void => onDismiss()
+    document.addEventListener('mousedown', onPointer)
+    window.addEventListener('scroll', onScroll, true)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      window.removeEventListener('scroll', onScroll, true)
+    }
+  }, [ref, onDismiss, active])
+}
+
+/**
+ * The chapter's translation line: a deliberately faint, thin footer under the
+ * prev/next nav that names the translation you're reading and doubles as the
+ * switcher — so changing translation never needs Settings, and the reading
+ * header stays free of a control almost nobody touches after the first read.
+ * Kept as minimal as possible on purpose: just the name for the public-domain
+ * texts (BSB/KJV); ESV additionally carries Crossway's required copyright line,
+ * which licensing does not let us drop.
+ */
+export default function TranslationFooter(): React.ReactElement {
+  const [translation, setTranslation] = useTranslation()
+  const [open, setOpen] = useState(false)
+  const hostRef = useRef<HTMLDivElement>(null)
+
+  useDismissMenu(
+    hostRef,
+    useCallback(() => setOpen(false), []),
+    open
+  )
+
+  const current = TRANSLATIONS.find(t => t.id === translation)
+
+  return (
+    <div className="translation-footer" ref={hostRef}>
+      <div className="translation-footer-switch">
+        <button
+          type="button"
+          className="translation-footer-btn"
+          onClick={() => setOpen(o => !o)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          title={current ? `Switch translation (now ${current.label})` : 'Switch translation'}
+        >
+          {translation}
+          <svg
+            className="translation-footer-caret"
+            width="8"
+            height="8"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+        {/* Opens UPWARD and left-anchored — the footer sits at the bottom of the
+            scroll. Shared menu-motion classes (translation-chip-menu). */}
+        <div
+          className={`nav-menu translation-chip-menu translation-footer-menu${open ? ' open' : ''}`}
+          role="menu"
+          aria-hidden={!open}
+        >
+          {TRANSLATIONS.map(t => (
+            <button
+              key={t.id}
+              className={`nav-menu-item${t.id === translation ? ' active' : ''}`}
+              role="menuitem"
+              onClick={() => {
+                setTranslation(t.id)
+                setOpen(false)
+              }}
+            >
+              <span className="translation-chip-menu-abbr">{t.id}</span>
+              {t.label}
+              {t.id === translation && (
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ marginLeft: 'auto', flexShrink: 0 }}
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {translation === 'ESV' && (
+        <p className="translation-footer-fine">
+          Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®),
+          copyright © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by
+          permission. All rights reserved. ESV Text Edition: 2016.{' '}
+          <a href="https://www.esv.org" target="_blank" rel="noopener noreferrer">
+            esv.org
+          </a>
+        </p>
+      )}
+    </div>
+  )
+}

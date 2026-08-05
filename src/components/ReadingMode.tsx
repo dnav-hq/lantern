@@ -11,7 +11,7 @@ import CrossRefPill from './CrossRefPill'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import ReadingControls from './ReadingControls'
-import TranslationChip from './TranslationChip'
+import TranslationFooter from './TranslationFooter'
 import { formatRelativeTime } from '../utils/relativeTime'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
 import { useChromeAutoHide } from '../utils/useScrollDirection'
@@ -712,7 +712,6 @@ export default function ReadingMode({
               {passage.last_studied && (
                 <span>Last studied {new Date(passage.last_studied).toLocaleDateString()}</span>
               )}
-              <TranslationChip />
               <span
                 style={{ color: '#7F77DD', cursor: 'pointer', marginLeft: 'auto' }}
                 onClick={() => onStudy(passage.id)}
@@ -876,21 +875,12 @@ export default function ReadingMode({
           </>
         ) : translation === 'ESV' ? (
           <div className="esv-unavailable">
-            ESV isn&apos;t available yet. Switch to BSB or KJV in Settings, or try again later.
+            ESV isn&apos;t available right now. Switch translation below, or try again later.
           </div>
         ) : (
           <div style={{ color: '#CCC', fontSize: 13 }}>Verse text not available.</div>
         )}
-        {biblePassage && translation === 'ESV' && (
-          <p className="esv-attribution">
-            Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard
-            Version®), copyright © 2001 by Crossway, a publishing ministry of Good News Publishers.
-            Used by permission. All rights reserved. ESV Text Edition: 2016.{' '}
-            <a href="https://www.esv.org" target="_blank" rel="noopener noreferrer">
-              esv.org
-            </a>
-          </p>
-        )}
+        <TranslationFooter />
       </div>
 
       {selRange !== null && inlineVerse === null && (

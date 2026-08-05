@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { BiblePassage, NoteWithPassageInfo, NoteCategory, Passage } from '../types'
-import { BibleBook, findBookByAlias } from '../utils/bibleBooks'
+import { BibleBook, findBookByAlias, readingShortBookName } from '../utils/bibleBooks'
 import { parseNoteLine } from '../utils/noteParser'
 import { useApi } from '../api/context'
 import { getBibleVerse } from '../bible/service'
@@ -13,7 +13,7 @@ import ErrorBoundary from './ErrorBoundary'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import ReadingControls from './ReadingControls'
-import TranslationChip from './TranslationChip'
+import TranslationFooter from './TranslationFooter'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
 import { useChromeAutoHide } from '../utils/useScrollDirection'
 import {
@@ -803,14 +803,15 @@ function ChapterView({
   }
 
   if (!bibleData) {
+    // The translation switcher lives just below this (in the pane, under the
+    // prev/next nav), so a reader stuck on an unavailable ESV can change
+    // translation right where they are — no detour to Settings.
     return translation === 'ESV' ? (
       <div className="esv-unavailable">
-        ESV isn&apos;t available yet. Switch to BSB or KJV in Settings, or try again later.
+        ESV isn&apos;t available right now. Switch translation below, or try again later.
       </div>
     ) : (
-      <div style={{ color: '#CCC', fontSize: 13, padding: '16px 0' }}>
-        Could not load verse text.
-      </div>
+      <div className="esv-unavailable">Could not load verse text.</div>
     )
   }
 
@@ -1039,16 +1040,6 @@ function ChapterView({
             )
           })}
         </div>
-        {translation === 'ESV' && (
-          <p className="esv-attribution">
-            Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard
-            Version®), copyright © 2001 by Crossway, a publishing ministry of Good News Publishers.
-            Used by permission. All rights reserved. ESV Text Edition: 2016.{' '}
-            <a href="https://www.esv.org" target="_blank" rel="noopener noreferrer">
-              esv.org
-            </a>
-          </p>
-        )}
       </div>
 
       {selRange !== null && inlineVerse === null && (
@@ -1469,7 +1460,7 @@ export default function BookDetailPage({
                   </svg>
                 </button>
                 <span className="book-detail-ref-inline">
-                  {bibleBook.name} {selectedChapter}
+                  {readingShortBookName(bibleBook.number, bibleBook.name)} {selectedChapter}
                 </span>
                 <button
                   className="reading-chapter-nav-btn"
@@ -1496,9 +1487,9 @@ export default function BookDetailPage({
               </div>
             </div>
             <div className="book-detail-header-controls">
-              {/* Translation as a subtle top-right chip (the Bible-app
-                  convention), then the two muted toggles. */}
-              <TranslationChip />
+              {/* Just the two muted reading toggles now. Translation moved to the
+                  chapter colophon (TranslationFooter) — a set-once preference had
+                  no business sitting beside the live reading controls. */}
               <ReadingControls
                 focusReading={focusReading}
                 onToggleFocusReading={onToggleFocusReading}
@@ -1627,6 +1618,7 @@ export default function BookDetailPage({
                     />
                   </ErrorBoundary>
                   {!peek && <ChapterFlowNav prev={prev} next={next} onGo={swipe.go} />}
+                  {!peek && <TranslationFooter />}
                 </div>
               )
             })}

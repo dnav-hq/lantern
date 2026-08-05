@@ -13,10 +13,10 @@ interface ReadingControlsProps {
 
 // The two reading-context TOGGLES, grouped as one quiet, muted cluster: an eye
 // that shows/hides your notes, and Reading Mode that clears the chrome away.
-// The translation indicator is deliberately NOT here — it lives inline in the
-// metadata line (see TranslationChip usage in the reading surfaces), because it
-// is something you glance at, not an action you take. Keeping it out of this
-// cluster is what stops the header reading as a busy toolbar.
+// The translation indicator is deliberately NOT here — it lives in the quiet
+// footer at the foot of the reading surface (see TranslationFooter), because it
+// is something you glance at once or twice, not an action you take. Keeping it
+// out of this cluster is what stops the header reading as a busy toolbar.
 export default function ReadingControls({
   focusReading,
   onToggleFocusReading,

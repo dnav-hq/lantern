@@ -374,10 +374,25 @@
   .workspace-menu {
     transform-origin: top left;
   }
+  /* The footer switcher opens UPWARD, so it grows from its bottom edge and its
+     entrance rises from below rather than dropping from above. */
+  .translation-chip-menu.translation-footer-menu {
+    transform-origin: bottom center;
+    transform: translateY(5px) scale(0.97);
+  }
+  .translation-chip-menu.translation-footer-menu.open {
+    transform: translateY(0) scale(1);
+  }
+  @starting-style {
+    .translation-chip-menu.translation-footer-menu.open {
+      transform: translateY(5px) scale(0.97);
+    }
+  }
   .translation-chip-caret {
     transition: transform var(--dur-1) var(--ease-out);
   }
-  .translation-chip-btn[aria-expanded='true'] .translation-chip-caret {
+  .translation-chip-btn[aria-expanded='true'] .translation-chip-caret,
+  .translation-footer-btn[aria-expanded='true'] .translation-footer-caret {
     transform: rotate(180deg);
   }
 
@@ -722,6 +737,12 @@
       opacity var(--dur-3) var(--ease-calm),
       padding-top var(--dur-3) var(--ease-calm),
       visibility 0s;
+  }
+  /* The scripture's tail reservation eases closed on the same timing as the tab
+     bar's slide, so the footer glides up with the bar instead of a gap opening
+     under it (main.css owns the two padding-bottom end states). */
+  .app-shell.reading-surface .book-detail-content {
+    transition: padding-bottom var(--dur-3) var(--ease-calm);
   }
   /* Reading Mode: the big title block + full chapter strip ease closed as the
      one bar forms (and ease back open on exit). */

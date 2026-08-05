@@ -552,6 +552,34 @@ export function bookByNumber(n: number): BibleBook | undefined {
   return byNumber.get(n)
 }
 
+// Readable short forms for the ONE-BAR reading-mode reference, where a long name
+// would crowd the centered "Book Chapter" between the two chapter arrows on a
+// narrow phone (an ellipsized "1 Thessaloni…" is worse than a real "1 Thess.").
+// Only the long names need one; anything absent keeps its full name, and this is
+// used nowhere else — every other surface shows the full book name. Keyed by
+// USFM book number.
+const READING_SHORT_NAMES: Record<number, string> = {
+  5: 'Deut.', // Deuteronomy
+  13: '1 Chron.', // 1 Chronicles
+  14: '2 Chron.', // 2 Chronicles
+  21: 'Eccles.', // Ecclesiastes
+  22: 'Song of Sol.', // Song of Solomon
+  25: 'Lam.', // Lamentations
+  46: '1 Cor.', // 1 Corinthians
+  47: '2 Cor.', // 2 Corinthians
+  50: 'Phil.', // Philippians
+  51: 'Col.', // Colossians
+  52: '1 Thess.', // 1 Thessalonians
+  53: '2 Thess.', // 2 Thessalonians
+  66: 'Rev.' // Revelation
+}
+
+/** The book's display name for the compact reading-mode reference: a readable
+ * abbreviation for the long-named books, the full name for everyone else. */
+export function readingShortBookName(bookNumber: number, fullName: string): string {
+  return READING_SHORT_NAMES[bookNumber] ?? fullName
+}
+
 // Alias lookup map
 const aliasMap = new Map<string, BibleBook>()
 for (const book of BIBLE_BOOKS) {
