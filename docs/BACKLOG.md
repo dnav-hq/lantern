@@ -345,6 +345,52 @@ prioritized.
 
 ## Done
 
+- **Reading-mode/header overhaul + chapter-nav polish + translation footer
+  (2026-08-05, shipped to main `255910b`).** The whole reading-surface set landed
+  in one merge. Three parts:
+  - **Reading-mode/header overhaul + G4a + the three chapter-nav fixes** (built
+    over the prior sessions on `claude/reading-mode-and-header` →
+    `claude/mobile-chapter-nav-polish`, then independently audited). Reading Mode
+    collapses the three stacked bars into one centered bar via animatable
+    height/opacity (never `display:none`); the header centers the book+chapter
+    reference with a chapter arrow each side; notes hide/show is a fade-then-
+    settle on `--dur-4`/`ease-calm`. The three mobile nav fixes, each root-caused:
+    one chapter highlight (a `body.dark .chapter-pill:hover` grey fill out-ranked
+    `.chapter-pill.active`, so a tap's sticky hover repainted the active pill grey
+    in dark mode while a swipe kept the accent), no settle flash (both deck panes
+    keyed by chapter so a committed swipe reuses the neighbour's subtree instead
+    of remounting), no top drift (`scrollIntoView({inline})` silently defaulted
+    `block:'start'` and dragged the surface — replaced with a horizontal-only
+    `scrollLeft`). The audit also fixed four a11y/responsive bugs (collapsed
+    chrome left ~150 buttons in the tab order → `visibility:hidden` flipped at the
+    end of the collapse; a 320px back-button/arrow overlap; a long book name under
+    the controls at 390px; a lost entrance reveal on pill-jumping to a
+    previously-swiped chapter).
+  - **Translation footer (replaces the top-bar chip).** The translation indicator
+    left the reading header entirely — see the superseded chip entry below. It is
+    now a deliberately faint, centered, hairline-topped colophon
+    (`TranslationFooter.tsx`) at the foot of every reading surface
+    (`BookDetailPage`, `ReadingMode`, `StudyMode`), under the prev/next nav. It
+    doubles as the switcher (opens upward), names the translation for a glance,
+    and carries Crossway's required ESV attribution ONLY on ESV — BSB/KJV show
+    just the abbreviation. It stays available even in the ESV-unavailable state so
+    a reader can switch back without a trip to Settings (the old "Switch in
+    Settings" copy is gone). Switching also still lives in Settings. `TranslationChip`
+    is deleted; the `.translation-chip-*` menu classes stay (GuestReader reuses them).
+  - **Long book-name abbreviations in the one-bar reading header**
+    (`readingShortBookName` in `bibleBooks.ts`): `1 Thessalonians` → `1 Thess.`
+    etc. for the ~13 long-named books, so the centered reference never crowds the
+    chapter arrows on a narrow phone. Full names everywhere else.
+  - **Chrome-synced bottom tail + scroll-oscillation fix.** The reading surface's
+    bottom reservation now collapses with the auto-hiding tab bar (76px→20px) so
+    it no longer strands an empty band under the footer, and `useChromeAutoHide`
+    ignores scroll samples caused by that layout change — the tail shrink at the
+    bottom used to clamp `scrollTop` and read as an upward scroll, re-revealing the
+    chrome in a hide/show oscillation.
+  Gate green throughout (tsc, 219 tests, lint baseline 3/9, build, prettier 0).
+  NOT confirmed in-code: the swipe FEEL and the latest tail-glide/oscillation
+  motion still want Dennis's on-device pass on prod (taste, unmeasurable headless).
+
 - **Stale-chunk production crash + verse-action-bar centring (2026-08-03).** Two
   unrelated fixes from a real user report (an international friend-of-a-friend
   opened a shared link in a WhatsApp in-app browser on iOS and got the
@@ -446,7 +492,13 @@ prioritized.
   are untouched — `localStorage` only, zero API calls, no second data model.
   **Activation**: `supabase db push` to apply the new migration to the live
   `berean` project — not run as part of this change.
-- **Translation-version chip in the top bar (2026-08-03).** A minimal,
+- **Translation-version chip in the top bar (2026-08-03) — SUPERSEDED 2026-08-05
+  by the translation footer (see the reading-mode overhaul entry at the top of
+  Done).** The chip was removed from the reading header on every surface and
+  `TranslationChip.tsx` deleted; the translation indicator + switcher now lives in
+  the quiet chapter footer instead. Kept here for history — the reasoning below is
+  why a switcher-anywhere (not Settings-only) affordance exists at all; only its
+  placement changed. A minimal,
   always-visible YouVersion-style chip (`TranslationChip.tsx`) shows the active
   translation's abbreviation and doubles as a quick switcher — tap it, pick
   BSB/KJV/ESV, done, no trip to Settings. It reads and writes the same
