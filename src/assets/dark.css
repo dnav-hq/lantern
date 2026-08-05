@@ -274,6 +274,13 @@ body.dark .book-detail-meta {
 body.dark .book-detail-back {
   color: var(--text-faint);
 }
+/* Match the translation chip to the "16 chapters" / "Library" tone in dark
+   mode. Only here: on the light cream canvas --text-faint fails AA as text,
+   so the chip stays at the AA-safe --text-muted there (see .translation-chip-btn)
+   and only quiets to faint on the dark canvas, where contrast is ample. */
+body.dark .translation-chip-btn {
+  color: var(--text-faint);
+}
 body.dark .chapter-selector-wrap {
   border-bottom-color: rgba(255, 255, 255, 0.06);
 }

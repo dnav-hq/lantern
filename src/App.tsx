@@ -70,6 +70,9 @@ interface AppState {
   // studyPassageId opens an existing passage in the one StudyMode surface.
   studyReference: string
   studyPassageId: string | null
+  // After "Save & Read", the chapter view highlights + scrolls to the verses
+  // just written. Consumed once by BookDetailPage, then irrelevant.
+  highlightAfterSave: { chapter: number; verses: number[] } | null
 }
 
 export default function App({
@@ -84,10 +87,13 @@ export default function App({
   const [translation, setTranslation] = useTranslation()
   const [textSize, setTextSize] = useTextSize()
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // Reading surface state. `hideNotes` is the persisted Settings preference;
-  // `focusReading` is the transient distraction-free toggle (notes hidden +
-  // scripture widened) that resets when you leave the passage; `chromeVisible`
-  // is driven by the reader's own scrolling (see useScrollDirection).
+  // Reading surface state — two DELIBERATELY SEPARATE controls (see
+  // ReadingControls): `hideNotes` is a content filter (show/hide your notes),
+  // persisted as a Settings preference and the ONLY thing that hides notes;
+  // `focusReading` is Reading Mode — a transient, environment-only toggle that
+  // recedes/restructures the chrome so scripture owns the screen, and never
+  // touches note visibility. `chromeVisible` is driven by the reader's own
+  // scrolling (see useScrollDirection).
   const [hideNotes, setHideNotes] = useState(readHideNotes)
   const [focusReading, setFocusReading] = useState(false)
   const [chromeVisible, setChromeVisible] = useState(true)
@@ -165,7 +171,8 @@ export default function App({
       selectedPassageId: null,
       selectedChapter: deepLinkBook ? initialDeepLink!.chapter : null,
       studyReference: '',
-      studyPassageId: null
+      studyPassageId: null,
+      highlightAfterSave: null
     }
   })
   // Mobile-only: the dedicated search surface (an overlay). Desktop search is
@@ -233,13 +240,30 @@ export default function App({
   }
 
   const handleSaveRead = async (passageId: string): Promise<void> => {
-    await refresh()
+    // Land back in the FULL chapter reading (not the isolated passage view),
+    // scrolled to and highlighting the notes just written, so they're seen in
+    // context. Fetch fresh here rather than reading the async-lagged state.
+    const passages = await api.getPassages()
+    const p = passages.find(x => x.id === passageId)
+    const bookName = p ? (BIBLE_BOOKS.find(b => b.number === p.book_number)?.name ?? null) : null
     setState(prev => ({
       ...prev,
+      passages,
       destination: 'bible',
-      selectedPassageId: passageId,
-      selectedBookName: null,
-      studyPassageId: null
+      selectedPassageId: null,
+      studyPassageId: null,
+      selectedBookName: bookName,
+      selectedChapter: p?.chapter_start ?? null,
+      highlightAfterSave:
+        p && bookName
+          ? {
+              chapter: p.chapter_start,
+              verses: Array.from(
+                { length: Math.max(0, p.verse_end - p.verse_start + 1) },
+                (_, i) => p.verse_start + i
+              )
+            }
+          : null
     }))
   }
 
@@ -284,7 +308,8 @@ export default function App({
     selectedPassageId,
     selectedChapter,
     studyReference,
-    studyPassageId
+    studyPassageId,
+    highlightAfterSave
   } = state
 
   const selectedPassage = passages.find(p => p.id === selectedPassageId) || null
@@ -307,11 +332,22 @@ export default function App({
     }
   }, [readingSurface])
 
-  const notesHidden = hideNotes || focusReading
+  // Toggling Reading Mode always resets the chrome to visible, so an exit never
+  // inherits a stale scrolled-away (chrome-hidden) state and jolts.
+  useEffect(() => {
+    setChromeVisible(true)
+  }, [focusReading])
+
+  // Notes are hidden ONLY by the hide-notes control now — Reading Mode
+  // (focus-reading) is chrome-only and deliberately leaves notes alone.
+  const notesHidden = hideNotes
   const shellClass = [
     'app-shell',
     readingSurface ? 'reading-surface' : '',
-    readingSurface && !chromeVisible ? 'chrome-hidden' : '',
+    // Never auto-hide the chrome while in Reading Mode — the top bar is already
+    // collapsed into the one bar, and letting the scroll-hide transform fight
+    // the mode is what made exiting jolt (the bar snapping back then sliding).
+    readingSurface && !chromeVisible && !focusReading ? 'chrome-hidden' : '',
     focusReading ? 'focus-reading' : '',
     notesHidden ? 'notes-hidden' : ''
   ]
@@ -356,6 +392,15 @@ export default function App({
           key={selectedBibleBook.id}
           bibleBook={selectedBibleBook}
           chapter={selectedChapter ?? 1}
+          focusReading={focusReading}
+          onToggleFocusReading={() => setFocusReading(f => !f)}
+          hideNotes={hideNotes}
+          onToggleHideNotes={() => setHideNotes(h => !h)}
+          initialHighlightVerses={
+            highlightAfterSave && highlightAfterSave.chapter === (selectedChapter ?? 1)
+              ? highlightAfterSave.verses
+              : undefined
+          }
           onNavigateChapter={handleJumpToChapter}
           onBack={() =>
             setState(prev => ({ ...prev, selectedBookName: null, selectedChapter: null }))
@@ -387,6 +432,10 @@ export default function App({
             setState(prev => ({ ...prev, selectedPassageId: null }))
           }}
           onChromeVisibleChange={setChromeVisible}
+          focusReading={focusReading}
+          onToggleFocusReading={() => setFocusReading(f => !f)}
+          hideNotes={hideNotes}
+          onToggleHideNotes={() => setHideNotes(h => !h)}
         />
       )
     }
@@ -410,9 +459,6 @@ export default function App({
         onOpenSettings={() => setSettingsOpen(true)}
         onSignOut={onSignOut}
         onOpenSearch={() => setSearchOpen(true)}
-        showFocusToggle={readingSurface}
-        focusReading={focusReading}
-        onToggleFocusReading={() => setFocusReading(f => !f)}
         searchSlot={
           <GlobalSearch
             variant="bar"

@@ -204,7 +204,7 @@ export default function SettingsModal({
               <span className="smodal-checkbox-label">Hide all notes while reading</span>
             </label>
             <p className="smodal-vault-desc">
-              Leaves only scripture on the reading screens. Your notes are untouched — open a study
+              Leaves only scripture on the reading screens. Your notes stay untouched; open a study
               to see and edit them.
             </p>
           </div>

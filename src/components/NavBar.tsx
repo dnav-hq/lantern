@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Wordmark from './Wordmark'
-import TranslationChip from './TranslationChip'
 import { useApi } from '../api/context'
 import { exportAllNotesAsZip } from '../platform/export'
 
@@ -25,13 +24,6 @@ interface NavBarProps {
   // Opens the dedicated mobile search surface (a tap target in the top bar,
   // shown only under the breakpoint).
   onOpenSearch?: () => void
-  // Distraction-free reading toggle. Rendered only on a reading surface (a
-  // chapter or a saved passage) — it lives in the top bar rather than inside
-  // each reading component so there is ONE place to find it and one place to
-  // get back out of, whichever surface you are on.
-  showFocusToggle?: boolean
-  focusReading?: boolean
-  onToggleFocusReading?: () => void
 }
 
 /** Closes the dropdown when a click lands outside `ref`. */
@@ -65,10 +57,7 @@ export default function NavBar({
   onOpenSettings,
   onSignOut,
   searchSlot,
-  onOpenSearch,
-  showFocusToggle = false,
-  focusReading = false,
-  onToggleFocusReading
+  onOpenSearch
 }: NavBarProps): React.ReactElement {
   const api = useApi()
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
@@ -119,12 +108,6 @@ export default function NavBar({
   }, [api])
 
   const initial = (displayName || '?').trim().charAt(0).toUpperCase() || '?'
-
-  // Same surfaces the Focus toggle gates (a book chapter or a saved passage),
-  // plus Study's own reading pane — Study has no auto-hiding chrome of its
-  // own, so the chip there just stays put rather than riding a hide/show it
-  // doesn't participate in.
-  const showTranslationChip = showFocusToggle || destination === 'study'
 
   // Measure the active tab (Bible/Journal only) and position the sliding
   // indicator to match — before paint, so it never visibly snaps into its
@@ -267,33 +250,37 @@ export default function NavBar({
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
-            {workspaceOpen && (
-              <div className="nav-menu workspace-menu" role="menu">
-                <button
-                  className="nav-menu-item active"
-                  role="menuitem"
-                  onClick={() => setWorkspaceOpen(false)}
+            {/* Kept mounted so it can animate closed as well as open — shared
+                menu-motion pattern (see .nav-menu in motion.css). */}
+            <div
+              className={`nav-menu workspace-menu${workspaceOpen ? ' open' : ''}`}
+              role="menu"
+              aria-hidden={!workspaceOpen}
+            >
+              <button
+                className="nav-menu-item active"
+                role="menuitem"
+                onClick={() => setWorkspaceOpen(false)}
+              >
+                <span className="workspace-dot" />
+                Personal
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ marginLeft: 'auto' }}
                 >
-                  <span className="workspace-dot" />
-                  Personal
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={{ marginLeft: 'auto' }}
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </button>
-                <div className="nav-menu-divider" />
-                <div className="nav-menu-hint">Shared group spaces — coming later</div>
-              </div>
-            )}
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </button>
+              <div className="nav-menu-divider" />
+              <div className="nav-menu-hint">Shared group spaces — coming later</div>
+            </div>
           </div>
         </div>
 
@@ -321,59 +308,6 @@ export default function NavBar({
             makes the center tabs land on the true viewport center regardless
             of the logo vs. search+avatar's own (unequal) natural widths. */}
         <div className="topnav-right">
-          {/* Focus (distraction-free reading). The label switches to the way
-              OUT while active — an icon alone can say "you are in a mode" but
-              not "tap here to leave it", and this is the only exit. */}
-          {showFocusToggle && onToggleFocusReading && (
-            <button
-              className={`topnav-focus-btn${focusReading ? ' active' : ''}`}
-              onClick={onToggleFocusReading}
-              aria-pressed={focusReading}
-              title={
-                focusReading
-                  ? 'Leave distraction-free reading'
-                  : 'Read distraction-free — hides your notes and gives scripture the screen'
-              }
-            >
-              {focusReading ? (
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <polyline points="9 3 9 9 3 9" />
-                  <polyline points="15 3 15 9 21 9" />
-                  <polyline points="9 21 9 15 3 15" />
-                  <polyline points="15 21 15 15 21 15" />
-                </svg>
-              ) : (
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <polyline points="4 9 4 4 9 4" />
-                  <polyline points="20 9 20 4 15 4" />
-                  <polyline points="4 15 4 20 9 20" />
-                  <polyline points="20 15 20 20 15 20" />
-                </svg>
-              )}
-              <span className="topnav-focus-label">{focusReading ? 'Exit' : 'Focus'}</span>
-            </button>
-          )}
-
           {searchSlot && <div className="topnav-search">{searchSlot}</div>}
 
           {/* Mobile-only search trigger — opens the dedicated search surface. */}
@@ -395,8 +329,6 @@ export default function NavBar({
             </button>
           )}
 
-          <TranslationChip visible={showTranslationChip} />
-
           <div className="topnav-trail">
             <div className="profile-menu-host" ref={profileRef}>
               <button
@@ -408,42 +340,45 @@ export default function NavBar({
               >
                 {initial}
               </button>
-              {profileOpen && (
-                <div className="nav-menu profile-menu" role="menu">
-                  <div className="nav-menu-name">{displayName || 'Studying locally'}</div>
-                  <div className="nav-menu-divider" />
-                  <button
-                    className="nav-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setProfileOpen(false)
-                      onOpenSettings()
-                    }}
-                  >
-                    Settings
-                  </button>
-                  <button
-                    className="nav-menu-item"
-                    role="menuitem"
-                    disabled={exportState === 'exporting'}
-                    onClick={() => void handleExport()}
-                  >
-                    {exportState === 'exporting' ? 'Exporting…' : 'Export notes'}
-                  </button>
-                  {onSignOut && (
-                    <>
-                      <div className="nav-menu-divider" />
-                      <button
-                        className="nav-menu-item"
-                        role="menuitem"
-                        onClick={() => void onSignOut()}
-                      >
-                        Sign out
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
+              {/* Kept mounted for the shared open/close menu motion. */}
+              <div
+                className={`nav-menu profile-menu${profileOpen ? ' open' : ''}`}
+                role="menu"
+                aria-hidden={!profileOpen}
+              >
+                <div className="nav-menu-name">{displayName || 'Studying locally'}</div>
+                <div className="nav-menu-divider" />
+                <button
+                  className="nav-menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setProfileOpen(false)
+                    onOpenSettings()
+                  }}
+                >
+                  Settings
+                </button>
+                <button
+                  className="nav-menu-item"
+                  role="menuitem"
+                  disabled={exportState === 'exporting'}
+                  onClick={() => void handleExport()}
+                >
+                  {exportState === 'exporting' ? 'Exporting…' : 'Export notes'}
+                </button>
+                {onSignOut && (
+                  <>
+                    <div className="nav-menu-divider" />
+                    <button
+                      className="nav-menu-item"
+                      role="menuitem"
+                      onClick={() => void onSignOut()}
+                    >
+                      Sign out
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

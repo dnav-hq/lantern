@@ -102,11 +102,24 @@ export function nextChromeState(state: ChromeScrollState, sample: ScrollSample):
 export function useChromeAutoHide(
   ref: React.RefObject<HTMLElement | null>,
   enabled: boolean,
-  onChange?: (visible: boolean) => void
+  onChange?: (visible: boolean) => void,
+  // Changing this re-initialises the machine to fully-visible. Pass the current
+  // chapter so navigating (click OR swipe) always lands with the chrome shown,
+  // deterministically — instead of the auto-hide flip-flopping as the scroll
+  // position resets under it on each chapter change.
+  resetKey?: unknown
 ): boolean {
   const [visible, setVisible] = useState(true)
   // Kept in a ref so the listener never needs re-binding as state advances.
   const stateRef = useRef<ChromeScrollState>(initialChromeState())
+  // The last sample's scrollable height. Toggling the chrome animates the
+  // reading surface's bottom tail (it eases open/closed with the tab bar), so
+  // scrollHeight changes for a few frames after every flip. Near the bottom
+  // that shrink CLAMPS scrollTop, and an unguarded machine reads the clamp as
+  // an upward scroll and re-reveals — a hide/show oscillation on the smallest
+  // scroll-down. Absorbing any sample whose maxY moved breaks that loop: the
+  // layout settling is not a gesture, so it must never change visibility.
+  const lastMaxYRef = useRef(0)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
@@ -120,12 +133,47 @@ export function useChromeAutoHide(
     }
 
     stateRef.current = initialChromeState(el.scrollTop)
+    lastMaxYRef.current = el.scrollHeight - el.clientHeight
+    setVisible(true)
+    onChangeRef.current?.(true)
     let frame = 0
+
+    // Just after (re)mount and every chapter change (resetKey re-runs this
+    // effect), the view programmatically scrolls to the top and reflows. Those
+    // are NOT the reader hiding the chrome, so we swallow them for a short
+    // settle window — the chrome stays put and never flickers on navigation.
+    let settling = true
+    const settleTimer = setTimeout(() => {
+      settling = false
+      const node = ref.current
+      if (node) {
+        stateRef.current = initialChromeState(node.scrollTop)
+        lastMaxYRef.current = node.scrollHeight - node.clientHeight
+      }
+    }, 400)
 
     const sample = (): void => {
       frame = 0
       const node = ref.current
       if (!node) return
+      if (settling) {
+        // Track the position so travel starts clean once settling ends, but
+        // never change visibility during the window.
+        stateRef.current = initialChromeState(node.scrollTop)
+        lastMaxYRef.current = node.scrollHeight - node.clientHeight
+        return
+      }
+      const maxY = node.scrollHeight - node.clientHeight
+      // A sample whose scrollable height moved is the bottom-tail animating as
+      // the chrome toggles, not a finger — absorb it (re-anchor position, clear
+      // travel) so the layout settling can never flip visibility and start the
+      // hide/show oscillation. Real gestures arrive on a stable height.
+      if (Math.abs(maxY - lastMaxYRef.current) > 0.5) {
+        lastMaxYRef.current = maxY
+        const clampedY = Math.min(Math.max(node.scrollTop, 0), Math.max(0, maxY))
+        stateRef.current = { ...stateRef.current, lastY: clampedY, travel: 0 }
+        return
+      }
       const next = nextChromeState(stateRef.current, {
         y: node.scrollTop,
         maxY: node.scrollHeight - node.clientHeight
@@ -145,12 +193,13 @@ export function useChromeAutoHide(
 
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => {
+      clearTimeout(settleTimer)
       el.removeEventListener('scroll', onScroll)
       if (frame !== 0) cancelAnimationFrame(frame)
       // Leaving the surface must never strand the chrome off-screen.
       onChangeRef.current?.(true)
     }
-  }, [ref, enabled])
+  }, [ref, enabled, resetKey])
 
   return visible
 }

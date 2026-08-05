@@ -10,6 +10,8 @@ import InlineDeleteConfirm from './InlineDeleteConfirm'
 import CrossRefPill from './CrossRefPill'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
+import ReadingControls from './ReadingControls'
+import TranslationFooter from './TranslationFooter'
 import { formatRelativeTime } from '../utils/relativeTime'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
 import { useChromeAutoHide } from '../utils/useScrollDirection'
@@ -26,6 +28,12 @@ interface ReadingModeProps {
   // Reports which way the reader is scrolling, so the app shell can slide the
   // top bar / bottom tabs out of the way. See useScrollDirection.
   onChromeVisibleChange?: (visible: boolean) => void
+  // The reading-context controls live in this surface's own header, not the
+  // global top bar. Reading Mode (chrome) and Hide Notes (content) are separate.
+  focusReading: boolean
+  onToggleFocusReading: () => void
+  hideNotes: boolean
+  onToggleHideNotes: () => void
 }
 
 const CATEGORY_LABELS: Record<NoteCategory, string> = {
@@ -130,7 +138,11 @@ export default function ReadingMode({
   onRefresh,
   onOpenStudy,
   onPassageDeleted,
-  onChromeVisibleChange
+  onChromeVisibleChange,
+  focusReading,
+  onToggleFocusReading,
+  hideNotes,
+  onToggleHideNotes
 }: ReadingModeProps): React.ReactElement {
   const api = useApi()
   const [translation] = useTranslation()
@@ -691,21 +703,29 @@ export default function ReadingMode({
       <div className="reading-content fade-in">
         {/* Heading */}
         <div className="reading-heading">
-          <h1>{passage.reference_label}</h1>
-          <div className="reading-meta">
-            <span>
-              {passage.session_count ?? 0} session{passage.session_count !== 1 ? 's' : ''}
-            </span>
-            {passage.last_studied && (
-              <span>Last studied {new Date(passage.last_studied).toLocaleDateString()}</span>
-            )}
-            <span
-              style={{ color: '#7F77DD', cursor: 'pointer', marginLeft: 'auto' }}
-              onClick={() => onStudy(passage.id)}
-            >
-              Edit notes
-            </span>
+          <div className="reading-heading-main">
+            <h1>{passage.reference_label}</h1>
+            <div className="reading-meta">
+              <span>
+                {passage.session_count ?? 0} session{passage.session_count !== 1 ? 's' : ''}
+              </span>
+              {passage.last_studied && (
+                <span>Last studied {new Date(passage.last_studied).toLocaleDateString()}</span>
+              )}
+              <span
+                style={{ color: '#7F77DD', cursor: 'pointer', marginLeft: 'auto' }}
+                onClick={() => onStudy(passage.id)}
+              >
+                Edit notes
+              </span>
+            </div>
           </div>
+          <ReadingControls
+            focusReading={focusReading}
+            onToggleFocusReading={onToggleFocusReading}
+            hideNotes={hideNotes}
+            onToggleHideNotes={onToggleHideNotes}
+          />
         </div>
 
         {biblePassage ? (
@@ -714,9 +734,11 @@ export default function ReadingMode({
                 not bracketed to any verse. */}
             {passageGroups.length > 0 && (
               <div className="rail-passage-notes">
-                <div className="rail-passage-notes-label">Passage notes</div>
-                <div className="reading-notes-group">
-                  {passageGroups.map(group => renderNoteGroup(group))}
+                <div className="note-collapse">
+                  <div className="rail-passage-notes-label">Passage notes</div>
+                  <div className="reading-notes-group">
+                    {passageGroups.map(group => renderNoteGroup(group))}
+                  </div>
                 </div>
               </div>
             )}
@@ -779,7 +801,9 @@ export default function ReadingMode({
                     {/* Single-verse notes render inline beneath their verse row. */}
                     {inlineHere && inlineHere.length > 0 && (
                       <div className="reading-notes-group inline-verse-notes">
-                        {inlineHere.map(group => renderNoteGroup(group))}
+                        <div className="note-collapse">
+                          {inlineHere.map(group => renderNoteGroup(group))}
+                        </div>
                       </div>
                     )}
 
@@ -787,7 +811,9 @@ export default function ReadingMode({
                         verse (desktop uses the rail; this is display:none there). */}
                     {mobileRangeHere && mobileRangeHere.length > 0 && (
                       <div className="reading-notes-group mobile-range-notes">
-                        {mobileRangeHere.map(group => renderNoteGroup(group, { chip: true }))}
+                        <div className="note-collapse">
+                          {mobileRangeHere.map(group => renderNoteGroup(group, { chip: true }))}
+                        </div>
                       </div>
                     )}
 
@@ -849,21 +875,12 @@ export default function ReadingMode({
           </>
         ) : translation === 'ESV' ? (
           <div className="esv-unavailable">
-            ESV isn&apos;t available yet. Switch to BSB or KJV in Settings, or try again later.
+            ESV isn&apos;t available right now. Switch translation below, or try again later.
           </div>
         ) : (
           <div style={{ color: '#CCC', fontSize: 13 }}>Verse text not available.</div>
         )}
-        {biblePassage && translation === 'ESV' && (
-          <p className="esv-attribution">
-            Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard
-            Version®), copyright © 2001 by Crossway, a publishing ministry of Good News Publishers.
-            Used by permission. All rights reserved. ESV Text Edition: 2016.{' '}
-            <a href="https://www.esv.org" target="_blank" rel="noopener noreferrer">
-              esv.org
-            </a>
-          </p>
-        )}
+        <TranslationFooter />
       </div>
 
       {selRange !== null && inlineVerse === null && (

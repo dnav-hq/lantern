@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHand
 import NoteEditor, { makeLineId } from './NoteEditor'
 import ErrorBoundary from './ErrorBoundary'
 import PassagePane from './PassagePane'
+import TranslationFooter from './TranslationFooter'
 import ReferenceInput from './ReferenceInput'
 import { BiblePassage, Note } from '../types'
 import { parseNoteLine, parseReferenceLabel } from '../utils/noteParser'
@@ -704,7 +705,7 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
           <ErrorBoundary variant="pane" key={passage?.reference ?? 'empty'}>
             {translation === 'ESV' && esvUnavailable && !loadingPassage ? (
               <div className="esv-unavailable">
-                ESV isn&apos;t available yet. Switch to BSB or KJV in Settings, or try again later.
+                ESV isn&apos;t available right now. Switch translation below, or try again later.
               </div>
             ) : (
               <PassagePane
@@ -715,16 +716,11 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
               />
             )}
           </ErrorBoundary>
-          {translation === 'ESV' && passage && !esvUnavailable && (
-            <p className="esv-attribution">
-              Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard
-              Version®), copyright © 2001 by Crossway, a publishing ministry of Good News
-              Publishers. Used by permission. All rights reserved. ESV Text Edition: 2016.{' '}
-              <a href="https://www.esv.org" target="_blank" rel="noopener noreferrer">
-                esv.org
-              </a>
-            </p>
-          )}
+          {/* Translation footer + switcher for the study reading pane, shown
+              once there's a passage (the ESV copyright line rides along here for
+              ESV, and it stays available even when ESV is unavailable so the
+              reader can switch back). */}
+          {passage && <TranslationFooter />}
         </div>
         {/* Mobile-only manual resize handle — overlaid on the bottom edge
             (position:absolute in CSS) rather than taking its own flex row,
