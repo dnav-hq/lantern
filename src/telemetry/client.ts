@@ -198,3 +198,35 @@ export function reportError(safe: TelemetrySafeError, boundary: string): void {
 export function reportOccurrence(kind: Exclude<TelemetryKind, 'error'>, code: string): void {
   send(kind, code)
 }
+
+// ─── Chunk-load-error de-dup ─────────────────────────────────────────────────
+//
+// A stale-chunk failure (see globalHandlers.ts) is ONE underlying event, but it
+// can be witnessed up to three times: the vite:preloadError itself, the
+// TypeError that also reaches window.onerror, and — if it escapes render — the
+// error boundary. Reporting all three turns one harmless, self-healing deploy
+// blip into three separate mystery crashes in HQ's inbox. A short-lived shared
+// flag lets the window handler and the error boundary each recognize "this is
+// the tail of a chunk failure already reported under its own label" and skip,
+// without the two coordinating on anything but this timestamp.
+
+export const CHUNK_ERROR_SUPPRESS_WINDOW_MS = 2_000
+
+let lastChunkLoadErrorAt: number | null = null
+
+/** Call once, right after the chunk-load-error itself is reported. */
+export function markChunkLoadErrorReported(now: number): void {
+  lastChunkLoadErrorAt = now
+}
+
+/** Pure so the window logic is unit-testable without touching module state. */
+export function isWithinChunkLoadErrorWindow(now: number, lastReportedAt: number | null): boolean {
+  if (lastReportedAt === null) return false
+  const elapsed = now - lastReportedAt
+  return elapsed >= 0 && elapsed <= CHUNK_ERROR_SUPPRESS_WINDOW_MS
+}
+
+/** Convenience wrapper over the module-level flag, for call sites. */
+export function shouldSuppressAsChunkLoadTail(now: number): boolean {
+  return isWithinChunkLoadErrorWindow(now, lastChunkLoadErrorAt)
+}

@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from 'react'
 import { toTelemetrySafe } from '../errors'
-import { reportError } from '../telemetry/client'
+import { reportError, shouldSuppressAsChunkLoadTail } from '../telemetry/client'
 
 interface ErrorBoundaryProps {
   // 'app' — full-screen recovery, for the boundary wrapping the whole tree.
@@ -30,6 +30,12 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
   }
 
   componentDidCatch(error: unknown): void {
+    // A stale-chunk failure's TypeError can escape render and land here too,
+    // moments after vite:preloadError already reported it as chunk-load-error
+    // — see the de-dup flag in telemetry/client.ts. Skip rather than report
+    // the same underlying event a second time.
+    if (shouldSuppressAsChunkLoadTail(Date.now())) return
+
     // `variant` is a literal union, so the boundary label is a fixed string and
     // can never be interpolated from render data. HQ fingerprints on it.
     reportError(toTelemetrySafe(error), `${this.props.variant}-boundary`)
