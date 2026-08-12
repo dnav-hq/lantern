@@ -40,6 +40,24 @@ function writeHideNotes(value: boolean): void {
   }
 }
 
+// Persisted Reading Mode preference — guarded the same way hideAllNotes is,
+// so a storage-denied browser just falls back to "off" and never throws.
+const FOCUS_READING_KEY = 'berean.focusReading'
+function readFocusReading(): boolean {
+  try {
+    return localStorage.getItem(FOCUS_READING_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+function writeFocusReading(value: boolean): void {
+  try {
+    localStorage.setItem(FOCUS_READING_KEY, value ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
+}
+
 interface AppProps {
   // Signed-in display name for the "Welcome back" touch. null on the memory stub.
   displayName: string | null
@@ -90,17 +108,23 @@ export default function App({
   // Reading surface state — two DELIBERATELY SEPARATE controls (see
   // ReadingControls): `hideNotes` is a content filter (show/hide your notes),
   // persisted as a Settings preference and the ONLY thing that hides notes;
-  // `focusReading` is Reading Mode — a transient, environment-only toggle that
+  // `focusReading` is Reading Mode — an environment-only toggle that
   // recedes/restructures the chrome so scripture owns the screen, and never
-  // touches note visibility. `chromeVisible` is driven by the reader's own
-  // scrolling (see useScrollDirection).
+  // touches note visibility. Persisted like `hideNotes` so it sticks across
+  // chapters, navigation and reload; only applied visually while on a
+  // reading surface (see shellClass below). `chromeVisible` is driven by the
+  // reader's own scrolling (see useScrollDirection).
   const [hideNotes, setHideNotes] = useState(readHideNotes)
-  const [focusReading, setFocusReading] = useState(false)
+  const [focusReading, setFocusReading] = useState(readFocusReading)
   const [chromeVisible, setChromeVisible] = useState(true)
 
   useEffect(() => {
     writeHideNotes(hideNotes)
   }, [hideNotes])
+
+  useEffect(() => {
+    writeFocusReading(focusReading)
+  }, [focusReading])
 
   // Account-synced preferences (docs/proposals/guest-preview-mode.md §2b).
   // localStorage (via the writes above and each hook's own effect) stays the
@@ -323,11 +347,11 @@ export default function App({
   const readingSurface =
     destination === 'bible' && (selectedBibleBook !== null || selectedPassage !== null)
 
-  // Focus is deliberately transient (per the spec: the persisted control is the
-  // Settings one), so leaving the passage always drops back to normal chrome.
+  // Reading Mode is a persisted preference now, so leaving the passage does
+  // NOT turn it off — only the chrome-hidden (scroll-away) state resets, so a
+  // return to a reading surface never inherits a stale collapsed chrome.
   useEffect(() => {
     if (!readingSurface) {
-      setFocusReading(false)
       setChromeVisible(true)
     }
   }, [readingSurface])
@@ -348,7 +372,7 @@ export default function App({
     // collapsed into the one bar, and letting the scroll-hide transform fight
     // the mode is what made exiting jolt (the bar snapping back then sliding).
     readingSurface && !chromeVisible && !focusReading ? 'chrome-hidden' : '',
-    focusReading ? 'focus-reading' : '',
+    readingSurface && focusReading ? 'focus-reading' : '',
     notesHidden ? 'notes-hidden' : ''
   ]
     .filter(Boolean)
