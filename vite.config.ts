@@ -71,8 +71,12 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/',
         scope: '/',
-        theme_color: '#F5F4F1',
-        background_color: '#F5F4F1',
+        // Matches index.html's <meta name="theme-color"> light-mode default —
+        // the OS splash is static (can't read the boot script's theme choice
+        // or animate), so this just has to agree with our own light default
+        // rather than flash a different near-white.
+        theme_color: '#f4f0e8',
+        background_color: '#f4f0e8',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
