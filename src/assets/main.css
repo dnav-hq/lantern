@@ -1636,6 +1636,22 @@ body.dark .search-backdrop {
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
+/* Touch selects verses by TAPPING (handled in JS), never by holding — but with
+   no rule here, a brief pause before a scroll reads to the browser as the start
+   of a native long-press text-selection gesture: it shows the native selection
+   handles/callout, can swallow the scroll that was meant to dismiss it, and the
+   native highlight lingers after. `pointer: coarse` (not a width breakpoint) so
+   this only touches actual touch input, never a narrow desktop window, and never
+   the Alt-drag copy escape hatch the marquee still offers on a mouse. */
+@media (pointer: coarse) {
+  .reading-verse-row,
+  .passage-verse {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
 .verse-add-btn {
   position: absolute;
   right: -24px;
@@ -5159,6 +5175,30 @@ body.dark .upd-popover-btn-ghost:hover {
   }
   .reading-verse-row {
     padding-right: 30px;
+  }
+
+  /* At mobile's wider line-wrap the 5px desktop radius reads as a hard-cornered
+     block rather than a highlight — bump the radius and give the fill more
+     breathing room. margin-left stays in lockstep with padding-left so the verse
+     text itself doesn't shift; only the highlight's fill grows. Left-only here:
+     padding-right on .reading-verse-row is reserved for the always-visible-on-
+     touch "+" button just above, so widening it too would push text under the
+     button. */
+  .reading-verse-row.selected,
+  .reading-verse-row.highlighted {
+    border-radius: 12px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    padding-left: 10px;
+    margin-left: -10px;
+  }
+
+  /* StudyMode's passage pane has no "+" button competing for the row, so its
+     study-start highlight can be symmetric. */
+  .passage-verse.highlighted {
+    border-radius: 12px;
+    padding: 6px 10px;
+    margin-left: -10px;
   }
 
   /* Floating action bar: sit just above the bottom tab bar, span the width, and
