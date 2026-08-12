@@ -14,7 +14,7 @@
 // only the class, the stripped frames, and a code.
 
 import { toTelemetrySafe } from '../errors'
-import { reportError } from './client'
+import { reportError, markChunkLoadErrorReported, shouldSuppressAsChunkLoadTail } from './client'
 
 let installed = false
 
@@ -55,6 +55,10 @@ export function installGlobalErrorHandlers(): void {
     // nothing safe to report, so we skip rather than send a placeholder that
     // would fingerprint as one big meaningless bucket in HQ's inbox.
     if (!event.error) return
+    // A chunk-load failure's TypeError reaches here too, moments after
+    // vite:preloadError already reported it under its own label — see the
+    // note below and the de-dup flag in client.ts.
+    if (shouldSuppressAsChunkLoadTail(Date.now())) return
     reportError(toTelemetrySafe(event.error), 'window-error')
   })
 
@@ -69,6 +73,11 @@ export function installGlobalErrorHandlers(): void {
   // stack, indistinguishable from any other TypeError. Content-free, same as
   // every other report — only the class and stripped frames leave the browser.
   window.addEventListener('vite:preloadError', (event: Event) => {
+    // Mark this first: the resulting TypeError reaches window.onerror and,
+    // if it escapes render, the error boundary within the same tick or two —
+    // both must see the flag before they decide whether to report.
+    markChunkLoadErrorReported(Date.now())
+
     const payload = (event as Event & { payload?: unknown }).payload
     if (payload) reportError(toTelemetrySafe(payload), 'chunk-load-error')
 
