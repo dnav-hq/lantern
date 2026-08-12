@@ -119,16 +119,12 @@
         pointer-events: none;
       }
       .boot-mark,
-      .boot-wordmark,
-      .boot-tagline {
+      .boot-wordmark {
         position: relative;
         animation: boot-rise-in 900ms cubic-bezier(0.45, 0, 0.15, 1) both;
       }
       .boot-wordmark {
         animation-delay: 140ms;
-      }
-      .boot-tagline {
-        animation-delay: 260ms;
       }
       @media (prefers-reduced-motion: reduce) {
         .boot-glow,
@@ -136,8 +132,7 @@
           animation: none !important;
         }
         .boot-mark,
-        .boot-wordmark,
-        .boot-tagline {
+        .boot-wordmark {
           animation: none !important;
           opacity: 1 !important;
           transform: none !important;
@@ -153,16 +148,23 @@
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Lantern — personal Bible study notes</title>
     <!-- The app is a client-rendered SPA whose landing is a lazily-loaded chunk,
-         so the served HTML must state the app name and purpose WITHOUT depending
-         on JS — otherwise Google's OAuth branding reviewer (and crawlers) fetch an
-         empty #root and report "homepage does not explain the app" / "app name
-         does not match". Two layers handle that:
-           1. Explicit app-name signals below set to exactly "Lantern" (must match
-              the OAuth consent-screen app name).
-           2. A VISIBLE fallback inside #root (further down) — real, server-served
-              content that React replaces on mount. Not <noscript>: that is hidden
-              when JS runs, so a JS-executing-but-early reviewer would still see
-              nothing. Keep all of this in sync with the consent screen + landing. -->
+         so the served HTML must state the app name WITHOUT depending on JS —
+         otherwise Google's OAuth branding reviewer (and crawlers) fetch an
+         empty #root and report "app name does not match". Two layers handle
+         that:
+           1. Explicit app-name signals below set to exactly "Lantern" (must
+              match the OAuth consent-screen app name), plus the description/
+              og meta tags for the app's purpose.
+           2. A VISIBLE fallback inside #root (further down) — the logo +
+              "Lantern" wordmark, real server-served content that React
+              replaces on mount. Not <noscript>: that is hidden when JS runs,
+              so a JS-executing-but-early reviewer would still see nothing.
+              Purpose text and policy links live only in the meta tags now
+              (Dennis wants the splash itself to be just logo + wordmark, no
+              competing copy) — the consent-screen privacy/terms URLs are
+              configured directly in the OAuth consent screen, not required
+              to render as on-page links. Keep in sync with the consent
+              screen + landing. -->
     <meta name="application-name" content="Lantern" />
     <meta
       name="description"
@@ -179,11 +181,11 @@
   </head>
   <body>
     <div id="root">
-      <!-- Server-served, VISIBLE fallback: the app name and a plain description of
-           what Lantern does, plus the required policy links. React (createRoot)
-           replaces all of this on mount, so real users only glimpse it during the
-           brief landing-chunk load; crawlers and no-JS/early reviewers see real
-           content. Styled inline (no external CSS dependency) to match the brand. -->
+      <!-- Server-served, VISIBLE fallback: just the logo + "Lantern" wordmark.
+           React (createRoot) replaces all of this on mount, so real users
+           only glimpse it during the brief landing-chunk load; crawlers and
+           no-JS/early reviewers see real content. Styled inline (no external
+           CSS dependency) to match the brand. -->
       <div
         id="app-fallback"
         style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--boot-bg, #f4f0e8);color:var(--boot-ink, #201e1a);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;margin:0;"
@@ -191,12 +193,11 @@
         <main style="max-width:560px;padding:32px 24px;text-align:center;">
           <!-- The loading/splash hero: wordmark + logo rise in over a soft
                breathing lantern-glow with one warm spark above (Psalm
-               119:105 lamp motif), plus one short animated tagline. This is
-               deliberately the ONLY prominent content — calm and minimal,
-               not a page of marketing copy. Decorative layers are
-               aria-hidden; the logo image below is still the exact one
-               OAuth brand verification checks (see its own comment),
-               unchanged. -->
+               119:105 lamp motif). This is deliberately the ONLY content —
+               just the logo and wordmark, calm and minimal, no tagline or
+               copy competing with it. Decorative layers are aria-hidden; the
+               logo image below is still the exact one OAuth brand
+               verification checks (see the top-of-file comment), unchanged. -->
           <div class="boot-hero">
             <div class="boot-glow" aria-hidden="true"></div>
             <div class="boot-spark" aria-hidden="true"></div>
@@ -212,42 +213,11 @@
             />
             <h1
               class="boot-wordmark"
-              style="font-family:Georgia,'Times New Roman',serif;font-size:34px;font-weight:700;letter-spacing:-0.01em;margin:0 0 12px;"
+              style="font-family:Georgia,'Times New Roman',serif;font-size:34px;font-weight:700;letter-spacing:-0.01em;margin:0;"
             >
               Lantern
             </h1>
-            <p
-              class="boot-tagline"
-              style="font-size:16px;line-height:1.5;color:var(--boot-muted, #4a463d);margin:0;"
-            >
-              A calm reading Bible with a place to write.
-            </p>
           </div>
-          <!-- Required for Google OAuth branding review + crawlers: the served
-               HTML must state the app's purpose and carry the consent-screen
-               links WITHOUT depending on JS (see the top-of-file comment on
-               #app-fallback). Kept real and visible (not display:none/
-               noscript — a reviewer that renders CSS would still see nothing),
-               but styled as quiet fine print so it doesn't compete with the
-               calm splash hero above. Not part of the animation. -->
-          <p
-            style="font-size:12px;line-height:1.6;color:var(--boot-muted, #6a6353);opacity:0.65;max-width:420px;margin:28px auto 10px;"
-          >
-            Read a passage, capture what you see in it (observation, historical
-            context, application, personal reflection), and read those notes back
-            later anchored to the verses, ready the next time you open the passage.
-          </p>
-          <p style="font-size:12px;color:var(--boot-muted, #6a6353);opacity:0.65;margin:0;">
-            <!-- Absolute URLs on purpose: the homepage requirement says the
-                 privacy link must MATCH the link configured on the OAuth consent
-                 screen, which is absolute. A relative /privacy would not match a
-                 checker comparing hrefs against that value. -->
-            <a href="https://lanternword.com/about" style="color:var(--boot-accent, #6b62d6);">About</a>
-            &nbsp;&middot;&nbsp;
-            <a href="https://lanternword.com/privacy" style="color:var(--boot-accent, #6b62d6);">Privacy</a>
-            &nbsp;&middot;&nbsp;
-            <a href="https://lanternword.com/terms" style="color:var(--boot-accent, #6b62d6);">Terms of Use</a>
-          </p>
         </main>
       </div>
     </div>
