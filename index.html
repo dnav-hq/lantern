@@ -7,8 +7,138 @@
          src/utils/useDarkMode.ts, which flips these to the dark canvas token
          from tokens.css (body.dark --bg) whenever body.dark changes, and back
          to this cream on light. The value here is just the light-mode/initial
-         paint default. -->
+         paint default; the boot script below overwrites it synchronously
+         before first paint if the stored/OS preference is dark. -->
     <meta name="theme-color" content="#f4f0e8" />
+    <!-- Synchronous boot-theme read: must run before first paint so the
+         loading splash (#app-fallback below) shows the right background
+         instantly, with no white flash while React — and useDarkMode.ts /
+         useTheme.ts — boot. Mirrors those hooks' storage keys and fallback
+         logic exactly (literals, not imported: this runs before any app JS
+         loads). Failure (storage blocked, etc.) leaves the :root defaults
+         below in place, i.e. the light theme. -->
+    <script>
+      ;(function () {
+        try {
+          var BG = {
+            berean: ['#f4f0e8', '#17140f'],
+            scholarly: ['#fbfaf8', '#17161a'],
+            paper: ['#f3efe7', '#1c1915'],
+            modern: ['#f7f8fa', '#0f1115']
+          }
+          var INK = ['#201e1a', '#ece4d6']
+          var MUTED = ['#4a463d', '#a99f8e']
+          var ACCENT = ['#6b62d6', '#a49cf0']
+          var visualTheme = localStorage.getItem('berean-visual-theme') || 'berean'
+          var storedMode = localStorage.getItem('berean-theme')
+          var isDark = storedMode
+            ? storedMode === 'dark'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches
+          var i = isDark ? 1 : 0
+          var bg = (BG[visualTheme] || BG.berean)[i]
+          var rootStyle = document.documentElement.style
+          rootStyle.setProperty('--boot-bg', bg)
+          rootStyle.setProperty('--boot-ink', INK[i])
+          rootStyle.setProperty('--boot-muted', MUTED[i])
+          rootStyle.setProperty('--boot-accent', ACCENT[i])
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', bg)
+        } catch (e) {}
+      })()
+    </script>
+    <style>
+      :root {
+        --boot-bg: #f4f0e8;
+        --boot-ink: #201e1a;
+        --boot-muted: #4a463d;
+        --boot-accent: #6b62d6;
+        --boot-glow: rgba(217, 155, 74, 0.4);
+        --boot-spark: #eab168;
+      }
+      /* One-shot rise-in for the wordmark/mark; the breathing glow and spark
+         loop for as long as the splash is on screen (real load times vary,
+         so the loop can't be timed to a fixed duration). All three stop the
+         instant React mounts and replaces #app-fallback — see main.tsx. */
+      @keyframes boot-rise-in {
+        from {
+          opacity: 0;
+          transform: translateY(14px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes boot-breathe {
+        0%,
+        100% {
+          opacity: 0.5;
+          transform: translate(-50%, -30%) scale(0.94);
+        }
+        50% {
+          opacity: 0.85;
+          transform: translate(-50%, -30%) scale(1.06);
+        }
+      }
+      @keyframes boot-spark-glow {
+        0%,
+        100% {
+          opacity: 0.55;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      .boot-hero {
+        position: relative;
+        padding-top: 34px;
+      }
+      .boot-glow {
+        position: absolute;
+        top: -6px;
+        left: 50%;
+        width: 210px;
+        height: 210px;
+        transform: translate(-50%, -30%);
+        border-radius: 50%;
+        opacity: 0.7;
+        background: radial-gradient(circle, var(--boot-glow) 0%, rgba(217, 155, 74, 0) 70%);
+        animation: boot-breathe 3400ms ease-in-out infinite;
+        pointer-events: none;
+      }
+      .boot-spark {
+        position: absolute;
+        top: 6px;
+        left: 50%;
+        width: 6px;
+        height: 6px;
+        margin-left: -3px;
+        border-radius: 50%;
+        background: var(--boot-spark);
+        box-shadow: 0 0 12px 4px var(--boot-spark);
+        animation: boot-spark-glow 2600ms ease-in-out infinite;
+        pointer-events: none;
+      }
+      .boot-mark,
+      .boot-wordmark {
+        position: relative;
+        animation: boot-rise-in 900ms cubic-bezier(0.45, 0, 0.15, 1) both;
+      }
+      .boot-wordmark {
+        animation-delay: 140ms;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-glow,
+        .boot-spark {
+          animation: none !important;
+        }
+        .boot-mark,
+        .boot-wordmark {
+          animation: none !important;
+          opacity: 1 !important;
+          transform: none !important;
+        }
+      }
+    </style>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!-- Browser-tab favicon (SVG, so it stays crisp at any size) and the iOS
@@ -18,16 +148,23 @@
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Lantern — personal Bible study notes</title>
     <!-- The app is a client-rendered SPA whose landing is a lazily-loaded chunk,
-         so the served HTML must state the app name and purpose WITHOUT depending
-         on JS — otherwise Google's OAuth branding reviewer (and crawlers) fetch an
-         empty #root and report "homepage does not explain the app" / "app name
-         does not match". Two layers handle that:
-           1. Explicit app-name signals below set to exactly "Lantern" (must match
-              the OAuth consent-screen app name).
-           2. A VISIBLE fallback inside #root (further down) — real, server-served
-              content that React replaces on mount. Not <noscript>: that is hidden
-              when JS runs, so a JS-executing-but-early reviewer would still see
-              nothing. Keep all of this in sync with the consent screen + landing. -->
+         so the served HTML must state the app name WITHOUT depending on JS —
+         otherwise Google's OAuth branding reviewer (and crawlers) fetch an
+         empty #root and report "app name does not match". Two layers handle
+         that:
+           1. Explicit app-name signals below set to exactly "Lantern" (must
+              match the OAuth consent-screen app name), plus the description/
+              og meta tags for the app's purpose.
+           2. A VISIBLE fallback inside #root (further down) — the logo +
+              "Lantern" wordmark, real server-served content that React
+              replaces on mount. Not <noscript>: that is hidden when JS runs,
+              so a JS-executing-but-early reviewer would still see nothing.
+              Purpose text and policy links live only in the meta tags now
+              (Dennis wants the splash itself to be just logo + wordmark, no
+              competing copy) — the consent-screen privacy/terms URLs are
+              configured directly in the OAuth consent screen, not required
+              to render as on-page links. Keep in sync with the consent
+              screen + landing. -->
     <meta name="application-name" content="Lantern" />
     <meta
       name="description"
@@ -44,48 +181,43 @@
   </head>
   <body>
     <div id="root">
-      <!-- Server-served, VISIBLE fallback: the app name and a plain description of
-           what Lantern does, plus the required policy links. React (createRoot)
-           replaces all of this on mount, so real users only glimpse it during the
-           brief landing-chunk load; crawlers and no-JS/early reviewers see real
-           content. Styled inline (no external CSS dependency) to match the brand. -->
+      <!-- Server-served, VISIBLE fallback: just the logo + "Lantern" wordmark.
+           React (createRoot) replaces all of this on mount, so real users
+           only glimpse it during the brief landing-chunk load; crawlers and
+           no-JS/early reviewers see real content. Styled inline (no external
+           CSS dependency) to match the brand. -->
       <div
         id="app-fallback"
-        style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f0e8;color:#201e1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;margin:0;"
+        style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--boot-bg, #f4f0e8);color:var(--boot-ink, #201e1a);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;margin:0;"
       >
         <main style="max-width:560px;padding:32px 24px;text-align:center;">
-          <!-- Same image as the uploaded OAuth app logo — brand verification
-               compares the consent screen's name AND logo against the site. -->
-          <img
-            src="/icon-512.png"
-            alt="Lantern logo"
-            width="96"
-            height="96"
-            style="width:96px;height:96px;border-radius:20px;display:inline-block;margin:0 0 18px;"
-          />
-          <h1 style="font-family:Georgia,'Times New Roman',serif;font-size:34px;font-weight:700;letter-spacing:-0.01em;margin:0 0 16px;">
-            Lantern
-          </h1>
-          <p style="font-size:17px;line-height:1.6;color:#4a463d;margin:0 0 14px;">
-            Lantern is a personal Bible study notes app — a calm reading Bible with
-            a place to write.
-          </p>
-          <p style="font-size:15px;line-height:1.6;color:#6a6353;margin:0 0 24px;">
-            Read a passage, capture what you see in it (observation, historical
-            context, application, personal reflection), and read those notes back
-            later anchored to the verses, ready the next time you open the passage.
-          </p>
-          <p style="font-size:14px;color:#6a6353;margin:0;">
-            <!-- Absolute URLs on purpose: the homepage requirement says the
-                 privacy link must MATCH the link configured on the OAuth consent
-                 screen, which is absolute. A relative /privacy would not match a
-                 checker comparing hrefs against that value. -->
-            <a href="https://lanternword.com/about" style="color:#6b62d6;">About</a>
-            &nbsp;&middot;&nbsp;
-            <a href="https://lanternword.com/privacy" style="color:#6b62d6;">Privacy</a>
-            &nbsp;&middot;&nbsp;
-            <a href="https://lanternword.com/terms" style="color:#6b62d6;">Terms of Use</a>
-          </p>
+          <!-- The loading/splash hero: wordmark + logo rise in over a soft
+               breathing lantern-glow with one warm spark above (Psalm
+               119:105 lamp motif). This is deliberately the ONLY content —
+               just the logo and wordmark, calm and minimal, no tagline or
+               copy competing with it. Decorative layers are aria-hidden; the
+               logo image below is still the exact one OAuth brand
+               verification checks (see the top-of-file comment), unchanged. -->
+          <div class="boot-hero">
+            <div class="boot-glow" aria-hidden="true"></div>
+            <div class="boot-spark" aria-hidden="true"></div>
+            <!-- Same image as the uploaded OAuth app logo — brand verification
+                 compares the consent screen's name AND logo against the site. -->
+            <img
+              src="/icon-512.png"
+              alt="Lantern logo"
+              width="96"
+              height="96"
+              class="boot-mark"
+              style="width:96px;height:96px;border-radius:20px;display:inline-block;margin:0 0 18px;"
+            />
+            <h1
+              class="boot-wordmark"
+              style="font-family:Georgia,'Times New Roman',serif;font-size:34px;font-weight:700;letter-spacing:-0.01em;margin:0;"
+            >
+              Lantern
+            </h1>
+          </div>
         </main>
       </div>
     </div>
