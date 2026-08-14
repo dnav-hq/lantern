@@ -5139,11 +5139,26 @@ body.dark .upd-popover-btn-ghost:hover {
     flex-shrink: 0;
     color: var(--text-faint);
   }
-  /* Two columns instead of three so book names don't truncate on narrow screens. */
+  /* Two columns instead of three, and a mobile-sized gap — the desktop
+     --library-col-gap (88px) left almost nothing for the columns themselves at
+     this width. `minmax(0, 1fr)`, not bare `1fr`: an implicit `minmax(auto,
+     1fr)` track won't shrink below its content's intrinsic width, so a long
+     name (e.g. "2 Thessalonians") grew its column past the viewport and forced
+     the library to scroll sideways instead of letting `.bible-book-name`'s
+     existing ellipsis do its job. */
+  .bible-library {
+    --library-col-gap: 16px;
+  }
   .bible-books-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .bible-book-row {
+    /* Grid items stretch to their column's full width by default, so the row
+       already covers the whole cell — width/box-sizing here are explicit
+       insurance for that (the actual full-row/enlarged-hit-area fix), so the
+       tappable area is never just the text glyphs. */
+    width: 100%;
+    box-sizing: border-box;
     padding: 9px 8px;
   }
   .bible-passage-item {
