@@ -14,7 +14,7 @@ import { Passage } from './types'
 import { BIBLE_BOOKS } from './utils/bibleBooks'
 import { useApi } from './api/context'
 import { useDarkMode } from './utils/useDarkMode'
-import { useTheme } from './utils/useTheme'
+import { useTheme, usePureBlack, LOOKS, lookIdFor, type LookId } from './utils/useTheme'
 import { useTranslation } from './utils/useTranslation'
 import { useTextSize } from './utils/useTextSize'
 import { resolveSettingsAdoption, type UserSettings } from './api/types'
@@ -100,8 +100,26 @@ export default function App({
   initialDeepLink = null
 }: AppProps): React.ReactElement {
   const api = useApi()
-  const [isDark, toggleDark, setDark] = useDarkMode()
+  const [isDark, , setDark] = useDarkMode()
   const [theme, setTheme] = useTheme()
+  // Pure-black is applied here (App is mounted for the whole session) so the
+  // stored choice re-applies on boot, and so selecting a look can set all three
+  // appearance axes together. It stays localStorage-only (device-level), not
+  // account-synced — an OLED preference is per-screen, not per-account.
+  const [pureBlack, setPureBlack] = usePureBlack()
+  // The single "look" the Settings list highlights, derived from the three
+  // axes; selecting one applies theme + dark + pure-black at once.
+  const lookId = lookIdFor(theme, isDark, pureBlack)
+  const selectLook = useCallback(
+    (id: LookId) => {
+      const look = LOOKS.find(l => l.id === id)
+      if (!look) return
+      setTheme(look.theme)
+      setDark(look.dark)
+      setPureBlack(look.pureBlack)
+    },
+    [setTheme, setDark, setPureBlack]
+  )
   const [translation, setTranslation] = useTranslation()
   const [textSize, setTextSize] = useTextSize()
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -519,10 +537,8 @@ export default function App({
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        isDark={isDark}
-        onToggleDark={toggleDark}
-        theme={theme}
-        onSetTheme={setTheme}
+        lookId={lookId}
+        onSelectLook={selectLook}
         textSize={textSize}
         onSetTextSize={setTextSize}
         hideNotes={hideNotes}
