@@ -354,6 +354,24 @@ prioritized.
 
 ## Done
 
+- **PWA install: a permanent menu entry + one commitment-timed nudge
+  (2026-08-16).** The browser's own install popup fires on a first-ever visit,
+  before anyone knows what Lantern is, so it gets swiped away and never returns
+  (a real Android reader installed nothing for exactly this reason). Now
+  `src/platform/install.ts` captures `beforeinstallprompt` and
+  `preventDefault()`s it — suppressing Chrome's mini-infobar — and stashes it to
+  replay later; iOS Safari, which has no install API, gets a Share → Add to Home
+  Screen hint instead; every other browser gets nothing rendered at all. Two
+  surfaces: a permanent, never-nagging "Install app" / "Add to home screen"
+  entry in the avatar menu and the Profile page, and ONE quiet popover shown at
+  most once per browser profile. Its gate (`src/utils/installNudge.ts`,
+  unit-tested) is deliberately conservative: 2nd-or-later session **and** a note
+  actually saved, never standalone (both `display-mode: standalone` and
+  `navigator.standalone`), never twice — "not now" is final, and the shown flag
+  is written as it appears, not as it's answered. Telemetry `env` gained a
+  `standalone` boolean so install rate is measurable (a new `kind` was not
+  possible — that column is a closed CHECK set).
+
 - **Reading-mode/header overhaul + chapter-nav polish + translation footer
   (2026-08-05, shipped to main `255910b`).** The whole reading-surface set landed
   in one merge. Three parts:

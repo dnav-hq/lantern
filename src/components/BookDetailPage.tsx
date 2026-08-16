@@ -25,6 +25,7 @@ import {
   usePrefersReducedMotion,
   type ChapterRef
 } from '../utils/useChapterNavigation'
+import { markInstallEngagement } from '../utils/installNudge'
 
 // ─── tiny helpers ────────────────────────────────────────────────────────────
 
@@ -551,6 +552,8 @@ function ChapterView({
       setLocalNotes(prev => [...prev, enriched])
       setInlineVerse(null)
       setInlineText('')
+      // A saved note is the engagement signal the install nudge waits for.
+      markInstallEngagement()
       markJustSaved(saved.id)
       onNotesChanged()
     } finally {

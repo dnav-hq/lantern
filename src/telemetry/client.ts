@@ -33,6 +33,7 @@
 
 import type { TelemetrySafeError } from '../errors'
 import { getInstallId } from './install'
+import { isStandalone } from '../platform/install'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -119,7 +120,7 @@ interface EventRow {
   stack?: string
   boundary?: string
   commit_sha?: string
-  env: { browser: string; viewport: string; online: boolean }
+  env: { browser: string; viewport: string; online: boolean; standalone: boolean }
 }
 
 function post(row: EventRow): void {
@@ -168,7 +169,14 @@ function send(
     env: {
       browser: browserFamily(),
       viewport: viewportBucket(),
-      online: navigator.onLine
+      online: navigator.onLine,
+      // Installed-app vs browser-tab, so install rate is measurable at all.
+      // It rides `env` on every event rather than a new 'app_load' kind
+      // because `kind` is a closed CHECK-constrained set in
+      // supabase/migrations/0004 (out of scope here, and an unknown kind is a
+      // hard insert failure by design); `env` is jsonb, so one more boolean is
+      // additive, content-free and needs no migration.
+      standalone: isStandalone()
     }
   })
 }

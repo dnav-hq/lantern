@@ -19,6 +19,7 @@ import {
   type DraftLine
 } from '../offline/draft'
 import { reportOccurrence } from '../telemetry/client'
+import { markInstallEngagement } from '../utils/installNudge'
 
 const DRAFT_SAVE_DEBOUNCE_MS = 600
 
@@ -418,6 +419,10 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
   // notes whose line was removed are deleted. New notes go to writeSessionId.
   async function reconcileNotes(writeSessionId: string): Promise<void> {
     const kept = new Set<string>()
+    // Whether this save actually wrote a note — the install nudge's engagement
+    // signal, and deliberately not "the user pressed Save": an unchanged study
+    // re-saved is not new commitment.
+    let wroteNote = false
     for (const line of lines) {
       const text = line.text.trim()
       const parsed = parseNoteLine(line.text)
@@ -431,6 +436,7 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
         kept.add(line.noteId)
         const changed = src.content !== line.text || (src.indent_level ?? 0) !== line.indent
         if (changed) {
+          wroteNote = true
           await api.updateNote(line.noteId, {
             content: line.text,
             anchor_start_verse: parsed.anchorStart,
@@ -440,6 +446,7 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
           })
         }
       } else if (text) {
+        wroteNote = true
         await api.createNote({
           session_id: writeSessionId,
           content: line.text,
@@ -456,6 +463,7 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
     for (const id of existingNotes.keys()) {
       if (!kept.has(id)) await api.deleteNote(id)
     }
+    if (wroteNote) markInstallEngagement()
     // Everything above landed on the server — the local draft is now stale
     // (and would otherwise resurface later and overwrite newer server state).
     if (draftStorageKey) {

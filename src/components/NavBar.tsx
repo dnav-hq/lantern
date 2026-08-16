@@ -24,6 +24,11 @@ interface NavBarProps {
   // Opens the dedicated mobile search surface (a tap target in the top bar,
   // shown only under the breakpoint).
   onOpenSearch?: () => void
+  // Home-screen install. False when the app is already installed or the
+  // browser has no install path at all — the entry then isn't rendered, rather
+  // than offering something that can't happen. See platform/install.ts.
+  canInstall?: boolean
+  onInstall?: () => void
 }
 
 /** Closes the dropdown when a click lands outside `ref`. */
@@ -57,7 +62,9 @@ export default function NavBar({
   onOpenSettings,
   onSignOut,
   searchSlot,
-  onOpenSearch
+  onOpenSearch,
+  canInstall = false,
+  onInstall
 }: NavBarProps): React.ReactElement {
   const api = useApi()
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
@@ -366,6 +373,18 @@ export default function NavBar({
                 >
                   {exportState === 'exporting' ? 'Exporting…' : 'Export notes'}
                 </button>
+                {canInstall && onInstall && (
+                  <button
+                    className="nav-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setProfileOpen(false)
+                      onInstall()
+                    }}
+                  >
+                    Install app
+                  </button>
+                )}
                 {onSignOut && (
                   <>
                     <div className="nav-menu-divider" />
