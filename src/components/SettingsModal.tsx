@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react'
 import { useApi } from '../api/context'
 import { exportAllNotesAsZip } from '../platform/export'
-import { THEMES, type ThemeId } from '../utils/useTheme'
+import { LOOKS, type LookId } from '../utils/useTheme'
 import { TEXT_SIZES, type TextSizeId } from '../utils/useTextSize'
 import { TRANSLATIONS, useTranslation } from '../utils/useTranslation'
 import { isTelemetryOptedOut, setTelemetryOptedOut } from '../telemetry/client'
@@ -9,10 +9,10 @@ import { isTelemetryOptedOut, setTelemetryOptedOut } from '../telemetry/client'
 interface SettingsModalProps {
   isOpen: boolean
   onClose: () => void
-  isDark: boolean
-  onToggleDark: () => void
-  theme: ThemeId
-  onSetTheme: (theme: ThemeId) => void
+  // The active look (theme + light/dark + pure-black bundled), and a setter that
+  // applies all three axes at once. See LOOKS / lookIdFor in useTheme.ts.
+  lookId: LookId
+  onSelectLook: (id: LookId) => void
   textSize: TextSizeId
   onSetTextSize: (size: TextSizeId) => void
   // Persisted "hide all notes" preference. Deliberately separate from the top
@@ -28,10 +28,8 @@ interface SettingsModalProps {
 export default function SettingsModal({
   isOpen,
   onClose,
-  isDark,
-  onToggleDark,
-  theme,
-  onSetTheme,
+  lookId,
+  onSelectLook,
   textSize,
   onSetTextSize,
   hideNotes,
@@ -91,54 +89,57 @@ export default function SettingsModal({
         </div>
 
         <div className="smodal-body">
-          {/* Appearance */}
+          {/* Appearance — one curated list of complete looks. Theme, light/dark
+              and pure-black used to be three separate controls; that matrix hid
+              the light option (switching theme never touched dark). Now each row
+              is a whole look and one tap sets all three axes (see LOOKS in
+              useTheme.ts). Grouped Light / Dark / Pure black so the kind of each
+              is obvious at a glance. */}
           <div className="smodal-section">
             <div className="smodal-section-label">Appearance</div>
-            <div className="smodal-vault-actions">
-              <button className="smodal-vault-btn" onClick={onToggleDark}>
-                {isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              </button>
-            </div>
-          </div>
-
-          <div className="smodal-divider" />
-
-          {/* Theme — the color/reading-type direction, independent of light/dark */}
-          <div className="smodal-section">
-            <div className="smodal-section-label">Theme</div>
-            <div className="theme-picker" role="radiogroup" aria-label="Visual theme">
-              {THEMES.map(t => (
-                <button
-                  key={t.id}
-                  className={`theme-swatch${theme === t.id ? ' active' : ''}`}
-                  onClick={() => onSetTheme(t.id)}
-                  role="radio"
-                  aria-checked={theme === t.id}
-                >
-                  <span className={`theme-swatch-preview theme-preview-${t.id}`} aria-hidden="true">
-                    <span className="theme-preview-accent" />
-                  </span>
-                  <span className="theme-swatch-text">
-                    <span className="theme-swatch-label">{t.label}</span>
-                    <span className="theme-swatch-blurb">{t.blurb}</span>
-                  </span>
-                  {theme === t.id && (
-                    <svg
-                      className="theme-swatch-check"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+            <div className="theme-picker" role="radiogroup" aria-label="Appearance">
+              {LOOKS.map((look, i) => {
+                const active = lookId === look.id
+                const startsGroup = i === 0 || LOOKS[i - 1].group !== look.group
+                return (
+                  <React.Fragment key={look.id}>
+                    {startsGroup && <div className="look-group-label">{look.group}</div>}
+                    <button
+                      className={`theme-swatch${active ? ' active' : ''}`}
+                      onClick={() => onSelectLook(look.id)}
+                      role="radio"
+                      aria-checked={active}
                     >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </button>
-              ))}
+                      <span
+                        className={`theme-swatch-preview look-preview-${look.id}`}
+                        aria-hidden="true"
+                      >
+                        <span className="look-preview-card" />
+                        <span className="theme-preview-accent" />
+                      </span>
+                      <span className="theme-swatch-text">
+                        <span className="theme-swatch-label">{look.label}</span>
+                        <span className="theme-swatch-blurb">{look.blurb}</span>
+                      </span>
+                      {active && (
+                        <svg
+                          className="theme-swatch-check"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </button>
+                  </React.Fragment>
+                )
+              })}
             </div>
           </div>
 

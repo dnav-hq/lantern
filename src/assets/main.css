@@ -3980,31 +3980,84 @@ body.dark .chapter-pill.active.has-notes {
   border-radius: 50%;
 }
 
-/* Each swatch renders a static preview of its OWN theme's palette, not the
-   currently-active one — so all four are comparable at a glance. */
-.theme-preview-berean {
+/* Each swatch is a static mini-preview of its OWN look — a canvas with a raised
+   surface card and an accent dot — so all six are comparable at a glance,
+   independent of the currently-active look. Colours mirror tokens.css: the
+   canvas, the near-black/cream surface, and the theme accent. The surface card
+   is what makes the dark looks legible (true-black canvas vs warm near-black
+   surface), where a single flat colour would read as one black rectangle. */
+.look-preview-card {
+  position: absolute;
+  inset: 6px 6px 5px;
+  border-radius: 4px;
+}
+
+.look-preview-lantern {
   background: #f4f0e8;
 }
-.theme-preview-berean .theme-preview-accent {
+.look-preview-lantern .look-preview-card {
+  background: #fbf9f4;
+}
+.look-preview-lantern .theme-preview-accent {
   background: #6b62d6;
 }
-.theme-preview-scholarly {
+.look-preview-scholarly {
   background: #fbfaf8;
 }
-.theme-preview-scholarly .theme-preview-accent {
+.look-preview-scholarly .look-preview-card {
+  background: #ffffff;
+}
+.look-preview-scholarly .theme-preview-accent {
   background: #6b62d6;
 }
-.theme-preview-paper {
+.look-preview-paper {
   background: #f3efe7;
 }
-.theme-preview-paper .theme-preview-accent {
+.look-preview-paper .look-preview-card {
+  background: #fbf8f2;
+}
+.look-preview-paper .theme-preview-accent {
   background: #b5732a;
 }
-.theme-preview-modern {
+.look-preview-modern {
   background: #f7f8fa;
 }
-.theme-preview-modern .theme-preview-accent {
+.look-preview-modern .look-preview-card {
+  background: #ffffff;
+}
+.look-preview-modern .theme-preview-accent {
   background: #5b57e0;
+}
+.look-preview-lantern-dark {
+  background: #17140f;
+}
+.look-preview-lantern-dark .look-preview-card {
+  background: #211d17;
+}
+.look-preview-lantern-dark .theme-preview-accent {
+  background: #a49cf0;
+}
+.look-preview-pure-black {
+  background: #000000;
+}
+.look-preview-pure-black .look-preview-card {
+  background: #0c0a07;
+}
+.look-preview-pure-black .theme-preview-accent {
+  background: #a49cf0;
+}
+
+/* Section headings inside the curated look list (Light / Dark / Pure black). */
+.look-group-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 12px 2px 4px;
+}
+.look-group-label:first-child {
+  margin-top: 2px;
 }
 
 .theme-swatch-text {
@@ -4229,6 +4282,10 @@ body.dark .chapter-pill.active.has-notes {
   color: var(--text);
 }
 
+/* Pure black (OLED) — sits under the light/dark button in Appearance. When the
+   app is in light mode the row stays put but reads as unavailable: dimmed, no
+   pointer cursor, and the description below it says why. Hiding it instead
+   would make a control disappear the moment you switch to light. */
 .smodal-privacy-link {
   font-size: 12px;
   color: var(--accent-ink);

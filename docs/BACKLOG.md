@@ -339,6 +339,15 @@ prioritized.
 - **Tauri desktop wrap.** Same idea for desktop, replacing the frozen Electron
   app. The web code is the source of truth.
 
+- **Pure black (OLED): boot splash + browser chrome colour.** The Pure black
+  toggle deepens the app itself, but two paint surfaces outside it still use the
+  theme's ordinary dark canvas: `index.html`'s synchronous boot script (so the
+  splash flashes `#17140f` before React paints `#000`) and the `theme-color` /
+  iOS status-bar meta tags, which `useDarkMode.ts` pins to a literal `DARK_BG`.
+  Both need the pure-black preference read alongside `berean-theme` — a small
+  change, deliberately left out of the toggle's own change because those two
+  files were out of its scope.
+
 - **Paid tier considerations.** If/when hosting or AI costs warrant it: what's
   free vs paid, billing, quota enforcement. Design the free single-user
   experience so it never feels crippled.

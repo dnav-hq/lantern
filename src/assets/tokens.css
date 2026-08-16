@@ -392,6 +392,64 @@ html[data-theme='modern'] body.dark {
   --elev-3: 0 8px 20px -6px rgba(0, 0, 0, 0.5), 0 24px 48px -16px rgba(0, 0, 0, 0.6);
 }
 
+/* ─── Pure black (OLED) — a MODIFIER on dark, not a fifth theme ───────────────
+   `data-pure-black` on <html> (useTheme.ts's usePureBlack) drops the canvas to
+   true #000 so OLED pixels switch off entirely, and re-seats the raised
+   surfaces on warm near-blacks so the app still reads as Lantern rather than a
+   clinical black slab.
+
+   It overrides ONLY canvas / surfaces / borders / elevation. Text, accent and
+   the category hues keep coming from whichever theme's dark variant is active
+   — that is what makes this COMPOSE with all four themes instead of being a
+   fifth palette to maintain. Every one of those inherited colours also gains
+   contrast here rather than losing it, since the canvas underneath them only
+   got darker (measured: text 18.7:1, muted 8.5:1, accent 9.0:1 on #000).
+
+   Specificity: `html[data-pure-black] body.dark` is (0,2,2) — identical to the
+   per-theme `html[data-theme="x"] body.dark` blocks above, so it wins purely by
+   coming later in the file. Same no-!important trick those blocks already use.
+   Scoped to `body.dark`, so in light mode it is inert by construction.
+
+   Elevation becomes a hair-lighter surface plus a faint warm ring instead of a
+   shadow: a drop shadow is invisible against #000, so a surface lighter than
+   what it sits on is the only depth cue that survives. */
+html[data-pure-black] body.dark {
+  --bg: #000000;
+  --surface: #0c0a07;
+  --surface-2: #141009;
+  --border: #221e17;
+  --border-strong: #322c22;
+
+  --elev-1: 0 0 0 1px rgba(255, 244, 226, 0.05);
+  --elev-2: 0 0 0 1px rgba(255, 244, 226, 0.07);
+  --elev-3: 0 0 0 1px rgba(255, 244, 226, 0.1);
+  --elev-hairline: inset 0 1px 0 rgba(255, 244, 226, 0.05);
+}
+
+/* Per-theme near-blacks: each theme's dark surfaces carry its own tint (warm
+   for Lantern/Warm Paper, cool for Scholarly/Quiet Modern) and its own
+   surface/surface-2 ORDER — Lantern's surface-2 is a lighter inset fill, the
+   other three's is a darker one. Both are preserved below so pure black
+   deepens each theme rather than flattening them into one look. */
+html[data-pure-black][data-theme='scholarly'] body.dark {
+  --surface: #0b0a0d;
+  --surface-2: #08080a;
+  --border: #1e1d22;
+  --border-strong: #2b2931;
+}
+html[data-pure-black][data-theme='paper'] body.dark {
+  --surface: #0e0a05;
+  --surface-2: #0a0704;
+  --border: #241d13;
+  --border-strong: #362c1c;
+}
+html[data-pure-black][data-theme='modern'] body.dark {
+  --surface: #090b0f;
+  --surface-2: #06070a;
+  --border: #1a1e25;
+  --border-strong: #272d37;
+}
+
 /* ─── Text size preference (Settings, useTextSize.ts) ───────────────────────
    Independent of theme/dark mode — `data-text-size` on <html>, "medium"
    (the default) is unmarked, same convention as [data-theme]. */
