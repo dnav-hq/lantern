@@ -4229,6 +4229,21 @@ body.dark .chapter-pill.active.has-notes {
   color: var(--text);
 }
 
+/* Pure black (OLED) — sits under the light/dark button in Appearance. When the
+   app is in light mode the row stays put but reads as unavailable: dimmed, no
+   pointer cursor, and the description below it says why. Hiding it instead
+   would make a control disappear the moment you switch to light. */
+.pure-black-row {
+  margin-top: 12px;
+}
+.pure-black-row.inert {
+  cursor: default;
+  opacity: 0.45;
+}
+.pure-black-row.inert .smodal-checkbox {
+  cursor: default;
+}
+
 .smodal-privacy-link {
   font-size: 12px;
   color: var(--accent-ink);

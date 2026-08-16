@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react'
 import { useApi } from '../api/context'
 import { exportAllNotesAsZip } from '../platform/export'
-import { THEMES, type ThemeId } from '../utils/useTheme'
+import { THEMES, usePureBlack, type ThemeId } from '../utils/useTheme'
 import { TEXT_SIZES, type TextSizeId } from '../utils/useTextSize'
 import { TRANSLATIONS, useTranslation } from '../utils/useTranslation'
 import { isTelemetryOptedOut, setTelemetryOptedOut } from '../telemetry/client'
@@ -40,6 +40,11 @@ export default function SettingsModal({
 }: SettingsModalProps): React.ReactElement | null {
   const api = useApi()
   const [translation, setTranslation] = useTranslation()
+  // Owned here rather than lifted into App like theme/textSize: nothing outside
+  // Settings reads it (the effect writes an attribute on <html>, and tokens.css
+  // does the rest), and this modal is mounted for the whole app lifetime, so
+  // the stored choice is re-applied on boot without opening Settings.
+  const [pureBlack, setPureBlack] = usePureBlack()
   const [exportState, setExportState] = useState<'idle' | 'exporting' | 'error'>('idle')
   const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(() => !isTelemetryOptedOut())
 
@@ -99,6 +104,26 @@ export default function SettingsModal({
                 {isDark ? 'Switch to light mode' : 'Switch to dark mode'}
               </button>
             </div>
+
+            {/* Pure black deepens dark mode; it has nothing to say in light.
+                Kept VISIBLE but inert there rather than hidden, so the option
+                is still discoverable and toggling dark off doesn't make a
+                control the user just used vanish from under them. */}
+            <label className={`smodal-checkbox-row pure-black-row${isDark ? '' : ' inert'}`}>
+              <input
+                type="checkbox"
+                className="smodal-checkbox"
+                checked={pureBlack}
+                disabled={!isDark}
+                onChange={e => setPureBlack(e.target.checked)}
+              />
+              <span className="smodal-checkbox-label">Pure black (OLED)</span>
+            </label>
+            <p className="smodal-vault-desc">
+              {isDark
+                ? 'Deepens dark mode to true black, so OLED screens switch those pixels off. Works with whichever theme you have chosen.'
+                : 'Available in dark mode — pure black only changes the dark canvas.'}
+            </p>
           </div>
 
           <div className="smodal-divider" />
