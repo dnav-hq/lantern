@@ -22,15 +22,16 @@ import {
   markOnline,
   emitOfflineToast
 } from '../offline/status'
+import { uuid } from '../utils/uuid'
 
 // SupabaseBereanApi: the single mutation choke point against Postgres. Every id
-// is client-generated (crypto.randomUUID) and every timestamp is client-set — the
-// same offline-sync-ready contract the memory stub follows. Cascade-downward is
-// handled by ON DELETE CASCADE in the DB; the upward emptiness cleanup (empty
-// session -> delete, empty passage -> delete) is done explicitly here, mirroring
-// the legacy desktop behaviour.
+// is client-generated (uuid(), crypto.randomUUID with an insecure-context
+// fallback) and every timestamp is client-set — the same offline-sync-ready
+// contract the memory stub follows. Cascade-downward is handled by ON DELETE
+// CASCADE in the DB; the upward emptiness cleanup (empty session -> delete,
+// empty passage -> delete) is done explicitly here, mirroring the legacy
+// desktop behaviour.
 
-const uuid = (): string => crypto.randomUUID()
 const now = (): string => new Date().toISOString()
 
 // Fields we read back for a Passage. workspace_id is included but the caller
