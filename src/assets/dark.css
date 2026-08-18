@@ -63,7 +63,11 @@ body.dark .btn-save-next:hover:not(:disabled) {
 body.dark .verse-text {
   color: var(--text-muted);
 }
-body.dark .reading-verse-row:hover .verse-number {
+/* Mouse-only (.pointer-mouse): the :hover PSEUDO-class sticks on a touch-press
+   even where the hover MEDIA feature is off, so this recoloured the number blue
+   on a plain hold. Gate on real-mouse input, matching the light-mode rule in
+   main.css. The .selected rule below is unconditional — that's a real state. */
+.pointer-mouse body.dark .reading-verse-row:hover .verse-number {
   color: var(--accent-hover);
 }
 body.dark .reading-verse-row.selected .verse-number {
@@ -77,7 +81,10 @@ body.dark .reading-layout::-webkit-scrollbar-thumb {
 body.dark .reading-meta {
   color: var(--text-faint);
 }
-body.dark .reading-verse-row:hover {
+/* Mouse-only: dark mode's faint hover wash also stuck on a touch-hold (same
+   sticky-:hover reason as the verse-number rule above), showing a light grey
+   highlight on a plain press. Gate it on real-mouse input. */
+.pointer-mouse body.dark .reading-verse-row:hover {
   background: rgba(255, 255, 255, 0.03);
 }
 body.dark .reading-verse-row.highlighted {

@@ -249,6 +249,10 @@ function ChapterView({
   // The full-width reading container the marquee is scoped to, so a drag starting
   // in the side whitespace (not just over the verse grid) begins a selection.
   const containerRef = useRef<HTMLDivElement>(null)
+  // Tap vs hold: the row's click also fires for a hold-then-release, which was
+  // selecting the verse the instant you paused before scrolling. Record the
+  // press so handleVerseClick can accept only a real tap (short + still).
+  const tapRef = useRef<{ t: number; x: number; y: number; moved: boolean } | null>(null)
 
   const chapterNotes = localNotes.filter(
     n => n.chapter_start <= chapter && chapter <= n.chapter_end
@@ -383,6 +387,14 @@ function ChapterView({
 
   const handleVerseClick = (v: number): void => {
     if (editingNoteId !== null) return
+    // Tap-only selection: a hold-then-release (or a press that turned into a
+    // scroll) also produces a click, which was selecting the verse the moment
+    // you paused before scrolling. Accept only a real tap — pressed under ~500ms
+    // and barely moved. A click with no recorded press (keyboard/programmatic)
+    // has no tapRef and passes through unchanged.
+    const press = tapRef.current
+    tapRef.current = null
+    if (press && (Date.now() - press.t > 500 || press.moved)) return
     // A drag that just ended (possibly folding back onto its own start verse)
     // already committed the range via onRangeSelected — don't let the click
     // event mouseup produces re-run tap logic and clobber it.
@@ -940,10 +952,46 @@ function ChapterView({
             const inlineHere = inlineGroupsByVerse.get(v.verse)
             const mobileRangeHere = mobileRangeByVerse.get(v.verse)
 
+            // A contiguous run of selected (or highlighted) verses renders as ONE
+            // merged highlight: only the run's outer corners round and the gap
+            // between its verses closes, so the passage reads as a single unit
+            // rather than a stack of separate pills. `verse-run-*` on the block
+            // drives the CSS; neighbours are checked against whichever set is
+            // active on this verse.
+            const inActiveSet = (verse: number): boolean =>
+              isSelected
+                ? selRange !== null && verse >= selRange[0] && verse <= selRange[1]
+                : highlightedVerses.has(verse)
+            // An inline note (or mobile range note) renders BELOW a verse and
+            // visually breaks the fill, so it ends the run there: the noted
+            // verse is the run's bottom and the next verse starts a fresh run.
+            const hasInlineBreak = (verse: number): boolean =>
+              !!inlineGroupsByVerse.get(verse) || !!mobileRangeByVerse.get(verse)
+            const activeHere = isSelected || isHighlighted
+            const prevInRun =
+              activeHere &&
+              i > 0 &&
+              inActiveSet(verses[i - 1].verse) &&
+              !hasInlineBreak(verses[i - 1].verse)
+            const nextInRun =
+              activeHere &&
+              i < verses.length - 1 &&
+              inActiveSet(verses[i + 1].verse) &&
+              !hasInlineBreak(v.verse)
+            const runState = !activeHere
+              ? ''
+              : !prevInRun && !nextInRun
+                ? ' verse-run-single'
+                : !prevInRun
+                  ? ' verse-run-top'
+                  : !nextInRun
+                    ? ' verse-run-bottom'
+                    : ' verse-run-mid'
+
             return (
               <div
                 key={v.verse}
-                className="reading-verse-block"
+                className={`reading-verse-block${runState}`}
                 style={{ gridRow: i + 1, '--stagger-i': i } as React.CSSProperties}
               >
                 <div
@@ -952,6 +1000,18 @@ function ChapterView({
                     else verseRowRefs.current.delete(v.verse)
                   }}
                   className={`reading-verse-row${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}`}
+                  onPointerDown={e => {
+                    tapRef.current = { t: Date.now(), x: e.clientX, y: e.clientY, moved: false }
+                  }}
+                  onPointerMove={e => {
+                    const p = tapRef.current
+                    if (p && !p.moved && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10) {
+                      p.moved = true
+                    }
+                  }}
+                  onPointerCancel={() => {
+                    if (tapRef.current) tapRef.current.moved = true
+                  }}
                   onClick={() => handleVerseClick(v.verse)}
                   style={isDimmed ? { opacity: 0.35 } : undefined}
                 >

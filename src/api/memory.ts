@@ -1,5 +1,6 @@
 import type { BereanApi, UserSettings } from './types'
 import { CodedError } from '../errors'
+import { uuid } from '../utils/uuid'
 import type {
   Passage,
   Session,
@@ -26,7 +27,6 @@ import { getBibleVerse } from '../bible/service'
 
 const WORKSPACE_ID = 'personal-stub'
 
-const uuid = (): string => crypto.randomUUID()
 const now = (): string => new Date().toISOString()
 
 const passages = new Map<string, Passage>()

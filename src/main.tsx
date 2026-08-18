@@ -36,6 +36,30 @@ if (navigator.platform.toLowerCase().includes('mac')) {
   document.body.classList.add('platform-mac')
 }
 
+// Pointer mode: mouse-only affordances (the verse-row hover tint, the verse
+// number recolour, and the mouse text-selection escape hatch) must key off the
+// ACTUAL input device, not a media query. Samsung/S-Pen phones report BOTH
+// `hover: hover` AND `pointer: fine`, so `@media (hover) and (pointer: fine)`
+// still matched a finger and leaked a grey highlight + blue number onto a plain
+// hold. PointerEvent.pointerType is reliable where those media features aren't
+// (it's the same signal useVerseMarquee trusts to tell touch from mouse).
+// Default OFF (touch-first): a real mouse turns `pointer-mouse` on; any touch or
+// pen press turns it back off, so a hold shows nothing on a phone.
+{
+  const root = document.documentElement
+  const setMouse = (on: boolean): void => {
+    root.classList.toggle('pointer-mouse', on)
+  }
+  window.addEventListener('pointerdown', e => setMouse(e.pointerType === 'mouse'), true)
+  window.addEventListener(
+    'pointermove',
+    e => {
+      if (e.pointerType === 'mouse' && !root.classList.contains('pointer-mouse')) setMouse(true)
+    },
+    { capture: true, passive: true }
+  )
+}
+
 // Root chooses the backend: Supabase (auth-gated) when configured, otherwise the
 // in-memory stub for local dev.
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
