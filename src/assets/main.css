@@ -1521,13 +1521,16 @@ body.dark .search-backdrop {
   top: 0.15em;
 }
 
-/* Verse selection is a single tap gesture on the whole row; the number itself
-   reads as the tappable affordance (subtle hover on desktop, active-press on
-   touch) so it's clear the row responds. */
-.reading-verse-row:hover .verse-number {
+/* Verse selection is a single tap on the row; the number tints on hover/press
+   as a desktop affordance. Gate it on .pointer-mouse (a real mouse, set from the
+   live pointerType in main.tsx) rather than a hover/pointer media query: a phone
+   with a stylus reports hover:hover AND pointer:fine, so a media query still fired
+   this on a finger. The SELECTED state below is unconditional — that's the real
+   signal. */
+.pointer-mouse .reading-verse-row:hover .verse-number {
   color: var(--accent-ink);
 }
-.reading-verse-row:active .verse-number {
+.pointer-mouse .reading-verse-row:active .verse-number {
   color: var(--accent-hover);
 }
 .reading-verse-row.selected .verse-number {
@@ -1622,7 +1625,12 @@ body.dark .search-backdrop {
   position: relative;
 }
 
-.reading-verse-row:hover {
+/* Hover fill only with a real hovering MOUSE (.pointer-mouse, set from the live
+   pointerType in main.tsx). On touch, :hover STICKS on a finger-press, painting
+   a light grey highlight the moment you hold a verse — the "highlight I don't
+   want on hold". Media queries can't exclude Samsung/S-Pen phones (they report
+   hover:hover AND pointer:fine), so gate on the actual input instead. */
+.pointer-mouse .reading-verse-row:hover {
   background: var(--surface-2);
 }
 .reading-verse-row:hover .verse-add-btn {
@@ -1634,6 +1642,31 @@ body.dark .search-backdrop {
 .reading-verse-row.selected {
   background: var(--accent-soft);
   box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* Verse text is selectable ONLY with a true mouse — that's the Alt-drag copy
+   escape hatch. On touch, a brief pause before a scroll otherwise starts a
+   native long-press text selection: it shows the selection/callout, can swallow
+   the dismissing scroll, and the light native highlight lingers after ("a
+   highlight that won't go away"). So default to NON-selectable everywhere and
+   opt back IN only when a real MOUSE is in use (.pointer-mouse on <html>, set
+   from PointerEvent.pointerType in main.tsx). Media-query gating proved fragile
+   — Samsung/S-Pen phones report hover:hover AND pointer:fine, so the selection
+   (and the hover affordances below) leaked onto a finger on real devices. */
+.reading-verse-row,
+.passage-verse {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  /* Kill the browser's default tap flash/overlay: on touch it flashes light
+     blue on press and lingers as a light highlight through a hold-then-scroll —
+     pure noise, since selection is a deliberate tap, not a press. */
+  -webkit-tap-highlight-color: transparent;
+}
+.pointer-mouse .reading-verse-row,
+.pointer-mouse .passage-verse {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .verse-add-btn {
@@ -5231,6 +5264,77 @@ body.dark .upd-popover-btn-ghost:hover {
   }
   .reading-verse-row {
     padding-right: 30px;
+    /* Desktop pulls the row 5px left (margin-left: -5px) so a hover/selection
+       fill bleeds to the text's edge. On mobile the swipe container
+       (.chapter-deck) has overflow-x: clip at the column's left edge, so that
+       5px overhang — and the fill's rounded left corner with it — got sliced
+       off square. Sit flush to the column edge instead; the ::before's left
+       inset below keeps the corner a hair inside the clip. */
+    margin-left: 0;
+  }
+
+  /* Selection / highlight fill is painted by a ::before LAYER, never by changing
+     the row's own box. Painting it via the row's padding/background would change
+     the verse's content-box width on select (the text reflows) and let a
+     negative-margin bleed square the corners against a clipping ancestor. A
+     ::before keeps the row's box byte-identical to unselected (zero reflow) and
+     owns the rounded corners independently of layout. It sits BEHIND the text:
+     the row becomes a local stacking context (z-index 0) and the ::before is
+     z-index -1, showing through the row's transparent background against the
+     page. */
+  .reading-verse-row.selected,
+  .reading-verse-row.highlighted,
+  .passage-verse.highlighted {
+    position: relative;
+    z-index: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .reading-verse-row.selected::before,
+  .reading-verse-row.highlighted::before,
+  .passage-verse.highlighted::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    /* A hair inside .chapter-deck's left clip so the rounded left corner is
+       never sliced square (the row now sits flush to that clip edge). */
+    left: 1px;
+    z-index: -1;
+    border-radius: 12px;
+    background: var(--accent-soft);
+    pointer-events: none;
+  }
+  .reading-verse-row.highlighted::before,
+  .passage-verse.highlighted::before {
+    background: var(--accent-weak);
+  }
+  /* dark.css paints a square accent bg + a hard inset 2px bar at higher
+     specificity (body.dark .reading-verse-row.selected); out-specify it so the
+     row stays transparent and the rounded ::before is the only fill. */
+  body.dark .reading-verse-block .reading-verse-row.selected,
+  body.dark .reading-verse-block .reading-verse-row.highlighted {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  /* A contiguous run reads as ONE highlight — WITHOUT moving anything. Keep the
+     4px inter-verse gap in layout and just extend each non-last verse's fill
+     DOWN across it (bottom: -4px) so the fills meet. (Closing the gap with
+     margin-bottom instead would nudge the verses and read as the text shifting
+     on select.) Only the run's OUTER corners round. */
+  .verse-run-top .reading-verse-row.selected::before,
+  .verse-run-top .reading-verse-row.highlighted::before {
+    bottom: -4px;
+    border-radius: 12px 12px 0 0;
+  }
+  .verse-run-mid .reading-verse-row.selected::before,
+  .verse-run-mid .reading-verse-row.highlighted::before {
+    bottom: -4px;
+    border-radius: 0;
+  }
+  .verse-run-bottom .reading-verse-row.selected::before,
+  .verse-run-bottom .reading-verse-row.highlighted::before {
+    border-radius: 0 0 12px 12px;
   }
 
   /* Floating action bar: sit just above the bottom tab bar, span the width, and
