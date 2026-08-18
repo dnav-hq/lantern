@@ -171,57 +171,6 @@ prioritized.
   alone turns out not to be covering real losses (see the proposal's own
   "Trigger to revisit" section).
 
-- **ESV provider — built, pending the secret (2026-07-28).** `BibleProvider`
-  implementation using Crossway's ESV API, per `docs/proposals/translations-esv-niv.md`
-  (2026-07-22): the ESV API authenticates ONE application-level key
-  (`api.esv.org/account/`), never a key per end user — there is no per-user
-  settings UI, and there never was; the previous wording of this item ("licensing
-  requires per-user keys") was the wrong premise the proposal corrected. What
-  shipped: a Deno edge function (`supabase/functions/esv-proxy`) that holds
-  `ESV_API_KEY` server-side and fails closed with a structured "not configured"
-  response when it's unset, mirroring `supabase/functions/hq-telemetry`'s
-  pattern; a client `EsvBibleProvider` (`src/bible/esv.ts`) that calls ONLY the
-  proxy, never `api.esv.org` directly; a size-bounded, LRU-evicting cache
-  (`src/bible/esv-cache.ts`, 500-verse cap — already the license ceiling,
-  documented; eviction switched from FIFO to LRU 2026-08-04 so a chapter the
-  reader keeps returning to stays cached instead of aging out on insertion
-  order alone) instead of the cache-forever layer BSB/KJV use; and `ESV`
-  added to `TranslationId`
-  (`provider.ts`) with its own no-fallback composition in `service.ts` (no
-  self-hosted bundle exists for ESV, and none legally can). ReadingMode,
-  BookDetailPage, and StudyMode all show the required Crossway attribution
-  wherever ESV text renders, and a distinct "ESV isn't available yet" message
-  (never a raw error) when the proxy has no key or is unreachable. Unit tests
-  (`src/bible/esv.test.ts`) cover response parsing, cache eviction, the
-  no-key degrade, the offline degrade, and the 429/quota degrade (asserting no
-  client retry). **The only remaining step is Dennis running
-  `supabase secrets set ESV_API_KEY=<key from api.esv.org/account/>` and
-  deploying the function** (`supabase functions deploy esv-proxy --no-verify-jwt`)
-  — no code change needed once that's done. ESV is now selectable in the
-  Settings translation switcher (`src/utils/useTranslation.ts`'s `TRANSLATIONS`
-  list + `isTranslationId` guard).
-
-- **ESV usage metering — built, activates with the migration/deploy above
-  (2026-08-03).** Before making ESV the default, Dennis needs real data on how
-  much of the shared 5,000/day + 1,000/hour + 60/minute Crossway quota is
-  actually being consumed. `supabase/functions/esv-proxy` now meters every
-  real upstream call (a client cache miss, never a cache hit) into a new
-  `public.esv_api_usage` table (`supabase/migrations/0008_esv_usage.sql`) —
-  timestamp + coarse ok/quota/error status only, never a passage, book,
-  chapter, user, or install id, so `public/privacy.html` needed no change.
-  Checked api.esv.org's docs for an authoritative rate-limit response header
-  first; none is documented, hence the dedicated counting store. Metering is
-  fire-and-forget (`EdgeRuntime.waitUntil`, errors swallowed) so it can never
-  slow, block, or fail a chapter fetch. Rows are pruned after ~48h by an
-  hourly pg_cron job, same pattern as 0007. Two new project-defined scalars,
-  `esv_api_queries_24h` / `esv_api_queries_1h`, are exposed via
-  `hq_telemetry_scalars()` to compare against the 5,000/day and 1,000/hour
-  caps. Deliberately NOT routed through the `telemetry_events` buffer (0004):
-  its per-install burst/daily caps exist to protect against a hostile client
-  and would silently drop real usage under exactly the volume this needs to
-  measure accurately. Activates the same way the ESV provider above does —
-  `supabase db push` + redeploying `esv-proxy`, no further code change needed.
-
 - **NIV provider — researched, not recommended yet.** `docs/proposals/translations-esv-niv.md`
   (2026-07-22) found a free non-commercial path exists (API.Bible / American
   Bible Society) but NIV is the worst fit of the three translations it
@@ -353,6 +302,42 @@ prioritized.
   experience so it never feels crippled.
 
 ## Done
+
+- **ESV provider — LIVE in prod (built 2026-07-28, deployed + verified
+  2026-08-18).** `BibleProvider` implementation using Crossway's ESV API, per
+  `docs/proposals/translations-esv-niv.md`. The ESV API authenticates ONE
+  application-level key (`api.esv.org/account/`), never a key per end user, so
+  there is no per-user settings UI. What shipped: a Deno edge function
+  (`supabase/functions/esv-proxy`) that holds `ESV_API_KEY` server-side and
+  fails closed with a "not configured" response when unset; a client
+  `EsvBibleProvider` (`src/bible/esv.ts`) that calls ONLY the proxy, never
+  `api.esv.org` directly; a size-bounded LRU cache (`src/bible/esv-cache.ts`,
+  500-verse cap, LRU since 2026-08-04) instead of the cache-forever layer BSB/KJV
+  use; and `ESV` added to `TranslationId` (`provider.ts`) with its own
+  no-fallback composition in `service.ts` (no self-hosted bundle exists for ESV,
+  and none legally can). ReadingMode, BookDetailPage, and StudyMode all show the
+  required Crossway attribution wherever ESV text renders, and a distinct "ESV
+  isn't available yet" message (never a raw error) when the proxy has no key or
+  is unreachable. Unit tests (`src/bible/esv.test.ts`) cover response parsing,
+  cache eviction, and the no-key / offline / 429-quota degrades. Dennis set
+  `ESV_API_KEY` and deployed the function; **verified live 2026-08-18** — the
+  proxy returns ESV text (HTTP 200). ESV is selectable in the Settings
+  translation switcher and the chapter-footer switcher.
+
+- **ESV usage metering — LIVE (built 2026-08-03, deployed 2026-08-18).**
+  `supabase/functions/esv-proxy` meters every real upstream call (a client cache
+  miss, never a cache hit) into `public.esv_api_usage`
+  (`supabase/migrations/0008_esv_usage.sql`) — timestamp + coarse
+  ok/quota/error status only, never a passage, book, chapter, user, or install
+  id, so `public/privacy.html` needed no change. Metering is fire-and-forget
+  (`EdgeRuntime.waitUntil`, errors swallowed) so it can never slow or fail a
+  chapter fetch; rows are pruned after ~48h by an hourly pg_cron job. Two
+  scalars, `esv_api_queries_24h` / `esv_api_queries_1h`, are exposed via
+  `hq_telemetry_scalars()` to watch against the shared 5,000/day + 1,000/hour
+  Crossway caps. Deliberately NOT routed through the `telemetry_events` buffer,
+  whose per-install caps would drop real usage at the volume this measures.
+  Deployed alongside the ESV provider (migration pushed + `esv-proxy`
+  redeployed); now recording real usage.
 
 - **Reading-mode/header overhaul + chapter-nav polish + translation footer
   (2026-08-05, shipped to main `255910b`).** The whole reading-surface set landed
