@@ -62,7 +62,7 @@ export default function InstallNudge({
   return (
     <div className="install-nudge" role="status">
       <p className="install-nudge-text">
-        You can keep Lantern on your home screen — it opens straight to your reading, without the
+        You can keep Lantern on your home screen. It opens straight to your reading, without the
         browser around it.
       </p>
       <div className="install-nudge-actions">
