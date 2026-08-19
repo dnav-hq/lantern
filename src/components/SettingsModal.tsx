@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from 'react'
 import { useApi } from '../api/context'
 import { exportAllNotesAsZip } from '../platform/export'
-import { LOOKS, type LookId } from '../utils/useTheme'
-import { TEXT_SIZES, type TextSizeId } from '../utils/useTextSize'
-import { TRANSLATIONS, useTranslation } from '../utils/useTranslation'
+import { type LookId } from '../utils/useTheme'
+import { type TextSizeId } from '../utils/useTextSize'
+import ReadingPrefs from './ReadingPrefs'
 import { isTelemetryOptedOut, setTelemetryOptedOut } from '../telemetry/client'
 
 interface SettingsModalProps {
@@ -24,7 +24,9 @@ interface SettingsModalProps {
   onSignOut: (() => Promise<void>) | null
 }
 
-// Translation and vault settings were removed with the Electron layer.
+// Vault settings were removed with the Electron layer. The reading preferences
+// live in ReadingPrefs, shared with the reading view's quick display popover;
+// what is left here is the rare stuff you visit Settings for.
 export default function SettingsModal({
   isOpen,
   onClose,
@@ -37,7 +39,6 @@ export default function SettingsModal({
   onSignOut
 }: SettingsModalProps): React.ReactElement | null {
   const api = useApi()
-  const [translation, setTranslation] = useTranslation()
   const [exportState, setExportState] = useState<'idle' | 'exporting' | 'error'>('idle')
   const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(() => !isTelemetryOptedOut())
 
@@ -89,104 +90,16 @@ export default function SettingsModal({
         </div>
 
         <div className="smodal-body">
-          {/* Appearance — one curated list of complete looks. Theme, light/dark
-              and pure-black used to be three separate controls; that matrix hid
-              the light option (switching theme never touched dark). Now each row
-              is a whole look and one tap sets all three axes (see LOOKS in
-              useTheme.ts). Grouped Light / Dark / Pure black so the kind of each
-              is obvious at a glance. */}
-          <div className="smodal-section">
-            <div className="smodal-section-label">Appearance</div>
-            <div className="theme-picker" role="radiogroup" aria-label="Appearance">
-              {LOOKS.map((look, i) => {
-                const active = lookId === look.id
-                const startsGroup = i === 0 || LOOKS[i - 1].group !== look.group
-                return (
-                  <React.Fragment key={look.id}>
-                    {startsGroup && <div className="look-group-label">{look.group}</div>}
-                    <button
-                      className={`theme-swatch${active ? ' active' : ''}`}
-                      onClick={() => onSelectLook(look.id)}
-                      role="radio"
-                      aria-checked={active}
-                    >
-                      <span
-                        className={`theme-swatch-preview look-preview-${look.id}`}
-                        aria-hidden="true"
-                      >
-                        <span className="look-preview-card" />
-                        <span className="theme-preview-accent" />
-                      </span>
-                      <span className="theme-swatch-text">
-                        <span className="theme-swatch-label">{look.label}</span>
-                        <span className="theme-swatch-blurb">{look.blurb}</span>
-                      </span>
-                      {active && (
-                        <svg
-                          className="theme-swatch-check"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </button>
-                  </React.Fragment>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="smodal-divider" />
-
-          {/* Translation — which scripture text is displayed, independent of
-              theme/text size. Global preference (see
-              docs/proposals/translations-esv-niv.md section 3): applies to
-              every reading surface, defaults to BSB. */}
-          <div className="smodal-section">
-            <div className="smodal-section-label">Translation</div>
-            <div className="translation-picker" role="radiogroup" aria-label="Bible translation">
-              {TRANSLATIONS.map(t => (
-                <button
-                  key={t.id}
-                  className={`translation-option${translation === t.id ? ' active' : ''}`}
-                  onClick={() => setTranslation(t.id)}
-                  role="radio"
-                  aria-checked={translation === t.id}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="smodal-divider" />
-
-          {/* Text size — scripture reading type only, independent of theme.
-              A segmented row rather than the theme swatch treatment: there's
-              nothing to preview beyond the label itself. */}
-          <div className="smodal-section">
-            <div className="smodal-section-label">Scripture text size</div>
-            <div className="text-size-picker" role="radiogroup" aria-label="Scripture text size">
-              {TEXT_SIZES.map(s => (
-                <button
-                  key={s.id}
-                  className={`text-size-option${textSize === s.id ? ' active' : ''}`}
-                  onClick={() => onSetTextSize(s.id)}
-                  role="radio"
-                  aria-checked={textSize === s.id}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* Reading preferences — appearance, scripture text size, translation.
+              The SAME components the quick display popover uses (ReadingPrefs),
+              not a copy: this page and the popover cannot drift, and a change
+              made in either applies live everywhere. */}
+          <ReadingPrefs
+            lookId={lookId}
+            onSelectLook={onSelectLook}
+            textSize={textSize}
+            onSetTextSize={onSetTextSize}
+          />
 
           <div className="smodal-divider" />
 

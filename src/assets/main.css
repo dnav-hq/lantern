@@ -1135,9 +1135,17 @@ body.dark .search-backdrop {
 
 /* The mobile collapse header + body wrapper are inert on desktop: the header is
    hidden and the body is a plain passthrough so .study-right stays the single
-   scroll container (unchanged side-by-side behavior). */
+   scroll container (unchanged side-by-side behavior). The head ROW survives on
+   desktop, holding just the "aA" display control at the top-right of the pane. */
 .study-scripture-toggle {
   display: none;
+}
+.study-scripture-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  padding: 12px 20px 0;
 }
 .study-scripture-body {
   display: contents;
@@ -3782,11 +3790,13 @@ body.dark .chapter-pill.active.has-notes {
   color: var(--text-muted);
 }
 
-.smodal-section {
+.smodal-section,
+.rpref-section {
   padding: 16px 20px;
 }
 
-.smodal-section-label {
+.smodal-section-label,
+.rpref-section-label {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
@@ -3795,10 +3805,156 @@ body.dark .chapter-pill.active.has-notes {
   margin-bottom: 10px;
 }
 
-.smodal-divider {
+.smodal-divider,
+.rpref-divider {
   height: 1px;
   background: var(--surface-2);
   margin: 0;
+}
+
+/* ─── Display settings — the reading view's quick popover ─────────────────────
+   The "aA" control in the reading top bar (DisplaySettings.tsx) lays the reading
+   preferences OVER the passage: an anchored popover on desktop, a bottom sheet
+   on mobile. Same calm surface language as .note-hint-popover — quiet border,
+   soft shadow, no new idiom — because this is a utility you glance at mid-read,
+   not a place you go. */
+.display-settings-trigger {
+  position: relative;
+}
+.display-settings-glyph {
+  font-family: var(--font-ui, inherit);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: baseline;
+  /* Optically match the 16-17px icons either side of it. */
+  padding: 0 1px;
+}
+.display-settings-glyph-sm {
+  font-size: 11px;
+}
+
+.display-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 940;
+  background: transparent;
+}
+
+.display-popover {
+  position: fixed;
+  z-index: 950;
+  width: 320px;
+  max-height: min(72vh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.1),
+    0 1px 4px rgba(0, 0, 0, 0.04);
+}
+.display-popover:focus {
+  outline: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .display-popover {
+    animation: fadeIn var(--dur-2, 0.14s) var(--ease-out, ease);
+  }
+}
+
+.display-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 0;
+}
+.display-popover-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.display-popover-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  background: none;
+  border-radius: 6px;
+  color: var(--text-faint);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) {
+  .display-popover-close:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+}
+.display-popover-body .rpref-section {
+  padding: 14px 20px;
+}
+
+body.dark .display-popover {
+  background: var(--surface-2);
+  border-color: var(--border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+body.dark .rpref-divider {
+  background: var(--border);
+}
+
+/* Mobile: the popover becomes a bottom sheet (same move .smodal-panel makes),
+   and the trigger gets a full 44px hit area without growing visually. */
+@media (max-width: 768px) {
+  .display-settings-trigger::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  .display-scrim {
+    background: rgba(0, 0, 0, 0.35);
+  }
+  .display-popover--sheet {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-height: 82dvh;
+    border-radius: 16px 16px 0 0;
+    border-width: 0.5px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .display-popover--sheet {
+      animation: sheetUp var(--dur-3) var(--ease-out);
+    }
+  }
+  /* Study pane: the control rides in the collapse header bar, so it stays put
+     whether the pane is expanded or collapsed. */
+  .study-scripture-head {
+    padding: 0;
+    background: var(--surface-2);
+    border-bottom: 0.5px solid var(--border);
+  }
+  .study-scripture-head .study-scripture-toggle {
+    border-bottom: 0;
+  }
+  .study-scripture-head .reading-controls {
+    padding-right: 10px;
+  }
 }
 
 /* ─── Text size picker (Settings) ───────────────────────────────────────────

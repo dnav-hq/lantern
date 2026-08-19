@@ -11,6 +11,7 @@ import CrossRefPill from './CrossRefPill'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import ReadingControls from './ReadingControls'
+import type { DisplayPrefs } from './ReadingPrefs'
 import TranslationFooter from './TranslationFooter'
 import { formatRelativeTime } from '../utils/relativeTime'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
@@ -35,6 +36,8 @@ interface ReadingModeProps {
   onToggleFocusReading: () => void
   hideNotes: boolean
   onToggleHideNotes: () => void
+  // Look / text size for the header's display-options popover (owned by App).
+  displayPrefs: DisplayPrefs
 }
 
 const CATEGORY_LABELS: Record<NoteCategory, string> = {
@@ -143,7 +146,8 @@ export default function ReadingMode({
   focusReading,
   onToggleFocusReading,
   hideNotes,
-  onToggleHideNotes
+  onToggleHideNotes,
+  displayPrefs
 }: ReadingModeProps): React.ReactElement {
   const api = useApi()
   const [translation] = useTranslation()
@@ -728,6 +732,7 @@ export default function ReadingMode({
             onToggleFocusReading={onToggleFocusReading}
             hideNotes={hideNotes}
             onToggleHideNotes={onToggleHideNotes}
+            displayPrefs={displayPrefs}
           />
         </div>
 

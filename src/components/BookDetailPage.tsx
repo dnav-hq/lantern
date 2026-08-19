@@ -13,6 +13,7 @@ import ErrorBoundary from './ErrorBoundary'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import ReadingControls from './ReadingControls'
+import type { DisplayPrefs } from './ReadingPrefs'
 import TranslationFooter from './TranslationFooter'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
 import { useChromeAutoHide } from '../utils/useScrollDirection'
@@ -1243,6 +1244,9 @@ interface BookDetailPageProps {
   onToggleFocusReading: () => void
   hideNotes: boolean
   onToggleHideNotes: () => void
+  // Look / text size, for the header's display-options popover. Owned by App
+  // because every surface (and the Settings modal) has to read the same value.
+  displayPrefs: DisplayPrefs
   // Reports which way the reader is scrolling, so the app shell can slide the
   // top bar / bottom tabs out of the way. See useScrollDirection.
   onChromeVisibleChange?: (visible: boolean) => void
@@ -1263,6 +1267,7 @@ export default function BookDetailPage({
   onToggleFocusReading,
   hideNotes,
   onToggleHideNotes,
+  displayPrefs,
   onChromeVisibleChange,
   initialHighlightVerses
 }: BookDetailPageProps): React.ReactElement {
@@ -1550,14 +1555,15 @@ export default function BookDetailPage({
               </div>
             </div>
             <div className="book-detail-header-controls">
-              {/* Just the two muted reading toggles now. Translation moved to the
-                  chapter colophon (TranslationFooter) — a set-once preference had
-                  no business sitting beside the live reading controls. */}
+              {/* The muted reading cluster: display options ("aA"), hide notes,
+                  reading mode. Translation also stays in the chapter colophon
+                  (TranslationFooter) as the ultra-quick per-passage flip. */}
               <ReadingControls
                 focusReading={focusReading}
                 onToggleFocusReading={onToggleFocusReading}
                 hideNotes={hideNotes}
                 onToggleHideNotes={onToggleHideNotes}
+                displayPrefs={displayPrefs}
               />
             </div>
           </div>

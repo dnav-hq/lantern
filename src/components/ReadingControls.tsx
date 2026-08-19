@@ -1,4 +1,6 @@
 import React from 'react'
+import DisplaySettings from './DisplaySettings'
+import type { DisplayPrefs } from './ReadingPrefs'
 
 interface ReadingControlsProps {
   // Reading Mode — an environment toggle that recedes/restructures the chrome
@@ -9,24 +11,30 @@ interface ReadingControlsProps {
   // Reading Mode and backed by the same persisted preference Settings uses.
   hideNotes?: boolean
   onToggleHideNotes?: () => void
+  // Display options (look / text size / translation), opened as a popover over
+  // the passage. Always shown when provided — unlike the two toggles it is not
+  // surface-dependent.
+  displayPrefs?: DisplayPrefs
 }
 
-// The two reading-context TOGGLES, grouped as one quiet, muted cluster: an eye
-// that shows/hides your notes, and Reading Mode that clears the chrome away.
-// The translation indicator is deliberately NOT here — it lives in the quiet
-// footer at the foot of the reading surface (see TranslationFooter), because it
-// is something you glance at once or twice, not an action you take. Keeping it
-// out of this cluster is what stops the header reading as a busy toolbar.
+// The reading-context controls, grouped as one quiet, muted cluster: the "aA"
+// display options (DisplaySettings), an eye that shows/hides your notes, and
+// Reading Mode that clears the chrome away. Two toggles and one utility, all
+// muted to the same weight so the header still doesn't read as a toolbar.
+// Translation is inside the display popover now, and also stays in the quiet
+// footer at the foot of the reading surface (see TranslationFooter).
 export default function ReadingControls({
   focusReading,
   onToggleFocusReading,
   hideNotes,
-  onToggleHideNotes
+  onToggleHideNotes,
+  displayPrefs
 }: ReadingControlsProps): React.ReactElement {
   const showReadingMode = onToggleFocusReading !== undefined
   const showHideNotes = onToggleHideNotes !== undefined
   return (
     <div className="reading-controls">
+      {displayPrefs && <DisplaySettings prefs={displayPrefs} />}
       {showHideNotes && (
         <button
           type="button"

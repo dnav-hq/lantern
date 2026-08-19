@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import NavBar, { Destination } from './components/NavBar'
 import GlobalSearch from './components/GlobalSearch'
 import StudyMode, { StudyModeHandle } from './components/StudyMode'
@@ -124,6 +124,12 @@ export default function App({
   )
   const [translation, setTranslation] = useTranslation()
   const [textSize, setTextSize] = useTextSize()
+  // The reading preferences the display popover and the Settings modal both
+  // edit. Bundled so each reading surface drills ONE prop rather than four.
+  const displayPrefs = useMemo(
+    () => ({ lookId, onSelectLook: selectLook, textSize, onSetTextSize: setTextSize }),
+    [lookId, selectLook, textSize, setTextSize]
+  )
   const [settingsOpen, setSettingsOpen] = useState(false)
   // Home-screen install: a permanent, quiet menu entry plus at most one
   // contextual nudge, both gated by utils/installNudge.ts. `capability` is
@@ -413,6 +419,7 @@ export default function App({
           initialPassageId={studyPassageId}
           onSaveRead={handleSaveRead}
           onSaveNext={handleSaveNext}
+          displayPrefs={displayPrefs}
         />
       )
     }
@@ -447,6 +454,7 @@ export default function App({
           onToggleFocusReading={() => setFocusReading(f => !f)}
           hideNotes={hideNotes}
           onToggleHideNotes={() => setHideNotes(h => !h)}
+          displayPrefs={displayPrefs}
           initialHighlightVerses={
             highlightAfterSave && highlightAfterSave.chapter === (selectedChapter ?? 1)
               ? highlightAfterSave.verses
@@ -487,6 +495,7 @@ export default function App({
           onToggleFocusReading={() => setFocusReading(f => !f)}
           hideNotes={hideNotes}
           onToggleHideNotes={() => setHideNotes(h => !h)}
+          displayPrefs={displayPrefs}
         />
       )
     }
