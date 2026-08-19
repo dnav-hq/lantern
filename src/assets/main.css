@@ -3950,6 +3950,11 @@ body.dark .rpref-divider {
     border-bottom: 0.5px solid var(--border);
   }
   .study-scripture-head .study-scripture-toggle {
+    /* It is width:100% standing alone; in the head row it shares the bar with
+       the display control, so it takes the leftover space instead. */
+    width: auto;
+    flex: 1;
+    min-width: 0;
     border-bottom: 0;
   }
   .study-scripture-head .reading-controls {

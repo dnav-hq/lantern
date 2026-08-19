@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import ReadingPrefs, { type DisplayPrefs } from './ReadingPrefs'
 import { anchoredPopoverPosition, type Position } from './displayPopover'
 
@@ -71,7 +72,12 @@ export default function DisplaySettings({ prefs }: DisplaySettingsProps): React.
     // somewhere else, and the whole point is to hand focus back to the icon
     // that was there when the popover opened.
     const trigger = triggerRef.current
-    panelRef.current?.focus()
+    // preventScroll matters: the panel is position: fixed but still a DOM child
+    // of the reading header, so a plain focus() makes the browser scroll the
+    // chapter's own scroll container to "reveal" it — which throws the reader
+    // back to the top of the chapter, the exact thing this popover exists to
+    // avoid. Same on the way out.
+    panelRef.current?.focus({ preventScroll: true })
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         e.stopPropagation()
@@ -81,7 +87,7 @@ export default function DisplaySettings({ prefs }: DisplaySettingsProps): React.
     document.addEventListener('keydown', onKeyDown)
     return () => {
       document.removeEventListener('keydown', onKeyDown)
-      trigger?.focus()
+      trigger?.focus({ preventScroll: true })
     }
   }, [open, close])
 
@@ -104,49 +110,54 @@ export default function DisplaySettings({ prefs }: DisplaySettingsProps): React.
         </span>
       </button>
 
-      {open && (
-        <>
-          {/* Catches the outside tap. Visible as a scrim only in sheet form —
+      {/* Portalled to <body>: the reading chrome animates with transforms, and a
+          transformed ancestor is a stacking context that would trap the sheet
+          under the mobile tab bar (and clip it in the study pane's scroller). */}
+      {open &&
+        createPortal(
+          <>
+            {/* Catches the outside tap. Visible as a scrim only in sheet form —
               on desktop the passage behind must stay plainly readable while you
               try a look, so it is transparent there. */}
-          <div className="display-scrim" onClick={close} aria-hidden="true" />
-          <div
-            ref={panelRef}
-            className={`display-popover${isSheet ? ' display-popover--sheet' : ''}`}
-            style={!isSheet && position ? { top: position.top, left: position.left } : undefined}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Display settings"
-            tabIndex={-1}
-          >
-            <div className="display-popover-head">
-              <span className="display-popover-title">Display</span>
-              <button
-                type="button"
-                className="display-popover-close"
-                onClick={close}
-                aria-label="Close display settings"
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
+            <div className="display-scrim" onClick={close} aria-hidden="true" />
+            <div
+              ref={panelRef}
+              className={`display-popover${isSheet ? ' display-popover--sheet' : ''}`}
+              style={!isSheet && position ? { top: position.top, left: position.left } : undefined}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Display settings"
+              tabIndex={-1}
+            >
+              <div className="display-popover-head">
+                <span className="display-popover-title">Display</span>
+                <button
+                  type="button"
+                  className="display-popover-close"
+                  onClick={close}
+                  aria-label="Close display settings"
                 >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <div className="display-popover-body">
+                <ReadingPrefs {...prefs} />
+              </div>
             </div>
-            <div className="display-popover-body">
-              <ReadingPrefs {...prefs} />
-            </div>
-          </div>
-        </>
-      )}
+          </>,
+          document.body
+        )}
     </>
   )
 }
