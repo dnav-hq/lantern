@@ -10,6 +10,7 @@ import ProfilePage from './components/ProfilePage'
 import ConfirmDialog from './components/ConfirmDialog'
 import SettingsModal from './components/SettingsModal'
 import OfflineIndicator from './components/OfflineIndicator'
+import InstallNudge from './components/InstallNudge'
 import { Passage } from './types'
 import { BIBLE_BOOKS } from './utils/bibleBooks'
 import { useApi } from './api/context'
@@ -17,6 +18,7 @@ import { useDarkMode } from './utils/useDarkMode'
 import { useTheme, usePureBlack, LOOKS, lookIdFor, type LookId } from './utils/useTheme'
 import { useTranslation } from './utils/useTranslation'
 import { useTextSize } from './utils/useTextSize'
+import { useInstallPrompt } from './utils/useInstallPrompt'
 import { resolveSettingsAdoption, type UserSettings } from './api/types'
 import type { DeepLinkTarget } from './utils/deepLink'
 
@@ -123,6 +125,11 @@ export default function App({
   const [translation, setTranslation] = useTranslation()
   const [textSize, setTextSize] = useTextSize()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // Home-screen install: a permanent, quiet menu entry plus at most one
+  // contextual nudge, both gated by utils/installNudge.ts. `capability` is
+  // 'none' for an already-installed user and for any browser with no install
+  // path, and the menu entry simply isn't rendered then.
+  const install = useInstallPrompt()
   // Reading surface state — two DELIBERATELY SEPARATE controls (see
   // ReadingControls): `hideNotes` is a content filter (show/hide your notes),
   // persisted as a Settings preference and the ONLY thing that hides notes;
@@ -420,6 +427,8 @@ export default function App({
           displayName={displayName}
           onOpenSettings={() => setSettingsOpen(true)}
           onSignOut={onSignOut}
+          canInstall={install.capability !== 'none'}
+          onInstall={install.openInstall}
         />
       )
     }
@@ -501,6 +510,8 @@ export default function App({
         onOpenSettings={() => setSettingsOpen(true)}
         onSignOut={onSignOut}
         onOpenSearch={() => setSearchOpen(true)}
+        canInstall={install.capability !== 'none'}
+        onInstall={install.openInstall}
         searchSlot={
           <GlobalSearch
             variant="bar"
@@ -598,6 +609,20 @@ export default function App({
         ]}
       />
       <OfflineIndicator />
+
+      {/* At most one of these is ever on screen: the once-ever nudge, or the
+          iOS instructions opened from it or from the menu. */}
+      {install.hintVisible ? (
+        <InstallNudge variant="hint" onDismiss={install.closeHint} />
+      ) : (
+        install.nudgeVisible && (
+          <InstallNudge
+            variant="nudge"
+            onAccept={install.acceptNudge}
+            onDismiss={install.dismissNudge}
+          />
+        )
+      )}
     </div>
   )
 }

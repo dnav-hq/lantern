@@ -7,6 +7,10 @@ interface ProfilePageProps {
   onOpenSettings: () => void
   // Sign-out handler, or null when there is no auth (memory stub / dev).
   onSignOut: (() => Promise<void>) | null
+  // Home-screen install — mirrors the desktop avatar menu's entry. Hidden when
+  // already installed or unsupported (see platform/install.ts).
+  canInstall?: boolean
+  onInstall?: () => void
 }
 
 /**
@@ -16,7 +20,9 @@ interface ProfilePageProps {
 export default function ProfilePage({
   displayName,
   onOpenSettings,
-  onSignOut
+  onSignOut,
+  canInstall = false,
+  onInstall
 }: ProfilePageProps): React.ReactElement {
   const api = useApi()
   const [exportState, setExportState] = useState<'idle' | 'exporting' | 'error'>('idle')
@@ -53,6 +59,11 @@ export default function ProfilePage({
         >
           {exportState === 'exporting' ? 'Exporting…' : 'Export notes'}
         </button>
+        {canInstall && onInstall && (
+          <button className="profile-page-btn" onClick={onInstall}>
+            Add to home screen
+          </button>
+        )}
         {exportState === 'error' && (
           <p className="profile-page-error">Export failed. Check your connection and try again.</p>
         )}

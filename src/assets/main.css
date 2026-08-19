@@ -6134,3 +6134,82 @@ body.dark .mobile-menu-btn:active {
     padding: 10px 16px;
   }
 }
+
+/* ─── Install nudge / Add-to-Home-Screen hint ─────────────────────────────────
+   A quiet suggestion, not an ad. Same visual language as .note-hint-popover —
+   surface card, hairline border, muted text — parked above the mobile bottom
+   nav where the offline pill lives, so it never covers scripture or the
+   editor. Deliberately variable-only (no hardcoded colours): dark mode and
+   pure-black come from tokens.css, with no dark.css override to keep in sync.
+   Shown at most once ever; see src/utils/installNudge.ts for the gate. */
+.install-nudge {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 305;
+  width: min(360px, calc(100vw - 28px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.1),
+    0 1px 4px rgba(0, 0, 0, 0.04);
+  animation: fadeIn var(--dur-3) var(--ease-out);
+}
+.install-nudge-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+.install-nudge-text strong {
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+/* The share glyph sits inline in the iOS sentence, on the text's baseline. */
+.install-nudge-icon {
+  vertical-align: -3px;
+  margin: 0 3px;
+  color: var(--accent-ink);
+}
+.install-nudge-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+.install-nudge-btn {
+  border: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.install-nudge-btn-quiet {
+  background: transparent;
+  color: var(--text-muted);
+}
+.install-nudge-btn-quiet:hover {
+  color: var(--text);
+}
+.install-nudge-btn-accept {
+  background: var(--accent-weak);
+  color: var(--accent-ink);
+}
+.install-nudge-btn-accept:hover {
+  background: var(--accent-weaker);
+}
+
+/* Clear the bottom tab bar on mobile, exactly as the offline pill does. */
+@media (max-width: 768px) {
+  .install-nudge {
+    bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}

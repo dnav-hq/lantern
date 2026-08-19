@@ -16,6 +16,7 @@ import { formatRelativeTime } from '../utils/relativeTime'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
 import { useChromeAutoHide } from '../utils/useScrollDirection'
 import { bookByNumber } from '../utils/bibleBooks'
+import { markInstallEngagement } from '../utils/installNudge'
 
 interface ReadingModeProps {
   passage: Passage
@@ -374,6 +375,8 @@ export default function ReadingMode({
       setNotes(prev => [...prev, note])
       setInlineVerse(null)
       setInlineText('')
+      // A saved note is the engagement signal the install nudge waits for.
+      markInstallEngagement()
       markJustSaved(note.id)
       onRefresh?.()
     } finally {
