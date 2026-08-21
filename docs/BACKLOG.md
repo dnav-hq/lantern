@@ -303,6 +303,19 @@ prioritized.
 
 ## Done
 
+- **Reading display popover — the "aA" quick settings (2026-08-19).** Changing a
+  reading preference used to mean leaving the chapter for Profile → Settings and
+  navigating back. Every reading surface (BookDetailPage, ReadingMode, StudyMode's
+  scripture pane) now carries an "aA" icon in its own controls cluster that lays
+  Appearance / Scripture text size / Translation over the passage — a bottom sheet
+  on mobile, a popover anchored to the icon on desktop (`DisplaySettings.tsx`,
+  positioning in `displayPopover.ts`). The controls themselves are ONE
+  implementation (`ReadingPrefs.tsx`) used by both the popover and SettingsModal, so
+  the two can't drift and a future Bible-language switcher slots in as one more
+  section in both at once. The full Settings page keeps the rare things (hide all
+  notes, export, privacy, account). The chapter-footer translation switcher was
+  deliberately left alone pending Dennis's call on whether it stays.
+
 - **ESV provider — LIVE in prod (built 2026-07-28, deployed + verified
   2026-08-18).** `BibleProvider` implementation using Crossway's ESV API, per
   `docs/proposals/translations-esv-niv.md`. The ESV API authenticates ONE

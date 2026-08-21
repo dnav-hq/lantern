@@ -4,6 +4,8 @@ import ErrorBoundary from './ErrorBoundary'
 import PassagePane from './PassagePane'
 import TranslationFooter from './TranslationFooter'
 import ReferenceInput from './ReferenceInput'
+import DisplaySettings from './DisplaySettings'
+import type { DisplayPrefs } from './ReadingPrefs'
 import { BiblePassage, Note } from '../types'
 import { parseNoteLine, parseReferenceLabel } from '../utils/noteParser'
 import { findBookByAlias } from '../utils/bibleBooks'
@@ -98,6 +100,9 @@ interface StudyModeProps {
   initialPassageId?: string | null
   onSaveRead: (passageId: string) => void
   onSaveNext: (nextReference?: string) => void
+  // Look / text size for the scripture pane's display-options popover (owned
+  // by App, so this reads the same state as every other surface).
+  displayPrefs: DisplayPrefs
 }
 
 function guessNextReference(label: string): string {
@@ -112,7 +117,7 @@ function guessNextReference(label: string): string {
 }
 
 const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode(
-  { initialReference = '', initialPassageId = null, onSaveRead, onSaveNext },
+  { initialReference = '', initialPassageId = null, onSaveRead, onSaveNext, displayPrefs },
   ref
 ) {
   const api = useApi()
@@ -671,44 +676,52 @@ const StudyMode = forwardRef<StudyModeHandle, StudyModeProps>(function StudyMode
         ref={studyRightRef}
         style={customHeightPx !== null ? { maxHeight: `${customHeightPx}px` } : undefined}
       >
-        {/* Mobile-only collapse toggle. On desktop the pane is always fully
-            shown (this header is hidden via CSS). Scripture stays pinned at the
-            top on mobile and never scrolls fully off-screen. Before a passage
-            is loaded there's nothing to expand, so the toggle is inert
-            (study-right--empty above hides its hint/chevron and collapses it
-            to just this header bar). Tapping it clears any manual drag height
-            so the two presets are always reachable again, not stuck behind
-            wherever the panel was last dragged to. */}
-        <button
-          type="button"
-          className="study-scripture-toggle"
-          aria-expanded={scriptureExpanded}
-          onClick={() => {
-            if (!passage) return
-            setCustomHeightPx(null)
-            setScriptureExpanded(v => !v)
-          }}
-        >
-          <span className="study-scripture-toggle-label">
-            {passage ? passage.reference : 'Scripture'}
-          </span>
-          <span className="study-scripture-toggle-hint">
-            {scriptureExpanded ? 'Tap to collapse' : 'Tap to expand'}
-          </span>
-          <svg
-            className={`study-scripture-chevron${scriptureExpanded ? ' expanded' : ''}`}
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        {/* The scripture pane's own header row: the mobile collapse toggle plus
+            the "aA" display options, which stay put on both breakpoints (on
+            desktop the toggle is hidden by CSS and only the icon remains). */}
+        <div className="study-scripture-head">
+          {/* Mobile-only collapse toggle. On desktop the pane is always fully
+              shown (this header is hidden via CSS). Scripture stays pinned at the
+              top on mobile and never scrolls fully off-screen. Before a passage
+              is loaded there's nothing to expand, so the toggle is inert
+              (study-right--empty above hides its hint/chevron and collapses it
+              to just this header bar). Tapping it clears any manual drag height
+              so the two presets are always reachable again, not stuck behind
+              wherever the panel was last dragged to. */}
+          <button
+            type="button"
+            className="study-scripture-toggle"
+            aria-expanded={scriptureExpanded}
+            onClick={() => {
+              if (!passage) return
+              setCustomHeightPx(null)
+              setScriptureExpanded(v => !v)
+            }}
           >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
+            <span className="study-scripture-toggle-label">
+              {passage ? passage.reference : 'Scripture'}
+            </span>
+            <span className="study-scripture-toggle-hint">
+              {scriptureExpanded ? 'Tap to collapse' : 'Tap to expand'}
+            </span>
+            <svg
+              className={`study-scripture-chevron${scriptureExpanded ? ' expanded' : ''}`}
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <div className="reading-controls">
+            <DisplaySettings prefs={displayPrefs} />
+          </div>
+        </div>
         <div className="study-scripture-body" ref={scriptureBodyRef}>
           <ErrorBoundary variant="pane" key={passage?.reference ?? 'empty'}>
             {translation === 'ESV' && esvUnavailable && !loadingPassage ? (
