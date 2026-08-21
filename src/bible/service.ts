@@ -63,12 +63,30 @@ const kjvProvider: BibleProvider = new FallbackBibleProvider(
 // silently substituting another translation's text.
 const esvProvider: BibleProvider = new EsvCachedBibleProvider(new EsvBibleProvider())
 
+// Tamil: the same keyless helloao path BSB uses, just a different translation
+// code — no key, no proxy, no quota (both are CC BY-SA 4.0; the attribution
+// they require renders in TranslationFooter). Cache-forever wrapped, keyed by
+// our own translation id so Tamil chapters never collide with BSB's in the
+// IndexedDB cache. No self-hosted fallback layer: there is no Tamil bundle in
+// public/ to fall back to, so a helloao outage degrades to the same "not
+// available" state ESV already has, rather than pretending otherwise.
+const irvProvider: BibleProvider = new CachedBibleProvider(
+  new HelloaoBibleProvider('tam_irv'),
+  'IRV'
+)
+const tcvProvider: BibleProvider = new CachedBibleProvider(
+  new HelloaoBibleProvider('tam_tcv'),
+  'TCV'
+)
+
 // One BibleProvider per translation. BSB's `provider` above is unchanged by
 // this map's existence — it's still the only thing a BSB read ever touches.
 const providers: Record<TranslationId, BibleProvider> = {
   BSB: provider,
   KJV: kjvProvider,
-  ESV: esvProvider
+  ESV: esvProvider,
+  IRV: irvProvider,
+  TCV: tcvProvider
 }
 
 interface ParsedReference {

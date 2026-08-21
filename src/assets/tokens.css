@@ -15,6 +15,15 @@
      other code change — that is the Settings theme-picker seam (see BACKLOG).
    ──────────────────────────────────────────────────────────────────────────── */
 
+/* Tamil reading face, self-hosted (@fontsource, same as Source Serif 4 in
+   main.tsx). The `tamil-*` files are the TAMIL SUBSET only, so the @font-face
+   rules carry a unicode-range covering U+0B82–U+0BFA and nothing else: an
+   English reader never downloads a byte of it, and Latin characters inside a
+   Tamil chapter (verse numbers, references) keep falling through to Source
+   Serif 4. Weights match the two the scripture surfaces actually use. */
+@import '@fontsource/noto-serif-tamil/tamil-400.css';
+@import '@fontsource/noto-serif-tamil/tamil-600.css';
+
 :root {
   /* ── Geometry ── */
   --space-1: 4px;
@@ -458,4 +467,22 @@ html[data-pure-black][data-theme='modern'] body.dark {
 }
 [data-text-size='large'] {
   --text-scale: 1.16;
+}
+
+/* ─── Bible language (useBibleLanguage.ts) ──────────────────────────────────
+   `data-bible-lang` on <html>; 'eng' (the default) is unmarked, same convention
+   as [data-theme] / [data-text-size] — so English reading is byte-for-byte the
+   Source Serif 4 it has always been. Tamil swaps ONLY the reading face, and
+   keeps the whole existing stack behind it as the fallback: if the woff2 never
+   loads, scripture still renders in Source Serif 4 / a system serif rather than
+   in tofu. Every scripture surface reads --scripture-font, so this one rule
+   reaches all of them.
+   The attribute selector out-specifies both the :root and the [data-theme]
+   blocks above, which is what lets it win regardless of the chosen look. */
+html[data-bible-lang='tam'] {
+  --scripture-font: 'Noto Serif Tamil', 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  /* Tamil is a tall script: the same px size reads smaller and the same
+     line-height reads tighter than Latin. A touch more of both keeps the
+     reading rhythm the design intends. */
+  --scripture-lh: 1.85;
 }

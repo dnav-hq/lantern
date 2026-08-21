@@ -1,8 +1,9 @@
 import type { BibleProvider, BibleVerseLine } from './provider'
 import { CodedError } from '../errors'
 
-// BSB scripture via the free, keyless bible.helloao.org API.
-// Endpoint: GET https://bible.helloao.org/api/BSB/{USFM}/{chapter}.json
+// Scripture via the free, keyless bible.helloao.org API, for any translation
+// helloao serves. Endpoint: GET
+// https://bible.helloao.org/api/{translation}/{USFM}/{chapter}.json
 // Verified against a live fetch (2026-07-05): the response is
 //   { translation, book, chapter: { number, content: [...] }, footnotes?, ... }
 // `chapter.content` is a flat array of typed nodes:
@@ -18,12 +19,17 @@ import { CodedError } from '../errors'
 // We flatten all of that down to a single plain-text string per verse — no
 // component needs footnote markers or poem-line structure today.
 
-const BASE_URL = 'https://bible.helloao.org/api/BSB'
+const BASE_URL = 'https://bible.helloao.org/api'
 
 // USFM 3-letter book codes used by helloao, indexed by book_number (1-66).
 // Verified against GET /api/BSB/books.json — a handful (EZK, JOL, NAM, SNG)
 // differ from this repo's internal `BibleBook.id` in src/utils/bibleBooks.ts,
-// so this table is kept independent rather than derived from it.
+// so this table is kept independent rather than derived from it. Re-verified
+// against GET /api/tam_irv/books.json (2026-08-21): the Tamil translations use
+// the SAME 66 codes in the same order, and a sample chapter (tam_irv JHN 1)
+// returns the same node shape with the same 51 verse numbers — so this table
+// and the flattener below are translation-independent, and note anchoring by
+// verse number survives a language switch untouched.
 const USFM_BY_BOOK_NUMBER: Record<number, string> = {
   1: 'GEN',
   2: 'EXO',
@@ -132,11 +138,15 @@ function flattenVerseContent(content: VerseContentItem[]): string {
 }
 
 export class HelloaoBibleProvider implements BibleProvider {
+  // helloao's own translation code — 'BSB', 'tam_irv', 'tam_tcv'. One instance
+  // serves exactly one translation (see provider.ts's TranslationId comment).
+  constructor(private readonly translation: string = 'BSB') {}
+
   async getChapter(bookNumber: number, chapter: number): Promise<BibleVerseLine[]> {
     const usfm = usfmForBookNumber(bookNumber)
     if (!usfm) throw new CodedError('BIBLE_UNKNOWN_BOOK', `book_number ${bookNumber}`)
 
-    const res = await fetch(`${BASE_URL}/${usfm}/${chapter}.json`)
+    const res = await fetch(`${BASE_URL}/${this.translation}/${usfm}/${chapter}.json`)
     if (!res.ok) {
       // The book and chapter are what the reader was reading, so they go in the
       // detail, which never leaves the device. See src/errors.ts.
