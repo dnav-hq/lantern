@@ -22,8 +22,42 @@ export interface DisplayPrefs {
 
 function AppearanceSection({
   lookId,
-  onSelectLook
-}: Pick<DisplayPrefs, 'lookId' | 'onSelectLook'>): React.ReactElement {
+  onSelectLook,
+  compact
+}: Pick<DisplayPrefs, 'lookId' | 'onSelectLook'> & { compact?: boolean }): React.ReactElement {
+  // The quick display popover (compact) shows the looks as a single row of
+  // tappable swatches — the Apple Books / Kindle "aA" pattern — instead of the
+  // full labelled list. The list is right for the deliberate Settings page, but
+  // in a popover you open mid-reading it turns a quick peek into a scroll. Same
+  // looks, same state; only the density differs.
+  if (compact) {
+    return (
+      <div className="rpref-section">
+        <div className="rpref-section-label">Appearance</div>
+        <div className="look-swatch-strip" role="radiogroup" aria-label="Appearance">
+          {LOOKS.map(look => {
+            const active = lookId === look.id
+            return (
+              <button
+                key={look.id}
+                className={`look-swatch-chip${active ? ' active' : ''}`}
+                onClick={() => onSelectLook(look.id)}
+                role="radio"
+                aria-checked={active}
+                aria-label={look.label}
+                title={look.label}
+              >
+                <span className={`theme-swatch-preview look-preview-${look.id}`} aria-hidden="true">
+                  <span className="look-preview-card" />
+                  <span className="theme-preview-accent" />
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="rpref-section">
       <div className="rpref-section-label">Appearance</div>
@@ -130,11 +164,16 @@ export default function ReadingPrefs({
   lookId,
   onSelectLook,
   textSize,
-  onSetTextSize
-}: DisplayPrefs): React.ReactElement {
+  onSetTextSize,
+  variant = 'full'
+}: DisplayPrefs & { variant?: 'full' | 'compact' }): React.ReactElement {
   return (
     <>
-      <AppearanceSection lookId={lookId} onSelectLook={onSelectLook} />
+      <AppearanceSection
+        lookId={lookId}
+        onSelectLook={onSelectLook}
+        compact={variant === 'compact'}
+      />
       <div className="rpref-divider" />
       <TextSizeSection textSize={textSize} onSetTextSize={onSetTextSize} />
       <div className="rpref-divider" />

@@ -152,7 +152,7 @@ export default function DisplaySettings({ prefs }: DisplaySettingsProps): React.
                 </button>
               </div>
               <div className="display-popover-body">
-                <ReadingPrefs {...prefs} />
+                <ReadingPrefs {...prefs} variant="compact" />
               </div>
             </div>
           </>,

@@ -4254,6 +4254,35 @@ body.dark .rpref-divider {
   margin-top: 2px;
 }
 
+/* Compact appearance control for the quick display popover: the six looks as a
+   single wrapping row of tappable swatches (Apple Books / Kindle "aA" pattern),
+   in place of the full labelled list Settings uses. flex-wrap so it can never
+   overflow a narrow sheet; each chip pads the 34px swatch out to a ~44px touch
+   target and rings the active one. */
+.look-swatch-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.look-swatch-chip {
+  padding: 5px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
+}
+.look-swatch-chip:hover {
+  border-color: var(--border-strong);
+}
+.look-swatch-chip.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
 .theme-swatch-text {
   display: flex;
   flex-direction: column;
