@@ -147,19 +147,25 @@ function LanguageSection(): React.ReactElement | null {
       <div className="rpref-divider" />
       <div className="rpref-section">
         <div className="rpref-section-label">Bible language</div>
-        <div className="translation-picker" role="radiogroup" aria-label="Bible language">
+        {/* A dropdown, not a row of buttons: language is a set-once choice and
+            the list only grows, so most readers should never see every option
+            laid out in front of them. A native <select> keeps it a one-tap OS
+            picker with no nested custom menu. */}
+        <select
+          className="rpref-select"
+          value={language}
+          onChange={e => {
+            const next = BIBLE_LANGUAGES.find(l => l.id === e.target.value)
+            if (next) setLanguage(next.id)
+          }}
+          aria-label="Bible language"
+        >
           {BIBLE_LANGUAGES.map(l => (
-            <button
-              key={l.id}
-              className={`translation-option${language === l.id ? ' active' : ''}`}
-              onClick={() => setLanguage(l.id)}
-              role="radio"
-              aria-checked={language === l.id}
-            >
+            <option key={l.id} value={l.id}>
               {l.label}
-            </button>
+            </option>
           ))}
-        </div>
+        </select>
       </div>
     </>
   )
