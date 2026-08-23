@@ -18,4 +18,12 @@ export interface BibleProvider {
 // the reading surfaces. Each id maps to its own BibleProvider instance in
 // service.ts — the provider itself is never asked for a translation, since a
 // given instance only ever serves one (see cache.ts's `translation` ctor arg).
-export type TranslationId = 'BSB' | 'KJV' | 'ESV'
+export type TranslationId = 'BSB' | 'KJV' | 'ESV' | 'IRV' | 'TCV'
+
+// The LANGUAGE a reader reads scripture in — a separate choice from which
+// translation, and the one that scopes the translation switcher (see
+// useBibleLanguage.ts). Deliberately ISO 639-3 codes matching helloao's own
+// `language` field, so adding a language is a data change, not a type change
+// with a mapping table. Note anchoring is by verse number and therefore
+// language-independent: switching language never touches a note.
+export type BibleLanguageId = 'eng' | 'tam'

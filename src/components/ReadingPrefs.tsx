@@ -1,7 +1,12 @@
 import React from 'react'
 import { LOOKS, type LookId } from '../utils/useTheme'
 import { TEXT_SIZES, type TextSizeId } from '../utils/useTextSize'
-import { TRANSLATIONS, useTranslation } from '../utils/useTranslation'
+import { translationsForLanguage, useTranslation } from '../utils/useTranslation'
+import {
+  BIBLE_LANGUAGES,
+  HAS_MULTIPLE_LANGUAGES,
+  useBibleLanguage
+} from '../utils/useBibleLanguage'
 
 // The reading preferences, as ONE implementation shared by the full Settings
 // modal and the quick display popover you open from the reading view
@@ -130,13 +135,54 @@ function TextSizeSection({
   )
 }
 
+// The Bible LANGUAGE — a separate choice from translation, made once and then
+// forgotten, which is why it sits here (and in Settings) rather than in the
+// per-passage translation footer. It renders ONLY while there is more than one
+// language to choose between, so a single-language build carries no clutter.
+function LanguageSection(): React.ReactElement | null {
+  const [language, setLanguage] = useBibleLanguage()
+  if (!HAS_MULTIPLE_LANGUAGES) return null
+  return (
+    <>
+      <div className="rpref-divider" />
+      <div className="rpref-section">
+        <div className="rpref-section-label">Bible language</div>
+        {/* A dropdown, not a row of buttons: language is a set-once choice and
+            the list only grows, so most readers should never see every option
+            laid out in front of them. A native <select> keeps it a one-tap OS
+            picker with no nested custom menu. */}
+        <select
+          className="rpref-select"
+          value={language}
+          onChange={e => {
+            const next = BIBLE_LANGUAGES.find(l => l.id === e.target.value)
+            if (next) setLanguage(next.id)
+          }}
+          aria-label="Bible language"
+        >
+          {BIBLE_LANGUAGES.map(l => (
+            <option key={l.id} value={l.id}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </>
+  )
+}
+
+// Scoped to the chosen language: an English reader is offered exactly BSB, KJV
+// and ESV, as before. Switching language moves the reader to that language's
+// primary translation (useBibleLanguage), so this list always contains the
+// active one.
 function TranslationSection(): React.ReactElement {
   const [translation, setTranslation] = useTranslation()
+  const [language] = useBibleLanguage()
   return (
     <div className="rpref-section">
       <div className="rpref-section-label">Translation</div>
       <div className="translation-picker" role="radiogroup" aria-label="Bible translation">
-        {TRANSLATIONS.map(t => (
+        {translationsForLanguage(language).map(t => (
           <button
             key={t.id}
             className={`translation-option${translation === t.id ? ' active' : ''}`}
@@ -158,7 +204,8 @@ function TranslationSection(): React.ReactElement {
  *
  * Deliberately a flat list of self-contained sections: the Bible-language
  * switcher lands next to Translation as one more <div className="rpref-section">
- * with no layout to rethink, in both surfaces at once.
+ * with no layout to rethink, in both surfaces at once — which is exactly how it
+ * arrived (LanguageSection), reaching the quick popover and Settings together.
  */
 export default function ReadingPrefs({
   lookId,
@@ -178,6 +225,7 @@ export default function ReadingPrefs({
       <TextSizeSection textSize={textSize} onSetTextSize={onSetTextSize} />
       <div className="rpref-divider" />
       <TranslationSection />
+      <LanguageSection />
     </>
   )
 }

@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { TRANSLATIONS, useTranslation } from '../utils/useTranslation'
+import type { TranslationId } from '../bible/provider'
+import { translationsForLanguage, useTranslation } from '../utils/useTranslation'
+import { useBibleLanguage } from '../utils/useBibleLanguage'
 
 /** Closes the picker on an outside click OR any scroll (the menu is anchored to
  * a position that scrolls away, so it should dismiss rather than float). Mirrors
@@ -30,8 +32,15 @@ function useDismissMenu(
  * switcher — so changing translation never needs Settings, and the reading
  * header stays free of a control almost nobody touches after the first read.
  * Kept as minimal as possible on purpose: just the name for the public-domain
- * texts (BSB/KJV); ESV additionally carries Crossway's required copyright line,
- * which licensing does not let us drop.
+ * texts (BSB/KJV); ESV and the two Tamil translations additionally carry the
+ * copyright/attribution line their licence requires, which we are not free to
+ * drop (see FinePrint).
+ *
+ * The menu is SCOPED TO THE READER'S BIBLE LANGUAGE — it offers that language's
+ * translations and nothing else, so an English reader sees exactly BSB/KJV/ESV
+ * as they always have and never meets a Tamil option here. Language itself is
+ * changed in reading preferences (ReadingPrefs), not in this footer: it is a
+ * once-ever choice and would be clutter on every passage.
  */
 export default function TranslationFooter(): React.ReactElement {
   const [translation, setTranslation] = useTranslation()
@@ -44,7 +53,9 @@ export default function TranslationFooter(): React.ReactElement {
     open
   )
 
-  const current = TRANSLATIONS.find(t => t.id === translation)
+  const [language] = useBibleLanguage()
+  const options = translationsForLanguage(language)
+  const current = options.find(t => t.id === translation)
 
   return (
     <div className="translation-footer" ref={hostRef}>
@@ -80,7 +91,7 @@ export default function TranslationFooter(): React.ReactElement {
           role="menu"
           aria-hidden={!open}
         >
-          {TRANSLATIONS.map(t => (
+          {options.map(t => (
             <button
               key={t.id}
               className={`nav-menu-item${t.id === translation ? ' active' : ''}`}
@@ -112,16 +123,54 @@ export default function TranslationFooter(): React.ReactElement {
         </div>
       </div>
 
-      {translation === 'ESV' && (
-        <p className="translation-footer-fine">
-          Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®),
-          copyright © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by
-          permission. All rights reserved. ESV Text Edition: 2016.{' '}
-          <a href="https://www.esv.org" target="_blank" rel="noopener noreferrer">
-            esv.org
-          </a>
-        </p>
-      )}
+      <FinePrint translation={translation} />
     </div>
   )
+}
+
+const CC_BY_SA = 'https://creativecommons.org/licenses/by-sa/4.0/'
+
+/**
+ * The licence line, where the licence requires one. BSB and KJV need nothing;
+ * ESV carries Crossway's copyright notice; both Tamil texts are CC BY-SA 4.0,
+ * which requires naming the licensor and linking the licence wherever the text
+ * is shown — so it renders on the same faint footer line, in the same place,
+ * as ESV's. Same pattern, one component, no per-surface duplication.
+ */
+function FinePrint({ translation }: { translation: TranslationId }): React.ReactElement | null {
+  if (translation === 'ESV') {
+    return (
+      <p className="translation-footer-fine">
+        Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®),
+        copyright © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by
+        permission. All rights reserved. ESV Text Edition: 2016.{' '}
+        <a href="https://www.esv.org" target="_blank" rel="noopener noreferrer">
+          esv.org
+        </a>
+      </p>
+    )
+  }
+  if (translation === 'IRV') {
+    return (
+      <p className="translation-footer-fine">
+        Tamil Indian Revised Version (IRV), © Bridge Connectivity Solutions Pvt. Ltd. Licensed under{' '}
+        <a href={CC_BY_SA} target="_blank" rel="noopener noreferrer">
+          CC BY-SA 4.0
+        </a>
+        .
+      </p>
+    )
+  }
+  if (translation === 'TCV') {
+    return (
+      <p className="translation-footer-fine">
+        Biblica® Open Tamil Contemporary Version™, © Biblica, Inc. Licensed under{' '}
+        <a href={CC_BY_SA} target="_blank" rel="noopener noreferrer">
+          CC BY-SA 4.0
+        </a>
+        .
+      </p>
+    )
+  }
+  return null
 }
