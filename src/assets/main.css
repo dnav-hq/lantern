@@ -4265,6 +4265,10 @@ body.dark .rpref-divider {
   gap: 8px;
 }
 .look-swatch-chip {
+  /* inline-flex so the swatch preview (a span with a fixed 34px width/height)
+     is a flex item and actually takes its size — as a plain inline child it
+     collapsed to a sliver, which is why the strip read as thin bars. */
+  display: inline-flex;
   padding: 5px;
   border: 1px solid transparent;
   border-radius: 11px;
