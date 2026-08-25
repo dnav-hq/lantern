@@ -147,6 +147,19 @@ export function createMemoryApi(): BereanApi {
       return result.sort((a, b) => a.created_at.localeCompare(b.created_at))
     },
 
+    async getAllNotes() {
+      const result: NoteWithPassageInfo[] = []
+      for (const p of passages.values()) {
+        const sessionIds = new Set(
+          [...sessions.values()].filter(s => s.passage_id === p.id).map(s => s.id)
+        )
+        for (const n of notes.values()) {
+          if (sessionIds.has(n.session_id)) result.push({ ...n, ...passageInfo(p) })
+        }
+      }
+      return result.sort((a, b) => a.created_at.localeCompare(b.created_at))
+    },
+
     async createNote(data: CreateNoteInput) {
       const n: Note = { id: uuid(), created_at: now(), updated_at: now(), ...data }
       notes.set(n.id, n)
