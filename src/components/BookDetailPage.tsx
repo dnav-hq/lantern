@@ -540,7 +540,8 @@ function ChapterView({
         }))
 
       const sessions = await api.getSessionsByPassage(passage.id)
-      const sessionId = sessions.length > 0 ? sessions[0].id : (await api.createSession(passage.id)).id
+      const sessionId =
+        sessions.length > 0 ? sessions[0].id : (await api.createSession(passage.id)).id
 
       const saved = await api.createNote({
         session_id: sessionId,
