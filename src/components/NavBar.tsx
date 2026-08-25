@@ -3,17 +3,30 @@ import Wordmark from './Wordmark'
 import { useApi } from '../api/context'
 import { exportAllNotesAsZip } from '../platform/export'
 
-export type Destination = 'bible' | 'journal' | 'study' | 'profile'
+// Study is deliberately NOT here. A study is not a place any more — it's the
+// notes on a chapter — so the Study tab is an ACTION that opens the reading
+// page in Study mode, not a fourth destination. See onStartStudy below.
+export type Destination = 'bible' | 'journal' | 'profile'
+
+// The Study tab still occupies a column in the bottom bar; this union is the
+// bar's literal render order, not the destination set.
+type NavSlot = Destination | 'study'
 
 // Matches the literal render order of the bottom tab bar below — used to
 // position the sliding active-tab indicator via a plain CSS transform
 // (translateX(n * 100%)), no layout measurement needed since all four
 // columns are equal-width (flex: 1).
-const BOTTOMNAV_ORDER: Destination[] = ['bible', 'journal', 'study', 'profile']
+const BOTTOMNAV_ORDER: NavSlot[] = ['bible', 'journal', 'study', 'profile']
 
 interface NavBarProps {
   destination: Destination
   onNavigate: (dest: Destination) => void
+  // Opens the reading page in Study mode (the Study tab). Not a navigation:
+  // where you already are is where studying happens.
+  onStartStudy: () => void
+  // Whether the reading page is currently in Study mode, so the tab can read
+  // as active without being a destination.
+  studyActive?: boolean
   displayName: string | null
   onOpenSettings: () => void
   // Sign-out handler, or null when there is no auth (memory stub / dev).
@@ -49,7 +62,8 @@ function useClickOutside(
 
 /**
  * App navigation: a top bar on desktop, a bottom tab bar on mobile.
- * Destinations: Bible · Journal · + Study · Profile.
+ * Tabs: Bible · Journal · + Study · Profile — where + Study is an action that
+ * puts the reading page into Study mode rather than a destination of its own.
  *
  * The "Personal ▾" workspace selector is a deliberate stub — it renders the
  * personal workspace only, so the future group switcher drops in without
@@ -58,6 +72,8 @@ function useClickOutside(
 export default function NavBar({
   destination,
   onNavigate,
+  onStartStudy,
+  studyActive = false,
   displayName,
   onOpenSettings,
   onSignOut,
@@ -143,21 +159,21 @@ export default function NavBar({
     return () => window.removeEventListener('resize', measure)
   }, [destination])
 
-  const navTab = (
-    dest: Destination,
-    label: string,
-    icon: React.ReactElement
-  ): React.ReactElement => (
+  const navTab = (dest: NavSlot, label: string, icon: React.ReactElement): React.ReactElement => {
+    const isStudy = dest === 'study'
+    const active = isStudy ? studyActive : destination === dest
+    return (
     <button
-      className={`nav-tab${dest === 'study' ? ' nav-tab-action' : ''}${destination === dest ? ' active' : ''}`}
-      onClick={() => onNavigate(dest)}
-      aria-current={destination === dest ? 'page' : undefined}
+      className={`nav-tab${isStudy ? ' nav-tab-action' : ''}${active ? ' active' : ''}`}
+      onClick={() => (isStudy ? onStartStudy() : onNavigate(dest as Destination))}
+      aria-current={active ? 'page' : undefined}
       data-dest={dest}
     >
       {icon}
       <span className="nav-tab-label">{label}</span>
     </button>
-  )
+    )
+  }
 
   const bibleIcon = (
     <svg
@@ -409,7 +425,9 @@ export default function NavBar({
         aria-label="Primary"
         style={
           {
-            '--bottomnav-active-index': BOTTOMNAV_ORDER.indexOf(destination)
+            '--bottomnav-active-index': BOTTOMNAV_ORDER.indexOf(
+              studyActive ? 'study' : destination
+            )
           } as React.CSSProperties
         }
       >

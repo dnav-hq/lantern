@@ -3,6 +3,7 @@ import { BiblePassage, NoteWithPassageInfo, NoteCategory, Passage } from '../typ
 import { BibleBook, findBookByAlias, readingShortBookName } from '../utils/bibleBooks'
 import { parseNoteLine } from '../utils/noteParser'
 import { useApi } from '../api/context'
+import type { BereanApi } from '../api/types'
 import { getBibleVerse } from '../bible/service'
 import { useTranslation } from '../utils/useTranslation'
 import InlineTagInput from './InlineTagInput'
@@ -12,6 +13,14 @@ import CrossRefPill from './CrossRefPill'
 import ErrorBoundary from './ErrorBoundary'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
+import MobileNoteComposer from './MobileNoteComposer'
+import StudyWorkbench, {
+  composeNoteContent,
+  noteBodyText,
+  referenceLabel as fullReference,
+  type NoteDraft,
+  type VerseRange
+} from './StudyWorkbench'
 import ReadingControls from './ReadingControls'
 import type { DisplayPrefs } from './ReadingPrefs'
 import TranslationFooter from './TranslationFooter'
@@ -46,6 +55,40 @@ interface NoteGroup {
 // numeric interval comparison. 1000 headroom per chapter comfortably covers
 // every book (Psalm 119, the longest chapter, has 176 verses).
 const toKey = (chapter: number, verse: number): number => chapter * 1000 + verse
+
+// Passage + session are invisible interim storage: a note has to hang off one,
+// but no reader ever names or sees them, and the note is the only unit anyone
+// saves. Reuse whatever passage already covers these verses (the precise
+// findOverlappingPassage match, not "same chapter") so writing two notes on one
+// passage never forks it in two. Module-level because both note-writing
+// surfaces on this page — the phone composer and the desktop workbench — need
+// exactly this and live at different depths in the tree.
+async function resolveNoteStorage(
+  api: BereanApi,
+  bookName: string,
+  chapter: number,
+  anchorStart: number,
+  anchorEnd: number
+): Promise<{ passage: Passage; sessionId: string }> {
+  const allPassages = await api.getPassages()
+  const existing = findOverlappingPassage(allPassages, chapter, anchorStart, anchorEnd)
+  const passage =
+    existing ??
+    (await api.createPassage({
+      book_number: findBookByAlias(bookName)?.number ?? 1,
+      chapter_start: chapter,
+      verse_start: anchorStart,
+      chapter_end: chapter,
+      verse_end: anchorEnd,
+      reference_label:
+        anchorStart === anchorEnd
+          ? `${bookName} ${chapter}:${anchorStart}`
+          : `${bookName} ${chapter}:${anchorStart}-${anchorEnd}`
+    }))
+  const sessions = await api.getSessionsByPassage(passage.id)
+  const sessionId = sessions.length > 0 ? sessions[0].id : (await api.createSession(passage.id)).id
+  return { passage, sessionId }
+}
 
 // "Start study on {ref}" / "Study chapter" should land in an existing study
 // if one already covers the selected verses, rather than always starting
@@ -111,6 +154,35 @@ function markVerseHintSeen(): void {
 
 // Horizontal step (px) between overlapping rail-note lanes.
 const LANE_STEP = 14
+
+// The two width regimes this surface behaves differently in. Phone capture is
+// the tap/selection-bar/composer flow; the Study toggle only appears where
+// there is genuinely room for a notes panel beside a full scripture measure.
+const MOBILE_QUERY = '(max-width: 768px)'
+const STUDY_QUERY = '(min-width: 1180px)'
+
+// Live media-query state. Small enough to keep local rather than reach for a
+// util file — the reading surface is the only caller.
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(
+    () => typeof matchMedia === 'function' && matchMedia(query).matches
+  )
+  useEffect(() => {
+    if (typeof matchMedia !== 'function') return
+    const mql = matchMedia(query)
+    const onChange = (): void => setMatches(mql.matches)
+    onChange()
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [query])
+  return matches
+}
+
+// What the phone composer is currently doing. `create` carries the verse range
+// the selection bar was raised on; `edit` carries the note being rewritten.
+type ComposeState =
+  | { kind: 'create'; from: number; to: number }
+  | { kind: 'edit'; note: NoteWithPassageInfo }
 
 // The neighbour pane rendered during a swipe is inert (pointer-events: none)
 // and exists for ~260ms; it gets no working handlers on purpose, so a chapter
@@ -194,6 +266,16 @@ interface ChapterViewProps {
   // a swipe/edge-arrow (its text was already slid on screen), so it doesn't
   // flicker by fading in again on commit.
   suppressEntrance?: boolean
+  // Phone widths: verse tap raises a selection bar and notes are written in the
+  // keyboard-aware composer rather than the quick-note card.
+  isMobile?: boolean
+  // Desktop Study mode: scripture stays clean text and every note action lives
+  // in the workbench beside it. Selection feeds the workbench's anchor.
+  studyMode?: boolean
+  // The verses the workbench's active editor points at (Study mode only).
+  studyHighlight?: VerseRange | null
+  // A verse click / marquee release, handed to the workbench (Study mode only).
+  onStudySelect?: (range: VerseRange | null) => void
 }
 
 function ChapterView({
@@ -206,7 +288,11 @@ function ChapterView({
   onNotesChanged,
   preloaded,
   initialHighlightVerses,
-  suppressEntrance
+  suppressEntrance,
+  isMobile = false,
+  studyMode = false,
+  studyHighlight = null,
+  onStudySelect
 }: ChapterViewProps): React.ReactElement {
   const api = useApi()
   const [translation] = useTranslation()
@@ -256,13 +342,28 @@ function ChapterView({
   // press so handleVerseClick can accept only a real tap (short + still).
   const tapRef = useRef<{ t: number; x: number; y: number; moved: boolean } | null>(null)
 
+  // Phone capture: the composer that is open, if any (see MobileNoteComposer).
+  const [compose, setCompose] = useState<ComposeState | null>(null)
+  const [savingCompose, setSavingCompose] = useState(false)
+  // Bottom of the sticky reading chrome, so the composer can centre itself in
+  // the usable band above the keyboard. Measured at open time.
+  const headerBottomRef = useRef(0)
+
   const chapterNotes = localNotes.filter(
     n => n.chapter_start <= chapter && chapter <= n.chapter_end
   )
 
-  const groups = groupNotes(chapterNotes)
-  const anchoredGroups = groups.filter(g => g.main.anchor_start_verse !== null)
-  const passageGroups = groups.filter(g => g.main.anchor_start_verse === null)
+  // While a saved note is being rewritten the composer takes its place in the
+  // flow, so the note itself is not also drawn underneath.
+  const editingComposeId = compose?.kind === 'edit' ? compose.note.id : null
+  const groups = groupNotes(
+    editingComposeId ? chapterNotes.filter(n => n.id !== editingComposeId) : chapterNotes
+  )
+  // Study mode deliberately renders NO notes in the scripture column — clean
+  // text on the left, every note (and every note action) in the workbench on
+  // the right. Emptying these two collapses the rail and the inline rows alike.
+  const anchoredGroups = studyMode ? [] : groups.filter(g => g.main.anchor_start_verse !== null)
+  const passageGroups = studyMode ? [] : groups.filter(g => g.main.anchor_start_verse === null)
   // Split anchored notes by span width: single-verse notes render INLINE beneath
   // their verse row; only multi-verse range notes go into the right-hand rail.
   const isRangeGroup = (g: NoteGroup): boolean => {
@@ -389,6 +490,9 @@ function ChapterView({
 
   const handleVerseClick = (v: number): void => {
     if (editingNoteId !== null) return
+    // The selection is locked while the phone composer is open — the note being
+    // written is anchored to the verses it was raised on.
+    if (compose !== null) return
     // Tap-only selection: a hold-then-release (or a press that turned into a
     // scroll) also produces a click, which was selecting the verse the moment
     // you paused before scrolling. Accept only a real tap — pressed under ~500ms
@@ -401,6 +505,12 @@ function ChapterView({
     // already committed the range via onRangeSelected — don't let the click
     // event mouseup produces re-run tap logic and clobber it.
     if (suppressNextClick()) return
+    // Study mode: a click sets the workbench's anchor rather than raising the
+    // reading action bar. Nothing else on this surface owns a selection there.
+    if (studyMode) {
+      onStudySelect?.({ from: v, to: v })
+      return
+    }
     // Highlight notes anchored to this verse, as before.
     const anchored = chapterNotes.filter(
       n =>
@@ -416,6 +526,11 @@ function ChapterView({
     if (selAnchor === null) {
       setSelAnchor(v)
       setSelFocus(v)
+    } else if (isMobile && selRange !== null && v >= selRange[0] && v <= selRange[1]) {
+      // Phone: tapping ANY already-highlighted verse clears the whole selection
+      // (the prototype's rule) — on a small screen "tap the thing that's lit to
+      // put it out" is the only gesture that reads as reversible.
+      clearSelection()
     } else if (selFocus === v && selAnchor === v) {
       // Tapping the sole selected verse again clears.
       clearSelection()
@@ -434,6 +549,13 @@ function ChapterView({
     containerRef,
     verseRowRefs,
     (start, end) => {
+      // Study mode reuses the exact same marquee; only the destination differs.
+      // Dragging a range REFRESHES the active editor's anchor (StudyWorkbench
+      // replaces the leading token rather than appending a second one).
+      if (studyMode) {
+        onStudySelect?.(start === null || end === null ? null : { from: start, to: end })
+        return
+      }
       // Selecting verses clears any note highlight (mutually exclusive).
       setHighlightedVerses(new Set())
       setHighlightedNoteIds(new Set())
@@ -446,10 +568,13 @@ function ChapterView({
   // control) clears every highlight/selection. A trailing click synthesised by a
   // just-completed marquee drag is swallowed so it can't wipe the fresh range.
   const handleBackgroundClick = (e: React.MouseEvent): void => {
+    // While the composer is open the background is not a dismiss target — the
+    // composer's own Cancel is (and it asks first if there's anything to lose).
+    if (compose !== null) return
     const target = e.target as HTMLElement
     if (
       target.closest(
-        '.reading-verse-row, .rail-note, .reading-note-card, .inline-verse-notes, .verse-action-bar, .inline-note-row, button, a, input, textarea, [contenteditable]'
+        '.reading-verse-row, .rail-note, .reading-note-card, .inline-verse-notes, .verse-action-bar, .mobile-selbar, .mnc, .inline-note-row, button, a, input, textarea, [contenteditable]'
       )
     )
       return
@@ -503,12 +628,101 @@ function ChapterView({
 
   const handleNoteClick = (n: NoteWithPassageInfo): void => {
     if (editingNoteId !== null) return
+    // Phone: a note is a thing you tap to rewrite, in the same composer that
+    // wrote it. Desktop keeps the "show me which verses this is about" reveal.
+    if (isMobile && compose === null) {
+      if (n.anchor_start_verse !== null) {
+        setSelAnchor(n.anchor_start_verse)
+        setSelFocus(n.anchor_end_verse ?? n.anchor_start_verse)
+      }
+      openCompose({ kind: 'edit', note: n })
+      return
+    }
     highlightVersesForNote(n)
   }
 
   // Chip linkage: scroll the anchored verse into view (mobile).
   const scrollToVerse = (verse: number): void => {
     verseRowRefs.current.get(verse)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  const resolveStorageFor = (
+    anchorStart: number,
+    anchorEnd: number
+  ): Promise<{ passage: Passage; sessionId: string }> =>
+    resolveNoteStorage(api, bookName, chapter, anchorStart, anchorEnd)
+
+  // ── phone capture ──────────────────────────────────────────────────────────
+
+  const openCompose = (next: ComposeState): void => {
+    // Measured now, while the chrome is where the reader last left it, so the
+    // composer centres against the band that is actually visible.
+    const chrome = document.querySelector('.book-detail-chrome')
+    headerBottomRef.current = chrome ? chrome.getBoundingClientRect().bottom : 0
+    setCompose(next)
+  }
+
+  const closeCompose = (): void => {
+    setCompose(null)
+    clearSelection()
+  }
+
+  const handleComposeSave = async (text: string, category: NoteCategory | null): Promise<void> => {
+    if (!compose || savingCompose) return
+    setSavingCompose(true)
+    try {
+      if (compose.kind === 'create') {
+        const range = { from: compose.from, to: compose.to }
+        const { passage, sessionId } = await resolveStorageFor(range.from, range.to)
+        const saved = await api.createNote({
+          session_id: sessionId,
+          content: composeNoteContent(range, category, text),
+          anchor_start_verse: range.from,
+          anchor_end_verse: range.to,
+          anchor_book_override: null,
+          anchor_chapter_override: null,
+          category,
+          indent_level: 0
+        })
+        setLocalNotes(prev => [
+          ...prev,
+          {
+            ...saved,
+            chapter_start: passage.chapter_start,
+            chapter_end: passage.chapter_end,
+            verse_start: passage.verse_start,
+            verse_end: passage.verse_end,
+            reference_label: passage.reference_label
+          }
+        ])
+        markInstallEngagement()
+        markJustSaved(saved.id)
+      } else {
+        const n = compose.note
+        const range =
+          n.anchor_start_verse !== null
+            ? { from: n.anchor_start_verse, to: n.anchor_end_verse ?? n.anchor_start_verse }
+            : null
+        const updated = await api.updateNote(n.id, {
+          content: composeNoteContent(range, category, text),
+          anchor_start_verse: range?.from ?? null,
+          anchor_end_verse: range?.to ?? null,
+          category
+        })
+        setLocalNotes(prev => prev.map(x => (x.id === n.id ? { ...x, ...updated } : x)))
+        markJustSaved(n.id)
+      }
+      closeCompose()
+      onNotesChanged()
+    } finally {
+      setSavingCompose(false)
+    }
+  }
+
+  const handleComposeDelete = async (): Promise<void> => {
+    if (compose?.kind !== 'edit') return
+    await handleDeleteNote(compose.note)
+    closeCompose()
   }
 
   const handleInlineSave = async (): Promise<void> => {
@@ -520,28 +734,10 @@ function ChapterView({
       // verse that opened the compose box when the tag was edited away.
       const anchorStart = parsed.anchorStart ?? inlineVerse
       const anchorEnd = parsed.anchorEnd ?? anchorStart
-      const passages = await api.getPassages()
-      // Same precise verse-overlap resolution "Start study on {ref}" uses
-      // (findOverlappingPassage) — reuse an existing passage rather than ever
-      // creating a duplicate for verses already covered.
-      const existing = findOverlappingPassage(passages, chapter, anchorStart, anchorEnd)
-      const passage =
-        existing ??
-        (await api.createPassage({
-          book_number: findBookByAlias(bookName)?.number ?? 1,
-          chapter_start: chapter,
-          verse_start: anchorStart,
-          chapter_end: chapter,
-          verse_end: anchorEnd,
-          reference_label:
-            anchorStart === anchorEnd
-              ? `${bookName} ${chapter}:${anchorStart}`
-              : `${bookName} ${chapter}:${anchorStart}-${anchorEnd}`
-        }))
-
-      const sessions = await api.getSessionsByPassage(passage.id)
-      const sessionId =
-        sessions.length > 0 ? sessions[0].id : (await api.createSession(passage.id)).id
+      // Same precise verse-overlap resolution "Start study on {ref}" uses —
+      // reuse an existing passage rather than ever creating a duplicate for
+      // verses already covered. See resolveStorageFor.
+      const { passage, sessionId } = await resolveStorageFor(anchorStart, anchorEnd)
 
       const saved = await api.createNote({
         session_id: sessionId,
@@ -831,7 +1027,20 @@ function ChapterView({
     )
   }
 
-  const hasHighlightedVerse = highlightedVerses.size > 0
+  // In Study mode the highlight is owned by the workbench's active editor (type
+  // `v4-6`, or drag the verses, and they light up); everywhere else it is the
+  // reading view's own note/verse reveal.
+  const paintedVerses = studyMode
+    ? new Set(
+        studyHighlight
+          ? Array.from(
+              { length: studyHighlight.to - studyHighlight.from + 1 },
+              (_, i) => studyHighlight.from + i
+            )
+          : []
+      )
+    : highlightedVerses
+  const hasHighlightedVerse = paintedVerses.size > 0
 
   // Map each rendered verse to its 1-based grid row so rail notes can be placed at
   // `grid-row: startRow / endRow+1` and bracket exactly their anchor span. See the
@@ -865,10 +1074,56 @@ function ChapterView({
     else mobileRangeByVerse.set(key, [g])
   }
 
+  // Where the phone composer sits in the flow: under the LAST verse of the
+  // selection when writing something new, and exactly where the note was when
+  // rewriting one — so what you are editing never jumps somewhere else.
+  const composeVerse =
+    compose === null
+      ? null
+      : compose.kind === 'create'
+        ? (rowByVerse.has(compose.to) ? compose.to : lastVerse)
+        : (() => {
+            const n = compose.note
+            const end = n.anchor_end_verse ?? n.anchor_start_verse
+            return end !== null && rowByVerse.has(end) ? end : lastVerse
+          })()
+
+  const composeReference =
+    compose === null
+      ? ''
+      : compose.kind === 'create'
+        ? fullReference(bookName, chapter, compose.from, compose.to)
+        : compose.note.anchor_start_verse !== null
+          ? fullReference(
+              bookName,
+              chapter,
+              compose.note.anchor_start_verse,
+              compose.note.anchor_end_verse ?? compose.note.anchor_start_verse
+            )
+          : `${bookName} ${chapter}`
+
+  const renderComposer = (): React.ReactElement | null => {
+    if (compose === null) return null
+    return (
+      <MobileNoteComposer
+        key={compose.kind === 'edit' ? compose.note.id : `new-${compose.from}-${compose.to}`}
+        mode={compose.kind === 'edit' ? 'edit' : 'create'}
+        referenceLabel={composeReference}
+        initialText={compose.kind === 'edit' ? noteBodyText(compose.note.content) : ''}
+        initialCategory={compose.kind === 'edit' ? compose.note.category : null}
+        saving={savingCompose}
+        headerBottom={headerBottomRef.current}
+        onSave={(text, category) => void handleComposeSave(text, category)}
+        onCancel={closeCompose}
+        onDelete={compose.kind === 'edit' ? () => void handleComposeDelete() : undefined}
+      />
+    )
+  }
+
   return (
     <div
       ref={containerRef}
-      className={`chapter-marquee-surface${entranceSuppressed ? ' no-entrance' : ''}`}
+      className={`chapter-marquee-surface${entranceSuppressed ? ' no-entrance' : ''}${compose !== null ? ' is-composing' : ''}`}
       onPointerDown={containerPointerDown}
       onClick={handleBackgroundClick}
     >
@@ -947,7 +1202,7 @@ function ChapterView({
         <div className={`scripture-grid${hasRail ? '' : ' no-rail'}`}>
           {verses.map((v, i) => {
             const isSelected = selRange !== null && v.verse >= selRange[0] && v.verse <= selRange[1]
-            const isHighlighted = highlightedVerses.has(v.verse)
+            const isHighlighted = paintedVerses.has(v.verse)
             const isDimmed =
               (hasHighlightedVerse && !isHighlighted) || (selRange !== null && !isSelected)
             const showInline = inlineVerse === v.verse
@@ -965,7 +1220,7 @@ function ChapterView({
             const inActiveSet = (verse: number): boolean =>
               isSelected
                 ? selRange !== null && verse >= selRange[0] && verse <= selRange[1]
-                : highlightedVerses.has(verse)
+                : paintedVerses.has(verse)
             // An inline note (or mobile range note) renders BELOW a verse and
             // visually breaks the fill, so it ends the run there: the noted
             // verse is the run's bottom and the next verse starts a fresh run.
@@ -1049,6 +1304,10 @@ function ChapterView({
                   </div>
                 )}
 
+                {/* Phone capture: the composer takes its place in the reading
+                    flow, right where the note it is writing will live. */}
+                {composeVerse === v.verse && renderComposer()}
+
                 {showInline && (
                   <div className="inline-note-row">
                     <QuickEditCard
@@ -1106,7 +1365,34 @@ function ChapterView({
         </div>
       </div>
 
-      {selRange !== null && inlineVerse === null && (
+      {/* Phone: one calm bar — what you picked, a way to un-pick it, and Note.
+          Everything else (starting a "study") is gone, because a study is now
+          just the notes on a chapter rather than a place you go. */}
+      {isMobile && selRange !== null && compose === null && (
+        <div className="mobile-selbar on" role="toolbar" aria-label="Selection actions">
+          <span className="mobile-selbar-ref">{selReference}</span>
+          <span className="mobile-selbar-tip" style={{ opacity: selRange[0] === selRange[1] ? 1 : 0.5 }}>
+            tap more verses to extend
+          </span>
+          <button
+            type="button"
+            className="mobile-selbar-x"
+            aria-label="Clear selection"
+            onClick={clearSelection}
+          >
+            ✕
+          </button>
+          <button
+            type="button"
+            className="mobile-selbar-note"
+            onClick={() => openCompose({ kind: 'create', from: selRange[0], to: selRange[1] })}
+          >
+            Note
+          </button>
+        </div>
+      )}
+
+      {!isMobile && !studyMode && selRange !== null && inlineVerse === null && (
         <div className="verse-action-bar" role="toolbar" aria-label="Selection actions">
           <span className="verse-action-ref">{selReference}</span>
           <span className="verse-action-hint">Hold Alt and drag to select the text to copy</span>
@@ -1253,6 +1539,10 @@ interface BookDetailPageProps {
   // Verses to highlight + scroll to once the chapter loads (set after a
   // "Save & Read" so the just-written notes are seen in context). Consumed once.
   initialHighlightVerses?: number[]
+  // Read vs Study. Owned by App so the nav's Study tab can reflect it and so
+  // asking for Study from anywhere lands here rather than on a separate page.
+  studyMode: boolean
+  onSetStudyMode: (value: boolean) => void
 }
 
 export default function BookDetailPage({
@@ -1269,9 +1559,28 @@ export default function BookDetailPage({
   onToggleHideNotes,
   displayPrefs,
   onChromeVisibleChange,
-  initialHighlightVerses
+  initialHighlightVerses,
+  studyMode,
+  onSetStudyMode
 }: BookDetailPageProps): React.ReactElement {
   const api = useApi()
+  // Phone capture and the desktop Study toggle are the two width-dependent
+  // behaviours on this surface; everything between them is plain reading.
+  const isMobile = useMediaQuery(MOBILE_QUERY)
+  const canStudy = useMediaQuery(STUDY_QUERY)
+  // Narrowing the window below the Study breakpoint drops you back into Read
+  // rather than leaving a panel half off-screen.
+  useEffect(() => {
+    if (!canStudy && studyMode) onSetStudyMode(false)
+  }, [canStudy, studyMode, onSetStudyMode])
+
+  // Study mode plumbing: the scripture column reports selections up, the
+  // workbench reports its active editor's anchor back down. `seq` is what makes
+  // re-selecting the SAME verses register as a fresh request.
+  const [anchorRequest, setAnchorRequest] = useState<{ range: VerseRange; seq: number } | null>(null)
+  const [studyHighlight, setStudyHighlight] = useState<VerseRange | null>(null)
+  const [savingStudyNote, setSavingStudyNote] = useState(false)
+  const anchorSeq = useRef(0)
   const [translation] = useTranslation()
   const [allNotes, setAllNotes] = useState<NoteWithPassageInfo[]>([])
   // The book's existing Passages (not just notes) — needed to find one whose
@@ -1344,6 +1653,64 @@ export default function BookDetailPage({
   }
 
   const studiedCount = chaptersWithNotes.size
+
+  // ── Study mode: the workbench's data + writes ──────────────────────────────
+  // Notes on the chapter currently on screen. A "study" is exactly this list —
+  // a derived view, not a stored row.
+  const chapterNotes = allNotes.filter(
+    n => n.chapter_start <= selectedChapter && selectedChapter <= n.chapter_end
+  )
+
+  const handleStudySave = async (draft: NoteDraft): Promise<void> => {
+    if (savingStudyNote) return
+    setSavingStudyNote(true)
+    try {
+      const content = composeNoteContent(draft.range, draft.category, draft.text)
+      if (draft.id) {
+        await api.updateNote(draft.id, {
+          content,
+          anchor_start_verse: draft.range?.from ?? null,
+          anchor_end_verse: draft.range?.to ?? null,
+          category: draft.category
+        })
+      } else {
+        // An unanchored note still belongs to the chapter you are reading, so
+        // it is stored against the whole chapter rather than refused.
+        const from = draft.range?.from ?? 1
+        const to = draft.range?.to ?? from
+        const { sessionId } = await resolveNoteStorage(
+          api,
+          bibleBook.name,
+          selectedChapter,
+          from,
+          to
+        )
+        await api.createNote({
+          session_id: sessionId,
+          content,
+          anchor_start_verse: draft.range?.from ?? null,
+          anchor_end_verse: draft.range?.to ?? null,
+          anchor_book_override: null,
+          anchor_chapter_override: null,
+          category: draft.category,
+          indent_level: 0
+        })
+        markInstallEngagement()
+      }
+      setStudyHighlight(null)
+      await reloadNotes()
+      onRefresh?.()
+    } finally {
+      setSavingStudyNote(false)
+    }
+  }
+
+  const handleStudyDelete = async (note: NoteWithPassageInfo): Promise<void> => {
+    await api.deleteNoteAndCascade(note.id)
+    setStudyHighlight(null)
+    await reloadNotes()
+    onRefresh?.()
+  }
 
   /* ── Cross-chapter reading ───────────────────────────────────────────────
      Where you can go, what's already loaded, and the gesture that gets you
@@ -1463,7 +1830,7 @@ export default function BookDetailPage({
   }, [swipe.peek])
 
   return (
-    <div className="book-detail-layout" ref={layoutRef}>
+    <div className={`book-detail-layout${studyMode ? ' study-mode' : ''}`} ref={layoutRef}>
       {/* One sticky chrome block (header + chapter strip) so the pair slides
           away as a single unit. `display: contents` on desktop keeps the old
           flex layout byte-for-byte; only the mobile rules make it a real box. */}
@@ -1555,6 +1922,31 @@ export default function BookDetailPage({
               </div>
             </div>
             <div className="book-detail-header-controls">
+              {/* Study is a MODE of the reading page, not a place. The toggle
+                  only appears where there is room for a notes panel beside a
+                  full scripture measure; a phone captures inline instead. */}
+              {canStudy && (
+                <div className="study-seg" role="tablist" aria-label="Mode">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-pressed={!studyMode}
+                    aria-selected={!studyMode}
+                    onClick={() => onSetStudyMode(false)}
+                  >
+                    Read
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-pressed={studyMode}
+                    aria-selected={studyMode}
+                    onClick={() => onSetStudyMode(true)}
+                  >
+                    Study
+                  </button>
+                </div>
+              )}
               {/* The muted reading cluster: display options ("aA"), hide notes,
                   reading mode. Translation also stays in the chapter colophon
                   (TranslationFooter) as the ultra-quick per-passage flip. */}
@@ -1627,6 +2019,13 @@ export default function BookDetailPage({
         </div>
       </div>
 
+      {/* Transform-driven Study layout. The scripture column and the notes
+          panel are ALWAYS both in the DOM at a fixed width; Read simply
+          re-centres the column with a translate and fades the panel out. No
+          width animates, so the scripture never re-wraps mid-toggle — the one
+          thing that would make switching modes feel like a page change. */}
+      <div className="study-stage">
+       <div className="study-canvas">
       <div className="book-detail-content" ref={contentRef}>
         {/* The chapter deck. One chapter is current; during a swipe (or a
             tapped affordance) exactly ONE neighbour is mounted beside it and
@@ -1684,6 +2083,18 @@ export default function BookDetailPage({
                       // frozen at mount). A pill or search jump mounts a fresh
                       // pane instead, and still gets the reveal.
                       suppressEntrance={peek ? true : suppressEntrance}
+                      isMobile={isMobile}
+                      studyMode={!peek && studyMode}
+                      studyHighlight={peek ? null : studyHighlight}
+                      onStudySelect={
+                        peek
+                          ? undefined
+                          : range => {
+                              if (!range) return setStudyHighlight(null)
+                              anchorSeq.current += 1
+                              setAnchorRequest({ range, seq: anchorSeq.current })
+                            }
+                      }
                     />
                   </ErrorBoundary>
                   {!peek && <ChapterFlowNav prev={prev} next={next} onGo={swipe.go} />}
@@ -1693,6 +2104,22 @@ export default function BookDetailPage({
             })}
           </div>
         </div>
+      </div>
+        <aside className="study-aside" aria-hidden={!studyMode}>
+          {studyMode && (
+            <StudyWorkbench
+              bookName={bibleBook.name}
+              chapter={selectedChapter}
+              notes={chapterNotes}
+              saving={savingStudyNote}
+              anchorRequest={anchorRequest}
+              onAnchorChange={setStudyHighlight}
+              onSave={draft => void handleStudySave(draft)}
+              onDelete={note => void handleStudyDelete(note)}
+            />
+          )}
+        </aside>
+       </div>
       </div>
 
       {/* Persistent prev/next, always within reach — the desktop answer to the
