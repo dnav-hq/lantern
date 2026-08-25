@@ -6432,3 +6432,1002 @@ body.dark .mobile-menu-btn:active {
     bottom: calc(72px + env(safe-area-inset-bottom));
   }
 }
+
+/* ─── Phone capture ──────────────────────────────────────────────────────────
+   Tap a verse → a selection bar rises → Note → a keyboard-aware composer opens
+   in the reading flow. Ported from design/mobile-note-capture.html. Everything
+   here is scoped to the mobile breakpoint; desktop reading is untouched. */
+
+.mobile-selbar {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  z-index: 45;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  box-shadow: var(--elev-3);
+  padding: 10px 10px 10px 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: translateY(140%);
+  transition: transform var(--dur-3) var(--ease-out);
+}
+.mobile-selbar.on {
+  transform: translateY(0);
+}
+.mobile-selbar-ref {
+  font-family: var(--scripture-font);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent-ink);
+  white-space: nowrap;
+}
+.mobile-selbar-tip {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  flex: 1;
+  min-width: 0;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+.mobile-selbar-x {
+  border: 0;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  font-size: 16px;
+  flex: none;
+  cursor: pointer;
+}
+.mobile-selbar-note {
+  border: 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 11px;
+  padding: 10px 20px;
+  box-shadow: var(--elev-2);
+  flex: none;
+  cursor: pointer;
+}
+
+/* The composer itself. Its opacity/transform are driven imperatively by
+   useKeyboardCompose (the flash-free reveal), so nothing here animates it in. */
+.mnc {
+  margin: 10px 0 14px 3px;
+  border-left: 2.5px solid var(--mnc-rail, var(--accent));
+  background: var(--accent-weaker);
+  border-radius: 0 12px 12px 0;
+  padding: 11px 12px 12px 13px;
+}
+.mnc[data-c='observation'] {
+  --mnc-rail: var(--cat-observation);
+}
+.mnc[data-c='historical'] {
+  --mnc-rail: var(--cat-historical);
+}
+.mnc[data-c='application'] {
+  --mnc-rail: var(--cat-application);
+}
+.mnc[data-c='personal'] {
+  --mnc-rail: var(--cat-personal);
+}
+.mnc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.mnc-ref {
+  font-family: var(--scripture-font);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--mnc-rail, var(--accent-ink));
+  margin-right: auto;
+}
+.mnc-del,
+.mnc-cancel {
+  border: 0;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.mnc-del {
+  color: var(--cat-personal-ink);
+}
+.mnc-cancel {
+  color: var(--text-muted);
+}
+.mnc-field {
+  font-family: var(--scripture-font);
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  resize: none;
+  width: 100%;
+  padding: 0;
+  min-height: 54px;
+  /* Auto-grown to content — never an inner scrollbar inside the composer. */
+  overflow: hidden;
+}
+.mnc-field::placeholder {
+  color: var(--text-faint);
+  font-style: italic;
+}
+.mnc-foot,
+.mnc-confirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 11px;
+}
+.mnc-confirm {
+  justify-content: flex-end;
+}
+.mnc-confirm-q {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-right: auto;
+}
+.mnc-confirm-keep {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.mnc-confirm-go {
+  border: 0;
+  background: var(--cat-personal);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: 10px;
+  padding: 9px 16px;
+  cursor: pointer;
+}
+.mnc-save {
+  margin-left: auto;
+  border: 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  font-size: 13.5px;
+  border-radius: 10px;
+  padding: 9px 18px;
+  box-shadow: var(--elev-2);
+  flex: none;
+  cursor: pointer;
+}
+.mnc-save:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Category: ONE optional choice. No category is a real state — the trigger
+   simply reads "Add tag" and the note keeps the neutral rail. */
+.mnc-tag {
+  position: relative;
+}
+.mnc-tag-trigger {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 7px 11px 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+.mnc-tag-trigger.has-cat {
+  color: var(--text);
+}
+.mnc-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  flex: none;
+}
+.mnc[data-c='observation'] .mnc-tag-trigger .mnc-dot {
+  background: var(--cat-observation);
+}
+.mnc[data-c='historical'] .mnc-tag-trigger .mnc-dot {
+  background: var(--cat-historical);
+}
+.mnc[data-c='application'] .mnc-tag-trigger .mnc-dot {
+  background: var(--cat-application);
+}
+.mnc[data-c='personal'] .mnc-tag-trigger .mnc-dot {
+  background: var(--cat-personal);
+}
+.mnc-chev {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.mnc-tag-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 50;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 13px;
+  box-shadow: var(--elev-3);
+  padding: 5px;
+  min-width: 172px;
+}
+.mnc-tag-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 9px 10px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.mnc-tag-opt:hover,
+.mnc-tag-opt:focus-visible {
+  background: var(--surface-2);
+}
+.mnc-tag-opt[data-c='observation'] .mnc-dot {
+  background: var(--cat-observation);
+}
+.mnc-tag-opt[data-c='historical'] .mnc-dot {
+  background: var(--cat-historical);
+}
+.mnc-tag-opt[data-c='application'] .mnc-dot {
+  background: var(--cat-application);
+}
+.mnc-tag-opt[data-c='personal'] .mnc-dot {
+  background: var(--cat-personal);
+}
+.mnc-check {
+  margin-left: auto;
+  color: var(--accent-ink);
+  font-weight: 700;
+  opacity: 0;
+}
+.mnc-tag-opt[aria-selected='true'] .mnc-check {
+  opacity: 1;
+}
+
+/* Room to scroll the composer up to its resting place even at the very end of
+   a chapter. --kb is the live keyboard height (see useKeyboardCompose). */
+.chapter-marquee-surface.is-composing .book-chapter-content {
+  padding-bottom: calc(72vh + var(--kb, 0px));
+}
+
+/* ─── Journal as history ─────────────────────────────────────────────────────
+   Derived from getAllNotes: your actual notes, under the chapter they were
+   written on, in soft time buckets. Ported from design/journal-history.html. */
+
+.journal-masthead {
+  font-family: var(--scripture-font);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--text-muted);
+  margin: 6px 0 0;
+  line-height: 1.5;
+  max-width: 46ch;
+}
+.journal-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 4px;
+}
+.journal-seg {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.journal-seg button {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color var(--dur-1),
+    background var(--dur-1);
+}
+.journal-seg button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--accent-ink);
+  box-shadow: var(--elev-2);
+}
+.journal-filter {
+  position: relative;
+  margin-left: auto;
+}
+.journal-filter-trigger {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 6px 11px 6px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+.journal-chev {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.journal-dot,
+.journal-dot-sm {
+  border-radius: 50%;
+  flex: none;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.journal-dot {
+  width: 9px;
+  height: 9px;
+}
+.journal-dot-sm {
+  width: 7px;
+  height: 7px;
+  box-shadow: none;
+}
+.journal-dot[data-c='observation'],
+.journal-dot-sm[data-c='observation'] {
+  background: var(--cat-observation);
+  box-shadow: none;
+}
+.journal-dot[data-c='historical'],
+.journal-dot-sm[data-c='historical'] {
+  background: var(--cat-historical);
+  box-shadow: none;
+}
+.journal-dot[data-c='application'],
+.journal-dot-sm[data-c='application'] {
+  background: var(--cat-application);
+  box-shadow: none;
+}
+.journal-dot[data-c='personal'],
+.journal-dot-sm[data-c='personal'] {
+  background: var(--cat-personal);
+  box-shadow: none;
+}
+/* "All" reads as every category at once rather than as a fifth colour. */
+.journal-dot.all {
+  background: conic-gradient(
+    var(--cat-observation),
+    var(--cat-historical),
+    var(--cat-application),
+    var(--cat-personal),
+    var(--cat-observation)
+  );
+  box-shadow: none;
+}
+.journal-filter-menu {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 30;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 13px;
+  box-shadow: var(--elev-3);
+  padding: 5px;
+  min-width: 176px;
+}
+.journal-filter-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 9px 10px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.journal-filter-opt:hover,
+.journal-filter-opt:focus-visible {
+  background: var(--surface-2);
+}
+.journal-check {
+  margin-left: auto;
+  color: var(--accent-ink);
+  font-weight: 700;
+  opacity: 0;
+}
+.journal-filter-opt[aria-selected='true'] .journal-check {
+  opacity: 1;
+}
+.journal-filter-empty {
+  margin-top: 28px;
+}
+
+.journal-bucket {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 4px;
+}
+.journal-bucket-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.journal-bucket-rule {
+  height: 1px;
+  background: var(--border);
+  flex: 1;
+}
+.journal-study {
+  padding: 12px 0 6px;
+  border-bottom: 1px solid var(--border);
+}
+.journal-study-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 2px;
+  text-align: left;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.journal-study-head:hover,
+.journal-study-head:active {
+  background: var(--surface-2);
+}
+.journal-study-ref {
+  font-family: var(--scripture-font);
+  font-weight: 600;
+  font-size: 20px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.journal-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.journal-study-count {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.journal-study-when {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.journal-notes {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.journal-note {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 7px 0 7px 11px;
+  border: 0;
+  border-left: 2px solid var(--jrail, var(--border-strong));
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.journal-note[data-c='observation'] {
+  --jrail: var(--cat-observation);
+  --jink: var(--cat-observation-ink);
+}
+.journal-note[data-c='historical'] {
+  --jrail: var(--cat-historical);
+  --jink: var(--cat-historical-ink);
+}
+.journal-note[data-c='application'] {
+  --jrail: var(--cat-application);
+  --jink: var(--cat-application-ink);
+}
+.journal-note[data-c='personal'] {
+  --jrail: var(--cat-personal);
+  --jink: var(--cat-personal-ink);
+}
+.journal-note-v {
+  font-family: var(--ui-font);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--jink, var(--accent-ink));
+  padding-top: 4px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.journal-note-t {
+  font-family: var(--scripture-font);
+  font-size: 15.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.journal-more {
+  border: 0;
+  background: transparent;
+  color: var(--accent-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 2px 4px 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* ─── Desktop Study mode ─────────────────────────────────────────────────────
+   The reading page gains a Read/Study toggle at widths that can hold a notes
+   panel beside a full scripture measure. Transform-driven: the column and the
+   panel are always both laid out, so switching modes never re-wraps a line.
+   Ported from design/desktop-study-toggle.html. */
+
+.study-stage {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.study-canvas {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+.study-aside {
+  display: none;
+}
+.study-seg {
+  display: none;
+}
+
+@media (min-width: 1180px) {
+  .book-detail-layout {
+    /* Panel width, and the amount the reading column is offset by in Read. */
+    --study-aside: 360px;
+  }
+  .study-stage {
+    /* `clip`, not `hidden`: hidden would make this a scroll container and
+       break the sticky reading chrome above it (same reason as .chapter-deck). */
+    overflow-x: clip;
+  }
+  .study-canvas {
+    justify-content: center;
+    align-items: stretch;
+    transform: translateX(calc(var(--study-aside) / 2));
+    transition: transform var(--dur-4) var(--ease-calm);
+  }
+  .book-detail-layout.study-mode .study-canvas {
+    transform: translateX(0);
+  }
+  /* Fixed in BOTH modes — this is what guarantees the scripture never re-wraps
+     when the panel comes and goes. */
+  .study-canvas > .book-detail-content {
+    flex: 0 0 min(940px, calc(100vw - var(--study-aside) - 24px));
+  }
+  .study-aside {
+    display: flex;
+    flex-direction: column;
+    width: var(--study-aside);
+    flex: none;
+    border-left: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 62%, var(--bg));
+    box-shadow: -18px 0 40px -30px rgba(20, 16, 8, 0.22);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(26px);
+    transition:
+      opacity 480ms var(--ease-calm),
+      transform var(--dur-4) var(--ease-calm);
+  }
+  .book-detail-layout.study-mode .study-aside {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+  }
+  .study-seg {
+    display: inline-flex;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+    margin-right: 4px;
+  }
+  .study-seg button {
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition:
+      color var(--dur-1),
+      background var(--dur-1);
+  }
+  .study-seg button[aria-pressed='true'] {
+    background: var(--surface);
+    color: var(--accent-ink);
+    box-shadow: var(--elev-2);
+  }
+}
+
+/* ─── The notes workbench ────────────────────────────────────────────────── */
+
+.sw {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+.sw-head {
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.sw-head-title {
+  font-family: var(--scripture-font);
+  font-weight: 600;
+  font-size: 17px;
+}
+.sw-head-sub {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-left: auto;
+}
+.sw-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 40px;
+}
+.sw-empty {
+  font-size: 13px;
+  color: var(--text-faint);
+  line-height: 1.6;
+  margin: 10px 2px;
+}
+
+/* The verse pill — drawn live inside the editor as you type `v4-6`, and shown
+   on a saved note's card. */
+.vpill {
+  font-family: var(--ui-font);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: var(--accent-weak);
+  border: 1px solid var(--accent-soft);
+  border-radius: 5px;
+  padding: 0 5px;
+  margin: 0 4px 0 0;
+  white-space: nowrap;
+  vertical-align: 1px;
+  user-select: none;
+}
+
+.sw-editor {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--sw-rail, var(--border-strong));
+  border-radius: var(--radius-md);
+  box-shadow: var(--elev-2);
+  padding: 12px 13px 11px;
+  margin-bottom: 14px;
+  animation: swEditorIn var(--dur-3) var(--ease-calm);
+}
+@keyframes swEditorIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.988);
+  }
+}
+.sw-editor[data-c='observation'] {
+  --sw-rail: var(--cat-observation);
+  background: color-mix(in srgb, var(--cat-observation) 5%, var(--surface));
+}
+.sw-editor[data-c='historical'] {
+  --sw-rail: var(--cat-historical);
+  background: color-mix(in srgb, var(--cat-historical) 5%, var(--surface));
+}
+.sw-editor[data-c='application'] {
+  --sw-rail: var(--cat-application);
+  background: color-mix(in srgb, var(--cat-application) 5%, var(--surface));
+}
+.sw-editor[data-c='personal'] {
+  --sw-rail: var(--cat-personal);
+  background: color-mix(in srgb, var(--cat-personal) 5%, var(--surface));
+}
+.sw-field {
+  font-family: var(--scripture-font);
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text);
+  outline: 0;
+  min-height: 48px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.sw-field:empty::before {
+  content: attr(data-ph);
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.sw-anchor {
+  font-size: 12px;
+  margin: 7px 0 2px;
+  min-height: 16px;
+  color: var(--text-faint);
+}
+.sw-anchor b {
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.sw-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.sw-foot.confirming {
+  justify-content: flex-end;
+}
+.sw-chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.sw-chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 5px 10px 5px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.sw-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sw-chip, var(--border-strong));
+  flex: none;
+}
+.sw-chip[data-c='observation'] {
+  --sw-chip: var(--cat-observation);
+}
+.sw-chip[data-c='historical'] {
+  --sw-chip: var(--cat-historical);
+}
+.sw-chip[data-c='application'] {
+  --sw-chip: var(--cat-application);
+}
+.sw-chip[data-c='personal'] {
+  --sw-chip: var(--cat-personal);
+}
+.sw-chip[aria-pressed='true'] {
+  color: var(--text);
+  background: color-mix(in srgb, var(--sw-chip) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--sw-chip) 50%, var(--border));
+}
+.sw-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sw-q {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+.sw-save {
+  border: 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: 9px;
+  padding: 8px 15px;
+  cursor: pointer;
+}
+.sw-save:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.sw-ghost {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.sw-ghost-danger {
+  color: var(--cat-personal-ink);
+}
+.sw-danger {
+  border: 0;
+  background: var(--cat-personal);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: 9px;
+  padding: 8px 15px;
+  cursor: pointer;
+}
+.sw-atmenu {
+  position: absolute;
+  left: 12px;
+  top: 56px;
+  z-index: 40;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 11px;
+  box-shadow: var(--elev-3);
+  padding: 5px;
+  min-width: 170px;
+}
+.sw-atmenu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.sw-atmenu-item.active {
+  background: var(--surface-2);
+}
+.sw-atmenu-item .sw-dot {
+  width: 10px;
+  height: 10px;
+}
+
+/* A saved note. Its Edit/Delete only appear on hover — the note itself is the
+   thing, the actions are a hover-weight affordance. */
+.sw-card {
+  position: relative;
+  margin: 3px 0;
+}
+.sw-note {
+  border-left: 2.5px solid var(--sw-rail, var(--border-strong));
+  padding: 9px 88px 9px 12px;
+  border-radius: 0 8px 8px 0;
+  cursor: pointer;
+  transition: background var(--dur-1);
+}
+.sw-note[data-c='observation'] {
+  --sw-rail: var(--cat-observation);
+  --sw-ink: var(--cat-observation-ink);
+}
+.sw-note[data-c='historical'] {
+  --sw-rail: var(--cat-historical);
+  --sw-ink: var(--cat-historical-ink);
+}
+.sw-note[data-c='application'] {
+  --sw-rail: var(--cat-application);
+  --sw-ink: var(--cat-application-ink);
+}
+.sw-note[data-c='personal'] {
+  --sw-rail: var(--cat-personal);
+  --sw-ink: var(--cat-personal-ink);
+}
+.sw-card:hover .sw-note {
+  background: color-mix(in srgb, var(--sw-rail, var(--border-strong)) 8%, transparent);
+}
+.sw-note-body {
+  font-family: var(--scripture-font);
+  font-size: 16px;
+  line-height: 1.55;
+}
+.sw-cat-label {
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sw-ink, var(--accent-ink));
+  margin-right: 6px;
+}
+.sw-card-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition:
+    opacity var(--dur-1),
+    transform var(--dur-1);
+}
+.sw-card:hover .sw-card-actions,
+.sw-card:focus-within .sw-card-actions {
+  opacity: 1;
+  transform: none;
+}
+.sw-card-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 3px;
+  box-shadow: var(--elev-2);
+}
+.sw-card-bar button {
+  border: 0;
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 4px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.sw-card-bar button:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.sw-card-del:hover {
+  color: var(--cat-personal-ink);
+}
+.sw-card-yes {
+  color: #fff !important;
+  background: var(--cat-personal) !important;
+}

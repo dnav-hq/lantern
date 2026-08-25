@@ -163,15 +163,15 @@ export default function NavBar({
     const isStudy = dest === 'study'
     const active = isStudy ? studyActive : destination === dest
     return (
-    <button
-      className={`nav-tab${isStudy ? ' nav-tab-action' : ''}${active ? ' active' : ''}`}
-      onClick={() => (isStudy ? onStartStudy() : onNavigate(dest as Destination))}
-      aria-current={active ? 'page' : undefined}
-      data-dest={dest}
-    >
-      {icon}
-      <span className="nav-tab-label">{label}</span>
-    </button>
+      <button
+        className={`nav-tab${isStudy ? ' nav-tab-action' : ''}${active ? ' active' : ''}`}
+        onClick={() => (isStudy ? onStartStudy() : onNavigate(dest as Destination))}
+        aria-current={active ? 'page' : undefined}
+        data-dest={dest}
+      >
+        {icon}
+        <span className="nav-tab-label">{label}</span>
+      </button>
     )
   }
 
@@ -425,9 +425,7 @@ export default function NavBar({
         aria-label="Primary"
         style={
           {
-            '--bottomnav-active-index': BOTTOMNAV_ORDER.indexOf(
-              studyActive ? 'study' : destination
-            )
+            '--bottomnav-active-index': BOTTOMNAV_ORDER.indexOf(studyActive ? 'study' : destination)
           } as React.CSSProperties
         }
       >

@@ -260,7 +260,11 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
               </span>
             </button>
             {filterOpen && (
-              <div className="journal-filter-menu" role="listbox" onClick={e => e.stopPropagation()}>
+              <div
+                className="journal-filter-menu"
+                role="listbox"
+                onClick={e => e.stopPropagation()}
+              >
                 {(['all', ...CATEGORIES] as Filter[]).map(c => (
                   <button
                     type="button"

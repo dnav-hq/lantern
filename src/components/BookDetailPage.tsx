@@ -181,8 +181,7 @@ function useMediaQuery(query: string): boolean {
 // What the phone composer is currently doing. `create` carries the verse range
 // the selection bar was raised on; `edit` carries the note being rewritten.
 type ComposeState =
-  | { kind: 'create'; from: number; to: number }
-  | { kind: 'edit'; note: NoteWithPassageInfo }
+  { kind: 'create'; from: number; to: number } | { kind: 'edit'; note: NoteWithPassageInfo }
 
 // The neighbour pane rendered during a swipe is inert (pointer-events: none)
 // and exists for ~260ms; it gets no working handlers on purpose, so a chapter
@@ -1081,7 +1080,9 @@ function ChapterView({
     compose === null
       ? null
       : compose.kind === 'create'
-        ? (rowByVerse.has(compose.to) ? compose.to : lastVerse)
+        ? rowByVerse.has(compose.to)
+          ? compose.to
+          : lastVerse
         : (() => {
             const n = compose.note
             const end = n.anchor_end_verse ?? n.anchor_start_verse
@@ -1371,7 +1372,10 @@ function ChapterView({
       {isMobile && selRange !== null && compose === null && (
         <div className="mobile-selbar on" role="toolbar" aria-label="Selection actions">
           <span className="mobile-selbar-ref">{selReference}</span>
-          <span className="mobile-selbar-tip" style={{ opacity: selRange[0] === selRange[1] ? 1 : 0.5 }}>
+          <span
+            className="mobile-selbar-tip"
+            style={{ opacity: selRange[0] === selRange[1] ? 1 : 0.5 }}
+          >
             tap more verses to extend
           </span>
           <button
@@ -1577,7 +1581,9 @@ export default function BookDetailPage({
   // Study mode plumbing: the scripture column reports selections up, the
   // workbench reports its active editor's anchor back down. `seq` is what makes
   // re-selecting the SAME verses register as a fresh request.
-  const [anchorRequest, setAnchorRequest] = useState<{ range: VerseRange; seq: number } | null>(null)
+  const [anchorRequest, setAnchorRequest] = useState<{ range: VerseRange; seq: number } | null>(
+    null
+  )
   const [studyHighlight, setStudyHighlight] = useState<VerseRange | null>(null)
   const [savingStudyNote, setSavingStudyNote] = useState(false)
   const anchorSeq = useRef(0)
@@ -2025,101 +2031,101 @@ export default function BookDetailPage({
           width animates, so the scripture never re-wraps mid-toggle — the one
           thing that would make switching modes feel like a page change. */}
       <div className="study-stage">
-       <div className="study-canvas">
-      <div className="book-detail-content" ref={contentRef}>
-        {/* The chapter deck. One chapter is current; during a swipe (or a
+        <div className="study-canvas">
+          <div className="book-detail-content" ref={contentRef}>
+            {/* The chapter deck. One chapter is current; during a swipe (or a
             tapped affordance) exactly ONE neighbour is mounted beside it and
             the track slides. Deliberately not infinite scroll — chapters stay
             discrete so notes always belong to exactly one of them. */}
-        <div
-          className="chapter-deck"
-          ref={deckRef}
-          data-sliding={swipe.sliding ? 'true' : undefined}
-          onPointerDown={swipe.onPointerDown}
-        >
-          <div className="chapter-deck-track" ref={trackRef}>
-            {/* Both panes are keyed by CHAPTER, not by their role, and that is
+            <div
+              className="chapter-deck"
+              ref={deckRef}
+              data-sliding={swipe.sliding ? 'true' : undefined}
+              onPointerDown={swipe.onPointerDown}
+            >
+              <div className="chapter-deck-track" ref={trackRef}>
+                {/* Both panes are keyed by CHAPTER, not by their role, and that is
                 the whole trick: when a swipe commits, the neighbour's key is
                 the one the primary pane now carries, so React reuses that exact
                 subtree — the scripture already slid into view simply becomes
                 the chapter, in place. Keying the primary by chapter (as this
                 did) instead unmounted the incoming pane and rebuilt it from
                 scratch in the same frame, which is the flash on settle. */}
-            {[
-              { ref: current, peek: false },
-              ...(peekTarget ? [{ ref: peekTarget, peek: true }] : [])
-            ].map(({ ref, peek }) => {
-              const sameBook = ref.bookNumber === bibleBook.number
-              return (
-                <div
-                  key={chapterKeyOf(ref)}
-                  className={
-                    peek
-                      ? `chapter-pane chapter-pane--peek ${swipe.peek === 1 ? 'is-next' : 'is-prev'}`
-                      : 'chapter-pane'
-                  }
-                  aria-hidden={peek ? 'true' : undefined}
-                >
-                  {/* Keyed by the pane, so a chapter that throws still gets a
+                {[
+                  { ref: current, peek: false },
+                  ...(peekTarget ? [{ ref: peekTarget, peek: true }] : [])
+                ].map(({ ref, peek }) => {
+                  const sameBook = ref.bookNumber === bibleBook.number
+                  return (
+                    <div
+                      key={chapterKeyOf(ref)}
+                      className={
+                        peek
+                          ? `chapter-pane chapter-pane--peek ${swipe.peek === 1 ? 'is-next' : 'is-prev'}`
+                          : 'chapter-pane'
+                      }
+                      aria-hidden={peek ? 'true' : undefined}
+                    >
+                      {/* Keyed by the pane, so a chapter that throws still gets a
                       clean boundary — without a key of its own, which would
                       remount the very subtree we are preserving. */}
-                  <ErrorBoundary variant="pane">
-                    <ChapterView
-                      bookName={ref.bookName}
-                      chapter={ref.chapter}
-                      // Notes are per book: a neighbour in ANOTHER book has none
-                      // loaded yet, and it only wears that state for the length
-                      // of the transition — arriving reloads them for real.
-                      notes={sameBook ? allNotes : []}
-                      passages={sameBook ? bookPassages : []}
-                      onStudyChapter={peek ? noop : onStudy}
-                      onOpenStudy={peek ? noop : onOpenStudy}
-                      onNotesChanged={peek ? noop : reloadNotes}
-                      preloaded={getPreloaded(ref)}
-                      initialHighlightVerses={peek ? undefined : initialHighlightVerses}
-                      // Scenery reveals nothing: the neighbour must not play the
-                      // verse-by-verse entrance while it is sliding in, and it
-                      // keeps this decision after it is promoted (the flag is
-                      // frozen at mount). A pill or search jump mounts a fresh
-                      // pane instead, and still gets the reveal.
-                      suppressEntrance={peek ? true : suppressEntrance}
-                      isMobile={isMobile}
-                      studyMode={!peek && studyMode}
-                      studyHighlight={peek ? null : studyHighlight}
-                      onStudySelect={
-                        peek
-                          ? undefined
-                          : range => {
-                              if (!range) return setStudyHighlight(null)
-                              anchorSeq.current += 1
-                              setAnchorRequest({ range, seq: anchorSeq.current })
-                            }
-                      }
-                    />
-                  </ErrorBoundary>
-                  {!peek && <ChapterFlowNav prev={prev} next={next} onGo={swipe.go} />}
-                  {!peek && <TranslationFooter />}
-                </div>
-              )
-            })}
+                      <ErrorBoundary variant="pane">
+                        <ChapterView
+                          bookName={ref.bookName}
+                          chapter={ref.chapter}
+                          // Notes are per book: a neighbour in ANOTHER book has none
+                          // loaded yet, and it only wears that state for the length
+                          // of the transition — arriving reloads them for real.
+                          notes={sameBook ? allNotes : []}
+                          passages={sameBook ? bookPassages : []}
+                          onStudyChapter={peek ? noop : onStudy}
+                          onOpenStudy={peek ? noop : onOpenStudy}
+                          onNotesChanged={peek ? noop : reloadNotes}
+                          preloaded={getPreloaded(ref)}
+                          initialHighlightVerses={peek ? undefined : initialHighlightVerses}
+                          // Scenery reveals nothing: the neighbour must not play the
+                          // verse-by-verse entrance while it is sliding in, and it
+                          // keeps this decision after it is promoted (the flag is
+                          // frozen at mount). A pill or search jump mounts a fresh
+                          // pane instead, and still gets the reveal.
+                          suppressEntrance={peek ? true : suppressEntrance}
+                          isMobile={isMobile}
+                          studyMode={!peek && studyMode}
+                          studyHighlight={peek ? null : studyHighlight}
+                          onStudySelect={
+                            peek
+                              ? undefined
+                              : range => {
+                                  if (!range) return setStudyHighlight(null)
+                                  anchorSeq.current += 1
+                                  setAnchorRequest({ range, seq: anchorSeq.current })
+                                }
+                          }
+                        />
+                      </ErrorBoundary>
+                      {!peek && <ChapterFlowNav prev={prev} next={next} onGo={swipe.go} />}
+                      {!peek && <TranslationFooter />}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
+          <aside className="study-aside" aria-hidden={!studyMode}>
+            {studyMode && (
+              <StudyWorkbench
+                bookName={bibleBook.name}
+                chapter={selectedChapter}
+                notes={chapterNotes}
+                saving={savingStudyNote}
+                anchorRequest={anchorRequest}
+                onAnchorChange={setStudyHighlight}
+                onSave={draft => void handleStudySave(draft)}
+                onDelete={note => void handleStudyDelete(note)}
+              />
+            )}
+          </aside>
         </div>
-      </div>
-        <aside className="study-aside" aria-hidden={!studyMode}>
-          {studyMode && (
-            <StudyWorkbench
-              bookName={bibleBook.name}
-              chapter={selectedChapter}
-              notes={chapterNotes}
-              saving={savingStudyNote}
-              anchorRequest={anchorRequest}
-              onAnchorChange={setStudyHighlight}
-              onSave={draft => void handleStudySave(draft)}
-              onDelete={note => void handleStudyDelete(note)}
-            />
-          )}
-        </aside>
-       </div>
       </div>
 
       {/* Persistent prev/next, always within reach — the desktop answer to the

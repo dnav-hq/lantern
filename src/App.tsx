@@ -325,14 +325,8 @@ export default function App({
     }))
   }
 
-  const {
-    destination,
-    passages,
-    selectedBookName,
-    selectedPassageId,
-    selectedChapter,
-    studyMode
-  } = state
+  const { destination, passages, selectedBookName, selectedPassageId, selectedChapter, studyMode } =
+    state
 
   const selectedPassage = passages.find(p => p.id === selectedPassageId) || null
   const selectedBibleBook = selectedBookName

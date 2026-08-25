@@ -162,9 +162,11 @@ export default function MobileNoteComposer({
             </button>
             {menuOpen && (
               <div className="mnc-tag-menu" role="listbox" onClick={e => e.stopPropagation()}>
-                {([[null, 'No tag'] as [NoteCategory | null, string]] as Array<
-                  [NoteCategory | null, string]
-                >)
+                {(
+                  [[null, 'No tag'] as [NoteCategory | null, string]] as Array<
+                    [NoteCategory | null, string]
+                  >
+                )
                   .concat(CATEGORIES)
                   .map(([c, label]) => (
                     <button

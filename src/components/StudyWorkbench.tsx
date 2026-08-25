@@ -50,9 +50,7 @@ export function stripLeadingAnchor(text: string): string {
 
 // The prose a human actually wrote: no leading anchor, no `@category` token.
 export function editableText(text: string): string {
-  return stripLeadingAnchor(text)
-    .replace(/@\w*/g, '')
-    .trim()
+  return stripLeadingAnchor(text).replace(/@\w*/g, '').trim()
 }
 
 // A saved note's readable body — what the Journal lists and the phone shows.
@@ -494,7 +492,10 @@ function NoteCard({
           {note.category && <span className="sw-cat-label">{CATEGORY_LABELS[note.category]}</span>}
           {note.anchor_start_verse !== null && (
             <span className="vpill">
-              {anchorLabel(note.anchor_start_verse, note.anchor_end_verse ?? note.anchor_start_verse)}
+              {anchorLabel(
+                note.anchor_start_verse,
+                note.anchor_end_verse ?? note.anchor_start_verse
+              )}
             </span>
           )}
           {body}
