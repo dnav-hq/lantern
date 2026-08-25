@@ -274,27 +274,46 @@ export class SupabaseBereanApi implements BereanApi {
         .eq('sessions.passages.workspace_id', this.workspaceId)
         .eq('sessions.passages.book_number', bookNumber)
         .order('created_at', { ascending: true })
-      // Nested relations come back as objects (or arrays under some driver
-      // versions); normalise defensively.
-      const first = <T>(v: T | T[]): T => (Array.isArray(v) ? v[0] : v)
-      const rows = this.assert(data, error) as unknown as Array<
-        Record<string, unknown> & {
-          sessions: { passages: Record<string, unknown> } | { passages: Record<string, unknown> }[]
-        }
-      >
-      return rows.map(r => {
-        const p = first(first(r.sessions).passages) as Record<string, unknown>
-        const note = { ...r } as Record<string, unknown>
-        delete note.sessions
-        return {
-          ...(note as unknown as Note),
-          chapter_start: p.chapter_start as number,
-          chapter_end: p.chapter_end as number,
-          verse_start: p.verse_start as number,
-          verse_end: p.verse_end as number,
-          reference_label: p.reference_label as string
-        }
-      })
+      return this.mapNotesWithPassageInfo(this.assert(data, error))
+    })
+  }
+
+  // Every note in the workspace, enriched exactly like getNotesByBook — same
+  // join query, just without the book filter.
+  async getAllNotes(): Promise<NoteWithPassageInfo[]> {
+    return this.read('getAllNotes', undefined, async () => {
+      const { data, error } = await this.db
+        .from('notes')
+        .select(
+          `${NOTE_COLS}, sessions!inner ( passage_id, passages!inner ( workspace_id, book_number, chapter_start, chapter_end, verse_start, verse_end, reference_label, created_at ) )`
+        )
+        .eq('sessions.passages.workspace_id', this.workspaceId)
+        .order('created_at', { ascending: true })
+      return this.mapNotesWithPassageInfo(this.assert(data, error))
+    })
+  }
+
+  // Nested relations come back as objects (or arrays under some driver
+  // versions); normalise defensively. Shared by getNotesByBook and getAllNotes.
+  private mapNotesWithPassageInfo(data: unknown): NoteWithPassageInfo[] {
+    const first = <T>(v: T | T[]): T => (Array.isArray(v) ? v[0] : v)
+    const rows = data as unknown as Array<
+      Record<string, unknown> & {
+        sessions: { passages: Record<string, unknown> } | { passages: Record<string, unknown> }[]
+      }
+    >
+    return rows.map(r => {
+      const p = first(first(r.sessions).passages) as Record<string, unknown>
+      const note = { ...r } as Record<string, unknown>
+      delete note.sessions
+      return {
+        ...(note as unknown as Note),
+        chapter_start: p.chapter_start as number,
+        chapter_end: p.chapter_end as number,
+        verse_start: p.verse_start as number,
+        verse_end: p.verse_end as number,
+        reference_label: p.reference_label as string
+      }
     })
   }
 

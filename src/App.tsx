@@ -335,15 +335,22 @@ export default function App({
   }
 
   // The one open-study path: a Journal row, the reading-view note bridge, and
-  // search results all land here — the single StudyMode surface, opened on the
-  // existing passage (studyPassageId). WS2/WS3 should call this to open a study.
-  const handleOpenStudy = (passageId: string): void => {
+  // search results all land here. A study is just the notes left on a
+  // chapter, so opening one drops you back into reading that chapter (with
+  // its notes shown) rather than a separate editor surface — fetch fresh
+  // rather than the async-lagged state, same as handleSaveRead.
+  const handleOpenStudy = async (passageId: string): Promise<void> => {
     setSearchOpen(false)
+    const passages = await api.getPassages()
+    const p = passages.find(x => x.id === passageId)
+    const bookName = p ? (BIBLE_BOOKS.find(b => b.number === p.book_number)?.name ?? null) : null
     setState(prev => ({
       ...prev,
-      destination: 'study',
-      studyReference: '',
-      studyPassageId: passageId
+      passages,
+      destination: 'bible',
+      selectedBookName: bookName,
+      selectedChapter: p?.chapter_start ?? null,
+      selectedPassageId: null
     }))
   }
 

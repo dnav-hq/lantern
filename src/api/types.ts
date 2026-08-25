@@ -69,6 +69,10 @@ export interface BereanApi {
   // Notes
   getNotesBySession(sessionId: string): Promise<Note[]>
   getNotesByBook(bookNumber: number): Promise<NoteWithPassageInfo[]>
+  // Every note in the workspace, enriched exactly like getNotesByBook but
+  // without the book filter — the read behind a study-as-notes-on-a-chapter
+  // view that isn't scoped to one book.
+  getAllNotes(): Promise<NoteWithPassageInfo[]>
   getNotesByPassage(passageId: string): Promise<Note[]>
   createNote(data: CreateNoteInput): Promise<Note>
   updateNote(id: string, data: UpdateNoteInput): Promise<Note>

@@ -516,32 +516,32 @@ function ChapterView({
     setSavingInline(true)
     try {
       const parsed = parseNoteLine(inlineText)
+      // Anchor to whatever "vN"/"vN-M" tag is in the text, falling back to the
+      // verse that opened the compose box when the tag was edited away.
+      const anchorStart = parsed.anchorStart ?? inlineVerse
+      const anchorEnd = parsed.anchorEnd ?? anchorStart
       const passages = await api.getPassages()
-      let sessionId: string
-      const chapterPassages = passages.filter(p =>
-        p.reference_label.toLowerCase().startsWith(bookName.toLowerCase())
-      )
-
-      if (chapterPassages.length > 0) {
-        const sessions = await api.getSessionsByPassage(chapterPassages[0].id)
-        if (sessions.length > 0) {
-          sessionId = sessions[0].id
-        } else {
-          const s = await api.createSession(chapterPassages[0].id)
-          sessionId = s.id
-        }
-      } else {
-        const newPassage = await api.createPassage({
+      // Same precise verse-overlap resolution "Start study on {ref}" uses
+      // (findOverlappingPassage) — reuse an existing passage rather than ever
+      // creating a duplicate for verses already covered.
+      const existing = findOverlappingPassage(passages, chapter, anchorStart, anchorEnd)
+      const passage =
+        existing ??
+        (await api.createPassage({
           book_number: findBookByAlias(bookName)?.number ?? 1,
           chapter_start: chapter,
-          verse_start: 1,
+          verse_start: anchorStart,
           chapter_end: chapter,
-          verse_end: 99,
-          reference_label: `${bookName} ${chapter}`
-        })
-        const s = await api.createSession(newPassage.id)
-        sessionId = s.id
-      }
+          verse_end: anchorEnd,
+          reference_label:
+            anchorStart === anchorEnd
+              ? `${bookName} ${chapter}:${anchorStart}`
+              : `${bookName} ${chapter}:${anchorStart}-${anchorEnd}`
+        }))
+
+      const sessions = await api.getSessionsByPassage(passage.id)
+      const sessionId =
+        sessions.length > 0 ? sessions[0].id : (await api.createSession(passage.id)).id
 
       const saved = await api.createNote({
         session_id: sessionId,
@@ -556,11 +556,11 @@ function ChapterView({
 
       const enriched: NoteWithPassageInfo = {
         ...saved,
-        chapter_start: chapter,
-        chapter_end: chapter,
-        verse_start: 1,
-        verse_end: 99,
-        reference_label: `${bookName} ${chapter}`
+        chapter_start: passage.chapter_start,
+        chapter_end: passage.chapter_end,
+        verse_start: passage.verse_start,
+        verse_end: passage.verse_end,
+        reference_label: passage.reference_label
       }
       setLocalNotes(prev => [...prev, enriched])
       setInlineVerse(null)
