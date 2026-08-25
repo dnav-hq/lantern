@@ -1,0 +1,888 @@
+<title>Mobile Notes — Refined</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap"
+/>
+
+<style>
+  /* Lantern tokens (verbatim from src/assets/tokens.css) */
+  :root {
+    --ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --scripture-font: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --scripture-size: 19px;
+    --scripture-lh: 1.72;
+
+    --bg: #f4f0e8;
+    --surface: #fbf9f4;
+    --surface-2: #ece6da;
+    --border: #e2dccf;
+    --border-strong: #d8d0c0;
+    --text: #201e1a;
+    --text-muted: #6a6353;
+    --text-faint: #938a77;
+
+    --accent: #6b62d6;
+    --accent-hover: #5b52c8;
+    --accent-weak: rgba(107, 98, 214, 0.11);
+    --accent-weaker: rgba(107, 98, 214, 0.07);
+    --accent-soft: rgba(107, 98, 214, 0.18);
+    --accent-ink: #594fd1;
+    --on-accent: #ffffff;
+
+    --cat-observation: #6b62d6;
+    --cat-historical: #3f8f5b;
+    --cat-application: #b5732a;
+    --cat-personal: #c05070;
+    --cat-observation-ink: #594fd1;
+    --cat-historical-ink: #316f47;
+    --cat-application-ink: #8a5820;
+    --cat-personal-ink: #a73c5b;
+
+    --elev-2: 0 2px 6px rgba(20, 16, 8, 0.06), 0 8px 20px -6px rgba(20, 16, 8, 0.1);
+    --elev-3: 0 6px 16px -4px rgba(20, 16, 8, 0.12), 0 20px 40px -12px rgba(20, 16, 8, 0.18);
+
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --dur-2: 200ms;
+    --dur-3: 260ms;
+
+    --kb: 0px;
+  }
+
+  :root:not([data-theme='light']) {
+    @media (prefers-color-scheme: dark) {
+      --bg: #17140f;
+      --surface: #211d17;
+      --surface-2: #2b2620;
+      --border: #38322a;
+      --border-strong: #473f34;
+      --text: #ece4d6;
+      --text-muted: #a99f8e;
+      --text-faint: #7a7264;
+      --accent: #a49cf0;
+      --accent-hover: #b6aff5;
+      --accent-weak: rgba(164, 156, 240, 0.14);
+      --accent-weaker: rgba(164, 156, 240, 0.09);
+      --accent-soft: rgba(164, 156, 240, 0.24);
+      --accent-ink: #a49cf0;
+      --cat-observation-ink: #a49cf0;
+      --cat-historical-ink: #6fca8e;
+      --cat-application-ink: #e0a15e;
+      --cat-personal-ink: #e58aa4;
+      --cat-observation: #a49cf0;
+      --cat-historical: #6fca8e;
+      --cat-application: #e0a15e;
+      --cat-personal: #e58aa4;
+      --elev-2: 0 2px 6px rgba(0, 0, 0, 0.3), 0 8px 20px -6px rgba(0, 0, 0, 0.45);
+      --elev-3: 0 6px 16px -4px rgba(0, 0, 0, 0.4), 0 20px 40px -12px rgba(0, 0, 0, 0.6);
+    }
+  }
+  :root[data-theme='dark'] {
+    --bg: #17140f;
+    --surface: #211d17;
+    --surface-2: #2b2620;
+    --border: #38322a;
+    --border-strong: #473f34;
+    --text: #ece4d6;
+    --text-muted: #a99f8e;
+    --text-faint: #7a7264;
+    --accent: #a49cf0;
+    --accent-hover: #b6aff5;
+    --accent-weak: rgba(164, 156, 240, 0.14);
+    --accent-weaker: rgba(164, 156, 240, 0.09);
+    --accent-soft: rgba(164, 156, 240, 0.24);
+    --accent-ink: #a49cf0;
+    --cat-observation-ink: #a49cf0;
+    --cat-historical-ink: #6fca8e;
+    --cat-application-ink: #e0a15e;
+    --cat-personal-ink: #e58aa4;
+    --cat-observation: #a49cf0;
+    --cat-historical: #6fca8e;
+    --cat-application: #e0a15e;
+    --cat-personal: #e58aa4;
+    --elev-2: 0 2px 6px rgba(0, 0, 0, 0.3), 0 8px 20px -6px rgba(0, 0, 0, 0.45);
+    --elev-3: 0 6px 16px -4px rgba(0, 0, 0, 0.4), 0 20px 40px -12px rgba(0, 0, 0, 0.6);
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    font-family: var(--ui-font);
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+  button {
+    font: inherit;
+    cursor: pointer;
+    color: inherit;
+  }
+
+  .top {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: saturate(1.1) blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: calc(env(safe-area-inset-top) + 9px) 16px 9px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .top .name {
+    font-family: var(--scripture-font);
+    font-weight: 600;
+    font-size: 17px;
+  }
+  .top .hint {
+    font-size: 11.5px;
+    color: var(--text-faint);
+    margin-left: auto;
+  }
+  .theme-btn {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 999px;
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+    display: grid;
+    place-items: center;
+    color: var(--text-muted);
+    flex: none;
+  }
+
+  .reader {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 20px 20px calc(24vh + env(safe-area-inset-bottom));
+  }
+  .chap-kicker {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+  }
+  .chap-title {
+    font-family: var(--scripture-font);
+    font-weight: 600;
+    font-size: 30px;
+    letter-spacing: -0.01em;
+    margin: 3px 0 4px;
+  }
+  .chap-sub {
+    font-size: 12.5px;
+    color: var(--text-faint);
+    margin-bottom: 16px;
+  }
+
+  .verse {
+    font-family: var(--scripture-font);
+    font-size: var(--scripture-size);
+    line-height: var(--scripture-lh);
+    color: var(--text);
+    padding: 2px 0;
+    cursor: pointer;
+    touch-action: manipulation;
+    scroll-margin-top: 92px;
+  }
+  .verse .vn {
+    font-family: var(--ui-font);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-ink);
+    vertical-align: 0.35em;
+    margin-right: 3px;
+    opacity: 0.75;
+  }
+  .verse .vtext {
+    border-radius: 7px;
+    padding: 2px 5px;
+    margin: 0 -3px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    transition: background var(--dur-2), box-shadow var(--dur-2);
+  }
+  .verse.sel .vtext {
+    background: var(--accent-weak);
+    box-shadow: 0 0 0 1px var(--accent-soft) inset;
+  }
+
+  /* ── existing / saved note in the flow ── */
+  .inote {
+    margin: 9px 0 13px 3px;
+    border-left: 2.5px solid var(--railc, var(--border-strong));
+    padding: 2px 0 2px 13px;
+    cursor: pointer;
+    scroll-margin-top: 92px;
+  }
+  .inote[data-c='observation'] {
+    --railc: var(--cat-observation);
+  }
+  .inote[data-c='historical'] {
+    --railc: var(--cat-historical);
+  }
+  .inote[data-c='application'] {
+    --railc: var(--cat-application);
+  }
+  .inote[data-c='personal'] {
+    --railc: var(--cat-personal);
+  }
+  .inote .meta {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--railc, var(--accent-ink));
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .inote[data-c='none'] .meta {
+    color: var(--text-faint);
+  }
+  .inote .meta .ref {
+    color: var(--text-faint);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    font-size: 11px;
+  }
+  .inote .body {
+    font-family: var(--scripture-font);
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--text);
+    margin-top: 4px;
+  }
+
+  /* ── selection bar (bottom, no keyboard) ── */
+  .selbar {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    z-index: 45;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    box-shadow: var(--elev-3);
+    padding: 10px 10px 10px 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transform: translateY(140%);
+    transition: transform var(--dur-3) var(--ease-out);
+  }
+  .selbar.on {
+    transform: translateY(0);
+  }
+  .selbar .ref {
+    font-family: var(--scripture-font);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent-ink);
+    white-space: nowrap;
+  }
+  .selbar .tip {
+    font-size: 11.5px;
+    color: var(--text-faint);
+    margin-left: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+  .selbar .x {
+    border: 0;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    font-size: 16px;
+    flex: none;
+  }
+  .selbar .note-btn {
+    border: 0;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 11px;
+    padding: 10px 20px;
+    box-shadow: var(--elev-2);
+    flex: none;
+  }
+
+  /* ── inline composer ── */
+  .composer {
+    margin: 10px 0 14px 3px;
+    border-left: 2.5px solid var(--railc, var(--accent));
+    background: var(--accent-weaker);
+    border-radius: 0 12px 12px 0;
+    padding: 11px 12px 12px 13px;
+  }
+  .composer[data-c='observation'] {
+    --railc: var(--cat-observation);
+  }
+  .composer[data-c='historical'] {
+    --railc: var(--cat-historical);
+  }
+  .composer[data-c='application'] {
+    --railc: var(--cat-application);
+  }
+  .composer[data-c='personal'] {
+    --railc: var(--cat-personal);
+  }
+  .composer[data-c='none'] {
+    --railc: var(--accent);
+  }
+  @keyframes growIn {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+  }
+  .composer-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .composer-head .ref {
+    font-family: var(--scripture-font);
+    font-size: 13.5px;
+    color: var(--railc, var(--accent-ink));
+    font-weight: 600;
+  }
+  .composer-head .del {
+    margin-left: auto;
+    border: 0;
+    background: transparent;
+    color: var(--cat-personal-ink);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 4px 6px;
+  }
+  .composer-head .cancel {
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 4px 6px;
+  }
+  textarea.compose {
+    font-family: var(--scripture-font);
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--text);
+    background: transparent;
+    border: 0;
+    outline: 0;
+    resize: none;
+    width: 100%;
+    padding: 0;
+    min-height: 54px;
+    overflow: hidden; /* auto-grown to content — never an inner scrollbar */
+  }
+  textarea.compose::placeholder {
+    color: var(--text-faint);
+    font-style: italic;
+  }
+  .composer-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 11px;
+  }
+  .save {
+    margin-left: auto;
+    border: 0;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+    font-size: 13.5px;
+    border-radius: 10px;
+    padding: 9px 18px;
+    box-shadow: var(--elev-2);
+    flex: none;
+  }
+
+  /* ── tag dropdown (single-select) ── */
+  .tag {
+    position: relative;
+  }
+  .tag-trigger {
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    border-radius: 999px;
+    padding: 7px 11px 7px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .tag-trigger .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--seldot, var(--border-strong));
+    flex: none;
+  }
+  .tag-trigger .chev {
+    font-size: 10px;
+    opacity: 0.7;
+    margin-left: 1px;
+  }
+  .tag-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    z-index: 50;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 13px;
+    box-shadow: var(--elev-3);
+    padding: 5px;
+    min-width: 172px;
+    display: none;
+    animation: menuIn var(--dur-2) var(--ease-out);
+  }
+  .tag-menu.on {
+    display: block;
+  }
+  @keyframes menuIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.98);
+    }
+  }
+  .tag-opt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 9px 10px;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    text-align: left;
+  }
+  .tag-opt:hover,
+  .tag-opt:focus-visible {
+    background: var(--surface-2);
+  }
+  .tag-opt .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--optc, var(--border-strong));
+    flex: none;
+  }
+  .tag-opt[data-c='observation'] {
+    --optc: var(--cat-observation);
+  }
+  .tag-opt[data-c='historical'] {
+    --optc: var(--cat-historical);
+  }
+  .tag-opt[data-c='application'] {
+    --optc: var(--cat-application);
+  }
+  .tag-opt[data-c='personal'] {
+    --optc: var(--cat-personal);
+  }
+  .tag-opt .check {
+    margin-left: auto;
+    color: var(--accent-ink);
+    font-weight: 700;
+    opacity: 0;
+  }
+  .tag-opt[aria-selected='true'] .check {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+
+<div class="top">
+  <span class="name">John 15</span>
+  <span class="hint">Tap a verse</span>
+  <button class="theme-btn" id="themeBtn" title="Light / dark">◐</button>
+</div>
+
+<main class="reader" id="reader">
+  <div class="chap-kicker">The Gospel of John</div>
+  <h1 class="chap-title">John 15</h1>
+  <div class="chap-sub">Berean Standard Bible</div>
+  <div id="verses"></div>
+</main>
+
+<script>
+  const VERSES = [
+    ["1", "I am the true vine, and My Father is the keeper of the vineyard."],
+    ["2", "He cuts off every branch in Me that bears no fruit, and every branch that does bear fruit He prunes to make it even more fruitful."],
+    ["3", "You are already clean because of the word I have spoken to you."],
+    ["4", "Remain in Me, and I will remain in you. Just as no branch can bear fruit by itself unless it remains in the vine, neither can you bear fruit unless you remain in Me."],
+    ["5", "I am the vine and you are the branches. The one who remains in Me, and I in him, will bear much fruit. For apart from Me you can do nothing."],
+    ["6", "If anyone does not remain in Me, he is like a branch that is thrown away and withers."],
+    ["7", "If you remain in Me and My words remain in you, ask whatever you wish, and it will be done for you."],
+    ["8", "This is to My Father's glory, that you bear much fruit, proving yourselves to be My disciples."],
+    ["9", "As the Father has loved Me, so have I loved you. Remain in My love."],
+    ["10", "If you keep My commandments, you will remain in My love, just as I have kept My Father's commandments and remain in His love."],
+    ["11", "I have told you these things so that My joy may be in you, and your joy may be complete."],
+    ["12", "This is My commandment, that you love one another as I have loved you."],
+    ["13", "Greater love has no one than this, that he lay down his life for his friends."],
+  ];
+
+  let NOTES = [
+    { id: "n1", from: 2, to: 2, cat: "observation", ago: "2d ago", text: "Pruning here is done to the fruitful branch, not the dead one. Being cut back can be care, not rejection." },
+    { id: "n2", from: 9, to: 10, cat: "personal", ago: "5h ago", text: "\"Remain in My love\" twice. Not earn, not reach for — remain. Sit in what's already true." },
+  ];
+
+  const CATS = [
+    ["observation", "Observation"],
+    ["historical", "Historical"],
+    ["application", "Application"],
+    ["personal", "Personal"],
+  ];
+  const CAT_LABEL = Object.fromEntries(CATS);
+
+  const reader = document.getElementById("reader");
+  const versesEl = document.getElementById("verses");
+  const topBar = document.querySelector(".top");
+
+  const refLabel = (f, t) => (f === t ? `John 15:${f}` : `John 15:${f}–${t}`);
+
+  // ── state ──
+  let phase = "idle"; // idle | select | compose
+  let anchor = null,
+    from = null,
+    to = null;
+  let composerEl = null;
+  let selbar = null;
+  let uid = 100;
+
+  // ── render passage + saved notes ──
+  function render() {
+    versesEl.innerHTML = "";
+    VERSES.forEach(([n]) => {
+      const row = document.createElement("div");
+      row.className = "verse";
+      row.dataset.v = n;
+      row.innerHTML = `<span class="vn">${n}</span><span class="vtext">${VERSES.find((v) => v[0] === n)[1]}</span>`;
+      row.addEventListener("click", () => onVerseTap(parseInt(n, 10)));
+      versesEl.appendChild(row);
+
+      NOTES.filter((nt) => String(nt.to) === n).forEach((nt) => versesEl.appendChild(noteEl(nt)));
+    });
+    paintSelection();
+  }
+
+  function noteEl(nt) {
+    const el = document.createElement("div");
+    el.className = "inote";
+    el.dataset.c = nt.cat || "none";
+    el.dataset.id = nt.id;
+    const label = nt.cat ? CAT_LABEL[nt.cat] : "Note";
+    el.innerHTML = `<div class="meta">${label} <span class="ref">${refLabel(nt.from, nt.to)} · ${nt.ago}</span></div><div class="body">${escapeHtml(nt.text)}</div>`;
+    el.addEventListener("click", () => editNote(nt.id));
+    return el;
+  }
+  function escapeHtml(s) {
+    return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+  }
+
+  // ── selection highlight ──
+  function paintSelection() {
+    versesEl.querySelectorAll(".verse.sel").forEach((v) => v.classList.remove("sel"));
+    if (from == null) return;
+    for (let i = from; i <= to; i++) {
+      const row = versesEl.querySelector(`.verse[data-v="${i}"]`);
+      if (row) row.classList.add("sel");
+    }
+  }
+
+  // ── tap handling ──
+  function onVerseTap(n) {
+    if (phase === "compose") return; // selection is locked while writing
+    if (phase === "idle") {
+      anchor = from = to = n;
+      phase = "select";
+      paintSelection();
+      showSelbar();
+      return;
+    }
+    // select phase — tap a highlighted verse to clear, tap an unhighlighted one to extend
+    if (n >= from && n <= to) {
+      cancelSelection(); // tapping anything already selected un-selects everything
+    } else {
+      from = Math.min(anchor, n);
+      to = Math.max(anchor, n);
+      paintSelection();
+      updateSelbar();
+    }
+  }
+
+  // ── selection bar ──
+  function showSelbar() {
+    if (!selbar) {
+      selbar = document.createElement("div");
+      selbar.className = "selbar";
+      selbar.innerHTML = `
+        <span class="ref"></span>
+        <span class="tip">tap more verses to extend</span>
+        <button class="x" aria-label="Clear">✕</button>
+        <button class="note-btn">Note</button>`;
+      selbar.querySelector(".x").onclick = cancelSelection;
+      selbar.querySelector(".note-btn").onclick = () => startCompose(null);
+      document.body.appendChild(selbar);
+    }
+    updateSelbar();
+    requestAnimationFrame(() => selbar.classList.add("on"));
+  }
+  function updateSelbar() {
+    if (!selbar) return;
+    selbar.querySelector(".ref").textContent = refLabel(from, to);
+    selbar.querySelector(".tip").style.opacity = from === to ? "1" : "0.5";
+  }
+  function hideSelbar() {
+    if (!selbar) return;
+    const el = selbar;
+    selbar = null;
+    el.classList.remove("on");
+    setTimeout(() => el.remove(), 300);
+  }
+  function cancelSelection() {
+    hideSelbar();
+    phase = "idle";
+    anchor = from = to = null;
+    paintSelection();
+  }
+
+  // ── composer (new + edit) ──
+  function startCompose(existing) {
+    phase = "compose";
+    hideSelbar();
+    const cat = existing ? existing.cat : null;
+
+    const el = document.createElement("div");
+    el.className = "composer";
+    el.dataset.c = cat || "none";
+    el.innerHTML = `
+      <div class="composer-head">
+        <span class="ref">${refLabel(from, to)}</span>
+        ${existing ? '<button class="del">Delete</button>' : ""}
+        <button class="cancel"${existing ? ' style="margin-left:0"' : ' style="margin-left:auto"'}>Cancel</button>
+      </div>
+      <textarea class="compose" placeholder="Jot a thought…"></textarea>
+      <div class="composer-foot">
+        <div class="tag">
+          <button class="tag-trigger" aria-haspopup="true"></button>
+          <div class="tag-menu" role="listbox"></div>
+        </div>
+        <button class="save">Save</button>
+      </div>`;
+
+    const ta = el.querySelector("textarea");
+    if (existing) ta.value = existing.text;
+
+    // tag dropdown
+    let cur = cat;
+    const trigger = el.querySelector(".tag-trigger");
+    const menu = el.querySelector(".tag-menu");
+    const opts = [["", "No tag"], ...CATS];
+    menu.innerHTML = opts
+      .map(
+        ([c, label]) =>
+          `<button class="tag-opt" data-c="${c}" role="option"><span class="dot"></span>${label}<span class="check">✓</span></button>`
+      )
+      .join("");
+    function renderTag() {
+      const label = cur ? CAT_LABEL[cur] : "Add tag";
+      trigger.innerHTML = `<span class="dot"></span>${label}<span class="chev">▾</span>`;
+      trigger.style.setProperty("--seldot", cur ? `var(--cat-${cur})` : "var(--border-strong)");
+      trigger.style.color = cur ? "var(--text)" : "var(--text-muted)";
+      el.dataset.c = cur || "none";
+      menu.querySelectorAll(".tag-opt").forEach((o) => o.setAttribute("aria-selected", String((o.dataset.c || null) === (cur || null))));
+    }
+    renderTag();
+    trigger.onclick = (e) => {
+      e.stopPropagation();
+      menu.classList.toggle("on");
+    };
+    menu.querySelectorAll(".tag-opt").forEach((o) => {
+      o.onclick = (e) => {
+        e.stopPropagation();
+        cur = o.dataset.c || null;
+        renderTag();
+        menu.classList.remove("on");
+      };
+    });
+    document.addEventListener("click", () => menu.classList.remove("on"));
+
+    // actions
+    el.querySelector(".cancel").onclick = () => closeCompose();
+    if (existing) {
+      el.querySelector(".del").onclick = () => {
+        NOTES = NOTES.filter((x) => x.id !== existing.id);
+        closeCompose();
+      };
+    }
+    el.querySelector(".save").onclick = () => {
+      const val = ta.value.trim();
+      if (!val) {
+        closeCompose();
+        return;
+      }
+      if (existing) {
+        Object.assign(existing, { text: val, cat: cur, from, to, ago: "just now" });
+      } else {
+        NOTES.push({ id: "u" + uid++, from, to, cat: cur, ago: "just now", text: val });
+      }
+      closeCompose(existing ? existing.id : NOTES[NOTES.length - 1].id);
+    };
+
+    ta.addEventListener("input", () => {
+      ta.style.height = "auto";
+      ta.style.height = ta.scrollHeight + "px";
+    });
+
+    // Insert after the LAST selected verse. In edit mode, replace the note node.
+    if (existing) {
+      const noteNode = versesEl.querySelector(`.inote[data-id="${existing.id}"]`);
+      noteNode.replaceWith(el);
+    } else {
+      const row = versesEl.querySelector(`.verse[data-v="${to}"]`);
+      row.after(el);
+    }
+    composerEl = el;
+
+    // Room to scroll the composer up to its target even at the end of the chapter.
+    reader.style.paddingBottom = "calc(72vh + var(--kb))";
+    revealComposer(el, ta);
+  }
+
+  // Flash-free, breathy reveal.
+  //
+  // The trick: the composer must already sit above the keyboard the instant it's
+  // focused, or iOS does its own "scroll the field into view" jump on top of
+  // ours. So we (1) keep it invisible, (2) SNAP its resting box to the centre of
+  // the space above the keyboard while nothing is visible — no flash, and nothing
+  // for iOS to fight — (3) focus in-gesture so the keyboard rises, then (4)
+  // breathe the composer in with the calm curve. The only motion the eye tracks
+  // is that gentle settle, riding up with the keyboard.
+  function revealComposer(el, ta) {
+    el.style.opacity = "0"; // hidden: it never paints at the wrong spot
+
+    // size the textarea to its content FIRST (matters when editing a saved note),
+    // so the composer's final height is known before we centre it
+    ta.style.height = "auto";
+    ta.style.height = ta.scrollHeight + "px";
+
+    // centre it in the band between header and keyboard (same target every time)
+    const winH = window.innerHeight;
+    const kb = cachedKb || Math.round(winH * 0.42); // exact after the first open
+    const headerH = topBar.offsetHeight;
+    const region = winH - kb - headerH;
+    const desiredTop = headerH + Math.max(14, (region - el.offsetHeight) / 2);
+    window.scrollBy(0, el.getBoundingClientRect().top - desiredTop); // instant, invisible
+
+    ta.focus({ preventScroll: true }); // in-gesture; composer already above the keyboard
+
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Commit the from-state with a forced reflow (reliable regardless of paint
+    // throttling), then flip to the resting state so the transition breathes it in.
+    el.style.transform = "translateY(28px)";
+    void el.offsetWidth; // force reflow
+    el.style.transition = reduce ? "none" : "opacity 500ms var(--ease-calm), transform 560ms var(--ease-calm)";
+    el.style.opacity = "1";
+    el.style.transform = "none";
+  }
+
+  function closeCompose(scrollToId) {
+    phase = "idle";
+    anchor = from = to = null;
+    composerEl = null;
+    reader.style.paddingBottom = "";
+    render();
+    if (scrollToId) {
+      const node = versesEl.querySelector(`.inote[data-id="${scrollToId}"]`);
+      if (node) node.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
+  function editNote(id) {
+    if (phase === "compose") return;
+    const nt = NOTES.find((x) => x.id === id);
+    if (!nt) return;
+    from = nt.from;
+    to = nt.to;
+    anchor = nt.from;
+    paintSelection();
+    startCompose(nt);
+  }
+
+  // ── keyboard tracking ──
+  // cachedKb = last real keyboard height we measured. Persisted so even the first
+  // compose after a reload predicts the right height on this exact device.
+  let cachedKb = 0;
+  try {
+    cachedKb = parseInt(localStorage.getItem("lantern-kb") || "0", 10) || 0;
+  } catch (e) {}
+  function updateKb() {
+    const vv = window.visualViewport;
+    let kb = 0;
+    if (vv) kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    document.documentElement.style.setProperty("--kb", kb + "px");
+    if (kb > 120 && kb !== cachedKb) {
+      cachedKb = kb;
+      try {
+        localStorage.setItem("lantern-kb", String(kb));
+      } catch (e) {}
+    }
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", updateKb);
+    window.visualViewport.addEventListener("scroll", updateKb);
+  }
+  window.addEventListener("resize", updateKb);
+
+  // Tap anywhere off a verse (and off the selection bar) clears the selection.
+  document.addEventListener("click", (e) => {
+    if (phase !== "select") return;
+    if (e.target.closest(".verse") || e.target.closest(".selbar")) return;
+    cancelSelection();
+  });
+
+  document.getElementById("themeBtn").onclick = () => {
+    const c = document.documentElement.getAttribute("data-theme");
+    const dark = c ? c === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
+  };
+
+  render();
+  updateKb();
+</script>

@@ -1,0 +1,1472 @@
+<title>Desktop Study Toggle</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,ital,wght@8..60,0,400;8..60,0,500;8..60,0,600;8..60,1,400&display=swap"
+/>
+
+<style>
+  :root {
+    --ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --scripture-font: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --bg: #f4f0e8;
+    --surface: #fbf9f4;
+    --surface-2: #ece6da;
+    --border: #e2dccf;
+    --border-strong: #d8d0c0;
+    --text: #201e1a;
+    --text-muted: #6a6353;
+    --text-faint: #938a77;
+    --accent: #6b62d6;
+    --accent-ink: #594fd1;
+    --accent-weak: rgba(107, 98, 214, 0.11);
+    --accent-soft: rgba(107, 98, 214, 0.18);
+    --on-accent: #fff;
+    --cat-observation: #6b62d6;
+    --cat-historical: #3f8f5b;
+    --cat-application: #b5732a;
+    --cat-personal: #c05070;
+    --cat-observation-ink: #594fd1;
+    --cat-historical-ink: #316f47;
+    --cat-application-ink: #8a5820;
+    --cat-personal-ink: #a73c5b;
+    --elev-2: 0 2px 6px rgba(20, 16, 8, 0.06), 0 8px 20px -6px rgba(20, 16, 8, 0.1);
+    --elev-3: 0 6px 16px -4px rgba(20, 16, 8, 0.12), 0 20px 40px -12px rgba(20, 16, 8, 0.18);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-calm: cubic-bezier(0.45, 0, 0.15, 1);
+    --aw: 452px;
+  }
+  :root:not([data-theme='light']) {
+    @media (prefers-color-scheme: dark) {
+      --bg: #17140f;
+      --surface: #211d17;
+      --surface-2: #2b2620;
+      --border: #38322a;
+      --border-strong: #473f34;
+      --text: #ece4d6;
+      --text-muted: #a99f8e;
+      --text-faint: #7a7264;
+      --accent: #a49cf0;
+      --accent-ink: #a49cf0;
+      --accent-weak: rgba(164, 156, 240, 0.14);
+      --accent-soft: rgba(164, 156, 240, 0.24);
+      --cat-observation: #a49cf0;
+      --cat-historical: #6fca8e;
+      --cat-application: #e0a15e;
+      --cat-personal: #e58aa4;
+      --cat-observation-ink: #a49cf0;
+      --cat-historical-ink: #6fca8e;
+      --cat-application-ink: #e0a15e;
+      --cat-personal-ink: #e58aa4;
+      --elev-2: 0 2px 6px rgba(0, 0, 0, 0.3), 0 8px 20px -6px rgba(0, 0, 0, 0.45);
+      --elev-3: 0 6px 16px -4px rgba(0, 0, 0, 0.4), 0 20px 40px -12px rgba(0, 0, 0, 0.6);
+    }
+  }
+  :root[data-theme='dark'] {
+    --bg: #17140f;
+    --surface: #211d17;
+    --surface-2: #2b2620;
+    --border: #38322a;
+    --border-strong: #473f34;
+    --text: #ece4d6;
+    --text-muted: #a99f8e;
+    --text-faint: #7a7264;
+    --accent: #a49cf0;
+    --accent-ink: #a49cf0;
+    --accent-weak: rgba(164, 156, 240, 0.14);
+    --accent-soft: rgba(164, 156, 240, 0.24);
+    --cat-observation: #a49cf0;
+    --cat-historical: #6fca8e;
+    --cat-application: #e0a15e;
+    --cat-personal: #e58aa4;
+    --cat-observation-ink: #a49cf0;
+    --cat-historical-ink: #6fca8e;
+    --cat-application-ink: #e0a15e;
+    --cat-personal-ink: #e58aa4;
+    --elev-2: 0 2px 6px rgba(0, 0, 0, 0.3), 0 8px 20px -6px rgba(0, 0, 0, 0.45);
+    --elev-3: 0 6px 16px -4px rgba(0, 0, 0, 0.4), 0 20px 40px -12px rgba(0, 0, 0, 0.6);
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+  }
+  body {
+    font-family: var(--ui-font);
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  button {
+    font: inherit;
+    cursor: pointer;
+    color: inherit;
+  }
+  [hidden] {
+    display: none !important;
+  }
+
+  .app {
+    max-width: 1180px;
+    margin: 0 auto;
+    min-height: 100vh;
+  }
+  .top {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    backdrop-filter: saturate(1.1) blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .top .ref {
+    font-family: var(--scripture-font);
+    font-weight: 600;
+    font-size: 19px;
+  }
+  .top .spacer {
+    flex: 1;
+  }
+  .seg {
+    display: inline-flex;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .seg button {
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 18px;
+    border-radius: 999px;
+    transition: color 160ms, background 160ms;
+  }
+  .seg button[aria-pressed='true'] {
+    background: var(--surface);
+    color: var(--accent-ink);
+    box-shadow: var(--elev-2);
+  }
+  .theme-btn {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 999px;
+    width: 32px;
+    height: 32px;
+    font-size: 15px;
+    display: grid;
+    place-items: center;
+    color: var(--text-muted);
+  }
+
+  /* transform-driven layout — no width animation, so scripture never re-wraps.
+     The reading column + panel live side by side in a centered flex group (the
+     STUDY layout, always in the DOM). In Read we re-centre the reading column
+     with a transform (+half the panel width) and hide the panel with opacity, so
+     nothing reflows and the panel is genuinely gone. */
+  .stage {
+    overflow-x: clip;
+  }
+  .canvas {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    transform: translateX(calc(var(--aw) / 2));
+    transition: transform 620ms var(--ease-calm);
+    will-change: transform;
+  }
+  .stage.study .canvas {
+    transform: translateX(0);
+  }
+  .scripture-col {
+    width: calc(38rem + 56px);
+    flex: none;
+    padding: 34px 28px 140px;
+  }
+  .scripture-inner {
+    max-width: 38rem;
+    margin: 0 auto;
+  }
+  .aside {
+    width: var(--aw);
+    flex: none;
+    align-self: flex-start;
+    position: sticky;
+    top: 61px;
+    height: calc(100vh - 61px);
+    border-left: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 62%, var(--bg));
+    box-shadow: -18px 0 40px -30px rgba(20, 16, 8, 0.22);
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(26px);
+    transition: opacity 480ms var(--ease-calm), transform 620ms var(--ease-calm);
+  }
+  .stage.study .aside {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+  }
+
+  .marquee {
+    position: fixed;
+    z-index: 25;
+    border: 1px solid var(--accent);
+    background: var(--accent-weak);
+    border-radius: 3px;
+    pointer-events: none;
+    display: none;
+  }
+  .marquee.on {
+    display: block;
+  }
+
+  .kicker {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+  }
+  .title {
+    font-family: var(--scripture-font);
+    font-weight: 600;
+    font-size: 32px;
+    margin: 4px 0 3px;
+  }
+  .sub {
+    font-size: 12.5px;
+    color: var(--text-faint);
+    margin-bottom: 22px;
+  }
+  .verse {
+    font-family: var(--scripture-font);
+    font-size: 19px;
+    line-height: 1.75;
+    color: var(--text);
+    padding: 2px 0;
+    cursor: pointer;
+    user-select: none;
+  }
+  .verse .vn {
+    font-family: var(--ui-font);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-ink);
+    vertical-align: 0.35em;
+    margin-right: 6px;
+    opacity: 0.75;
+  }
+  .verse .vtext {
+    border-radius: 7px;
+    padding: 2px 6px;
+    margin: 0 -3px 0 0; /* small gap from the verse number, slight extension on the right */
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    transition: background 140ms;
+  }
+  .verse:hover .vtext {
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+  .verse.sel .vtext {
+    background: var(--accent-weak);
+    box-shadow: 0 0 0 1px var(--accent-soft) inset;
+  }
+
+  /* verse pill — used in saved notes AND live inside the editor */
+  .vpill {
+    font-family: var(--ui-font);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-ink);
+    background: var(--accent-weak);
+    border: 1px solid var(--accent-soft);
+    border-radius: 5px;
+    padding: 0 5px;
+    margin: 0 2px 0 0;
+    white-space: nowrap;
+    vertical-align: 1px;
+    user-select: none;
+  }
+
+  .note {
+    border-left: 2.5px solid var(--nrail, var(--border-strong));
+    padding: 3px 0 3px 13px;
+  }
+  .note[data-c='observation'] {
+    --nrail: var(--cat-observation);
+    --nink: var(--cat-observation-ink);
+  }
+  .note[data-c='historical'] {
+    --nrail: var(--cat-historical);
+    --nink: var(--cat-historical-ink);
+  }
+  .note[data-c='application'] {
+    --nrail: var(--cat-application);
+    --nink: var(--cat-application-ink);
+  }
+  .note[data-c='personal'] {
+    --nrail: var(--cat-personal);
+    --nink: var(--cat-personal-ink);
+  }
+  .note .cat-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--nink, var(--accent-ink));
+    margin-right: 6px;
+  }
+  .note .b {
+    font-family: var(--scripture-font);
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  /* note card with hover Edit/Delete actions (read + workbench share it) */
+  .note-card {
+    position: relative;
+  }
+  .note-card.read-card {
+    margin: 8px 0 12px 2px;
+  }
+  .note-card .note {
+    cursor: pointer;
+    border-radius: 0 8px 8px 0;
+    padding-right: 88px;
+    transition: background 140ms;
+  }
+  .note-card:hover .note {
+    background: color-mix(in srgb, var(--nrail, var(--border-strong)) 8%, transparent);
+  }
+  .note-actions {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    opacity: 0;
+    transform: translateY(-2px);
+    transition: opacity 140ms, transform 140ms;
+  }
+  .note-card:hover .note-actions,
+  .note-card:focus-within .note-actions {
+    opacity: 1;
+    transform: none;
+  }
+  .na-normal,
+  .na-confirm {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 3px;
+    box-shadow: var(--elev-2);
+  }
+  .na-normal button,
+  .na-confirm button {
+    border: 0;
+    background: transparent;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 4px 9px;
+    border-radius: 6px;
+  }
+  .na-normal button:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  .na-del:hover {
+    color: var(--cat-personal-ink);
+  }
+  .na-q {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 0 5px;
+  }
+  .na-yes {
+    color: #fff !important;
+    background: var(--cat-personal) !important;
+  }
+
+  /* read-mode selection action bar */
+  .readbar {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 9px 0 13px 2px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    box-shadow: var(--elev-2);
+    padding: 7px 8px 7px 14px;
+    animation: pop 200ms var(--ease-out);
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+  .readbar .rb-ref {
+    font-family: var(--scripture-font);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--accent-ink);
+  }
+  .rb-create {
+    border: 0;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+    font-size: 13px;
+    border-radius: 9px;
+    padding: 7px 14px;
+  }
+  .rb-x {
+    border: 0;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    font-size: 13px;
+  }
+
+  .aside-head {
+    padding: 20px 22px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .aside-head .h {
+    font-family: var(--scripture-font);
+    font-weight: 600;
+    font-size: 17px;
+  }
+  .aside-head .subh {
+    font-size: 12px;
+    color: var(--text-faint);
+    margin-left: auto;
+  }
+  .wb {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 18px 40px;
+  }
+  .wb .note-card {
+    margin: 3px 0;
+  }
+  .wb .note-card .note {
+    padding: 9px 8px 9px 12px;
+  }
+
+  /* shared token-aware editor (contenteditable, live pills) */
+  .editor {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-left: 3px solid var(--erail, var(--border-strong));
+    border-radius: 12px;
+    box-shadow: var(--elev-2);
+    padding: 12px 13px 11px;
+    margin-bottom: 14px;
+    transition: border-color 200ms, background 200ms;
+  }
+  .editor.inline-ed {
+    margin: 9px 0 13px 2px;
+  }
+  .editor {
+    animation: edIn 300ms var(--ease-calm);
+  }
+  @keyframes edIn {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.988);
+    }
+  }
+  .editor.leaving {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+    transition: opacity 300ms var(--ease-calm), transform 300ms var(--ease-calm);
+  }
+  .editor[data-c='observation'] {
+    --erail: var(--cat-observation);
+    background: color-mix(in srgb, var(--cat-observation) 5%, var(--surface));
+  }
+  .editor[data-c='historical'] {
+    --erail: var(--cat-historical);
+    background: color-mix(in srgb, var(--cat-historical) 5%, var(--surface));
+  }
+  .editor[data-c='application'] {
+    --erail: var(--cat-application);
+    background: color-mix(in srgb, var(--cat-application) 5%, var(--surface));
+  }
+  .editor[data-c='personal'] {
+    --erail: var(--cat-personal);
+    background: color-mix(in srgb, var(--cat-personal) 5%, var(--surface));
+  }
+  .ed-body {
+    font-family: var(--scripture-font);
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text);
+    outline: 0;
+    min-height: 48px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .ed-body:empty::before {
+    content: attr(data-ph);
+    color: var(--text-faint);
+    pointer-events: none;
+  }
+  .ed-anchor {
+    font-size: 12px;
+    margin: 7px 0 2px;
+    min-height: 16px;
+    color: var(--text-faint);
+  }
+  .ed-anchor b {
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .ed-foot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 999px;
+    padding: 5px 10px 5px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chip .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--dc, var(--border-strong));
+  }
+  .chip[data-c='observation'] {
+    --dc: var(--cat-observation);
+  }
+  .chip[data-c='historical'] {
+    --dc: var(--cat-historical);
+  }
+  .chip[data-c='application'] {
+    --dc: var(--cat-application);
+  }
+  .chip[data-c='personal'] {
+    --dc: var(--cat-personal);
+  }
+  .chip[aria-pressed='true'] {
+    color: var(--text);
+    background: color-mix(in srgb, var(--dc) 14%, var(--surface));
+    border-color: color-mix(in srgb, var(--dc) 50%, var(--border));
+  }
+  .ed-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+  }
+  .btn-save {
+    border: 0;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+    font-size: 13px;
+    border-radius: 9px;
+    padding: 8px 15px;
+  }
+  .btn-save:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .btn-ghost {
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+  .btn-del {
+    color: var(--cat-personal-ink);
+  }
+  .act-normal {
+    display: flex;
+    gap: 4px;
+  }
+  .act-confirm {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: confirmIn 200ms var(--ease-out);
+  }
+  /* while confirming, hide the chips + normal buttons so the confirm sits alone on one line */
+  .editor.confirming .chips,
+  .editor.confirming .act-normal {
+    display: none;
+  }
+  .editor.confirming .ed-foot {
+    justify-content: flex-end;
+  }
+  @keyframes confirmIn {
+    from {
+      opacity: 0;
+      transform: translateX(8px);
+    }
+  }
+  .act-confirm .q {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-right: 2px;
+  }
+  .btn-del-confirm {
+    border: 0;
+    background: var(--cat-personal);
+    color: #fff;
+    font-weight: 600;
+    font-size: 13px;
+    border-radius: 9px;
+    padding: 8px 15px;
+  }
+  .atmenu {
+    position: absolute;
+    z-index: 40;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 11px;
+    box-shadow: var(--elev-3);
+    padding: 5px;
+    min-width: 170px;
+    display: none;
+  }
+  .atmenu.on {
+    display: block;
+  }
+  .atmenu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+    text-align: left;
+  }
+  .atmenu-item.active {
+    background: var(--surface-2);
+  }
+  .atmenu-item .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: none;
+  }
+
+  /* centered confirm dialog (for the click-away-from-a-draft case) */
+  .scrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 16, 8, 0.28);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 220ms var(--ease-out);
+    z-index: 50;
+  }
+  .scrim.on {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .dialog {
+    position: fixed;
+    left: 50%;
+    top: 42%;
+    transform: translate(-50%, -50%) scale(0.96);
+    opacity: 0;
+    z-index: 51;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    box-shadow: var(--elev-3);
+    padding: 22px 22px 18px;
+    width: min(92vw, 380px);
+    transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
+    pointer-events: none;
+  }
+  .dialog.on {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .dialog h3 {
+    font-family: var(--scripture-font);
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+  .dialog p {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin: 0 0 18px;
+  }
+  .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .d-keep {
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 13.5px;
+    border-radius: 10px;
+    padding: 9px 16px;
+  }
+  .d-discard {
+    border: 0;
+    background: var(--cat-personal);
+    color: #fff;
+    font-weight: 600;
+    font-size: 13.5px;
+    border-radius: 10px;
+    padding: 9px 17px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+</style>
+
+<div class="app">
+  <div class="top">
+    <span class="ref">John 15</span>
+    <span class="spacer"></span>
+    <div class="seg" role="tablist" aria-label="Mode">
+      <button data-mode="read" aria-pressed="true">Read</button>
+      <button data-mode="study" aria-pressed="false">Study</button>
+    </div>
+    <button class="theme-btn" id="themeBtn" title="Light / dark">◐</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="canvas">
+      <div class="scripture-col" id="scriptureCol">
+        <div class="scripture-inner">
+          <div class="kicker">The Gospel of John</div>
+          <h1 class="title">John 15</h1>
+          <div class="sub">Berean Standard Bible</div>
+          <div id="verses"></div>
+        </div>
+      </div>
+      <aside class="aside">
+        <div class="aside-head">
+          <div class="h">Notes</div>
+          <div class="subh">John 15</div>
+        </div>
+        <div class="wb" id="wb"></div>
+      </aside>
+    </div>
+  </div>
+  <div class="marquee" id="marquee"></div>
+</div>
+
+<script>
+  const VERSES = [
+    ["1", "I am the true vine, and My Father is the keeper of the vineyard."],
+    ["2", "He cuts off every branch in Me that bears no fruit, and every branch that does bear fruit He prunes to make it even more fruitful."],
+    ["3", "You are already clean because of the word I have spoken to you."],
+    ["4", "Remain in Me, and I will remain in you. Just as no branch can bear fruit by itself unless it remains in the vine, neither can you bear fruit unless you remain in Me."],
+    ["5", "I am the vine and you are the branches. The one who remains in Me, and I in him, will bear much fruit. For apart from Me you can do nothing."],
+    ["6", "If anyone does not remain in Me, he is like a branch that is thrown away and withers."],
+    ["7", "If you remain in Me and My words remain in you, ask whatever you wish, and it will be done for you."],
+    ["8", "This is to My Father's glory, that you bear much fruit, proving yourselves to be My disciples."],
+    ["9", "As the Father has loved Me, so have I loved you. Remain in My love."],
+    ["10", "If you keep My commandments, you will remain in My love, just as I have kept My Father's commandments and remain in His love."],
+    ["11", "I have told you these things so that My joy may be in you, and your joy may be complete."],
+    ["12", "This is My commandment, that you love one another as I have loved you."],
+    ["13", "Greater love has no one than this, that he lay down his life for his friends."],
+  ];
+
+  let NOTES = [
+    { id: "n1", c: "observation", anchorFrom: 2, anchorTo: 2, t: "Pruning is done to the fruitful branch, not the dead one. Being cut back can be care, not rejection." },
+    { id: "n2", c: null, anchorFrom: 5, anchorTo: 5, t: "\"Apart from Me you can do nothing.\" Not less — nothing." },
+    { id: "n3", c: "personal", anchorFrom: 9, anchorTo: 10, t: "\"Remain in My love\" — said twice. Not earn it, not reach for it. Remain." },
+  ];
+
+  const CATS = [["observation", "Observation"], ["historical", "Historical"], ["application", "Application"], ["personal", "Personal"]];
+  const CAT_LABEL = Object.fromEntries(CATS);
+  const TOKEN = /v\s*\d+(?:\s*[-–]\s*\d+)?/gi;
+  const ANCHOR_RE = /^\s*v\s*(\d+)(?:\s*[-–]\s*(\d+))?\s*/i;
+
+  let mode = "read";
+  let editingId = null; // workbench edit
+  let readState = null; // {kind:'new', from,to} | {kind:'edit', id}
+  let readSel = null; // {from,to} standing read selection (before Create)
+  let uid = 10;
+  let activeField = null;
+
+  const stage = document.getElementById("stage");
+  const versesEl = document.getElementById("verses");
+  const wb = document.getElementById("wb");
+
+  const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+  const pillLabel = (f, t) => (f === t ? `v${f}` : `v${f}-${t}`);
+  const fullLabel = (f, t) => (f === t ? `John 15:${f}` : `John 15:${f}–${t}`);
+
+  function parseAnchor(text) {
+    const m = ANCHOR_RE.exec(text);
+    if (!m) return null;
+    const a = +m[1], b = m[2] ? +m[2] : a;
+    return { from: Math.min(a, b), to: Math.max(a, b) };
+  }
+  const stripAnchor = (t) => t.replace(ANCHOR_RE, "");
+  const realText = (t) => stripAnchor(t).replace(/@\w*/g, "").trim();
+
+  // ── verse highlighting ──
+  function highlight(set) {
+    versesEl.querySelectorAll(".verse.sel").forEach((v) => v.classList.remove("sel"));
+    set.forEach((n) => {
+      const row = versesEl.querySelector(`.verse[data-v="${n}"]`);
+      if (row) row.classList.add("sel");
+    });
+  }
+  function setFrom(a) {
+    const s = new Set();
+    if (a) for (let i = a.from; i <= a.to; i++) s.add(i);
+    return s;
+  }
+  function highlightFromActive() {
+    if (!activeField) return highlight(new Set());
+    highlight(setFrom(parseAnchor(fieldText(activeField))));
+  }
+
+  // ── contenteditable helpers (live verse pills + caret preservation) ──
+  const fieldText = (el) => el.textContent;
+  function pillsHtml(text) {
+    let out = "", last = 0, m;
+    TOKEN.lastIndex = 0;
+    while ((m = TOKEN.exec(text))) {
+      out += esc(text.slice(last, m.index));
+      out += `<span class="vpill" contenteditable="false">${esc(m[0])}</span>`;
+      last = m.index + m[0].length;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  function caretOffset(el) {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return null;
+    const r = sel.getRangeAt(0);
+    if (!el.contains(r.endContainer)) return null;
+    const pre = r.cloneRange();
+    pre.selectNodeContents(el);
+    pre.setEnd(r.endContainer, r.endOffset);
+    return pre.toString().length;
+  }
+  function setCaret(el, offset) {
+    if (offset == null) return;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+    let node, remaining = offset;
+    while ((node = walker.nextNode())) {
+      if (node.length >= remaining) {
+        const pill = node.parentElement.closest('[contenteditable="false"]');
+        const r = document.createRange();
+        if (pill) {
+          r.setStartAfter(pill);
+        } else {
+          r.setStart(node, remaining);
+        }
+        r.collapse(true);
+        const s = window.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+        return;
+      }
+      remaining -= node.length;
+    }
+    // fallback: end
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    r.collapse(false);
+    const s = window.getSelection();
+    s.removeAllRanges();
+    s.addRange(r);
+  }
+  function renderField(el, text, caret) {
+    el.innerHTML = pillsHtml(text);
+    if (caret != null) setCaret(el, caret);
+  }
+
+  // ── note card with hover Edit / Delete (shared by read + workbench) ──
+  function makeNoteCard(note, inline, onEdit, onDelete) {
+    const card = document.createElement("div");
+    card.className = "note-card" + (inline ? " read-card" : "");
+    card.innerHTML =
+      `<div class="note" data-c="${note.c || ""}">${noteInner(note)}</div>` +
+      `<div class="note-actions">` +
+      `<div class="na-normal"><button class="na-edit">Edit</button><button class="na-del">Delete</button></div>` +
+      `<div class="na-confirm" hidden><span class="na-q">Delete note?</span><button class="na-cancel">Cancel</button><button class="na-yes">Delete</button></div>` +
+      `</div>`;
+    const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
+    card.querySelector(".note").onclick = onEdit;
+    card.querySelector(".na-edit").onclick = stop(onEdit);
+    const normal = card.querySelector(".na-normal");
+    const confirm = card.querySelector(".na-confirm");
+    const reset = () => { confirm.hidden = true; normal.hidden = false; };
+    card.querySelector(".na-del").onclick = stop(() => { normal.hidden = true; confirm.hidden = false; });
+    card.querySelector(".na-cancel").onclick = stop(reset);
+    card.querySelector(".na-yes").onclick = stop(onDelete);
+    // leaving the card cancels a pending delete-confirm — but only after the
+    // actions have faded, so we never see the buttons flip back mid-fade
+    card.addEventListener("mouseleave", () => setTimeout(() => { if (!card.matches(":hover")) reset(); }, 200));
+    return card;
+  }
+
+  // ── saved note render ──
+  function noteInner(n) {
+    const pill = n.anchorFrom != null ? `<span class="vpill">${pillLabel(n.anchorFrom, n.anchorTo)}</span>` : "";
+    const label = n.c ? `<span class="cat-label">${CAT_LABEL[n.c]}</span>` : "";
+    return `<div class="b">${label}${pill}${esc(n.t)}</div>`;
+  }
+
+  // ── shared editor ──
+  function makeEditor(note, prefill, inline) {
+    const wrap = document.createElement("div");
+    wrap.className = "editor" + (inline ? " inline-ed" : "");
+    let cat = note ? note.c : null;
+    if (cat) wrap.dataset.c = cat;
+
+    wrap.innerHTML = `
+      <div class="ed-body" contenteditable="true" data-ph="Write a note…  type v5 or v4-6 to anchor, @ to tag"></div>
+      <div class="ed-anchor"></div>
+      <div class="atmenu" role="listbox"></div>
+      <div class="ed-foot">
+        <div class="chips"></div>
+        <div class="ed-actions">
+          <div class="act-normal">
+            <button class="btn-ghost btn-left${note ? " btn-del" : ""}">${note ? "Delete" : "Cancel"}</button>
+            <button class="btn-save" disabled>Save</button>
+          </div>
+          <div class="act-confirm" hidden><span class="q">${note ? "Delete note?" : "Discard note?"}</span><button class="btn-ghost c-cancel">Cancel</button><button class="btn-del-confirm">${note ? "Delete" : "Discard"}</button></div>
+        </div>
+      </div>`;
+
+    const edb = wrap.querySelector(".ed-body");
+    const anchorEl = wrap.querySelector(".ed-anchor");
+    const chips = wrap.querySelector(".chips");
+    const saveBtn = wrap.querySelector(".btn-save");
+    const atmenu = wrap.querySelector(".atmenu");
+
+    let seed = "";
+    if (note) seed = (note.anchorFrom != null ? pillLabel(note.anchorFrom, note.anchorTo) + " " : "") + note.t;
+    else if (prefill) seed = pillLabel(prefill.from, prefill.to) + " ";
+    renderField(edb, seed);
+
+    function setCat(c) {
+      cat = c;
+      if (cat) wrap.dataset.c = cat;
+      else wrap.removeAttribute("data-c");
+      chips.querySelectorAll(".chip").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.c === cat)));
+    }
+    CATS.forEach(([c, label]) => {
+      const b = document.createElement("button");
+      b.className = "chip";
+      b.dataset.c = c;
+      b.setAttribute("aria-pressed", String(c === cat));
+      b.innerHTML = `<span class="dot"></span>${label}`;
+      b.onmousedown = (e) => e.preventDefault(); // keep caret in the field
+      b.onclick = () => setCat(cat === c ? null : c);
+      chips.appendChild(b);
+    });
+
+    function refreshAnchor() {
+      const a = parseAnchor(fieldText(edb));
+      anchorEl.innerHTML = a ? `Anchored to <b>${fullLabel(a.from, a.to)}</b>` : `Type <b>v5</b> or <b>v4-6</b>, or click a verse, to anchor`;
+    }
+    function refreshSave() {
+      saveBtn.disabled = !realText(fieldText(edb));
+    }
+
+    // @ menu
+    let atOpen = false, atIndex = 0, atMatches = [];
+    function syncAt() {
+      const off = caretOffset(edb);
+      const m = off == null ? null : /@(\w*)$/.exec(fieldText(edb).slice(0, off));
+      if (!m) return closeAt();
+      const frag = m[1].toLowerCase();
+      atMatches = CATS.filter(([c]) => c.startsWith(frag));
+      if (!atMatches.length) return closeAt();
+      atOpen = true;
+      atIndex = 0;
+      renderAt();
+    }
+    function renderAt() {
+      atmenu.innerHTML = atMatches.map(([c, label], i) => `<button class="atmenu-item ${i === atIndex ? "active" : ""}" data-c="${c}"><span class="dot" style="background:var(--cat-${c})"></span>${label}</button>`).join("");
+      atmenu.classList.add("on");
+      atmenu.style.left = "12px";
+      atmenu.style.top = edb.offsetTop + edb.offsetHeight + 4 + "px";
+      atmenu.querySelectorAll(".atmenu-item").forEach((it) => (it.onmousedown = (e) => { e.preventDefault(); chooseAt(it.dataset.c); }));
+    }
+    function closeAt() { atOpen = false; atmenu.classList.remove("on"); }
+    function chooseAt(c) {
+      setCat(c);
+      const off = caretOffset(edb) ?? fieldText(edb).length;
+      const text = fieldText(edb);
+      const before = text.slice(0, off).replace(/@\w*$/, "");
+      const after = text.slice(off);
+      renderField(edb, before + after, before.length);
+      closeAt();
+      refreshAnchor();
+      refreshSave();
+    }
+
+    edb.addEventListener("focus", () => { activeField = edb; highlightFromActive(); });
+    edb.addEventListener("input", () => {
+      const off = caretOffset(edb);
+      renderField(edb, fieldText(edb), off);
+      refreshAnchor();
+      refreshSave();
+      if (activeField === edb) highlightFromActive();
+      syncAt();
+    });
+    edb.addEventListener("keydown", (e) => {
+      if (atOpen) {
+        if (e.key === "ArrowDown") { e.preventDefault(); atIndex = (atIndex + 1) % atMatches.length; renderAt(); }
+        else if (e.key === "ArrowUp") { e.preventDefault(); atIndex = (atIndex - 1 + atMatches.length) % atMatches.length; renderAt(); }
+        else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); chooseAt(atMatches[atIndex][0]); }
+        else if (e.key === "Escape") closeAt();
+        return;
+      }
+      if (e.key === "Escape") { e.preventDefault(); note ? closeEditors() : cancelDraft(); return; }
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSave(); } // Enter saves, Shift+Enter = newline
+    });
+
+    function doSave() {
+      const t = fieldText(edb);
+      if (!realText(t)) return;
+      const a = parseAnchor(t);
+      const prose = realText(t);
+      if (note) {
+        note.t = prose; note.c = cat;
+        note.anchorFrom = a ? a.from : null; note.anchorTo = a ? a.to : null;
+      } else {
+        NOTES.push({ id: "u" + uid++, c: cat, anchorFrom: a ? a.from : null, anchorTo: a ? a.to : null, t: prose });
+      }
+      closeEditors();
+    }
+    saveBtn.onclick = doSave;
+
+    const normal = wrap.querySelector(".act-normal");
+    const confirmBar = wrap.querySelector(".act-confirm");
+    const leftBtn = wrap.querySelector(".btn-left");
+    const isNew = !note;
+    const isRead = !!inline;
+    const isDirty = () => !!realText(fieldText(edb));
+    function enterConfirm() { wrap.classList.add("confirming"); normal.hidden = true; confirmBar.hidden = false; }
+    function exitConfirm() { wrap.classList.remove("confirming"); confirmBar.hidden = true; normal.hidden = false; }
+    function clearField() { renderField(edb, "", 0); setCat(null); refreshAnchor(); refreshSave(); highlightFromActive(); edb.focus(); }
+    function cancelDraft() {
+      if (isDirty()) enterConfirm(); // dirty new draft → confirm discard
+      else if (isRead) closeEditors(); // empty read draft → just close
+      else clearField(); // empty workbench composer → reset in place
+    }
+    leftBtn.onclick = () => (note ? enterConfirm() : cancelDraft());
+    confirmBar.querySelector(".c-cancel").onclick = () => exitConfirm();
+    confirmBar.querySelector(".btn-del-confirm").onclick = () => {
+      if (note) NOTES = NOTES.filter((x) => x.id !== note.id);
+      closeEditors(); // edit: removes the note; new: discards the draft
+    };
+
+    wrap._edb = edb;
+    wrap._isNew = isNew;
+    wrap._isRead = isRead;
+    wrap._dirty = isDirty;
+    wrap._cancel = () => (note ? closeEditors() : cancelDraft());
+    wrap._enterConfirm = enterConfirm;
+    setTimeout(() => { refreshAnchor(); refreshSave(); }, 0);
+    return wrap;
+  }
+
+  function showConfirmDialog(title, body, confirmLabel, onConfirm) {
+    const scrim = document.createElement("div");
+    scrim.className = "scrim";
+    const dlg = document.createElement("div");
+    dlg.className = "dialog";
+    dlg.innerHTML = `<h3>${title}</h3><p>${body}</p><div class="dialog-actions"><button class="d-keep">Keep editing</button><button class="d-discard">${confirmLabel}</button></div>`;
+    document.body.append(scrim, dlg);
+    const close = () => {
+      scrim.classList.remove("on");
+      dlg.classList.remove("on");
+      setTimeout(() => { scrim.remove(); dlg.remove(); }, 260);
+      document.removeEventListener("keydown", onKey);
+    };
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    dlg.querySelector(".d-keep").onclick = close;
+    scrim.onclick = close;
+    dlg.querySelector(".d-discard").onclick = () => { close(); onConfirm(); };
+    document.addEventListener("keydown", onKey);
+    requestAnimationFrame(() => { scrim.classList.add("on"); dlg.classList.add("on"); });
+  }
+
+  const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function closeEditors() {
+    const finish = () => {
+      editingId = null;
+      readState = null;
+      readSel = null;
+      activeField = null;
+      renderVerses();
+      if (mode === "study") renderWorkbench();
+    };
+    const els = [...document.querySelectorAll(".editor")];
+    if (!els.length || reducedMotion()) return finish();
+    els.forEach(fadeOutEditor);
+    setTimeout(finish, 320); // let the exit play, then re-render
+  }
+
+  // fade an editor out in place (used by the explicit cancel/delete flows)
+  function fadeOutEditor(el) {
+    el.style.pointerEvents = "none";
+    const cs = getComputedStyle(el);
+    el.style.opacity = cs.opacity;
+    el.style.transform = cs.transform === "none" ? "none" : cs.transform;
+    el.style.animation = "none";
+    void el.offsetWidth; // commit the frozen state
+    el.style.transition = "opacity 300ms var(--ease-calm), transform 300ms var(--ease-calm)";
+    el.style.opacity = "0";
+    el.style.transform = "translateY(-6px) scale(0.985)";
+  }
+
+  // Discard an editor in TWO phases: fade it out in place (space still held), THEN
+  // collapse its space so the text eases back up. `done` runs after the collapse.
+  // Used by the click-away case so the box fully fades before the text moves.
+  let pendingDiscardEl = null;
+  function collapseOutEditor(el, done) {
+    if (reducedMotion()) { el.remove(); return done && done(); }
+    el.style.pointerEvents = "none";
+    el.style.animation = "none";
+    const h = el.offsetHeight;
+    const cs = getComputedStyle(el);
+    const mt = cs.marginTop, mb = cs.marginBottom;
+    el.style.opacity = cs.opacity;
+    void el.offsetWidth;
+    el.style.transition = "opacity 240ms var(--ease-calm)"; // phase 1: fade
+    el.style.opacity = "0";
+    setTimeout(() => {
+      el.style.height = h + "px";
+      el.style.marginTop = mt;
+      el.style.marginBottom = mb;
+      el.style.overflow = "hidden";
+      void el.offsetWidth;
+      el.style.transition = "height 300ms var(--ease-calm), margin 300ms var(--ease-calm), padding 300ms var(--ease-calm)"; // phase 2: collapse
+      el.style.height = "0";
+      el.style.marginTop = "0";
+      el.style.marginBottom = "0";
+      el.style.paddingTop = "0";
+      el.style.paddingBottom = "0";
+      setTimeout(() => done && done(), 300);
+    }, 250);
+  }
+
+  // ── render scripture (+ read composers / readbar / inline notes) ──
+  function renderVerses() {
+    versesEl.innerHTML = "";
+    VERSES.forEach(([n, text]) => {
+      const row = document.createElement("div");
+      row.className = "verse";
+      row.dataset.v = n;
+      row.innerHTML = `<span class="vn">${n}</span><span class="vtext">${text}</span>`;
+      versesEl.appendChild(row);
+
+      if (mode !== "read") return;
+
+      // new-note composer sits under the last verse of the selection
+      if (readState && readState.kind === "new" && readState.to === +n) {
+        versesEl.appendChild(makeEditor(null, { from: readState.from, to: readState.to }, true));
+      }
+      // standing selection (no composer yet) → the Create-note bar
+      if (readSel && !readState && readSel.to === +n) {
+        versesEl.appendChild(readBar());
+      }
+      NOTES.filter((x) => x.anchorFrom === +n).forEach((x) => {
+        if (readState && readState.kind === "edit" && readState.id === x.id) {
+          versesEl.appendChild(makeEditor(x, null, true));
+        } else {
+          versesEl.appendChild(
+            makeNoteCard(x, true,
+              () => { clearSelection(); readState = { kind: "edit", id: x.id }; renderVerses(); focusFirstEditor(); },
+              () => { NOTES = NOTES.filter((y) => y.id !== x.id); renderVerses(); }
+            )
+          );
+        }
+      });
+    });
+    // apply standing selection highlight (read) or active-field highlight
+    if (mode === "read" && readSel) highlight(setFrom(readSel));
+    else highlightFromActive();
+  }
+
+  function readBar() {
+    const bar = document.createElement("div");
+    bar.className = "readbar";
+    bar.innerHTML = `<span class="rb-ref">${fullLabel(readSel.from, readSel.to)}</span><button class="rb-create">Create note</button><button class="rb-x" aria-label="Clear">✕</button>`;
+    bar.querySelector(".rb-create").onclick = () => {
+      readState = { kind: "new", from: readSel.from, to: readSel.to };
+      readSel = null;
+      renderVerses();
+      focusFirstEditor();
+    };
+    bar.querySelector(".rb-x").onclick = () => clearSelection();
+    return bar;
+  }
+  function caretEnd(edb) {
+    edb.focus();
+    setCaret(edb, fieldText(edb).length);
+  }
+  function focusFirstEditor() {
+    const ed = versesEl.querySelector(".editor");
+    if (ed) { activeField = ed._edb; setTimeout(() => caretEnd(ed._edb), 0); }
+  }
+  function clearSelection() {
+    readSel = null;
+    highlight(new Set());
+    if (mode === "read" && !readState) renderVerses();
+  }
+
+  // ── workbench (study) ──
+  function renderWorkbench() {
+    wb.innerHTML = "";
+    if (editingId === null) wb.appendChild(makeEditor(null));
+    const ordered = [...NOTES].sort((a, b) => (a.anchorFrom ?? 99) - (b.anchorFrom ?? 99));
+    ordered.forEach((x) => {
+      if (editingId === x.id) {
+        const ed = makeEditor(x);
+        wb.appendChild(ed);
+        activeField = ed._edb;
+        setTimeout(() => caretEnd(ed._edb), 0);
+        return;
+      }
+      wb.appendChild(
+        makeNoteCard(x, false,
+          () => { editingId = x.id; renderWorkbench(); },
+          () => { NOTES = NOTES.filter((y) => y.id !== x.id); renderWorkbench(); }
+        )
+      );
+    });
+    if (!activeField) {
+      const first = wb.querySelector(".editor .ed-body");
+      if (first) activeField = first;
+    }
+    highlightFromActive();
+  }
+
+  // set the leading anchor token on the active field (REPLACE, never concatenate)
+  function setAnchor(from, to) {
+    if (!activeField) {
+      const f = wb.querySelector(".editor .ed-body");
+      if (f) activeField = f;
+    }
+    if (!activeField) return;
+    const text = pillLabel(from, to) + " " + stripAnchor(fieldText(activeField));
+    renderField(activeField, text, text.length);
+    activeField.dispatchEvent(new Event("input", { bubbles: true }));
+    activeField.focus();
+  }
+
+  // ── Windows-style marquee (box) selection — ported from src/utils/useVerseMarquee.ts ──
+  const scriptureCol = document.getElementById("scriptureCol");
+  const marqueeEl = document.getElementById("marquee");
+  const DRAG_THRESHOLD = 4;
+  let mqActive = false, mqMoved = false, mqStartX = 0, mqStartY = 0, justDragged = false;
+
+  const vAt = (x, y) => {
+    const el = document.elementFromPoint(x, y);
+    const row = el && el.closest && el.closest(".verse");
+    return row ? +row.dataset.v : null;
+  };
+  const onInteractive = (t) => !!(t.closest && t.closest("button, a, input, textarea, [contenteditable], .editor, .note-card, .readbar, .aside, .top"));
+
+  // hit-test every verse row against the box on BOTH axes → min..max verse
+  function hitTest(l, r, t, b) {
+    let min = null, max = null;
+    versesEl.querySelectorAll(".verse").forEach((row) => {
+      const rr = row.getBoundingClientRect();
+      if (rr.bottom >= t && rr.top <= b && rr.right >= l && rr.left <= r) {
+        const v = +row.dataset.v;
+        if (min === null || v < min) min = v;
+        if (max === null || v > max) max = v;
+      }
+    });
+    return min === null ? null : { from: min, to: max };
+  }
+
+  function applyLive(range) {
+    if (mode === "read") {
+      readState = null;
+      readSel = range;
+      highlight(range ? setFrom(range) : new Set());
+    } else {
+      // study: preview the highlight; the anchor is set on release
+      highlight(range ? setFrom(range) : new Set());
+      liveStudyRange = range;
+    }
+  }
+  let liveStudyRange = null;
+
+  // document-level so a drag can begin from the wide whitespace on either side too
+  document.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "touch" || e.button !== 0 || e.altKey) return;
+    if (onInteractive(e.target)) return;
+    justDragged = false;
+    mqActive = true;
+    mqMoved = false;
+    mqStartX = e.clientX;
+    mqStartY = e.clientY;
+    liveStudyRange = null;
+    document.body.style.userSelect = "none";
+    e.preventDefault();
+  });
+
+  window.addEventListener("pointermove", (e) => {
+    if (!mqActive) return;
+    const dx = e.clientX - mqStartX, dy = e.clientY - mqStartY;
+    if (!mqMoved && Math.hypot(dx, dy) > DRAG_THRESHOLD) mqMoved = true;
+    if (!mqMoved) return;
+    const l = Math.min(mqStartX, e.clientX), r = Math.max(mqStartX, e.clientX);
+    const t = Math.min(mqStartY, e.clientY), b = Math.max(mqStartY, e.clientY);
+    marqueeEl.classList.add("on");
+    marqueeEl.style.left = l + "px";
+    marqueeEl.style.top = t + "px";
+    marqueeEl.style.width = r - l + "px";
+    marqueeEl.style.height = b - t + "px";
+    applyLive(hitTest(l, r, t, b));
+  });
+
+  window.addEventListener("pointerup", (e) => {
+    if (!mqActive) return;
+    mqActive = false;
+    document.body.style.userSelect = "";
+    marqueeEl.classList.remove("on");
+    // an empty draft flagged on mousedown: apply the new selection's highlight now,
+    // fade the box out in place, then collapse and render the new state (readbar)
+    if (pendingDiscardEl && mode === "read") {
+      const el = pendingDiscardEl;
+      pendingDiscardEl = null;
+      let range;
+      if (mqMoved) range = readSel;
+      else { const v = vAt(e.clientX, e.clientY); range = v == null ? null : { from: v, to: v }; }
+      readSel = range;
+      highlight(range ? setFrom(range) : new Set());
+      collapseOutEditor(el, () => { renderVerses(); if (readSel) highlight(setFrom(readSel)); });
+      return;
+    }
+    if (mqMoved) {
+      justDragged = true;
+      if (mode === "study") {
+        if (liveStudyRange) { setAnchor(liveStudyRange.from, liveStudyRange.to); highlightFromActive(); }
+      } else if (readSel) {
+        renderVerses(); // draw the Create-note bar under the committed selection
+        highlight(setFrom(readSel));
+      }
+      return;
+    }
+    // a plain click (no drag): select the single verse, clear if already selected, or clear on empty
+    const v = vAt(e.clientX, e.clientY);
+    if (mode === "read") {
+      if (v == null) return clearSelection();
+      if (readSel && v >= readSel.from && v <= readSel.to) return clearSelection(); // tap a highlighted verse → clear
+      readState = null;
+      readSel = { from: v, to: v };
+      renderVerses();
+      highlight(setFrom(readSel));
+    } else if (v != null) {
+      setAnchor(v, v);
+      highlightFromActive();
+    }
+  });
+
+  // read-mode draft guard: clicking away from an open inline composer.
+  // Empty draft → discard and let the click through. Dirty draft → keep it on an
+  // empty-space click, but prompt to discard if you try another action.
+  document.addEventListener("pointerdown", (e) => {
+    if (mode !== "read" || !readState) return;
+    if (e.target.closest(".dialog, .scrim")) return; // don't re-trigger on the confirm dialog itself
+    const openEd = versesEl.querySelector(".editor");
+    if (!openEd || openEd.contains(e.target)) return;
+    if (readState.kind === "edit") { closeEditors(); e.stopPropagation(); return; }
+    // new draft — an EMPTY one is discarded, but NOT here on mousedown. Flag it and
+    // let the click proceed; on release we float it out and fade it alongside the
+    // new selection (so both happen together on mouseup, with animation).
+    if (!openEd._dirty()) { readState = null; activeField = null; pendingDiscardEl = openEd; return; }
+    const actionable = e.target.closest(".verse, button, .note-card, .readbar, .top");
+    if (actionable) {
+      e.preventDefault();
+      e.stopPropagation();
+      showConfirmDialog("Discard this note?", "Your note has unsaved changes that will be lost if you leave it.", "Discard", () => closeEditors());
+    }
+    // otherwise (empty space) keep the dirty draft
+  }, true);
+
+  function setMode(m) {
+    mode = m;
+    stage.classList.toggle("study", m === "study");
+    document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
+    editingId = null;
+    readState = null;
+    readSel = null;
+    activeField = null;
+    renderVerses();
+    if (m === "study") renderWorkbench();
+    else highlight(new Set());
+  }
+
+  document.querySelectorAll(".seg button").forEach((b) => (b.onclick = () => setMode(b.dataset.mode)));
+  document.getElementById("themeBtn").onclick = () => {
+    const c = document.documentElement.getAttribute("data-theme");
+    const dark = c ? c === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
+  };
+
+  renderVerses();
+</script>
