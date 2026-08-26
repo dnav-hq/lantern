@@ -4,6 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 // (desktop only — touch keeps the existing tap-anchor/tap-extend gesture, see the
 // `pointerType` guard below).
 //
+// It serves BOTH reading modes: in Read a drag makes a verse SELECTION, and in
+// Study the very same drag re-aims the anchor of the note being written in the
+// workbench (see BookDetailPage). The hook is unchanged either way — only the
+// caller's `onRangeSelected` differs.
+//
 // On pointerdown inside the scripture container (but NOT on an interactive child
 // — button, link, note pill, input, the floating action bar, anything marked
 // [data-no-drag]) we begin tracking a rectangle from the start point to the
@@ -202,7 +207,7 @@ export function useVerseMarquee(
     // begin in the side whitespace still start a selection.
     const target = e.target as HTMLElement
     const onInteractiveTarget = !!target.closest(
-      'button, a, input, textarea, [contenteditable], [data-no-drag], .rail-note, .reading-note-card, .inline-verse-notes'
+      'button, a, input, textarea, [contenteditable], [data-no-drag], .rail-note, .reading-note-card, .inline-verse-notes, .study-aside, .dialog-backdrop'
     )
     // Decide the mode once, from this event's own state. When it says no (touch,
     // non-primary button, Alt held, or an interactive target) we bail out BEFORE
