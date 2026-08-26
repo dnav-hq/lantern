@@ -12,6 +12,7 @@ import CrossRefPill from './CrossRefPill'
 import ErrorBoundary from './ErrorBoundary'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
+import MobileNoteComposer from './MobileNoteComposer'
 import ReadingControls from './ReadingControls'
 import type { DisplayPrefs } from './ReadingPrefs'
 import TranslationFooter from './TranslationFooter'
@@ -27,6 +28,7 @@ import {
   type ChapterRef
 } from '../utils/useChapterNavigation'
 import { markInstallEngagement } from '../utils/installNudge'
+import { formatRelativeTime } from '../utils/relativeTime'
 
 // ─── tiny helpers ────────────────────────────────────────────────────────────
 
@@ -40,6 +42,52 @@ const CATEGORY_LABELS: Record<NoteCategory, string> = {
 interface NoteGroup {
   main: NoteWithPassageInfo
   subnotes: NoteWithPassageInfo[]
+}
+
+// The breakpoint main.css uses for the touch layout. The mobile capture flow
+// (select-first + inline composer) is scoped to it; desktop reading keeps the
+// marquee, the rail and the quick-edit card exactly as they were.
+const MOBILE_QUERY = '(max-width: 768px)'
+
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window.matchMedia === 'function' && window.matchMedia(MOBILE_QUERY).matches
+  )
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia(MOBILE_QUERY)
+    const onChange = (): void => setIsMobile(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return isMobile
+}
+
+// A note's stored content carries its own anchor ("v9-10") and category tag
+// ("@personal") inline — that is the existing model every other surface parses
+// (see noteParser), and keeping it means a note written on a phone reads and
+// edits identically on desktop. The mobile composer, though, edits PROSE and
+// holds range + category as real controls, so the two are converted here.
+const LEADING_META =
+  /^(v\d+(?:-\d+)?|@(?:obs(?:ervation)?|hist(?:orical)?|app(?:lication)?|per(?:sonal)?))\b[ \t]*/i
+
+function composerBodyOf(content: string): string {
+  let rest = content.trimStart()
+  for (;;) {
+    const m = LEADING_META.exec(rest)
+    if (!m) return rest
+    rest = rest.slice(m[0].length)
+  }
+}
+
+function composeNoteContent(
+  body: string,
+  start: number,
+  end: number,
+  category: NoteCategory | null
+): string {
+  const anchor = start === end ? `v${start}` : `v${start}-${end}`
+  return `${anchor}${category ? ` @${category}` : ''} ${body.trim()}`.trim()
 }
 
 // (chapter, verse) -> a single sortable number, so range overlap is a plain
@@ -226,6 +274,15 @@ function ChapterView({
   const [inlineVerse, setInlineVerse] = useState<number | null>(null)
   const [inlineText, setInlineText] = useState('')
   const [savingInline, setSavingInline] = useState(false)
+  const isMobile = useIsMobile()
+  // Mobile capture: what the composer is currently open on — a fresh note over
+  // the selected range, or a saved note being re-opened. null = not composing.
+  const [composing, setComposing] = useState<{
+    mode: 'create' | 'edit'
+    start: number
+    end: number
+    noteId?: string
+  } | null>(null)
   // Verse-range selection for the floating action bar: tap a verse to start,
   // tap another to extend; the range spans min..max of the two anchors.
   const [selAnchor, setSelAnchor] = useState<number | null>(null)
@@ -389,6 +446,9 @@ function ChapterView({
 
   const handleVerseClick = (v: number): void => {
     if (editingNoteId !== null) return
+    // Selection is locked while the composer is open — the note you are writing
+    // is about the verses you already chose.
+    if (composing !== null) return
     // Tap-only selection: a hold-then-release (or a press that turned into a
     // scroll) also produces a click, which was selecting the verse the moment
     // you paused before scrolling. Accept only a real tap — pressed under ~500ms
@@ -416,8 +476,14 @@ function ChapterView({
     if (selAnchor === null) {
       setSelAnchor(v)
       setSelFocus(v)
-    } else if (selFocus === v && selAnchor === v) {
-      // Tapping the sole selected verse again clears.
+      return
+    }
+    // Tapping an already-selected verse clears. On touch that means ANY verse
+    // in the range (the prototype's rule) — with no hover there is no other way
+    // to say "never mind" mid-range. With a mouse it stays the single-verse
+    // case, so clicking back inside a range still re-aims it.
+    const insideSelection = selRange !== null && v >= selRange[0] && v <= selRange[1]
+    if (isMobile ? insideSelection : selFocus === v && selAnchor === v) {
       clearSelection()
     } else {
       // Extend the range to the newly tapped verse.
@@ -446,10 +512,13 @@ function ChapterView({
   // control) clears every highlight/selection. A trailing click synthesised by a
   // just-completed marquee drag is swallowed so it can't wipe the fresh range.
   const handleBackgroundClick = (e: React.MouseEvent): void => {
+    // While the composer is open the selection is locked — a stray tap on the
+    // scripture beside it must not silently un-anchor the note being written.
+    if (composing !== null) return
     const target = e.target as HTMLElement
     if (
       target.closest(
-        '.reading-verse-row, .rail-note, .reading-note-card, .inline-verse-notes, .verse-action-bar, .inline-note-row, button, a, input, textarea, [contenteditable]'
+        '.reading-verse-row, .rail-note, .reading-note-card, .inline-verse-notes, .verse-action-bar, .inline-note-row, .mobile-selbar, .mobile-composer-row, button, a, input, textarea, [contenteditable]'
       )
     )
       return
@@ -506,69 +575,205 @@ function ChapterView({
     highlightVersesForNote(n)
   }
 
+  // ── mobile capture ────────────────────────────────────────────────────────
+
+  const verseRefLabel = (start: number, end: number): string =>
+    start === end ? `${bookName} ${chapter}:${start}` : `${bookName} ${chapter}:${start}-${end}`
+
+  const composingNote =
+    composing?.noteId != null ? (localNotes.find(n => n.id === composing.noteId) ?? null) : null
+
+  const openComposerOnSelection = (): void => {
+    if (selRange === null) return
+    setComposing({ mode: 'create', start: selRange[0], end: selRange[1] })
+  }
+
+  // Tapping a saved note on a phone re-opens it in the very same composer it
+  // was written in — there is no separate "edit" affordance to find.
+  const openComposerOnNote = (note: NoteWithPassageInfo): void => {
+    if (composing !== null) return
+    const start = note.anchor_start_verse ?? note.verse_start
+    const end = note.anchor_end_verse ?? start
+    setSelAnchor(start)
+    setSelFocus(end)
+    setHighlightedNoteIds(new Set())
+    setHighlightedVerses(new Set())
+    setComposing({ mode: 'edit', start, end, noteId: note.id })
+  }
+
+  const closeComposer = (): void => {
+    setComposing(null)
+    clearSelection()
+  }
+
+  const handleComposerSave = async (body: string, category: NoteCategory | null): Promise<void> => {
+    if (composing === null || savingInline) return
+    const content = composeNoteContent(body, composing.start, composing.end, category)
+    setSavingInline(true)
+    try {
+      if (composing.mode === 'edit' && composingNote) {
+        const updated = await api.updateNote(composingNote.id, {
+          content,
+          anchor_start_verse: composing.start,
+          anchor_end_verse: composing.end,
+          category
+        })
+        setLocalNotes(prev => prev.map(n => (n.id === updated.id ? { ...n, ...updated } : n)))
+        markJustSaved(updated.id)
+        onNotesChanged()
+      } else {
+        await createAnchoredNote(content, composing.start)
+      }
+      closeComposer()
+    } finally {
+      setSavingInline(false)
+    }
+  }
+
+  const handleComposerDelete = async (): Promise<void> => {
+    if (!composingNote) return
+    await handleDeleteNote(composingNote)
+    closeComposer()
+  }
+
+  // A saved note in the mobile reading flow: a coloured rail, the category (or
+  // plain "Note" when there is none — never the word "null"), the reference and
+  // when it was written. The whole row is the tap target that re-opens it.
+  const renderMobileNote = (note: NoteWithPassageInfo): React.ReactElement => {
+    const start = note.anchor_start_verse ?? note.verse_start
+    const end = note.anchor_end_verse ?? start
+    return (
+      <div
+        key={note.id}
+        className={`mobile-inote cat-${note.category || 'none'}${note.indent_level > 0 ? ' is-sub' : ''}${justSavedId === note.id ? ' just-saved' : ''}`}
+        data-note-id={note.id}
+        role="button"
+        tabIndex={0}
+        onClick={e => {
+          e.stopPropagation()
+          openComposerOnNote(note)
+        }}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            openComposerOnNote(note)
+          }
+        }}
+      >
+        <div className="mobile-inote-meta">
+          <span className="mobile-inote-label">
+            {note.category ? CATEGORY_LABELS[note.category] : 'Note'}
+          </span>
+          <span className="mobile-inote-ref">
+            {verseRefLabel(start, end)}
+            {note.updated_at ? ` · ${formatRelativeTime(note.updated_at)}` : ''}
+          </span>
+        </div>
+        <div className="mobile-inote-body">{composerBodyOf(note.content)}</div>
+      </div>
+    )
+  }
+
+  // A note group flattens for mobile: the main note and any legacy sub-notes
+  // are each their own tappable row (the new capture flow makes no sub-notes).
+  const renderMobileGroup = (group: NoteGroup): React.ReactElement[] =>
+    [group.main, ...group.subnotes]
+      // The note being edited is represented by the composer instead.
+      .filter(n => n.id !== composing?.noteId)
+      .map(renderMobileNote)
+
+  const renderComposer = (): React.ReactElement | null => {
+    if (composing === null) return null
+    if (composing.mode === 'edit' && !composingNote) return null
+    return (
+      <MobileNoteComposer
+        key={composing.noteId ?? `new-${composing.start}-${composing.end}`}
+        reference={verseRefLabel(composing.start, composing.end)}
+        mode={composing.mode}
+        initialText={composingNote ? composerBodyOf(composingNote.content) : ''}
+        initialCategory={composingNote?.category ?? null}
+        saving={savingInline}
+        onSave={(body, category) => void handleComposerSave(body, category)}
+        onCancel={closeComposer}
+        onDelete={composing.mode === 'edit' ? () => void handleComposerDelete() : undefined}
+      />
+    )
+  }
+
   // Chip linkage: scroll the anchored verse into view (mobile).
   const scrollToVerse = (verse: number): void => {
     verseRowRefs.current.get(verse)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  // Create one verse-anchored note from a raw content line. Shared by the
+  // desktop quick-note card and the mobile composer, so both resolve the
+  // passage/session the same precise way and neither can drift.
+  const createAnchoredNote = async (
+    content: string,
+    fallbackVerse: number
+  ): Promise<NoteWithPassageInfo> => {
+    const parsed = parseNoteLine(content)
+    // Anchor to whatever "vN"/"vN-M" tag is in the text, falling back to the
+    // verse that opened the compose box when the tag was edited away.
+    const anchorStart = parsed.anchorStart ?? fallbackVerse
+    const anchorEnd = parsed.anchorEnd ?? anchorStart
+    const passages = await api.getPassages()
+    // Same precise verse-overlap resolution "Start study on {ref}" uses
+    // (findOverlappingPassage) — reuse an existing passage rather than ever
+    // creating a duplicate for verses already covered.
+    const existing = findOverlappingPassage(passages, chapter, anchorStart, anchorEnd)
+    const passage =
+      existing ??
+      (await api.createPassage({
+        book_number: findBookByAlias(bookName)?.number ?? 1,
+        chapter_start: chapter,
+        verse_start: anchorStart,
+        chapter_end: chapter,
+        verse_end: anchorEnd,
+        reference_label:
+          anchorStart === anchorEnd
+            ? `${bookName} ${chapter}:${anchorStart}`
+            : `${bookName} ${chapter}:${anchorStart}-${anchorEnd}`
+      }))
+
+    const sessions = await api.getSessionsByPassage(passage.id)
+    const sessionId =
+      sessions.length > 0 ? sessions[0].id : (await api.createSession(passage.id)).id
+
+    const saved = await api.createNote({
+      session_id: sessionId,
+      content,
+      anchor_start_verse: parsed.anchorStart,
+      anchor_end_verse: parsed.anchorEnd,
+      anchor_book_override: null,
+      anchor_chapter_override: null,
+      category: parsed.category,
+      indent_level: 0
+    })
+
+    const enriched: NoteWithPassageInfo = {
+      ...saved,
+      chapter_start: passage.chapter_start,
+      chapter_end: passage.chapter_end,
+      verse_start: passage.verse_start,
+      verse_end: passage.verse_end,
+      reference_label: passage.reference_label
+    }
+    setLocalNotes(prev => [...prev, enriched])
+    // A saved note is the engagement signal the install nudge waits for.
+    markInstallEngagement()
+    markJustSaved(saved.id)
+    onNotesChanged()
+    return enriched
   }
 
   const handleInlineSave = async (): Promise<void> => {
     if (!inlineText.trim() || savingInline || inlineVerse === null) return
     setSavingInline(true)
     try {
-      const parsed = parseNoteLine(inlineText)
-      // Anchor to whatever "vN"/"vN-M" tag is in the text, falling back to the
-      // verse that opened the compose box when the tag was edited away.
-      const anchorStart = parsed.anchorStart ?? inlineVerse
-      const anchorEnd = parsed.anchorEnd ?? anchorStart
-      const passages = await api.getPassages()
-      // Same precise verse-overlap resolution "Start study on {ref}" uses
-      // (findOverlappingPassage) — reuse an existing passage rather than ever
-      // creating a duplicate for verses already covered.
-      const existing = findOverlappingPassage(passages, chapter, anchorStart, anchorEnd)
-      const passage =
-        existing ??
-        (await api.createPassage({
-          book_number: findBookByAlias(bookName)?.number ?? 1,
-          chapter_start: chapter,
-          verse_start: anchorStart,
-          chapter_end: chapter,
-          verse_end: anchorEnd,
-          reference_label:
-            anchorStart === anchorEnd
-              ? `${bookName} ${chapter}:${anchorStart}`
-              : `${bookName} ${chapter}:${anchorStart}-${anchorEnd}`
-        }))
-
-      const sessions = await api.getSessionsByPassage(passage.id)
-      const sessionId =
-        sessions.length > 0 ? sessions[0].id : (await api.createSession(passage.id)).id
-
-      const saved = await api.createNote({
-        session_id: sessionId,
-        content: inlineText,
-        anchor_start_verse: parsed.anchorStart,
-        anchor_end_verse: parsed.anchorEnd,
-        anchor_book_override: null,
-        anchor_chapter_override: null,
-        category: parsed.category,
-        indent_level: 0
-      })
-
-      const enriched: NoteWithPassageInfo = {
-        ...saved,
-        chapter_start: passage.chapter_start,
-        chapter_end: passage.chapter_end,
-        verse_start: passage.verse_start,
-        verse_end: passage.verse_end,
-        reference_label: passage.reference_label
-      }
-      setLocalNotes(prev => [...prev, enriched])
+      await createAnchoredNote(inlineText, inlineVerse)
       setInlineVerse(null)
       setInlineText('')
-      // A saved note is the engagement signal the install nudge waits for.
-      markInstallEngagement()
-      markJustSaved(saved.id)
-      onNotesChanged()
     } finally {
       setSavingInline(false)
     }
@@ -864,11 +1069,20 @@ function ChapterView({
     if (list) list.push(g)
     else mobileRangeByVerse.set(key, [g])
   }
+  // Which verse row the composer mounts under: the last verse of its range,
+  // falling back to the chapter's last rendered verse if the range spills past
+  // it (a note anchored into the next chapter).
+  const composerVerse =
+    isMobile && composing !== null
+      ? rowByVerse.has(composing.end)
+        ? composing.end
+        : lastVerse
+      : null
 
   return (
     <div
       ref={containerRef}
-      className={`chapter-marquee-surface${entranceSuppressed ? ' no-entrance' : ''}`}
+      className={`chapter-marquee-surface${entranceSuppressed ? ' no-entrance' : ''}${composing !== null ? ' is-composing' : ''}`}
       onPointerDown={containerPointerDown}
       onClick={handleBackgroundClick}
     >
@@ -1034,7 +1248,9 @@ function ChapterView({
                 {inlineHere && inlineHere.length > 0 && (
                   <div className="reading-notes-group inline-verse-notes">
                     <div className="note-collapse">
-                      {inlineHere.map(group => renderNoteGroup(group))}
+                      {isMobile
+                        ? inlineHere.flatMap(renderMobileGroup)
+                        : inlineHere.map(group => renderNoteGroup(group))}
                     </div>
                   </div>
                 )}
@@ -1044,9 +1260,17 @@ function ChapterView({
                 {mobileRangeHere && mobileRangeHere.length > 0 && (
                   <div className="reading-notes-group mobile-range-notes">
                     <div className="note-collapse">
-                      {mobileRangeHere.map(group => renderNoteGroup(group, { chip: true }))}
+                      {isMobile
+                        ? mobileRangeHere.flatMap(renderMobileGroup)
+                        : mobileRangeHere.map(group => renderNoteGroup(group, { chip: true }))}
                     </div>
                   </div>
+                )}
+
+                {/* The mobile composer grows in the flow right under the last
+                  verse of the range it is about — never a modal over the text. */}
+                {composerVerse === v.verse && (
+                  <div className="mobile-composer-row">{renderComposer()}</div>
                 )}
 
                 {showInline && (
@@ -1106,7 +1330,30 @@ function ChapterView({
         </div>
       </div>
 
-      {selRange !== null && inlineVerse === null && (
+      {/* Touch: the prototype's selection bar — the reference, a clear button
+        and one primary action. Everything else about a selection (start a
+        study, the Alt-drag copy hint) is a desktop affordance. */}
+      {isMobile && selRange !== null && composing === null && (
+        <div className="mobile-selbar" role="toolbar" aria-label="Selection actions">
+          <span className="mobile-selbar-ref">{selReference}</span>
+          <span className="mobile-selbar-tip" data-quiet={selRange[0] !== selRange[1]}>
+            tap more to extend
+          </span>
+          <button
+            type="button"
+            className="mobile-selbar-clear"
+            onClick={clearSelection}
+            aria-label="Clear selection"
+          >
+            ✕
+          </button>
+          <button type="button" className="mobile-selbar-note" onClick={openComposerOnSelection}>
+            Note
+          </button>
+        </div>
+      )}
+
+      {!isMobile && selRange !== null && inlineVerse === null && (
         <div className="verse-action-bar" role="toolbar" aria-label="Selection actions">
           <span className="verse-action-ref">{selReference}</span>
           <span className="verse-action-hint">Hold Alt and drag to select the text to copy</span>

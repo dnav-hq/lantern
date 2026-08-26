@@ -6432,3 +6432,388 @@ body.dark .mobile-menu-btn:active {
     bottom: calc(72px + env(safe-area-inset-bottom));
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Mobile note capture — select-first, then a calm inline composer.
+
+   The whole flow is scoped to the touch breakpoint. Desktop reading keeps the
+   marquee, the rail and the quick-edit card untouched; nothing below applies
+   there. Ported from design/mobile-note-capture.html.
+   ───────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* ── The selection bar ──────────────────────────────────────────────────────
+     One reference, one way out, one action. It rides above the tab bar and
+     slides up rather than appearing, so a selection feels answered, not
+     interrupted. */
+  .mobile-selbar {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: calc(56px + env(safe-area-inset-bottom) + 12px);
+    z-index: 290;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 10px 10px 15px;
+    background: var(--surface);
+    border: 0.5px solid var(--border-strong);
+    border-radius: 16px;
+    box-shadow: var(--elev-3);
+    animation: mobile-selbar-in var(--dur-3) var(--ease-out);
+  }
+  @keyframes mobile-selbar-in {
+    from {
+      transform: translateY(140%);
+    }
+  }
+  .app-shell.reading-surface.chrome-hidden .mobile-selbar {
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+  .mobile-selbar-ref {
+    font-family: var(--scripture-font);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent-ink);
+    white-space: nowrap;
+  }
+  /* The extend hint fades once the reader has clearly worked it out (they
+     already extended), rather than disappearing and shifting the bar. */
+  .mobile-selbar-tip {
+    flex: 1;
+    min-width: 0;
+    font-size: 11.5px;
+    color: var(--text-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: opacity var(--dur-2) var(--ease-out);
+  }
+  .mobile-selbar-tip[data-quiet='true'] {
+    opacity: 0.5;
+  }
+  .mobile-selbar-clear {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .mobile-selbar-note {
+    flex: none;
+    border: none;
+    border-radius: 11px;
+    padding: 10px 20px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: var(--elev-2);
+    cursor: pointer;
+  }
+
+  /* ── The composer ───────────────────────────────────────────────────────────
+     Grows in the reading flow under the verses it is about. The rail takes the
+     chosen category's colour, so the note is already wearing its label while
+     you write it. Opacity/transform are set inline by useKeyboardCompose — the
+     reveal owns the entrance so there is exactly one, deterministic motion. */
+  .mobile-composer-row {
+    padding-left: 24px;
+    margin: 4px 0 10px;
+  }
+  .mobile-composer {
+    position: relative;
+    border-left: 2.5px solid var(--rail, var(--accent));
+    border-radius: 0 12px 12px 0;
+    background: var(--accent-weaker);
+    padding: 11px 12px 12px 13px;
+  }
+  .mobile-composer[data-cat='observation'] {
+    --rail: var(--cat-observation);
+  }
+  .mobile-composer[data-cat='historical'] {
+    --rail: var(--cat-historical);
+  }
+  .mobile-composer[data-cat='application'] {
+    --rail: var(--cat-application);
+  }
+  .mobile-composer[data-cat='personal'] {
+    --rail: var(--cat-personal);
+  }
+  .mobile-composer-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .mobile-composer-ref {
+    font-family: var(--scripture-font);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--rail, var(--accent-ink));
+  }
+  .mobile-composer-danger,
+  .mobile-composer-quiet {
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 4px 6px;
+    cursor: pointer;
+  }
+  .mobile-composer-danger {
+    margin-left: auto;
+    color: var(--cat-personal-ink);
+  }
+  .mobile-composer-quiet {
+    color: var(--text-muted);
+  }
+  .mobile-composer-quiet.is-alone {
+    margin-left: auto;
+  }
+  .mobile-composer-field {
+    display: block;
+    width: 100%;
+    min-height: 54px;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    resize: none;
+    /* Auto-grown to its content by the composer — never an inner scrollbar. */
+    overflow: hidden;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--scripture-font);
+    /* >=16px: anything smaller makes iOS zoom the page on focus. */
+    font-size: 17px;
+    line-height: 1.55;
+  }
+  .mobile-composer-field::placeholder {
+    color: var(--text-faint);
+    font-style: italic;
+  }
+  .mobile-composer-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 11px;
+  }
+  .mobile-composer-save {
+    margin-left: auto;
+    flex: none;
+    border: none;
+    border-radius: 10px;
+    padding: 9px 18px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    box-shadow: var(--elev-2);
+    cursor: pointer;
+  }
+  .mobile-composer-save:disabled {
+    opacity: 0.6;
+  }
+
+  /* Category: one optional choice, shown as the colour it will brand the note
+     with. Opens upward — the keyboard owns everything below. */
+  .mobile-composer-tag {
+    position: relative;
+  }
+  .mobile-composer-tag-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 0.5px solid var(--border-strong);
+    border-radius: 999px;
+    padding: 7px 11px 7px 12px;
+    background: var(--surface);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .mobile-composer-tag-trigger[data-cat]:not([data-cat='none']) {
+    color: var(--text);
+  }
+  .mobile-composer-dot {
+    flex: none;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--dot, var(--border-strong));
+  }
+  [data-cat='observation'] > .mobile-composer-dot {
+    --dot: var(--cat-observation);
+  }
+  [data-cat='historical'] > .mobile-composer-dot {
+    --dot: var(--cat-historical);
+  }
+  [data-cat='application'] > .mobile-composer-dot {
+    --dot: var(--cat-application);
+  }
+  [data-cat='personal'] > .mobile-composer-dot {
+    --dot: var(--cat-personal);
+  }
+  .mobile-composer-chev {
+    font-size: 10px;
+    opacity: 0.7;
+  }
+  /* Above the sticky reading chrome (z-index 30) and the tab bar: the menu
+     opens upward, and the composer often sits high enough that the chapter
+     strip would otherwise clip "No tag" clean off the top of it. */
+  .mobile-composer-tag-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    z-index: 320;
+    min-width: 172px;
+    padding: 5px;
+    background: var(--surface);
+    border: 0.5px solid var(--border-strong);
+    border-radius: 13px;
+    box-shadow: var(--elev-3);
+    animation: mobile-tag-menu-in var(--dur-2) var(--ease-out);
+  }
+  @keyframes mobile-tag-menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.98);
+    }
+  }
+  .mobile-composer-tag-opt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 9px 10px;
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+  .mobile-composer-tag-opt[aria-selected='true'] {
+    background: var(--surface-2);
+  }
+  .mobile-composer-check {
+    margin-left: auto;
+    color: var(--accent-ink);
+    font-weight: 700;
+    opacity: 0;
+  }
+  .mobile-composer-tag-opt[aria-selected='true'] .mobile-composer-check {
+    opacity: 1;
+  }
+
+  /* Discard / delete confirmation. Laid OVER the composer rather than replacing
+     it, so "Keep writing" returns you to the draft exactly as you left it. */
+  .mobile-composer-confirm {
+    position: absolute;
+    /* Top-anchored and content-height rather than a full-bleed panel: it covers
+       the head and the first line of the draft, so the words you are being
+       asked about stay visible underneath instead of a hollow box. */
+    inset: 0 0 auto 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 12px 12px 13px;
+    border-radius: 0 12px 12px 0;
+    background: var(--surface);
+    box-shadow: var(--elev-2);
+  }
+  .mobile-composer-confirm-message {
+    font-size: 13.5px;
+    color: var(--text);
+  }
+  .mobile-composer-confirm-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  }
+  .mobile-composer-danger-btn {
+    border: none;
+    border-radius: 9px;
+    padding: 8px 14px;
+    background: var(--cat-personal);
+    color: var(--on-accent);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Room to scroll the composer up to its resting place even at the very end of
+     a chapter. --kb is the live keyboard height (useKeyboardCompose). */
+  .chapter-marquee-surface.is-composing {
+    padding-bottom: calc(72vh + var(--kb, 0px));
+  }
+
+  /* ── Saved notes in the reading flow ────────────────────────────────────────
+     An annotation, not a card: a category-coloured rule, a quiet meta line and
+     the note itself. The whole row re-opens it in the composer. */
+  .mobile-inote {
+    margin: 9px 0 13px 3px;
+    padding: 2px 0 2px 13px;
+    border-left: 2.5px solid var(--rail, var(--border-strong));
+    cursor: pointer;
+  }
+  .mobile-inote.is-sub {
+    margin-left: 15px;
+  }
+  .mobile-inote.cat-observation {
+    --rail: var(--cat-observation);
+  }
+  .mobile-inote.cat-historical {
+    --rail: var(--cat-historical);
+  }
+  .mobile-inote.cat-application {
+    --rail: var(--cat-application);
+  }
+  .mobile-inote.cat-personal {
+    --rail: var(--cat-personal);
+  }
+  .mobile-inote-meta {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--rail, var(--accent-ink));
+  }
+  .mobile-inote.cat-none .mobile-inote-meta {
+    color: var(--text-faint);
+  }
+  .mobile-inote-ref {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    color: var(--text-faint);
+  }
+  .mobile-inote-body {
+    margin-top: 4px;
+    font-family: var(--scripture-font);
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--text);
+    white-space: pre-wrap;
+  }
+}
