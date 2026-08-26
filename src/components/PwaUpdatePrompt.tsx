@@ -11,17 +11,12 @@ export default function PwaUpdatePrompt(): React.ReactElement | null {
   if (!show) return null
   return (
     <div className="pwa-update" role="status" aria-live="polite">
-      <span className="pwa-update-text">A new version is ready.</span>
-      <button type="button" className="pwa-update-refresh" onClick={applyPwaUpdate}>
-        Refresh
+      <span className="pwa-update-text">A new version is available.</span>
+      <button type="button" className="pwa-update-later" onClick={() => setShow(false)}>
+        Later
       </button>
-      <button
-        type="button"
-        className="pwa-update-dismiss"
-        aria-label="Dismiss"
-        onClick={() => setShow(false)}
-      >
-        ✕
+      <button type="button" className="pwa-update-refresh" onClick={applyPwaUpdate}>
+        Reload
       </button>
     </div>
   )

@@ -5,6 +5,10 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  /* Kill the OS tap-flash: it's always a hard rectangle, so on our rounded
+     buttons/cards it spills past the corners. Feedback comes from each
+     element's own :active / hover state instead (which respects border-radius). */
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -6183,17 +6187,20 @@ body.dark .profile-page-btn-signout {
   font-weight: 600;
   cursor: pointer;
 }
-.pwa-update-dismiss {
+.pwa-update-later {
   flex: none;
-  width: 30px;
-  height: 30px;
   border: none;
   border-radius: 999px;
-  background: var(--surface-2);
+  padding: 7px 12px;
+  background: transparent;
   color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+}
+.pwa-update-later:hover {
+  color: var(--text);
 }
 /* On desktop the bottom nav is a sidebar, so no bottom-bar offset is needed. */
 @media (min-width: 769px) {
