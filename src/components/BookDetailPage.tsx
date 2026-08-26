@@ -1378,7 +1378,6 @@ function ChapterView({
       <MobileSelectionBar
         shown={isMobile && selRange !== null && composing === null}
         reference={selReference}
-        multi={selRange !== null && selRange[0] !== selRange[1]}
         onClear={clearSelection}
         onNote={openComposerOnSelection}
       />

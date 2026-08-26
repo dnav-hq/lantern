@@ -27,6 +27,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Press feedback. We kill the rectangular OS tap-flash above, so every button
+   needs its own press state or it feels dead on touch. A subtle dim + inset
+   scale reads as "pressed" and, unlike the flash, respects each button's own
+   border-radius. Opacity carries the feedback on buttons that repurpose
+   transform for layout; the scale is the polish on the rest. */
+button:active:not(:disabled):not([aria-disabled='true']) {
+  opacity: 0.68;
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  button:active:not(:disabled):not([aria-disabled='true']) {
+    transform: none;
+  }
+}
+
 /* ─── Layout ────────────────────────────────────────────────────────────────── */
 .app-shell {
   display: flex;
@@ -1867,6 +1882,12 @@ body.dark .search-backdrop {
 .reading-verse-row.selected {
   background: var(--accent-soft);
   box-shadow: inset 2px 0 0 var(--accent);
+}
+/* Hovering a selected verse must keep the accent wash, not the grey mouse-hover
+   fill — the plain `.pointer-mouse .reading-verse-row:hover` rule out-specifies
+   `.selected` and would otherwise paint a dark box over the selection. */
+.pointer-mouse .reading-verse-row.selected:hover {
+  background: var(--accent-soft);
 }
 
 /* Verse text is selectable ONLY with a true mouse — that's the Alt-drag copy
@@ -6213,6 +6234,21 @@ body.dark .profile-page-btn-signout {
     animation: none;
   }
 }
+/* The pill and the selection toolbars are both bottom-fixed and would stack on
+   top of each other. Lift the pill clear above whichever selection bar is up,
+   and stand down entirely while a composer is open — the reader is mid-note and
+   an "update available" pill over the keyboard is pure noise. Both bars portal
+   to <body>, so match them there. */
+body:has(.mobile-selbar) .pwa-update {
+  bottom: calc(56px + env(safe-area-inset-bottom) + 12px + 64px);
+}
+body:has(.verse-action-bar) .pwa-update {
+  bottom: 86px;
+}
+body:has(.mobile-composer) .pwa-update {
+  opacity: 0;
+  pointer-events: none;
+}
 
 /* ── Offline indicator (Phase 4) ── */
 .offline-pill {
@@ -6768,20 +6804,11 @@ body.dark .mobile-menu-btn:active {
     color: var(--accent-ink);
     white-space: nowrap;
   }
-  /* The extend hint fades once the reader has clearly worked it out (they
-     already extended), rather than disappearing and shifting the bar. */
-  .mobile-selbar-tip {
+  /* Pushes the reference to the left and the clear/note actions to the right.
+     (Replaced the old "tap more to extend" hint — too cramped on a phone.) */
+  .mobile-selbar-spacer {
     flex: 1;
-    min-width: 0;
-    font-size: 11.5px;
-    color: var(--text-faint);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    transition: opacity var(--dur-2) var(--ease-out);
-  }
-  .mobile-selbar-tip[data-quiet='true'] {
-    opacity: 0.5;
+    min-width: 8px;
   }
   .mobile-selbar-clear {
     flex: none;

@@ -94,6 +94,10 @@ body.dark .reading-verse-row.selected {
   background: var(--accent-soft);
   box-shadow: inset 2px 0 0 var(--accent-hover);
 }
+/* Keep the accent on hover-while-selected in dark too (see main.css). */
+.pointer-mouse body.dark .reading-verse-row.selected:hover {
+  background: var(--accent-soft);
+}
 body.dark .reading-note-card {
   color: var(--text-muted);
   background: rgba(255, 255, 255, 0.03);

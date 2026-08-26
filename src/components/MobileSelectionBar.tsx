@@ -16,8 +16,6 @@ const EXIT_MS = 260
 interface MobileSelectionBarProps {
   shown: boolean
   reference: string
-  // Whether the selection spans more than one verse (dims the "tap more" hint).
-  multi: boolean
   onClear: () => void
   onNote: () => void
 }
@@ -25,7 +23,6 @@ interface MobileSelectionBarProps {
 export default function MobileSelectionBar({
   shown,
   reference,
-  multi,
   onClear,
   onNote
 }: MobileSelectionBarProps): React.ReactElement | null {
@@ -34,8 +31,8 @@ export default function MobileSelectionBar({
   // The selection (and so the reference) clears the instant `shown` goes false,
   // but the bar is still sliding out — freeze the last content so it reads right
   // for the length of that exit.
-  const last = useRef({ reference, multi })
-  if (shown) last.current = { reference, multi }
+  const last = useRef({ reference })
+  if (shown) last.current = { reference }
 
   useEffect(() => {
     if (shown) {
@@ -60,7 +57,7 @@ export default function MobileSelectionBar({
   }, [shown, mounted])
 
   if (!mounted) return null
-  const content = shown ? { reference, multi } : last.current
+  const content = shown ? { reference } : last.current
 
   return createPortal(
     <div
@@ -69,9 +66,7 @@ export default function MobileSelectionBar({
       aria-label="Selection actions"
     >
       <span className="mobile-selbar-ref">{content.reference}</span>
-      <span className="mobile-selbar-tip" data-quiet={content.multi}>
-        tap more to extend
-      </span>
+      <span className="mobile-selbar-spacer" />
       <button
         type="button"
         className="mobile-selbar-clear"
