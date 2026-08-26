@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { BiblePassage, NoteWithPassageInfo, NoteCategory, Passage } from '../types'
 import { BibleBook, findBookByAlias, readingShortBookName } from '../utils/bibleBooks'
 import { parseNoteLine } from '../utils/noteParser'
@@ -1382,39 +1383,50 @@ function ChapterView({
         onNote={openComposerOnSelection}
       />
 
-      {!isMobile && !studyOpen && selRange !== null && inlineVerse === null && (
-        <div className="verse-action-bar" role="toolbar" aria-label="Selection actions">
-          <span className="verse-action-ref">{selReference}</span>
-          <span className="verse-action-hint">Hold Alt and drag to select the text to copy</span>
-          <div className="verse-action-btns">
-            <button className="verse-action-btn primary" onClick={handleQuickNoteFromSelection}>
-              Quick note
-            </button>
-            <button className="verse-action-btn" onClick={handleStudyOnSelection}>
-              Study these verses
-            </button>
-          </div>
-          <button
-            className="verse-action-clear"
-            onClick={clearSelection}
-            aria-label="Clear selection"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+      {/* Portaled to <body>, like MobileSelectionBar: this bar is position:fixed,
+        but its natural home (.chapter-deck, a direct child of .book-detail-content)
+        permanently carries `transform: translateX(0)` for the Study-mode column
+        shift. A transformed ancestor becomes the containing block for a fixed
+        child, which pinned this bar to the BOTTOM of the tall chapter deck —
+        far below the viewport — so it was never actually visible. */}
+      {!isMobile &&
+        !studyOpen &&
+        selRange !== null &&
+        inlineVerse === null &&
+        createPortal(
+          <div className="verse-action-bar" role="toolbar" aria-label="Selection actions">
+            <span className="verse-action-ref">{selReference}</span>
+            <span className="verse-action-hint">Hold Alt and drag to select the text to copy</span>
+            <div className="verse-action-btns">
+              <button className="verse-action-btn primary" onClick={handleQuickNoteFromSelection}>
+                Quick note
+              </button>
+              <button className="verse-action-btn" onClick={handleStudyOnSelection}>
+                Study these verses
+              </button>
+            </div>
+            <button
+              className="verse-action-clear"
+              onClick={clearSelection}
+              aria-label="Clear selection"
             >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-      )}
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>,
+          document.body
+        )}
 
       {/* The desktop workbench. Portalled to the body (see StudyWorkbench) —
         the reading column is transform-shifted while Study is open, and a
