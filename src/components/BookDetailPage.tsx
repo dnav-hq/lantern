@@ -96,13 +96,15 @@ function composeNoteContent(
 // every book (Psalm 119, the longest chapter, has 176 verses).
 const toKey = (chapter: number, verse: number): number => chapter * 1000 + verse
 
-// "Start study on {ref}" / "Study chapter" should land in an existing study
-// if one already covers the selected verses, rather than always starting
-// blank — overlap/containment, not just an exact-range match, per the
+// A fresh note should land in an existing passage if one already covers the
+// verses it is anchored to, rather than creating a duplicate — overlap/containment, not just an exact-range match, per the
 // decided behavior: a note anchored anywhere inside the selection should
 // show up, regardless of exactly which range you dragged this time. Picks
 // the first match; multiple distinct overlapping efforts merging into one
 // editor is the deferred "multiple study instances" feature (see BACKLOG).
+//
+// It compares (chapter, verse) keys ONLY — the caller must hand it passages
+// from a single book, or it will match the same numbers in a different one.
 function findOverlappingPassage(
   passages: Passage[],
   chapter: number,
@@ -730,15 +732,19 @@ function ChapterView({
     // verse that opened the compose box when the tag was edited away.
     const anchorStart = parsed.anchorStart ?? fallbackVerse
     const anchorEnd = parsed.anchorEnd ?? anchorStart
-    const passages = await api.getPassages()
-    // Same precise verse-overlap resolution "Start study on {ref}" uses
-    // (findOverlappingPassage) — reuse an existing passage rather than ever
-    // creating a duplicate for verses already covered.
+    const bookNumber = findBookByAlias(bookName)?.number ?? 1
+    // Scoped to THIS BOOK. findOverlappingPassage compares chapter/verse keys
+    // only, so handed the whole-Bible getPassages() list it happily matches
+    // another book's passage at the same numbers — a note on John 1:4 landing
+    // on the Genesis 1:1-5 passage, and so vanishing from John's notes.
+    const passages = await api.getPassagesByBook(bookNumber)
+    // Reuse an existing passage rather than ever creating a duplicate for
+    // verses already covered.
     const existing = findOverlappingPassage(passages, chapter, anchorStart, anchorEnd)
     const passage =
       existing ??
       (await api.createPassage({
-        book_number: findBookByAlias(bookName)?.number ?? 1,
+        book_number: bookNumber,
         chapter_start: chapter,
         verse_start: anchorStart,
         chapter_end: chapter,
@@ -1183,8 +1189,13 @@ function ChapterView({
           {verses.map((v, i) => {
             const isSelected = selRange !== null && v.verse >= selRange[0] && v.verse <= selRange[1]
             const isHighlighted = highlightedVerses.has(v.verse)
+            // Read dims everything outside the highlight to make one passage
+            // stand out for a moment. Study's highlight is a standing anchor,
+            // not a moment — dimming the chapter for as long as a note is open
+            // would leave you studying a greyed-out Bible.
             const isDimmed =
-              (hasHighlightedVerse && !isHighlighted) || (selRange !== null && !isSelected)
+              !studyOpen &&
+              ((hasHighlightedVerse && !isHighlighted) || (selRange !== null && !isSelected))
             const showInline = inlineVerse === v.verse
             const bracketCat = bracketByVerse.get(v.verse)
 

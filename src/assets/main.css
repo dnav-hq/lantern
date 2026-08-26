@@ -7071,14 +7071,23 @@ body.dark .mobile-menu-btn:active {
 
 /* The reading column's two resting positions. `overflow-x: clip` (not hidden —
    hidden would make this a scroll container and break the sticky chrome) keeps
-   the shifted column from widening the page. */
+   the shifted column from widening the page.
+
+   The chapter chrome above the text travels with it — but only its INNER
+   content box, so the header's full-width background and hairline stay put and
+   the panel never opens a gap beside them. Without this the Read/Study toggle
+   itself would slide under the panel it just opened. */
 .app-shell.study-open .book-detail-content {
   overflow-x: clip;
 }
-.app-shell.study-open .book-detail-content > * {
+.app-shell.study-open .book-detail-content > *,
+.app-shell.study-open .book-detail-header-inner,
+.app-shell.study-open .chapter-selector-wrap-inner {
   transform: translateX(calc(var(--study-aside-w) / -2));
 }
-.app-shell .book-detail-content > * {
+.app-shell .book-detail-content > *,
+.app-shell .book-detail-header-inner,
+.app-shell .chapter-selector-wrap-inner {
   transform: translateX(0);
 }
 
@@ -7393,7 +7402,9 @@ body.dark .mobile-menu-btn:active {
    motion.css uses, so a reduced-motion reader lands on the end state above
    instantly with no transition at all. */
 @media (prefers-reduced-motion: no-preference) {
-  .book-detail-content > * {
+  .book-detail-content > *,
+  .book-detail-header-inner,
+  .chapter-selector-wrap-inner {
     transition: transform var(--dur-4) var(--ease-calm);
   }
   .study-aside {
