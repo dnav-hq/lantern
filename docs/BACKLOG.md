@@ -32,6 +32,17 @@ prioritized.
   redundant row today. Revisit once the interim shape has proven itself in
   real use, or sooner if the extra join starts showing up as a real cost.
 
+- **Re-wire note-draft persistence after the note-centric refactor.**
+  `src/offline/draft.ts` (IndexedDB, "Persist in-progress note drafts" below)
+  was written against the now-deleted `StudyMode` and is currently dead code —
+  neither `StudyWorkbench` (desktop) nor `MobileNoteComposer` (mobile) calls
+  `writeDraft`/`readDraft`/`clearDraft`. Found while updating docs for the
+  note-centric model (2026-08-26); not fixed here because it's a `src/**`
+  change, out of this doc-only task's scope. Until reconnected, a failed save
+  or an accidental reload/tab-close can silently lose an in-progress note on
+  both surfaces — the toast/pill in `docs/ARCHITECTURE.md`'s offline section
+  still fires, but the draft it used to protect no longer survives underneath.
+
 - **Guest preview mode.**
   `docs/proposals/guest-preview-mode.md` (2026-08-03) resolves the guest-write
   question Dennis was unsure about: recommends (B), an ephemeral client-only

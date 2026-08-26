@@ -491,11 +491,20 @@ so closing the tab or reloading destroyed it. The pill and toast correctly said
 
 `src/offline/draft.ts` closes that window. It is a small IndexedDB store
 (`berean-note-drafts`) following the same shape as `mirror.ts` and
-`bible/cache.ts` — write-through, best-effort, errors swallowed. `StudyMode`
-persists the in-progress draft debounced (600ms) while `isLinesDirty` is true,
-restores it on returning to the same study, and clears it once a save lands.
-Keyed by `passage:<id>` once a passage exists, or `new:<reference>` for a study
-that has not been saved yet.
+`bible/cache.ts` — write-through, best-effort, errors swallowed. As written
+against the since-deleted `StudyMode`, it persisted the in-progress draft
+debounced (600ms) while `isLinesDirty` was true, restored it on returning to
+the same study, and cleared it once a save landed — keyed by `passage:<id>`
+once a passage existed, or `new:<reference>` for a study that had not been
+saved yet.
+
+**Not yet re-wired into the note-centric UI.** Neither `StudyWorkbench` (desktop)
+nor `MobileNoteComposer` (mobile) calls into `draft.ts` today — its
+`writeDraft`/`readDraft`/`clearDraft` exports are unreferenced outside their
+own test. Draft recovery on a failed save or accidental reload is a real gap
+right now, not a documented behaviour; the mechanics below describe the design
+this module still implements, ready to be reconnected, not something a user can
+currently rely on. See `docs/BACKLOG.md`.
 
 Two things worth knowing before touching it:
 
