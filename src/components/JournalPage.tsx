@@ -1,59 +1,166 @@
-import React, { useState, useEffect } from 'react'
-import { JournalEntry } from '../types'
-import { bookByNumber } from '../utils/bibleBooks'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { NoteCategory, NoteWithPassageInfo } from '../types'
+import { findBookByAlias } from '../utils/bibleBooks'
 import { parseNoteLine } from '../utils/noteParser'
+import { formatRelativeTime } from '../utils/relativeTime'
 import { useApi } from '../api/context'
-import ConfirmDialog from './ConfirmDialog'
 
 interface JournalPageProps {
-  // Open a study (StudyMode) for the given passage.
-  onOpenStudy: (passageId: string) => void
+  // Open the reading view for a chapter. Wired in App.tsx to the same
+  // jump-to-chapter handler the search results and the chapter strip use.
+  onOpenChapter: (bookNumber: number, chapter: number) => void
 }
 
-// First-line preview of a note, with tag tokens (@obs etc.) stripped.
-function previewText(content: string): string {
-  const firstLine = content.split('\n')[0]
-  const { segments } = parseNoteLine(firstLine)
+type ViewMode = 'notes' | 'chapters'
+type CategoryFilter = NoteCategory | 'all'
+
+const CATEGORY_OPTIONS: Array<{ id: CategoryFilter; label: string }> = [
+  { id: 'all', label: 'All notes' },
+  { id: 'observation', label: 'Observation' },
+  { id: 'historical', label: 'Historical' },
+  { id: 'application', label: 'Application' },
+  { id: 'personal', label: 'Personal' }
+]
+
+// A chapter with more notes than this collapses behind a "show more" toggle, so
+// one heavily-annotated chapter can't push the rest of the history off-screen.
+const COLLAPSE_AT = 3
+
+// Soft time buckets, newest first. Deliberately vague ("Earlier this month")
+// rather than exact — this is a record to look back over, not a log.
+type Bucket = 'Today' | 'This week' | 'Earlier this month' | 'Older'
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function startOfLocalDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+}
+
+// Which bucket a timestamp falls in, measured in whole LOCAL days so "Today"
+// means today's date rather than "within 24 hours".
+function bucketFor(iso: string, now: Date): Bucket {
+  const then = new Date(iso)
+  if (Number.isNaN(then.getTime())) return 'Older'
+  const days = Math.round((startOfLocalDay(now) - startOfLocalDay(then)) / DAY_MS)
+  if (days <= 0) return 'Today'
+  if (days < 7) return 'This week'
+  if (then.getFullYear() === now.getFullYear() && then.getMonth() === now.getMonth()) {
+    return 'Earlier this month'
+  }
+  return 'Older'
+}
+
+// The book a note belongs to, read off the reference label its passage carries
+// ("John 15:1-10" → John). Labels are always "<book> <chapter>[:<verses>]" — see
+// how BookDetailPage/StudyMode build them — so the book is everything before the
+// first number, resolved through the same alias table the reference input uses.
+const LABEL_BOOK = /^(.+?)\s+\d+(?::|\s|$)/
+
+function bookFromLabel(label: string): ReturnType<typeof findBookByAlias> {
+  const trimmed = label.trim()
+  const match = LABEL_BOOK.exec(trimmed)
+  return findBookByAlias(match ? match[1] : trimmed)
+}
+
+// One line of note text as prose: tag tokens (@observation) are dropped because
+// the category is shown as colour, and a LEADING verse anchor (v4-5) is dropped
+// because the verse is shown in the rail beside the note.
+function lineText(line: string): string {
+  const { segments } = parseNoteLine(line)
   return segments
-    .filter(s => s.type !== 'tag')
-    .map(s => (s.type === 'text' ? s.raw : s.display))
+    .filter((seg, i) => seg.type !== 'tag' && !(i === 0 && seg.type === 'verse-anchor'))
+    .map(seg => (seg.type === 'text' ? seg.raw : seg.display))
     .join('')
+    .replace(/\s+/g, ' ')
     .trim()
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
+function noteText(content: string): string {
+  return content.split('\n').map(lineText).filter(Boolean).join(' ')
 }
 
-interface BookGroup {
-  bookNumber: number
-  bookName: string
-  entries: JournalEntry[]
+interface JournalNote {
+  id: string
+  // "15:4" or "15:4-5"; just the chapter for a note left on the whole passage.
+  verse: string
+  // Verse the note sorts on (reading order within the chapter).
+  sortVerse: number
+  category: NoteCategory | null
+  text: string
+  indent: number
+  at: string
 }
 
-// Group entries by book (canonical order); newest study first within a group.
-function groupByBook(entries: JournalEntry[]): BookGroup[] {
-  const groups = new Map<number, JournalEntry[]>()
-  for (const e of entries) {
-    const key = e.passage.book_number
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key)!.push(e)
-  }
-  return [...groups.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([bookNumber, es]) => ({
-      bookNumber,
-      bookName: bookByNumber(bookNumber)?.name ?? `Book ${bookNumber}`,
-      entries: es.sort((a, b) => {
-        const aDate = a.last_note_at ?? a.passage.created_at
-        const bDate = b.last_note_at ?? b.passage.created_at
-        return bDate.localeCompare(aDate)
+interface ChapterEntry {
+  key: string
+  // null only if the label's book can't be resolved — the entry still renders,
+  // it just isn't tappable, because there's nowhere honest to open.
+  bookNumber: number | null
+  chapter: number
+  reference: string
+  // Most recent note on this chapter — what the entry is bucketed and sorted by.
+  lastAt: string
+  notes: JournalNote[]
+}
+
+// The whole view, derived from note anchors: every note's own chapter + verses,
+// grouped into one entry per chapter, newest activity first. The passage
+// container contributes nothing but the reference label it was created with.
+function buildEntries(notes: NoteWithPassageInfo[]): ChapterEntry[] {
+  const byChapter = new Map<string, ChapterEntry>()
+
+  for (const note of notes) {
+    const book = bookFromLabel(note.reference_label)
+    const chapter = note.anchor_chapter_override ?? note.chapter_start
+    const bookName =
+      note.anchor_book_override ?? book?.name ?? note.reference_label.replace(/\s*\d.*$/, '').trim()
+    const key = `${book?.number ?? bookName}:${chapter}`
+
+    let entry = byChapter.get(key)
+    if (!entry) {
+      entry = {
+        key,
+        bookNumber: book?.number ?? null,
+        chapter,
+        reference: `${bookName} ${chapter}`.trim(),
+        lastAt: note.created_at,
+        notes: []
+      }
+      byChapter.set(key, entry)
+    }
+
+    const text = noteText(note.content)
+    if (text) {
+      const start = note.anchor_start_verse
+      const end = note.anchor_end_verse ?? start
+      entry.notes.push({
+        id: note.id,
+        verse:
+          start === null
+            ? String(chapter)
+            : end !== null && end > start
+              ? `${chapter}:${start}-${end}`
+              : `${chapter}:${start}`,
+        sortVerse: start ?? 0,
+        category: note.category,
+        text,
+        indent: note.indent_level,
+        at: note.created_at
       })
+    }
+    if (note.created_at > entry.lastAt) entry.lastAt = note.created_at
+  }
+
+  return [...byChapter.values()]
+    .filter(entry => entry.notes.length > 0)
+    .map(entry => ({
+      ...entry,
+      // Reading order within the chapter, so a sub-note stays under its parent.
+      notes: entry.notes.sort(
+        (a, b) => a.sortVerse - b.sortVerse || a.at.localeCompare(b.at) || a.id.localeCompare(b.id)
+      )
     }))
+    .sort((a, b) => b.lastAt.localeCompare(a.lastAt) || a.key.localeCompare(b.key))
 }
 
 // Below this, don't bother showing a skeleton at all — for a fetch this
@@ -63,24 +170,35 @@ function groupByBook(entries: JournalEntry[]): BookGroup[] {
 // showing the placeholder once a fetch has genuinely taken a while.
 const SKELETON_DELAY_MS = 150
 
-export default function JournalPage({ onOpenStudy }: JournalPageProps): React.ReactElement {
+function CategoryDot({ category }: { category: CategoryFilter }): React.ReactElement {
+  return (
+    <span
+      className={`journal-dot${category === 'all' ? ' journal-dot-all' : ` cat-${category}`}`}
+      aria-hidden="true"
+    />
+  )
+}
+
+export default function JournalPage({ onOpenChapter }: JournalPageProps): React.ReactElement {
   const api = useApi()
-  const [entries, setEntries] = useState<JournalEntry[]>([])
+  const [notes, setNotes] = useState<NoteWithPassageInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [showSkeleton, setShowSkeleton] = useState(false)
-  // The study pending a delete confirmation (null = dialog closed).
-  const [confirmDelete, setConfirmDelete] = useState<JournalEntry | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const [view, setView] = useState<ViewMode>('notes')
+  const [filter, setFilter] = useState<CategoryFilter>('all')
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const filterRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let settled = false
     const skeletonTimer = window.setTimeout(() => {
       if (!settled) setShowSkeleton(true)
     }, SKELETON_DELAY_MS)
-    api.getJournalEntries().then(es => {
+    api.getAllNotes().then(all => {
       settled = true
       window.clearTimeout(skeletonTimer)
-      setEntries(es)
+      setNotes(all)
       setLoading(false)
     })
     return () => {
@@ -89,46 +207,113 @@ export default function JournalPage({ onOpenStudy }: JournalPageProps): React.Re
     }
   }, [api])
 
-  // Delete a whole study. deletePassageAll cascade-removes its sessions/notes
-  // (both API impls), so this is UI-only — drop the row from local state on
-  // success rather than refetching the whole index.
-  const handleDelete = async (entry: JournalEntry): Promise<void> => {
-    setDeleting(true)
-    try {
-      await api.deletePassageAll(entry.passage.id)
-      setEntries(prev => prev.filter(e => e.passage.id !== entry.passage.id))
-      setConfirmDelete(null)
-    } catch {
-      // Leave the dialog open; a failed delete keeps the row so nothing is
-      // silently lost. (The BereanApi seam surfaces its own friendly message.)
-    } finally {
-      setDeleting(false)
+  // Dismiss the category menu on an outside click or Escape — same shape as
+  // every other lightweight popover in the app.
+  useEffect(() => {
+    if (!filterOpen) return
+    const onPointer = (e: MouseEvent): void => {
+      if (!filterRef.current?.contains(e.target as Node)) setFilterOpen(false)
     }
-  }
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setFilterOpen(false)
+    }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [filterOpen])
+
+  const entries = useMemo(() => buildEntries(notes), [notes])
+
+  // The filter slices the NOTES, then any chapter left with nothing drops out.
+  const visible = useMemo(() => {
+    if (filter === 'all') return entries
+    return entries
+      .map(entry => ({ ...entry, notes: entry.notes.filter(n => n.category === filter) }))
+      .filter(entry => entry.notes.length > 0)
+  }, [entries, filter])
+
+  const toggleExpanded = useCallback((key: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+
+  const controls = (
+    <div className="journal-controls">
+      <div className="journal-seg" role="group" aria-label="Journal view">
+        {(['notes', 'chapters'] as ViewMode[]).map(mode => (
+          <button key={mode} aria-pressed={view === mode} onClick={() => setView(mode)}>
+            {mode === 'notes' ? 'Notes' : 'Chapters'}
+          </button>
+        ))}
+      </div>
+      <div className="journal-filter" ref={filterRef}>
+        <button
+          className="journal-filter-trigger"
+          aria-haspopup="listbox"
+          aria-expanded={filterOpen}
+          onClick={() => setFilterOpen(open => !open)}
+        >
+          <CategoryDot category={filter} />
+          {filter === 'all' ? 'All' : CATEGORY_OPTIONS.find(o => o.id === filter)!.label}
+          <span className="journal-filter-caret" aria-hidden="true">
+            ▾
+          </span>
+        </button>
+        {filterOpen && (
+          <div className="journal-filter-menu" role="listbox" aria-label="Filter by category">
+            {CATEGORY_OPTIONS.map(option => (
+              <button
+                key={option.id}
+                className="journal-filter-option"
+                role="option"
+                aria-selected={filter === option.id}
+                onClick={() => {
+                  setFilter(option.id)
+                  setFilterOpen(false)
+                }}
+              >
+                <CategoryDot category={option.id} />
+                {option.label}
+                <span className="journal-filter-check" aria-hidden="true">
+                  ✓
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  const header = (
+    <div className="journal-header">
+      {/* Real heading (its text never changes, unlike the list below it) so the
+          loading → loaded transition doesn't shift the page. */}
+      <h1 className="journal-heading">Journal</h1>
+      <p className="journal-masthead">
+        A quiet record of where you&rsquo;ve been reading, and what you noticed there.
+      </p>
+    </div>
+  )
 
   if (loading) {
-    // Nothing rendered yet for the first SKELETON_DELAY_MS — a brief blank
-    // beat is far less jarring than a placeholder that pops in only to be
-    // replaced a moment later. `.journal-index` mounting fresh (whichever
-    // content ends up in it — skeleton or, on a fast load, the real list
-    // directly) is what gets the entrance fade in motion.css; it plays
-    // exactly once per visit either way.
+    // Nothing rendered for the first SKELETON_DELAY_MS — a brief blank beat is
+    // far less jarring than a placeholder that pops in only to be replaced.
     if (!showSkeleton) return <div className="journal-page" />
     return (
       <div className="journal-page">
         <div className="journal-index">
-          {/* Real heading (title never changes, unlike the count below it) so
-              the loading → loaded transition doesn't shift the whole list
-              down by a heading's height once data lands — that reflow was
-              exactly the "flash" bug: cards started at the very top, then
-              the page jumped once "Journal" and its count line appeared. */}
-          <div className="journal-header">
-            <h1 className="journal-heading">Journal</h1>
-            <span className="skeleton-line journal-sub-skeleton" aria-hidden="true" />
-          </div>
+          {header}
           <div className="journal-body">
             <div className="journal-skeleton" aria-hidden="true">
-              {Array.from({ length: 5 }).map((_, i) => (
+              {Array.from({ length: 4 }).map((_, i) => (
                 <div className="journal-entry-skeleton" key={i}>
                   <div className="journal-entry-skeleton-top">
                     <span className="skeleton-line" style={{ width: '38%', height: 14 }} />
@@ -136,7 +321,11 @@ export default function JournalPage({ onOpenStudy }: JournalPageProps): React.Re
                   </div>
                   <span
                     className="skeleton-line"
-                    style={{ width: '70%', height: 10, marginTop: 8 }}
+                    style={{ width: '84%', height: 10, marginTop: 10 }}
+                  />
+                  <span
+                    className="skeleton-line"
+                    style={{ width: '66%', height: 10, marginTop: 8 }}
                   />
                 </div>
               ))}
@@ -153,105 +342,102 @@ export default function JournalPage({ onOpenStudy }: JournalPageProps): React.Re
         <div className="journal-page-empty">
           <div className="journal-page-title">Journal</div>
           <p className="journal-page-hint">
-            No studies yet. Start one from the Bible view or the + Study tab — it will show up here,
-            grouped by book.
+            Nothing written down yet. Open a chapter in the Bible view and note what you see — it
+            will gather here, by when you read it.
           </p>
         </div>
       </div>
     )
   }
 
-  const groups = groupByBook(entries)
+  const now = new Date()
+  let lastBucket: Bucket | null = null
 
   return (
     <div className="journal-page">
       <div className="journal-index">
-        <div className="journal-header">
-          <h1 className="journal-heading">Journal</h1>
-          <div className="journal-sub">
-            {entries.length} stud{entries.length === 1 ? 'y' : 'ies'} across {groups.length} book
-            {groups.length === 1 ? '' : 's'}
-          </div>
-        </div>
+        {header}
+        {controls}
         <div className="journal-body">
-          {groups.map(group => (
-            <div key={group.bookNumber} className="journal-book-group">
-              <div className="journal-book-header">{group.bookName}</div>
-              {group.entries.map(entry => {
-                const date = entry.last_note_at ?? entry.passage.created_at
-                const preview = entry.preview ? previewText(entry.preview) : ''
-                return (
-                  <div key={entry.passage.id} className="journal-entry-row">
-                    <button className="journal-entry" onClick={() => onOpenStudy(entry.passage.id)}>
-                      <div className="journal-entry-top">
-                        <span className="journal-entry-ref">{entry.passage.reference_label}</span>
-                        <span className="journal-entry-date">{formatDate(date)}</span>
-                      </div>
-                      <div className="journal-entry-bottom">
-                        <span className="journal-entry-count">
-                          {entry.note_count} note{entry.note_count === 1 ? '' : 's'}
-                        </span>
-                        {preview && <span className="journal-entry-preview">{preview}</span>}
-                      </div>
-                    </button>
-                    <button
-                      className="se-icon-btn se-icon-danger journal-entry-delete"
-                      title="Delete study"
-                      aria-label={`Delete study ${entry.passage.reference_label}`}
-                      onClick={() => setConfirmDelete(entry)}
-                    >
-                      <svg
-                        width="13"
-                        height="13"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                        <path d="M10 11v6" />
-                        <path d="M14 11v6" />
-                      </svg>
-                    </button>
+          {visible.length === 0 && (
+            <p className="journal-empty-filter">
+              No {filter === 'all' ? '' : `${filter} `}notes yet.
+            </p>
+          )}
+          {visible.map(entry => {
+            const bucket = bucketFor(entry.lastAt, now)
+            const newBucket = bucket !== lastBucket
+            lastBucket = bucket
+            const isExpanded = expanded.has(entry.key)
+            const shown = isExpanded ? entry.notes : entry.notes.slice(0, COLLAPSE_AT)
+            const hidden = entry.notes.length - shown.length
+            const categories = [
+              ...new Set(
+                entry.notes.map(n => n.category).filter((c): c is NoteCategory => c !== null)
+              )
+            ]
+
+            return (
+              <React.Fragment key={entry.key}>
+                {newBucket && (
+                  <div className="journal-bucket">
+                    <span className="journal-bucket-label">{bucket}</span>
+                    <span className="journal-bucket-rule" />
                   </div>
-                )
-              })}
-            </div>
-          ))}
+                )}
+                <div className="journal-chapter">
+                  <button
+                    className="journal-chapter-head"
+                    disabled={entry.bookNumber === null}
+                    onClick={() => {
+                      if (entry.bookNumber !== null) onOpenChapter(entry.bookNumber, entry.chapter)
+                    }}
+                  >
+                    <span className="journal-chapter-ref">{entry.reference}</span>
+                    {view === 'chapters' && categories.length > 0 && (
+                      <span className="journal-chapter-dots" aria-hidden="true">
+                        {categories.map(category => (
+                          <span key={category} className={`journal-dot cat-${category}`} />
+                        ))}
+                      </span>
+                    )}
+                    <span className="journal-chapter-count">
+                      {entry.notes.length} note{entry.notes.length === 1 ? '' : 's'}
+                    </span>
+                    <span className="journal-chapter-when">
+                      {formatRelativeTime(entry.lastAt, now.getTime())}
+                    </span>
+                  </button>
+
+                  {view === 'notes' && (
+                    <div className="journal-notes">
+                      {shown.map(note => (
+                        <div
+                          key={note.id}
+                          className={`journal-note${note.indent > 0 ? ' journal-note-sub' : ''}${
+                            note.category ? ` cat-${note.category}` : ''
+                          }`}
+                        >
+                          <span className="journal-note-verse">{note.verse}</span>
+                          <span className="journal-note-text">{note.text}</span>
+                        </div>
+                      ))}
+                      {entry.notes.length > COLLAPSE_AT && (
+                        <button
+                          className="journal-note-more"
+                          onClick={() => toggleExpanded(entry.key)}
+                        >
+                          {isExpanded ? 'Show less' : `Show ${hidden} more`}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </React.Fragment>
+            )
+          })}
         </div>
       </div>
-      <ConfirmDialog
-        isOpen={confirmDelete !== null}
-        title="Delete this study?"
-        message={
-          confirmDelete
-            ? `“${confirmDelete.passage.reference_label}” and its ${confirmDelete.note_count} note${confirmDelete.note_count === 1 ? '' : 's'} will be permanently deleted. This can't be undone.`
-            : undefined
-        }
-        onClose={() => {
-          if (!deleting) setConfirmDelete(null)
-        }}
-        actions={[
-          {
-            label: 'Cancel',
-            variant: 'ghost',
-            autoFocus: true,
-            onClick: () => {
-              if (!deleting) setConfirmDelete(null)
-            }
-          },
-          {
-            label: deleting ? 'Deleting…' : 'Delete',
-            variant: 'danger',
-            onClick: () => {
-              if (confirmDelete && !deleting) void handleDelete(confirmDelete)
-            }
-          }
-        ]}
-      />
     </div>
   )
 }

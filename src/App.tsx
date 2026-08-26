@@ -432,7 +432,17 @@ export default function App({
     }
 
     if (destination === 'journal') {
-      return <JournalPage onOpenStudy={handleOpenStudy} />
+      // The Journal is a history of NOTES now, not of saved study containers,
+      // so an entry is a chapter — opening one is the same jump-to-chapter the
+      // search results and the chapter strip already use.
+      return (
+        <JournalPage
+          onOpenChapter={(bookNumber, chapter) => {
+            const book = BIBLE_BOOKS.find(b => b.number === bookNumber)
+            if (book) handleJumpToChapter(book.name, chapter)
+          }}
+        />
+      )
     }
 
     if (destination === 'profile') {
