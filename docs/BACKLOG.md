@@ -10,6 +10,28 @@ prioritized.
 
 ## Deferred
 
+- **Retire `passages`/`sessions` tables; denormalise book/chapter onto `notes`.**
+  The note-centric model (2026-08-26, see `docs/ARCHITECTURE.md`'s decision log)
+  shipped on the *existing* `passages`/`sessions` schema deliberately kept as
+  invisible interim storage, specifically so mobile capture, Journal-as-history,
+  and the desktop Read/Study toggle could ship with **zero migration**. That
+  schema is no longer the model the UI presents (a note is the only saved unit;
+  "study" is a derived view), so it is now bookkeeping overhead a note has to
+  route through rather than something the product needs. This item is the
+  human-supervised cleanup: retire `passages`/`sessions`, move `book_number` +
+  chapter (currently reached via `session_id -> passage_id`) directly onto
+  `notes`, and update `BereanApi`/`SupabaseBereanApi`/`memory.ts` and every
+  read (`getNotesByBook`, `getAllNotes`, `getNotesByPassage`, search) to query
+  notes directly. Needs a real Supabase migration + data backfill (existing
+  `passages.reference_label`/verse-range data must survive the move), so it
+  is explicitly **not** a same-shape worker task — a schema change with a
+  backfill needs Dennis's judgment on migration safety and rollback, not a
+  blind overnight run. `findOverlappingPassage`'s dedup-by-range behaviour must
+  be preserved in the new shape (or replaced by an equivalent anchor-overlap
+  query directly on `notes`) — it's what stops a note from spawning a
+  redundant row today. Revisit once the interim shape has proven itself in
+  real use, or sooner if the extra join starts showing up as a real cost.
+
 - **Guest preview mode.**
   `docs/proposals/guest-preview-mode.md` (2026-08-03) resolves the guest-write
   question Dennis was unsure about: recommends (B), an ephemeral client-only
@@ -203,6 +225,16 @@ prioritized.
   across a user's own notes and passages. Needs an embedding/index strategy and a
   cost model.
 
+- **A lightweight, non-intrusive "what's new" / patch log.** Captured
+  2026-08-24 during the mobile-notes redesign session: a way for users to see
+  that Lantern is actively shipping and what changed, reachable from
+  Settings/Profile (a quiet, dismissible entry or a subtle dot revealing a
+  simple reverse-chronological list) — deliberately **never** a launch modal or
+  a nagging badge. Lantern has a few real users, not zero, so this has genuine
+  value, but a changelog must never intrude on the devotional moment; it should
+  read as calm and optional, in keeping with the app's taste-first ethos. Not
+  speced yet — capture-only, brainstorm the surface with Dennis before building.
+
 - **Audio / TTS.** Read scripture and/or notes aloud. Lives behind `platform/` so
   a native wrapper can substitute a device TTS engine.
 
@@ -273,6 +305,11 @@ prioritized.
   `BookDetailPage` in-component branch), so it's left here as the remaining
   optional follow-up if Dennis wants it discoverable from the per-study
   reading view too.
+  **MOOT as of the note-centric model (2026-08-26).** `StudyMode` and the
+  "start a new distinct study" question it's about are gone — there is no
+  longer a "study instance" to start, continue, or disambiguate; a chapter
+  just has the notes it has. `docs/proposals/study-id.md` is marked superseded
+  accordingly. Not carrying the remaining `ReadingMode` follow-up forward.
 
 - **Postgres full-text index for note search.** `SupabaseBereanApi.searchNotes`
   is a case-insensitive `ilike '%q%'` scan (v1, acceptable per the plan). For
@@ -323,6 +360,50 @@ prioritized.
   compares chapter/verse keys only — so a note on John 1:4-6 could be written
   onto the Genesis 1:1-5 passage and disappear from John. The lookup is now
   scoped to the book being read.
+  **Follow-up fix, same day:** the first cut of this slice left two live mobile
+  regressions, both traced to the toggle's `studyOpen` flag leaking onto phones
+  — fixed by gating all study behaviour behind `studyMode = studyOpen &&
+  !isMobile`. (1) A tapped verse on mobile ran the study-aim path instead of
+  select→selection-bar, so verses highlighted with no way to make a note. (2)
+  The bottom-bar "+ Study" tab set `studyOpen` and landed on a bare Bible page
+  with no mobile study surface to show — removed; the mobile bottom nav is now
+  Bible · Journal · Profile, three tabs, and desktop keeps the Read/Study
+  toggle.
+
+- **Journal as a reflective, derived history (2026-08-26).** Part of the
+  note-centric model (see the desktop toggle entry above and
+  `docs/ARCHITECTURE.md`'s decision log). `JournalPage` no longer indexes saved
+  study containers; it's rebuilt entirely from `getAllNotes()`, with no
+  passage/session concept surfacing in the UI at all. Per-chapter entries sort
+  newest-first into soft local-day buckets (Today / This week / Earlier this
+  month / Older); a Notes/Chapters view toggle switches between showing note
+  text (collapsing after 3 per chapter) and a chapter-level summary (reference +
+  count + category dots); a category filter slices the notes and hides chapters
+  left with none. Tapping an entry opens that chapter's reading view through the
+  existing jump-to-chapter handler. Deliberately reflective, not a scoreboard —
+  no streaks, targets, or totals, and the old per-study delete affordance is
+  gone along with the study container it used to delete.
+
+- **Mobile note capture: select-first + keyboard-aware inline composer
+  (2026-08-26).** Part of the note-centric model (see above). Replaces the old
+  quick-note path on mobile: tapping a verse selects it directly (no separate
+  "select mode"), tapping more verses extends a contiguous range, and a bottom
+  selection bar's **Note** button opens `MobileNoteComposer` — a keyboard-aware
+  inline editor that keeps a consistent, flash-free position above the on-screen
+  keyboard (cached keyboard height per device, `preventScroll` focus, a single
+  deterministic scroll, `prefers-reduced-motion` respected). Category is a
+  single optional selection that colour-brands the note's rail; saved notes
+  render inline under their verse and re-open the same composer to edit, with a
+  confirm on delete and on discarding a dirty draft. Desktop reading was
+  untouched by this slice. **Follow-up fix, same day:** `createAnchoredNote`
+  resolved an existing passage against every passage in the library while the
+  overlap check only compares chapter/verse — so a note captured on, e.g., John
+  1:5 could match an unrelated seeded Genesis 1 passage on the bare numbers,
+  save under its session, and then vanish (`getNotesByBook` for John never
+  returned it). Fixed by scoping the lookup to the book actually being read and
+  taking the book number from the open chapter rather than re-deriving it from
+  a display name with a silent Genesis fallback — this also fixed the same
+  latent bug in the desktop quick-note path, which shares the function.
 
 - **Reading display popover — the "aA" quick settings (2026-08-19).** Changing a
   reading preference used to mean leaving the chapter for Profile → Settings and

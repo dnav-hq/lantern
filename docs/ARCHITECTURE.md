@@ -21,23 +21,42 @@ comes exclusively through the `BereanApi` context.
 ### Information architecture (Bible-centric, July 2026 overhaul)
 
 The old capture/reading *mode toggle* and the left sidebar/drawer are gone. The
-app is organized around **four destinations** in a single nav bar
-(`src/components/NavBar.tsx`, `type Destination = 'bible' | 'journal' | 'study'
-| 'profile'`) — a top bar on desktop, a bottom tab bar on mobile:
+app is organized around three real destinations plus a desktop-only mode toggle,
+in a single nav bar (`src/components/NavBar.tsx`, `type Destination = 'bible' |
+'journal' | 'study' | 'profile'` — `'study'` is kept in the type only to drive
+the desktop toggle's active/highlighted state, described below, not because a
+`study` page exists) — a top bar on desktop, a bottom tab bar on mobile:
 
 - **Bible** (home) — the annotated Bible: a book library → per-book chapter
   reader (`BibleLibrary` → `BookDetailPage`) with notes rendered inline against
-  the verses, plus the saved-passage `ReadingMode`. Verse selection is the single
-  in-Bible gesture: tapping a verse (or extending to a range) raises a floating
-  action bar with **Quick note** (emphasised) and **Start study on {ref}**. This
-  is the landing view.
-- **Journal** — a browseable index of studies grouped by book (`JournalPage`,
-  fed by `BereanApi.getJournalEntries`); tapping a row opens the study in
-  `StudyMode`.
-- **+ Study** — the single study surface (`StudyMode`), reached several
-  convergent ways: blank from the nav, prefilled from the current chapter, from a
-  verse-range selection, from a Journal row, or from a note's "Open study". There
-  is **one** editing surface — the former `SessionEditor` card view is retired.
+  the verses, plus the saved-passage `ReadingMode`. Verse selection is the
+  in-Bible gesture, and it differs by breakpoint on purpose (see "Notes &
+  studies model" below for why): on **desktop** tapping/dragging a verse raises
+  a floating action bar with **Quick note** (emphasised) and **Start study on
+  {ref}**, and the reading page carries a **Read/Study toggle** beside the
+  scripture; on **mobile** tapping a verse selects it directly (extend by
+  tapping more verses) and raises a bottom selection bar whose **Note** button
+  opens a keyboard-aware inline composer beneath the anchored verse — there is
+  no mobile study surface, studying on a phone *is* reading plus this composer.
+  This is the landing view.
+- **Journal** — a **reflective, derived history of notes** (`JournalPage`,
+  built entirely from `BereanApi.getAllNotes()` — not an index of saved study
+  containers). Notes group under the chapter they're anchored to, newest-first,
+  under soft local-day time buckets (Today / This week / Earlier this month /
+  Older); a Notes/Chapters view toggle and a category filter slice the list.
+  Tapping an entry opens that chapter in the ordinary reading view (the same
+  jump-to-chapter handler search results and the chapter strip use) — Journal
+  is a lens onto notes you already have, not a place notes are filed into.
+- **+ Study** (desktop only) — no longer a destination you navigate to. The
+  nav's "+ Study" tab, and every other "open this study" entry point (a Journal
+  row, a note's "Open study", a search hit), all flip a **Read/Study focus
+  toggle** on the reading page itself: Study slides a notes workbench
+  (`StudyWorkbench.tsx`) in beside the scripture, editing that chapter's notes
+  directly, while Read shows clean scripture. The standalone `StudyMode.tsx`
+  page (770 lines) and its reconciling batch-save are deleted — there is no
+  second editing surface to keep in sync with the inline one. Gated to
+  `!isMobile`; on mobile the toggle is inert and capture is always the inline
+  composer described above.
 - **Profile** — display name, Settings, Export, Sign out (`ProfilePage` +
   `SettingsModal`); on desktop this is the top-bar avatar menu.
 
@@ -45,12 +64,13 @@ The leading top-bar slot carries the app logo and a **"Personal ▾" workspace
 selector stub** — it renders the personal workspace only, a placeholder so the
 future group switcher (see backlog) drops in without restructuring the bar.
 
-**The note→study bridge.** A note shown in the Bible reading view offers "Edit
-note" (inline quick edit — the primary, fast path) and "Open study"
-(`handleOpenStudy(passageId)` → the unified `StudyMode`, always available). This
-is how a quick note graduates into a full study, and it replaces the old
-find-it-in-the-sidebar edit path. `handleOpenStudy` is the single open-study
-entry point shared by the Journal, the bridge, and search results.
+**The "open study" entry point.** `handleOpenStudy(passageId)` (`App.tsx`) is
+the single landing spot for a Journal row, a search hit, and `ReadingMode`'s own
+"Open study" control: it resolves the passage's book/chapter and lands back in
+the ordinary Bible reading view for that chapter — with the Read/Study toggle
+switched to Study on desktop — rather than opening a distinct editor page.
+"Opening a study" and "reading that chapter with its notes" are now the same
+action; there is no bridge to a separate surface left to describe.
 
 **Search** (`src/components/GlobalSearch.tsx`) is one box with two
 independently-populating sections: (1) scripture-reference jumps, parsed
@@ -85,30 +105,48 @@ wrong columns.
 
 ### Notes & studies model (the mental model behind the IA)
 
-The domain schema (passage → session → note) is unchanged, but the *conceptual*
-model the UI presents is deliberate and worth stating, because it settles several
-otherwise-ambiguous UX questions:
+**Decided 2026-08-25/26 (note-centric model — see the decision log entry
+below): a note anchored to scripture is the only saved unit. A "study" is a
+derived VIEW over notes, not a stored container.** This replaced the earlier
+"a study is a `Passage`" model described in this file through 2026-08-25 (still
+visible via `git log` if you need the prior framing) — the passage/session
+tables are unchanged in Postgres today, but the UI no longer treats a `Passage`
+row as "a study" the user creates, names, or reopens as a distinct thing:
 
 - **Notes belong to verses, not to studies.** A note is anchored to a verse or
-  range and is the durable artifact. The **Bible/reading view is the cumulative
-  surface**: every note anchored in a chapter renders inline there
-  (`getNotesByBook`) regardless of which passage/session created it. "Everything I
-  ever noted on this verse shows up when I read it" — because study is cumulative
-  and verse-centric, not filed-in-folders.
-- **A "study" is one deliberate effort** — a `Passage` (a verse-range span with a
-  `reference_label`). Its heading *is* the range; there are no thematic titles.
-  The **Journal is the index of efforts**, range-labelled and newest-first. It is
-  a librarian, not the front door: you reach a study from its notes in context (or
-  from Journal for browse/recent).
-- **Quick notes are ungrouped verse jottings** — a first-class in-Bible margin
-  note that shows in context but is not itself a Journal-worthy effort; it
-  *graduates* into a study via the note bridge's "Open study".
-- **Editing an existing study never spawns a new Journal entry** (same passage);
-  a new entry appears only when you deliberately start a new study. `StudyMode`'s
-  save is **reconciling** (update changed notes in place / create new / delete
-  removed) precisely so reopening-and-editing preserves note ids and the
-  `created_at`/`updated_at` timestamps the UI renders — it does not rewrite the
-  session.
+  range and is the one durable artifact the user thinks in terms of. The
+  **Bible/reading view is the cumulative surface**: every note anchored in a
+  chapter renders inline there (`getNotesByBook`) regardless of which
+  passage/session it happens to be stored under. "Everything I ever noted on
+  this verse shows up when I read it" — because study is cumulative and
+  verse-centric, not filed-in-folders.
+- **"Study" is a mode of reading, not a container you create.** On desktop,
+  flipping the reading page's Read/Study toggle opens `StudyWorkbench` beside
+  the scripture and edits that chapter's notes directly — there is no
+  passage-naming step, no "start a new study" action distinct from "add a note
+  here," and no second editing surface (`StudyMode`) to reconcile against. On
+  mobile, capture is the inline composer described above; there is no
+  study mode at all on a phone.
+- **The Journal is a derived history of notes, not an index of studies.**
+  `JournalPage` groups notes from `getAllNotes()` by chapter and recency; it
+  reflects what you've written, it doesn't enumerate "study" records you made.
+  Deliberately reflective (soft time buckets, a note/chapter view toggle, a
+  category filter) rather than a scoreboard — no streaks, targets or totals.
+- **Quick notes and "study" notes are the same thing.** There is no longer a
+  distinction between an ungrouped margin jotting and a note made "inside a
+  study" — every note is anchored to a verse range and renders the same way
+  everywhere; whether you added it via the mobile composer, the desktop
+  workbench, or the reading page's Quick note action doesn't change what it is.
+- **The `Passage`/`session` tables are interim, invisible storage, not the
+  model.** They still exist in Postgres and the app still writes through them
+  (a note needs *some* row to hang off), and `findOverlappingPassage` still
+  reuses an existing passage whose range overlaps a new note's anchor rather
+  than minting a redundant one — but the UI never surfaces a passage/session id,
+  never asks the user to name or choose one, and no screen enumerates "your
+  studies." **Deferred cleanup:** retire the `passages`/`sessions` tables
+  entirely and denormalise `book_number`/chapter directly onto `notes` (see
+  `docs/BACKLOG.md`) — today's shape is a stepping stone that let the
+  note-centric UI ship with zero migration, not the intended end state.
 
 **Reading-view presentation (study-Bible layout).** In both reading surfaces
 (`ReadingMode` and `BookDetailPage`'s `ChapterView`) verse-anchored notes are
@@ -132,10 +170,11 @@ mutually exclusive and fully clearable — a click on empty scripture whitespace
 Escape clears everything. Verified live in a real browser across desktop and
 mobile widths, light and dark.
 
-**Deferred (future milestone), by design, not omission:** a lightweight
-`study_id` group stamp enabling *multiple distinct study instances over the same
-verses* (and cross-effort anchor merging inside the editor); a modifier to
-restore native verse-text copy under the marquee. See the backlog.
+**Deferred (future milestone), by design, not omission:** a modifier to restore
+native verse-text copy under the marquee. See the backlog. (The `study_id`
+group-stamp idea named here through 2026-08-25 is moot under the note-centric
+model — there is no "study instance" concept left to distinguish; see
+`docs/proposals/study-id.md`'s superseded note and the decision log below.)
 
 ### The `BereanApi` seam
 
@@ -232,6 +271,13 @@ ordered **notes**. A note anchors to a verse range, carries an optional category
 and can be a sub-note (`indent_level > 0`). Book identity is a static USFM
 `book_number` (1–66) — no books table; `src/utils/bibleBooks.ts` owns all book
 metadata client-side.
+
+**This schema is interim, invisible storage under the note-centric model** (see
+"Notes & studies model" above) — passage/session rows are plumbing the note
+needs to hang off, not a "study" concept the UI exposes. The deferred cleanup in
+`docs/BACKLOG.md` retires `passages`/`sessions` and denormalises `book_number`
+and chapter directly onto `notes`; until that lands, treat this section as
+describing storage, not the product's mental model.
 
 Key data decisions:
 
@@ -545,15 +591,19 @@ it the shell reflows for a phone (primary target: Android Chrome, ~360–430px).
 
 - **Shell.** The July-2026 IA overhaul replaced the sidebar/drawer with the
   `NavBar` (`src/components/NavBar.tsx`): a **top bar on desktop** (logo +
-  workspace stub, centered destination tabs, search box, avatar menu) and a
-  **fixed bottom tab bar on mobile** (Bible · Journal · + Study · Profile). The
-  swap is driven by one `max-width: 768px` breakpoint — the desktop `.topnav`
-  hides its tabs/trail/search and the `.bottomnav` appears; the mobile search box
+  workspace stub, centered destination tabs including the "+ Study" toggle,
+  search box, avatar menu) and a **fixed bottom tab bar on mobile** (Bible ·
+  Journal · Profile — the mobile Study tab was tried and then removed, see the
+  note-centric decision log entry: studying on a phone is reading plus the
+  inline composer, with no separate surface to tab into). The swap is driven by
+  one `max-width: 768px` breakpoint — the desktop `.topnav` hides its
+  tabs/trail/search and the `.bottomnav` appears; the mobile search box
   collapses to a top-bar button that opens the full-screen `.search-surface`.
-- **Single column.** Study mode stacks the note editor over the passage pane
-  (desktop is a 60/40 split); reading, book detail, session editor, and library
-  go full-width with comfortable padding. The library grid drops from 3 to 2
-  columns so book names don't truncate.
+- **Single column.** The desktop Study workbench (a 60/40 split beside the
+  scripture) is gated off below the breakpoint — there is no mobile
+  equivalent; reading, book detail, and library go full-width with comfortable
+  padding. The library grid drops from 3 to 2 columns so book names don't
+  truncate.
 - **Modals as sheets.** SettingsModal and ConfirmDialog become full-width bottom
   sheets (rounded top, slide-up) on mobile.
 - **Functional hovers → tap.** The only functional hover interactions are the
@@ -584,7 +634,8 @@ it the shell reflows for a phone (primary target: Android Chrome, ~360–430px).
 | BSB via helloao, cached forever in IndexedDB | Free, no key; immutable chapters cache indefinitely, so provider downtime doesn't affect reads. Provider interface keeps KJV/ESV addable. |
 | `platform/` abstraction + pure-web rule | Keeps the code portable to native wrappers; nothing under `src/` touches Node/Electron. |
 | Design-token layer (`src/assets/tokens.css`) | One source of truth for color/elevation/spacing/motion/type, consumed via `var()`. Default theme, now labelled "Lantern" (warm cream canvas + indigo accent + serif scripture), in `:root`; `body.dark` reassigns tokens (also warm-tinted, F1b). Its stored id stays `berean` deliberately — that value is persisted in localStorage and hooked by `tokens.css`, so renaming it would reset every user's theme. Live theme picker in Settings (`src/utils/useTheme.ts`, `[data-theme]` blocks in `tokens.css`) lets the user choose Lantern / Scholarly Serif / Warm Paper / Quiet Modern independent of light/dark. Values chosen via a throwaway `design/mockup.html` compare-artifact + reading-UX/color research. F1–F4 (tokens, serif reading typography, contrast, motion) all landed, plus the note→study bridge and self-hosted scripture fonts closed out the sweep — see BACKLOG's Done section. Only cosmetic/optional polish (dark.css redundancy prune, elevation-over-borders consistency) remains, deliberately deferred past the first deploy. |
-| Overlap-match on "Start study on {ref}" | Selecting verses that overlap an existing passage reopens it (with its notes) instead of always starting a blank study — interval overlap, not exact-range match, so a note anchored anywhere inside the selection surfaces. A step short of the deferred "multiple study instances" feature, which would let a user deliberately start a *distinct* new effort over already-studied verses. |
+| Overlap-match on "Start study on {ref}" | Selecting verses that overlap an existing passage reopens it (with its notes) instead of always starting a blank study — interval overlap, not exact-range match, so a note anchored anywhere inside the selection surfaces. Superseded in spirit by the note-centric model below: there is no longer a distinct "study" to start or reopen, only notes on a chapter, but `findOverlappingPassage` is still what keeps a new note from spawning a redundant passage row underneath. |
+| Note-centric model: study is a derived VIEW, not a stored container (2026-08-26) | Mobile study/note UX was Dennis's own live-use blocker — the desktop two-pane `StudyMode` (a `Passage` you name/reopen, holding `sessions` of `notes`) is a great power tool at a desk but a cognitive tax on one cramped mobile column. Rather than build a second mobile-shaped `StudyMode`, the model itself collapsed: a note anchored to scripture is the only saved unit; "study" became a mode of reading (desktop Read/Study toggle over `StudyWorkbench`) rather than a container the user creates and names. This removed a whole class of complexity for free — lazy passage creation, fragile passage-matching, multi-session ambiguity, the `study_id` question (`docs/proposals/study-id.md`, now superseded) — because none of it needs solving once there's no "study" object left to disambiguate. Shipped on the EXISTING `passages`/`sessions` tables, kept as invisible interim storage, specifically so this could ship with **zero schema migration**; a later, human-supervised cleanup retires those tables and denormalises `book_number`/chapter onto `notes` directly (see `docs/BACKLOG.md`). Journal changed in lockstep: from an index of saved studies to a derived, reflective history built from `getAllNotes()`. |
 
 ## Risks & mitigations
 

@@ -5,6 +5,17 @@ see in it (observations, historical context, application, personal reflection),
 and read those notes back later anchored to the verses. This is the web-first
 rewrite; the old Electron desktop app is frozen on the `legacy/electron` branch.
 
+**The model is note-centric (settled 2026-08-26).** A note anchored to
+scripture is the only saved unit; "study" is a mode of reading, not a
+container you create or name — see `docs/ARCHITECTURE.md`'s "Notes & studies
+model" and its decision log for the full reasoning. Concretely: on desktop the
+reading page carries a Read/Study toggle (`StudyWorkbench`) that edits a
+chapter's notes directly beside the scripture; on mobile, capture is a
+select-first, keyboard-aware inline composer, with no separate study surface at
+all; the Journal is a derived, reflective history built from every note
+(`getAllNotes()`), not an index of saved studies. There is no standalone
+`StudyMode` page anymore.
+
 **The app was renamed Berean → Lantern** (Psalm 119:105; "Berean" collided with
 the Berean Standard Bible, the translation this app displays). The rename covered
 user-visible strings and assets ONLY. **Internal `Berean*` identifiers are
@@ -74,6 +85,14 @@ outbox has exactly one place to live: a failed write is caught here and surfaced
 as a friendly message today — that catch is the stub the outbox later replaces.
 Cascade cleanup (delete note → delete empty session → delete empty passage) is
 done explicitly in the implementation, mirroring the old desktop behavior.
+
+**`Passage`/session are interim, invisible storage, not "studies."** The UI
+never names, lists, or asks the user to choose a passage/session — it's
+plumbing a note needs to hang off (`findOverlappingPassage` reuses an existing
+passage rather than creating a redundant one). `docs/BACKLOG.md` has a deferred
+cleanup to retire both tables and denormalise book/chapter straight onto
+`notes`; until then, don't read a `Passage` in the schema as "a study" the
+product has a concept of.
 
 ### `BibleProvider` — the scripture source (`src/bible/`)
 
@@ -148,7 +167,9 @@ defused, and the rule going forward is simple:
 
 ## Layout
 
-`src/App.tsx` holds view state and routing between capture/reading modes.
+`src/App.tsx` holds view state for the three destinations (Bible, Journal,
+Profile) plus the desktop-only `studyOpen` flag that toggles the reading page's
+Read/Study workbench — there is no separate study route to navigate to.
 `src/components/` is the UI. `src/api/` is the data seam. `src/bible/` is the
 scripture seam. `src/utils/` is pure logic (book metadata, note parsing,
 rich-text serialization, dark mode). `src/offline/` is the local-persistence
@@ -165,8 +186,11 @@ work in `docs/BACKLOG.md`; and `docs/proposals/` holds research written *before*
 building — currently `study-id.md`, `offline-write-outbox.md`,
 `onboarding-hints.md` and `scripture-search.md`. Those are worth reading before
 touching their areas: two of them concluded the work should NOT be done as
-specified, which is why no `study_id` column exists and why only draft
-persistence shipped instead of a full write outbox.
+specified, which is why only draft persistence shipped instead of a full write
+outbox. `study-id.md` is now marked superseded — its no-schema-change verdict
+held, but the later note-centric model went further and removed the "study
+instance" concept the proposal was reasoning about in the first place; see its
+header note and `docs/ARCHITECTURE.md`'s decision log.
 
 The original phased migration (scaffold+stub → Supabase → scripture → mobile UI
 → PWA/offline → deploy) is complete; the app is live, so `docs/BACKLOG.md` is
