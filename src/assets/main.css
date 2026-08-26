@@ -6032,6 +6032,16 @@ body.dark .topnav-tabs .nav-tab:hover {
 body.dark .topnav-tabs .nav-tab.active {
   color: var(--accent-ink);
 }
+/* The "+ Study" tab is a SOLID accent pill when active (not accent-coloured
+   text like Bible/Journal), so it needs on-accent ink. The rule just above
+   targets every .nav-tab.active — including this one — and out-specifies the
+   base .nav-tab-action.active (0,4,1 vs 0,3,0); since dark's --accent-ink IS
+   --accent, that painted the label the exact colour of the pill (invisible).
+   Restore the fill + its readable ink here. */
+body.dark .topnav-tabs .nav-tab-action.active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
 body.dark .avatar-btn {
   background: var(--accent-hover);
 }
@@ -6281,7 +6291,9 @@ body.dark .offline-pill {
   z-index: 301;
   font-size: 13px;
   font-weight: 500;
-  color: #fff;
+  /* --text, not #fff: the fill is --surface-2, which is a LIGHT cream in light
+     mode, so white ink vanished there. --text tracks the theme's foreground. */
+  color: var(--text);
   background: var(--surface-2);
   border-radius: 8px;
   padding: 10px 16px;
@@ -6565,7 +6577,8 @@ body.dark .mobile-menu-btn:active {
   border: 1px solid var(--accent);
   border-radius: 999px;
   background: var(--accent);
-  color: #fff;
+  /* on-accent, not #fff — dark's accent is a light lavender (see .study-btn-save). */
+  color: var(--on-accent);
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -7488,7 +7501,10 @@ body.dark .mobile-menu-btn:active {
 .study-btn-save {
   border: 0;
   background: var(--accent);
-  color: #fff;
+  /* on-accent, not #fff: in dark the accent is a LIGHT lavender, so white ink
+     drops to ~2.4:1. The token flips to near-black there and stays white on the
+     light theme's darker accent. */
+  color: var(--on-accent);
   font-weight: 600;
   font-size: 12.5px;
   border-radius: 9px;
@@ -7508,6 +7524,14 @@ body.dark .mobile-menu-btn:active {
   border-radius: 9px;
   padding: 7px 15px;
   cursor: pointer;
+}
+/* In dark the category fills are LIGHT (e.g. cat-personal is a soft pink), so
+   white ink on these solid-fill buttons drops to ~2.4:1. There is no
+   --on-cat token; --on-accent's value is the dark-canvas ink these need, and it
+   is theme-correct (near-black in dark). Same fix as the nav pill. */
+body.dark .study-btn-danger,
+body.dark .study-note-act .is-yes {
+  color: var(--on-accent);
 }
 
 /* The right-hand chapter arrow lives where the panel now is. */
