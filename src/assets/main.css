@@ -6667,11 +6667,14 @@ body.dark .mobile-menu-btn:active {
     font-size: 10px;
     opacity: 0.7;
   }
+  /* Above the sticky reading chrome (z-index 30) and the tab bar: the menu
+     opens upward, and the composer often sits high enough that the chapter
+     strip would otherwise clip "No tag" clean off the top of it. */
   .mobile-composer-tag-menu {
     position: absolute;
     bottom: calc(100% + 8px);
     left: 0;
-    z-index: 50;
+    z-index: 320;
     min-width: 172px;
     padding: 5px;
     background: var(--surface);
