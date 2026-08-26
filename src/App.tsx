@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import NavBar, { Destination } from './components/NavBar'
 import GlobalSearch from './components/GlobalSearch'
-import StudyMode, { StudyModeHandle } from './components/StudyMode'
 import ReadingMode from './components/ReadingMode'
 import BibleLibrary from './components/BibleLibrary'
 import BookDetailPage from './components/BookDetailPage'
 import JournalPage from './components/JournalPage'
 import ProfilePage from './components/ProfilePage'
-import ConfirmDialog from './components/ConfirmDialog'
 import SettingsModal from './components/SettingsModal'
 import OfflineIndicator from './components/OfflineIndicator'
 import InstallNudge from './components/InstallNudge'
@@ -60,6 +58,11 @@ function writeFocusReading(value: boolean): void {
   }
 }
 
+// The width the reading column and the study workbench BOTH need. Mirrors the
+// `min-width` guard on `.study-toggle` in main.css — below it the toggle is not
+// even shown, and the mode is forced off.
+const STUDY_QUERY = '(min-width: 1160px)'
+
 interface AppProps {
   // Signed-in display name for the "Welcome back" touch. null on the memory stub.
   displayName: string | null
@@ -85,14 +88,6 @@ interface AppState {
   selectedPassageId: string | null
   // Chapter to open when drilling into a book (e.g. a search jump). null = 1.
   selectedChapter: number | null
-  // Study destination prefill (set when jumping in from the Bible view or
-  // opening an existing study). studyReference prefills a blank study;
-  // studyPassageId opens an existing passage in the one StudyMode surface.
-  studyReference: string
-  studyPassageId: string | null
-  // After "Save & Read", the chapter view highlights + scrolls to the verses
-  // just written. Consumed once by BookDetailPage, then irrelevant.
-  highlightAfterSave: { chapter: number; verses: number[] } | null
 }
 
 export default function App({
@@ -224,19 +219,24 @@ export default function App({
       passages: [],
       selectedBookName: deepLinkBook?.name ?? null,
       selectedPassageId: null,
-      selectedChapter: deepLinkBook ? initialDeepLink!.chapter : null,
-      studyReference: '',
-      studyPassageId: null,
-      highlightAfterSave: null
+      selectedChapter: deepLinkBook ? initialDeepLink!.chapter : null
     }
   })
   // Mobile-only: the dedicated search surface (an overlay). Desktop search is
   // the always-present top-bar input, so this stays false there.
   const [searchOpen, setSearchOpen] = useState(false)
-  // Navigation guard: destination we're trying to reach while the study
-  // surface has unsaved notes.
-  const [pendingNav, setPendingNav] = useState<Destination | null>(null)
-  const studyModeRef = useRef<StudyModeHandle>(null)
+  // Study is a MODE on the reading page now, not a destination: the workbench
+  // opens beside the chapter you are already reading. It lives here (rather
+  // than inside BookDetailPage) because the Study nav tab reflects it and the
+  // "open this study" entry points switch it on.
+  const [studyOpen, setStudyOpen] = useState(false)
+  // Whether this window is wide enough for the workbench at all. Mobile keeps
+  // the inline composer and is deliberately untouched by any of this, so on a
+  // phone the Study tab simply takes you to the chapter — it never turns a mode
+  // on that has nowhere to render.
+  const [canStudy, setCanStudy] = useState(
+    () => typeof window.matchMedia === 'function' && window.matchMedia(STUDY_QUERY).matches
+  )
 
   const refresh = useCallback(async () => {
     const passages = await api.getPassages()
@@ -248,28 +248,55 @@ export default function App({
   }, [refresh])
 
   const doNavigate = (dest: Destination): void => {
+    setStudyOpen(false)
     setState(prev => ({
       ...prev,
       destination: dest,
       // Tapping "Bible" always lands on the library, not a stale drill-down.
       ...(dest === 'bible'
         ? { selectedBookName: null, selectedPassageId: null, selectedChapter: null }
-        : {}),
-      // "+ Study" from the nav starts a blank study.
-      ...(dest === 'study' ? { studyReference: '', studyPassageId: null } : {})
+        : {})
+    }))
+  }
+
+  // The Study tab no longer goes anywhere — it turns Study on over whatever
+  // chapter you were last reading (or the most recent one you have notes on),
+  // which is where studying now happens. With nothing to open it simply lands
+  // in the library, rather than on a blank editor for a passage you never chose.
+  const openStudyHere = (): void => {
+    if (state.destination === 'bible' && state.selectedBookName) {
+      setStudyOpen(canStudy)
+      return
+    }
+    const recent = [...state.passages].sort((a, b) =>
+      (b.last_studied ?? b.created_at).localeCompare(a.last_studied ?? a.created_at)
+    )[0]
+    const book = recent ? BIBLE_BOOKS.find(b => b.number === recent.book_number) : undefined
+    if (!book || !recent) {
+      doNavigate('bible')
+      return
+    }
+    setStudyOpen(canStudy)
+    setState(prev => ({
+      ...prev,
+      destination: 'bible',
+      selectedBookName: book.name,
+      selectedChapter: recent.chapter_start,
+      selectedPassageId: null
     }))
   }
 
   const handleNavigate = (dest: Destination): void => {
-    if (dest === state.destination && dest !== 'bible' && dest !== 'journal') return
-    if (state.destination === 'study' && dest !== 'study' && studyModeRef.current?.isDirty()) {
-      setPendingNav(dest)
+    if (dest === 'study') {
+      openStudyHere()
       return
     }
+    if (dest === state.destination && !studyOpen && dest !== 'bible' && dest !== 'journal') return
     doNavigate(dest)
   }
 
   const handleSelectBook = (bookName: string): void => {
+    setStudyOpen(false)
     setState(prev => ({
       ...prev,
       destination: 'bible',
@@ -294,46 +321,6 @@ export default function App({
     }))
   }
 
-  const handleSaveRead = async (passageId: string): Promise<void> => {
-    // Land back in the FULL chapter reading (not the isolated passage view),
-    // scrolled to and highlighting the notes just written, so they're seen in
-    // context. Fetch fresh here rather than reading the async-lagged state.
-    const passages = await api.getPassages()
-    const p = passages.find(x => x.id === passageId)
-    const bookName = p ? (BIBLE_BOOKS.find(b => b.number === p.book_number)?.name ?? null) : null
-    setState(prev => ({
-      ...prev,
-      passages,
-      destination: 'bible',
-      selectedPassageId: null,
-      studyPassageId: null,
-      selectedBookName: bookName,
-      selectedChapter: p?.chapter_start ?? null,
-      highlightAfterSave:
-        p && bookName
-          ? {
-              chapter: p.chapter_start,
-              verses: Array.from(
-                { length: Math.max(0, p.verse_end - p.verse_start + 1) },
-                (_, i) => p.verse_start + i
-              )
-            }
-          : null
-    }))
-  }
-
-  const handleSaveNext = async (nextRef?: string): Promise<void> => {
-    await refresh()
-    setState(prev => ({
-      ...prev,
-      destination: 'study',
-      selectedBookName: null,
-      selectedPassageId: null,
-      studyPassageId: null,
-      studyReference: nextRef || ''
-    }))
-  }
-
   // The one open-study path: a Journal row, the reading-view note bridge, and
   // search results all land here. A study is just the notes left on a
   // chapter, so opening one drops you back into reading that chapter (with
@@ -344,6 +331,9 @@ export default function App({
     const passages = await api.getPassages()
     const p = passages.find(x => x.id === passageId)
     const bookName = p ? (BIBLE_BOOKS.find(b => b.number === p.book_number)?.name ?? null) : null
+    // ...with the workbench open on it, which is what "open the study" means
+    // now that studying is a mode on the reading page.
+    setStudyOpen(canStudy && bookName !== null)
     setState(prev => ({
       ...prev,
       passages,
@@ -354,25 +344,7 @@ export default function App({
     }))
   }
 
-  const handleStudyFromReading = (reference: string, passageId?: string): void => {
-    setState(prev => ({
-      ...prev,
-      destination: 'study',
-      studyReference: reference,
-      studyPassageId: passageId ?? null
-    }))
-  }
-
-  const {
-    destination,
-    passages,
-    selectedBookName,
-    selectedPassageId,
-    selectedChapter,
-    studyReference,
-    studyPassageId,
-    highlightAfterSave
-  } = state
+  const { destination, passages, selectedBookName, selectedPassageId, selectedChapter } = state
 
   const selectedPassage = passages.find(p => p.id === selectedPassageId) || null
   const selectedBibleBook = selectedBookName
@@ -384,6 +356,27 @@ export default function App({
   // on the library or the journal would be hiding it from someone navigating.
   const readingSurface =
     destination === 'bible' && (selectedBibleBook !== null || selectedPassage !== null)
+
+  // The workbench needs room the phone/tablet layout does not have (the toggle
+  // itself is hidden below the same width — see .study-toggle). Resizing under
+  // it drops the mode rather than leaving a panel half over the text.
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia(STUDY_QUERY)
+    const sync = (): void => {
+      setCanStudy(mq.matches)
+      if (!mq.matches) setStudyOpen(false)
+    }
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  // Leaving the reading surface leaves Study with it — there is nothing beside
+  // the library or the journal for a chapter workbench to sit next to.
+  useEffect(() => {
+    if (!readingSurface) setStudyOpen(false)
+  }, [readingSurface])
 
   // Reading Mode is a persisted preference now, so leaving the passage does
   // NOT turn it off — only the chrome-hidden (scroll-away) state resets, so a
@@ -400,9 +393,12 @@ export default function App({
     setChromeVisible(true)
   }, [focusReading])
 
-  // Notes are hidden ONLY by the hide-notes control now — Reading Mode
-  // (focus-reading) is chrome-only and deliberately leaves notes alone.
-  const notesHidden = hideNotes
+  // Notes are hidden by the hide-notes control — and by Study, where they have
+  // MOVED rather than gone: the workbench beside the scripture is now where the
+  // chapter's notes live, so the reading column is left clean. Reusing the same
+  // flag reuses the proven collapse (the rail eases shut without the fixed
+  // scripture measure ever re-wrapping).
+  const notesHidden = hideNotes || studyOpen
   const shellClass = [
     'app-shell',
     readingSurface ? 'reading-surface' : '',
@@ -411,26 +407,13 @@ export default function App({
     // the mode is what made exiting jolt (the bar snapping back then sliding).
     readingSurface && !chromeVisible && !focusReading ? 'chrome-hidden' : '',
     readingSurface && focusReading ? 'focus-reading' : '',
+    studyOpen ? 'study-open' : '',
     notesHidden ? 'notes-hidden' : ''
   ]
     .filter(Boolean)
     .join(' ')
 
   function renderMain(): React.ReactElement {
-    if (destination === 'study') {
-      return (
-        <StudyMode
-          ref={studyModeRef}
-          key={studyPassageId ?? studyReference}
-          initialReference={studyReference}
-          initialPassageId={studyPassageId}
-          onSaveRead={handleSaveRead}
-          onSaveNext={handleSaveNext}
-          displayPrefs={displayPrefs}
-        />
-      )
-    }
-
     if (destination === 'journal') {
       // The Journal is a history of NOTES now, not of saved study containers,
       // so an entry is a chapter — opening one is the same jump-to-chapter the
@@ -472,20 +455,13 @@ export default function App({
           hideNotes={hideNotes}
           onToggleHideNotes={() => setHideNotes(h => !h)}
           displayPrefs={displayPrefs}
-          initialHighlightVerses={
-            highlightAfterSave && highlightAfterSave.chapter === (selectedChapter ?? 1)
-              ? highlightAfterSave.verses
-              : undefined
-          }
           onNavigateChapter={handleJumpToChapter}
-          onBack={() =>
+          onBack={() => {
+            setStudyOpen(false)
             setState(prev => ({ ...prev, selectedBookName: null, selectedChapter: null }))
-          }
-          onStudy={(ref, passageId) => {
-            handleStudyFromReading(ref, passageId)
-            refresh()
           }}
-          onOpenStudy={handleOpenStudy}
+          studyOpen={studyOpen}
+          onToggleStudy={setStudyOpen}
           onRefresh={refresh}
           onChromeVisibleChange={setChromeVisible}
         />
@@ -497,10 +473,7 @@ export default function App({
         <ReadingMode
           key={selectedPassage.id}
           passage={selectedPassage}
-          onStudy={passageId => {
-            const p = passages.find(p => p.id === passageId)
-            handleStudyFromReading(p?.reference_label || '', passageId)
-          }}
+          onStudy={passageId => void handleOpenStudy(passageId)}
           onRefresh={refresh}
           onOpenStudy={() => handleOpenStudy(selectedPassage!.id)}
           onPassageDeleted={async () => {
@@ -530,7 +503,9 @@ export default function App({
   return (
     <div className={shellClass}>
       <NavBar
-        destination={destination}
+        // Study is a mode, not a place — the tab lights up when the reading
+        // page's workbench is open.
+        destination={studyOpen ? 'study' : destination}
         onNavigate={handleNavigate}
         displayName={displayName}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -583,57 +558,6 @@ export default function App({
         onSignOut={onSignOut}
       />
 
-      {/* Navigation guard: unsaved notes on the study surface */}
-      <ConfirmDialog
-        isOpen={pendingNav !== null}
-        title="Unsaved notes"
-        message="You have unsaved notes. Save them before leaving?"
-        onClose={() => setPendingNav(null)}
-        actions={[
-          {
-            label: 'Save & continue',
-            variant: 'primary',
-            autoFocus: false,
-            onClick: () => {
-              const dest = pendingNav
-              void (async () => {
-                const passageId = await studyModeRef.current?.save()
-                setPendingNav(null)
-                await refresh()
-                if (dest === 'bible' && passageId) {
-                  setState(prev => ({
-                    ...prev,
-                    destination: 'bible',
-                    selectedPassageId: passageId,
-                    selectedBookName: null,
-                    studyReference: '',
-                    studyPassageId: null
-                  }))
-                } else if (dest) {
-                  doNavigate(dest)
-                }
-              })()
-            }
-          },
-          {
-            label: 'Discard',
-            variant: 'danger',
-            autoFocus: false,
-            onClick: () => {
-              const dest = pendingNav
-              setPendingNav(null)
-              setState(prev => ({ ...prev, studyReference: '', studyPassageId: null }))
-              if (dest) doNavigate(dest)
-            }
-          },
-          {
-            label: 'Cancel',
-            variant: 'ghost',
-            autoFocus: true,
-            onClick: () => setPendingNav(null)
-          }
-        ]}
-      />
       <OfflineIndicator />
 
       {/* At most one of these is ever on screen: the once-ever nudge, or the

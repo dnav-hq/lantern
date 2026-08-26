@@ -13,6 +13,7 @@ import ErrorBoundary from './ErrorBoundary'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import MobileNoteComposer from './MobileNoteComposer'
+import StudyWorkbench, { type AnchorRequest, type StudyRange } from './StudyWorkbench'
 import ReadingControls from './ReadingControls'
 import type { DisplayPrefs } from './ReadingPrefs'
 import TranslationFooter from './TranslationFooter'
@@ -95,13 +96,15 @@ function composeNoteContent(
 // every book (Psalm 119, the longest chapter, has 176 verses).
 const toKey = (chapter: number, verse: number): number => chapter * 1000 + verse
 
-// "Start study on {ref}" / "Study chapter" should land in an existing study
-// if one already covers the selected verses, rather than always starting
-// blank — overlap/containment, not just an exact-range match, per the
+// A fresh note should land in an existing passage if one already covers the
+// verses it is anchored to, rather than creating a duplicate — overlap/containment, not just an exact-range match, per the
 // decided behavior: a note anchored anywhere inside the selection should
 // show up, regardless of exactly which range you dragged this time. Picks
 // the first match; multiple distinct overlapping efforts merging into one
 // editor is the deferred "multiple study instances" feature (see BACKLOG).
+//
+// It compares (chapter, verse) keys ONLY — the caller must hand it passages
+// from a single book, or it will match the same numbers in a different one.
 function findOverlappingPassage(
   passages: Passage[],
   chapter: number,
@@ -228,10 +231,15 @@ interface ChapterViewProps {
   bookName: string
   chapter: number
   notes: NoteWithPassageInfo[]
-  passages: Passage[]
-  onStudyChapter: (ref: string, passageId?: string) => void
-  onOpenStudy: (passageId: string) => void
   onNotesChanged: () => void
+  // Desktop Read/Study focus toggle. When on, the notes move out of the
+  // scripture column and into the workbench beside it (see StudyWorkbench),
+  // and selecting verses re-aims the draft's anchor instead of raising the
+  // selection action bar.
+  studyOpen: boolean
+  // Turn Study on from inside the reading column (the selection bar's "Study
+  // these verses"). Owned by App so the nav tab can reflect it.
+  onEnterStudy: () => void
   // Scripture already fetched for this chapter (see useChapterPreload). When
   // present the view renders text on its FIRST frame — no skeleton, no await.
   // This is the whole reason a swipe to the next chapter feels instant.
@@ -248,10 +256,9 @@ function ChapterView({
   bookName,
   chapter,
   notes,
-  passages,
-  onStudyChapter,
-  onOpenStudy,
   onNotesChanged,
+  studyOpen,
+  onEnterStudy,
   preloaded,
   initialHighlightVerses,
   suppressEntrance
@@ -312,6 +319,19 @@ function ChapterView({
   // selecting the verse the instant you paused before scrolling. Record the
   // press so handleVerseClick can accept only a real tap (short + still).
   const tapRef = useRef<{ t: number; x: number; y: number; moved: boolean } | null>(null)
+  // Study mode: the last verse click / marquee release, handed to the workbench
+  // so it can REFRESH the draft's leading anchor. Nonce-stamped so re-selecting
+  // the same range still re-aims (a plain range would look unchanged).
+  const [anchorRequest, setAnchorRequest] = useState<AnchorRequest | null>(null)
+  const anchorNonce = useRef(0)
+  // Read inside the marquee callback, which is created once — a plain closure
+  // over `studyOpen` would go stale the moment the toggle flips.
+  const studyOpenRef = useRef(studyOpen)
+  studyOpenRef.current = studyOpen
+  const aimStudyAnchor = (start: number, end: number): void => {
+    anchorNonce.current += 1
+    setAnchorRequest({ start, end, nonce: anchorNonce.current })
+  }
 
   const chapterNotes = localNotes.filter(
     n => n.chapter_start <= chapter && chapter <= n.chapter_end
@@ -381,6 +401,9 @@ function ChapterView({
   // Entering either fully clears the other so a verse is never in a stacked,
   // half-dimmed limbo — its end state is binary.
   const clearAll = (): void => {
+    // In Study the highlight belongs to the note being written, not to a
+    // selection — clearing it here would fight the workbench.
+    if (studyOpenRef.current) return
     setSelAnchor(null)
     setSelFocus(null)
     setHighlightedVerses(new Set())
@@ -432,19 +455,19 @@ function ChapterView({
       : `v${selRange[0]}-${selRange[1]} `
     : ''
 
-  // The overlap check that decides "Start" vs "Continue" wording for the
-  // selection action bar — computed here (not just inside the click handler)
-  // so the label can react to it before the button is ever pressed.
-  const selectionOverlap = selRange
-    ? findOverlappingPassage(passages, chapter, selRange[0], selRange[1])
-    : undefined
-
   const clearSelection = (): void => {
     setSelAnchor(null)
     setSelFocus(null)
   }
 
   const handleVerseClick = (v: number): void => {
+    // Study: a click re-aims the draft at this one verse. No selection state, no
+    // action bar — the note in the workbench is what the click is about.
+    if (studyOpen) {
+      if (suppressNextClick()) return
+      aimStudyAnchor(v, v)
+      return
+    }
     if (editingNoteId !== null) return
     // Selection is locked while the composer is open — the note you are writing
     // is about the verses you already chose.
@@ -500,6 +523,12 @@ function ChapterView({
     containerRef,
     verseRowRefs,
     (start, end) => {
+      // In Study the drag aims the note being written, not a selection: the
+      // workbench rewrites its anchor and the verses light up from there.
+      if (studyOpenRef.current) {
+        if (start !== null && end !== null) aimStudyAnchor(start, end)
+        return
+      }
       // Selecting verses clears any note highlight (mutually exclusive).
       setHighlightedVerses(new Set())
       setHighlightedNoteIds(new Set())
@@ -526,28 +555,14 @@ function ChapterView({
     clearAll()
   }
 
-  const handleStartStudyOnSelection = (): void => {
-    if (!selReference || !selRange) return
-    const existing = selectionOverlap
+  // "Study these verses" — Study is a mode on this page now, not a destination,
+  // so this flips the toggle and hands the workbench the selection as its
+  // starting anchor. (It used to navigate to the standalone StudyMode page.)
+  const handleStudyOnSelection = (): void => {
+    if (selRange === null) return
+    aimStudyAnchor(selRange[0], selRange[1])
     clearSelection()
-    // When reopening an existing passage, pass ITS OWN reference_label, not
-    // the freshly-dragged selection's — StudyMode only ever reads the
-    // reference text from initialPassageId's own fetch (never from
-    // initialReference once a passageId is set), but the two still race to
-    // set the transient scripture-preview state; matching them avoids a
-    // visible flicker between "1 Cor 5:3-5" and the existing passage's real
-    // "1 Cor 5:2-6" while that resolves.
-    onStudyChapter(existing?.reference_label ?? selReference, existing?.id)
-  }
-
-  // The secondary "Or start a new study on these verses" affordance — only
-  // ever shown when selectionOverlap is set. Deliberately omits a passageId
-  // so onStudyChapter takes the same "+ Study" manual-entry path that already
-  // creates a genuinely distinct Passage (see docs/proposals/study-id.md).
-  const handleStartNewStudyOnSelection = (): void => {
-    if (!selReference) return
-    clearSelection()
-    onStudyChapter(selReference)
+    onEnterStudy()
   }
 
   const handleQuickNoteFromSelection = (): void => {
@@ -717,15 +732,19 @@ function ChapterView({
     // verse that opened the compose box when the tag was edited away.
     const anchorStart = parsed.anchorStart ?? fallbackVerse
     const anchorEnd = parsed.anchorEnd ?? anchorStart
-    const passages = await api.getPassages()
-    // Same precise verse-overlap resolution "Start study on {ref}" uses
-    // (findOverlappingPassage) — reuse an existing passage rather than ever
-    // creating a duplicate for verses already covered.
+    const bookNumber = findBookByAlias(bookName)?.number ?? 1
+    // Scoped to THIS BOOK. findOverlappingPassage compares chapter/verse keys
+    // only, so handed the whole-Bible getPassages() list it happily matches
+    // another book's passage at the same numbers — a note on John 1:4 landing
+    // on the Genesis 1:1-5 passage, and so vanishing from John's notes.
+    const passages = await api.getPassagesByBook(bookNumber)
+    // Reuse an existing passage rather than ever creating a duplicate for
+    // verses already covered.
     const existing = findOverlappingPassage(passages, chapter, anchorStart, anchorEnd)
     const passage =
       existing ??
       (await api.createPassage({
-        book_number: findBookByAlias(bookName)?.number ?? 1,
+        book_number: bookNumber,
         chapter_start: chapter,
         verse_start: anchorStart,
         chapter_end: chapter,
@@ -779,6 +798,50 @@ function ChapterView({
     }
   }
 
+  // ── study workbench ───────────────────────────────────────────────────────
+
+  // The workbench edits the note's stored content line directly ("v4-6
+  // @personal prose"), so saving is the same parse-then-write every other
+  // surface does — no second representation to keep in step.
+  const handleWorkbenchSave = async (noteId: string | null, content: string): Promise<void> => {
+    if (savingInline) return
+    setSavingInline(true)
+    try {
+      const parsed = parseNoteLine(content)
+      if (noteId) {
+        const updated = await api.updateNote(noteId, {
+          content,
+          anchor_start_verse: parsed.anchorStart,
+          anchor_end_verse: parsed.anchorEnd,
+          category: parsed.category
+        })
+        setLocalNotes(prev => prev.map(n => (n.id === updated.id ? { ...n, ...updated } : n)))
+        markJustSaved(updated.id)
+        onNotesChanged()
+      } else {
+        await createAnchoredNote(content, parsed.anchorStart ?? 1)
+      }
+    } finally {
+      setSavingInline(false)
+    }
+  }
+
+  const handleWorkbenchDelete = async (noteId: string): Promise<void> => {
+    const note = localNotes.find(n => n.id === noteId)
+    if (note) await handleDeleteNote(note)
+  }
+
+  // The editor's live anchor drives the scripture highlight, so typing "v4-6"
+  // lights up those verses exactly as dragging over them would.
+  const handleStudyRangeChange = (range: StudyRange | null): void => {
+    setHighlightedNoteIds(new Set())
+    setHighlightedVerses(
+      range === null
+        ? new Set()
+        : new Set(Array.from({ length: range.end - range.start + 1 }, (_, i) => range.start + i))
+    )
+  }
+
   const handleStartEdit = (note: NoteWithPassageInfo): void => {
     setEditingNoteId(note.id)
     setEditText(note.content)
@@ -807,19 +870,7 @@ function ChapterView({
     onNotesChanged()
   }
 
-  // Resolve a note (anchored or passage-level) to the existing Passage it
-  // belongs to, via the same overlap logic "Start study on {ref}" uses —
-  // mirrors ReadingMode's onOpenStudy bridge, except ChapterView spans many
-  // notes/passages so the id has to be resolved per-note rather than closed
-  // over a single passage prop.
-  const resolveNotePassageId = (note: NoteWithPassageInfo): string | undefined => {
-    const start = note.anchor_start_verse ?? note.verse_start
-    const end = note.anchor_end_verse ?? note.anchor_start_verse ?? note.verse_end
-    return findOverlappingPassage(passages, note.chapter_start, start, end)?.id
-  }
-
   const renderNoteActions = (note: NoteWithPassageInfo): React.ReactElement => {
-    const openPassageId = resolveNotePassageId(note)
     return (
       <div className="se-note-actions">
         <button
@@ -844,30 +895,6 @@ function ChapterView({
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
           </svg>
         </button>
-        {openPassageId && (
-          <button
-            className="se-icon-btn"
-            title="Open study"
-            onClick={e => {
-              e.stopPropagation()
-              onOpenStudy(openPassageId)
-            }}
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-            </svg>
-          </button>
-        )}
         <button
           className="se-icon-btn se-icon-danger"
           title="Delete"
@@ -1162,8 +1189,13 @@ function ChapterView({
           {verses.map((v, i) => {
             const isSelected = selRange !== null && v.verse >= selRange[0] && v.verse <= selRange[1]
             const isHighlighted = highlightedVerses.has(v.verse)
+            // Read dims everything outside the highlight to make one passage
+            // stand out for a moment. Study's highlight is a standing anchor,
+            // not a moment — dimming the chapter for as long as a note is open
+            // would leave you studying a greyed-out Bible.
             const isDimmed =
-              (hasHighlightedVerse && !isHighlighted) || (selRange !== null && !isSelected)
+              !studyOpen &&
+              ((hasHighlightedVerse && !isHighlighted) || (selRange !== null && !isSelected))
             const showInline = inlineVerse === v.verse
             const bracketCat = bracketByVerse.get(v.verse)
 
@@ -1353,7 +1385,7 @@ function ChapterView({
         </div>
       )}
 
-      {!isMobile && selRange !== null && inlineVerse === null && (
+      {!isMobile && !studyOpen && selRange !== null && inlineVerse === null && (
         <div className="verse-action-bar" role="toolbar" aria-label="Selection actions">
           <span className="verse-action-ref">{selReference}</span>
           <span className="verse-action-hint">Hold Alt and drag to select the text to copy</span>
@@ -1361,16 +1393,9 @@ function ChapterView({
             <button className="verse-action-btn primary" onClick={handleQuickNoteFromSelection}>
               Quick note
             </button>
-            <button className="verse-action-btn" onClick={handleStartStudyOnSelection}>
-              {selectionOverlap
-                ? `Continue study on ${selReference}`
-                : `Start study on ${selReference}`}
+            <button className="verse-action-btn" onClick={handleStudyOnSelection}>
+              Study these verses
             </button>
-            {selectionOverlap && (
-              <button className="verse-action-secondary" onClick={handleStartNewStudyOnSelection}>
-                Or start a new study on these verses
-              </button>
-            )}
           </div>
           <button
             className="verse-action-clear"
@@ -1392,6 +1417,21 @@ function ChapterView({
             </svg>
           </button>
         </div>
+      )}
+
+      {/* The desktop workbench. Portalled to the body (see StudyWorkbench) —
+        the reading column is transform-shifted while Study is open, and a
+        transformed ancestor would drag a fixed panel along with it. */}
+      {studyOpen && !isMobile && (
+        <StudyWorkbench
+          reference={`${bookName} ${chapter}`}
+          notes={chapterNotes}
+          anchorRequest={anchorRequest}
+          saving={savingInline}
+          onActiveRangeChange={handleStudyRangeChange}
+          onSave={handleWorkbenchSave}
+          onDelete={handleWorkbenchDelete}
+        />
       )}
     </div>
   )
@@ -1481,9 +1521,11 @@ interface BookDetailPageProps {
   // Move the reader to another chapter — possibly in another book, which is
   // why this takes a book name rather than a number.
   onNavigateChapter: (bookName: string, chapter: number) => void
-  onStudy: (reference: string, passageId?: string) => void
-  onOpenStudy: (passageId: string) => void
   onRefresh?: () => void
+  // The desktop Read/Study focus toggle. Owned by App because the Study nav tab
+  // reflects it (Study is a mode on this page now, not a destination of its own).
+  studyOpen: boolean
+  onToggleStudy: (open: boolean) => void
   // Reading-context controls, hosted in this surface's own header rather than
   // the global top bar (see ReadingControls). Reading Mode (chrome) and Hide
   // Notes (content) are separate concerns.
@@ -1507,9 +1549,9 @@ export default function BookDetailPage({
   chapter: selectedChapter,
   onBack,
   onNavigateChapter,
-  onStudy,
-  onOpenStudy,
   onRefresh,
+  studyOpen,
+  onToggleStudy,
   focusReading,
   onToggleFocusReading,
   hideNotes,
@@ -1521,11 +1563,6 @@ export default function BookDetailPage({
   const api = useApi()
   const [translation] = useTranslation()
   const [allNotes, setAllNotes] = useState<NoteWithPassageInfo[]>([])
-  // The book's existing Passages (not just notes) — needed to find one whose
-  // range overlaps a fresh verse selection, so "Start study on {ref}" /
-  // "Study chapter" can reopen it (with its existing notes) instead of
-  // always starting blank. See findOverlappingPassage.
-  const [bookPassages, setBookPassages] = useState<Passage[]>([])
   const chapterSelectorRef = useRef<HTMLDivElement>(null)
   // The scroll container. On mobile the whole layout scrolls (the header +
   // chapter strip are sticky inside it, so they can slide away without moving a
@@ -1542,19 +1579,13 @@ export default function BookDetailPage({
   useChromeAutoHide(layoutRef, !focusReading, onChromeVisibleChange, selectedChapter)
 
   const reloadNotes = useCallback(async (): Promise<void> => {
-    const [notes, passages] = await Promise.all([
-      api.getNotesByBook(bibleBook.number),
-      api.getPassagesByBook(bibleBook.number)
-    ])
-    setAllNotes(notes)
-    setBookPassages(passages)
+    setAllNotes(await api.getNotesByBook(bibleBook.number))
     // Always refresh app-level state so the sidebar stays in sync
     onRefresh?.()
   }, [api, bibleBook.number, onRefresh])
 
   useEffect(() => {
     api.getNotesByBook(bibleBook.number).then(setAllNotes)
-    api.getPassagesByBook(bibleBook.number).then(setBookPassages)
   }, [api, bibleBook.number])
 
   const chaptersWithNotes = new Set(allNotes.map(n => n.chapter_start))
@@ -1802,6 +1833,21 @@ export default function BookDetailPage({
               </div>
             </div>
             <div className="book-detail-header-controls">
+              {/* Read / Study. Wide desktop only (CSS hides it below the width
+                  the workbench needs, and App keeps the mode off there) —
+                  studying on a phone is the inline composer, not a side panel. */}
+              <div className="study-toggle" role="group" aria-label="Reading mode">
+                <button
+                  type="button"
+                  aria-pressed={!studyOpen}
+                  onClick={() => onToggleStudy(false)}
+                >
+                  Read
+                </button>
+                <button type="button" aria-pressed={studyOpen} onClick={() => onToggleStudy(true)}>
+                  Study
+                </button>
+              </div>
               {/* The muted reading cluster: display options ("aA"), hide notes,
                   reading mode. Translation also stays in the chapter colophon
                   (TranslationFooter) as the ultra-quick per-passage flip. */}
@@ -1919,10 +1965,11 @@ export default function BookDetailPage({
                       // loaded yet, and it only wears that state for the length
                       // of the transition — arriving reloads them for real.
                       notes={sameBook ? allNotes : []}
-                      passages={sameBook ? bookPassages : []}
-                      onStudyChapter={peek ? noop : onStudy}
-                      onOpenStudy={peek ? noop : onOpenStudy}
                       onNotesChanged={peek ? noop : reloadNotes}
+                      // Scenery never gets a workbench: the panel is a single
+                      // fixed surface, so only the live chapter may own it.
+                      studyOpen={peek ? false : studyOpen}
+                      onEnterStudy={peek ? noop : () => onToggleStudy(true)}
                       preloaded={getPreloaded(ref)}
                       initialHighlightVerses={peek ? undefined : initialHighlightVerses}
                       // Scenery reveals nothing: the neighbour must not play the

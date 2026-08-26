@@ -7018,3 +7018,413 @@ body.dark .mobile-menu-btn:active {
     white-space: pre-wrap;
   }
 }
+
+/* ─── Desktop Read / Study focus toggle ──────────────────────────────────────
+   Studying is a MODE you switch on while reading a chapter, not a page you
+   navigate to (the standalone study destination is gone). Study slides a notes
+   workbench in beside the scripture and moves the chapter's notes into it, so
+   the reading column is left clean.
+
+   The whole layout change is a TRANSFORM. A width/padding animation would
+   re-measure the reading column every frame and re-wrap the scripture as it
+   moved — the "words scrambling" jank. Instead the reading column is simply
+   translated left by half the panel's width, which is exactly the distance it
+   needs to travel to stay centred in what's left of the viewport. The verse
+   text never re-lays-out; it just glides. (The rail collapsing beside it is the
+   same trick the hide-notes control already uses: a FIXED scripture measure, so
+   the grid recentres rather than reflowing — see .scripture-grid.) */
+:root {
+  --study-aside-w: 420px;
+}
+
+/* Wide desktop only: below this the panel and a full reading measure cannot
+   both fit, so the toggle is hidden and App forces the mode off. */
+.study-toggle {
+  display: none;
+}
+@media (min-width: 1160px) {
+  .study-toggle {
+    display: inline-flex;
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+    margin-right: 8px;
+  }
+  .study-toggle button {
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 15px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .study-toggle button[aria-pressed='true'] {
+    background: var(--surface);
+    color: var(--accent);
+    box-shadow: var(--elev-1);
+  }
+}
+
+/* The reading column's two resting positions. `overflow-x: clip` (not hidden —
+   hidden would make this a scroll container and break the sticky chrome) keeps
+   the shifted column from widening the page.
+
+   The chapter chrome above the text travels with it — but only its INNER
+   content box, so the header's full-width background and hairline stay put and
+   the panel never opens a gap beside them. Without this the Read/Study toggle
+   itself would slide under the panel it just opened. */
+.app-shell.study-open .book-detail-content {
+  overflow-x: clip;
+}
+.app-shell.study-open .book-detail-content > *,
+.app-shell.study-open .book-detail-header-inner,
+.app-shell.study-open .chapter-selector-wrap-inner {
+  transform: translateX(calc(var(--study-aside-w) / -2));
+}
+.app-shell .book-detail-content > *,
+.app-shell .book-detail-header-inner,
+.app-shell .chapter-selector-wrap-inner {
+  transform: translateX(0);
+}
+
+/* The workbench. Portalled to the body, so the transform above can never make
+   it a positioned descendant and drag it along with the text. */
+.study-aside {
+  position: fixed;
+  top: 52px;
+  right: 0;
+  bottom: 0;
+  width: var(--study-aside-w);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 0.5px solid var(--border);
+  box-shadow: -18px 0 40px -30px rgba(20, 16, 8, 0.3);
+}
+.study-aside-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 18px 22px 13px;
+  border-bottom: 0.5px solid var(--border);
+  flex-shrink: 0;
+}
+.study-aside-title {
+  font-family: var(--font-serif, Georgia, serif);
+  font-weight: 600;
+  font-size: 16px;
+}
+.study-aside-ref {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.study-aside-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px 48px;
+}
+.study-aside-empty {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-faint);
+  margin: 10px 2px;
+}
+
+/* ── a saved note in the panel ── */
+.study-note-card {
+  position: relative;
+  margin: 3px 0;
+}
+.study-note {
+  border-left: 2.5px solid var(--nrail, var(--border));
+  border-radius: 0 8px 8px 0;
+  padding: 9px 84px 9px 12px;
+  cursor: pointer;
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+.study-note:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.study-note.cat-observation {
+  --nrail: var(--cat-observation);
+  --nink: var(--cat-observation-ink);
+}
+.study-note.cat-historical {
+  --nrail: var(--cat-historical);
+  --nink: var(--cat-historical-ink);
+}
+.study-note.cat-application {
+  --nrail: var(--cat-application);
+  --nink: var(--cat-application-ink);
+}
+.study-note.cat-personal {
+  --nrail: var(--cat-personal);
+  --nink: var(--cat-personal-ink);
+}
+.study-note-card:hover .study-note {
+  background: color-mix(in srgb, var(--nrail, var(--border)) 8%, transparent);
+}
+.study-note-cat {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nink, var(--accent));
+  margin-right: 6px;
+}
+.study-note-body {
+  white-space: pre-wrap;
+}
+.study-note-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  pointer-events: none;
+}
+.study-note-card:hover .study-note-actions,
+.study-note-card:focus-within .study-note-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+.study-note-act {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 9px;
+  padding: 3px;
+  box-shadow: var(--elev-2);
+}
+.study-note-act button {
+  border: 0;
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 4px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.study-note-act button:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.study-note-act .is-del:hover {
+  color: var(--cat-personal-ink);
+}
+.study-note-act .is-yes {
+  color: #fff;
+  background: var(--cat-personal);
+}
+.study-note-q {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0 5px;
+}
+
+/* ── the editor ── */
+.study-editor {
+  display: grid;
+  grid-template-rows: 1fr;
+  margin-bottom: 14px;
+}
+.study-editor-inner {
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-left: 3px solid var(--erail, var(--border));
+  border-radius: 12px;
+  box-shadow: var(--elev-2);
+  padding: 11px 12px 10px;
+}
+.study-editor.cat-observation .study-editor-inner {
+  --erail: var(--cat-observation);
+  background: color-mix(in srgb, var(--cat-observation) 5%, var(--surface));
+}
+.study-editor.cat-historical .study-editor-inner {
+  --erail: var(--cat-historical);
+  background: color-mix(in srgb, var(--cat-historical) 5%, var(--surface));
+}
+.study-editor.cat-application .study-editor-inner {
+  --erail: var(--cat-application);
+  background: color-mix(in srgb, var(--cat-application) 5%, var(--surface));
+}
+.study-editor.cat-personal .study-editor-inner {
+  --erail: var(--cat-personal);
+  background: color-mix(in srgb, var(--cat-personal) 5%, var(--surface));
+}
+/* Cancelling a draft is two phases, so the box fully fades before the space it
+   held eases closed and the notes below glide up — never a jump-cut. */
+.study-editor.is-fade .study-editor-inner,
+.study-editor.is-collapse .study-editor-inner {
+  opacity: 0;
+  pointer-events: none;
+}
+.study-editor.is-collapse {
+  grid-template-rows: 0fr;
+  margin-bottom: 0;
+}
+.study-editor-body {
+  font-size: 15px;
+  line-height: 1.65;
+  min-height: 46px;
+}
+.study-editor-anchor {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin: 7px 0 2px;
+  min-height: 15px;
+}
+.study-editor-anchor b {
+  color: var(--accent);
+  font-weight: 600;
+}
+.study-editor-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.study-chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.study-chip {
+  border: 0.5px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 4px 9px 4px 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.study-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dc, var(--border));
+}
+.study-chip.cat-observation {
+  --dc: var(--cat-observation);
+}
+.study-chip.cat-historical {
+  --dc: var(--cat-historical);
+}
+.study-chip.cat-application {
+  --dc: var(--cat-application);
+}
+.study-chip.cat-personal {
+  --dc: var(--cat-personal);
+}
+.study-chip[aria-pressed='true'] {
+  color: var(--text);
+  background: color-mix(in srgb, var(--dc) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--dc) 50%, var(--border));
+}
+.study-editor-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.study-editor-q {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+.study-btn-ghost {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 12.5px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.study-btn-ghost:hover {
+  background: var(--surface-2);
+}
+.study-btn-ghost.is-danger {
+  color: var(--cat-personal-ink);
+}
+.study-btn-save {
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 12.5px;
+  border-radius: 9px;
+  padding: 7px 15px;
+  cursor: pointer;
+}
+.study-btn-save:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.study-btn-danger {
+  border: 0;
+  background: var(--cat-personal);
+  color: #fff;
+  font-weight: 600;
+  font-size: 12.5px;
+  border-radius: 9px;
+  padding: 7px 15px;
+  cursor: pointer;
+}
+
+/* The right-hand chapter arrow lives where the panel now is. */
+.app-shell.study-open .chapter-edge-nav.is-next {
+  display: none;
+}
+
+/* Motion for the toggle. Kept here (main.css) rather than motion.css because
+   this file is the one in scope for the change; the gate is the same one
+   motion.css uses, so a reduced-motion reader lands on the end state above
+   instantly with no transition at all. */
+@media (prefers-reduced-motion: no-preference) {
+  .book-detail-content > *,
+  .book-detail-header-inner,
+  .chapter-selector-wrap-inner {
+    transition: transform var(--dur-4) var(--ease-calm);
+  }
+  .study-aside {
+    animation: studyAsideIn 480ms var(--ease-calm) both;
+  }
+  @keyframes studyAsideIn {
+    from {
+      opacity: 0;
+      transform: translateX(26px);
+    }
+  }
+  .study-editor {
+    transition:
+      grid-template-rows 300ms var(--ease-calm),
+      margin-bottom 300ms var(--ease-calm);
+  }
+  .study-editor-inner {
+    transition: opacity 240ms var(--ease-calm);
+  }
+  .study-note-actions {
+    transition: opacity var(--dur-1) var(--ease-out);
+  }
+}
