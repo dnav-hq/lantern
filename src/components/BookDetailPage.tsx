@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { BiblePassage, NoteWithPassageInfo, NoteCategory, Passage } from '../types'
-import { BibleBook, findBookByAlias, readingShortBookName } from '../utils/bibleBooks'
+import { BibleBook, readingShortBookName } from '../utils/bibleBooks'
 import { parseNoteLine } from '../utils/noteParser'
 import { useApi } from '../api/context'
 import { getBibleVerse } from '../bible/service'
@@ -226,6 +226,10 @@ function RenderedNoteContent({ content }: { content: string }): React.ReactEleme
 
 interface ChapterViewProps {
   bookName: string
+  // The USFM book number for bookName. Authoritative (it comes from the
+  // BibleBook the reader opened), which matters because passage lookup and
+  // creation both key on it — see createAnchoredNote.
+  bookNumber: number
   chapter: number
   notes: NoteWithPassageInfo[]
   passages: Passage[]
@@ -246,6 +250,7 @@ interface ChapterViewProps {
 
 function ChapterView({
   bookName,
+  bookNumber,
   chapter,
   notes,
   passages,
@@ -717,7 +722,12 @@ function ChapterView({
     // verse that opened the compose box when the tag was edited away.
     const anchorStart = parsed.anchorStart ?? fallbackVerse
     const anchorEnd = parsed.anchorEnd ?? anchorStart
-    const passages = await api.getPassages()
+    // Scoped to THIS BOOK, not every passage in the library: findOverlappingPassage
+    // compares chapter+verse only, so an unfiltered list let a passage in another
+    // book win on a bare number match — a note taken on John 1:5 was filed against
+    // Genesis 1, vanished from the reading view (getNotesByBook never returned it)
+    // and reappeared under the wrong book.
+    const passages = await api.getPassagesByBook(bookNumber)
     // Same precise verse-overlap resolution "Start study on {ref}" uses
     // (findOverlappingPassage) — reuse an existing passage rather than ever
     // creating a duplicate for verses already covered.
@@ -725,7 +735,7 @@ function ChapterView({
     const passage =
       existing ??
       (await api.createPassage({
-        book_number: findBookByAlias(bookName)?.number ?? 1,
+        book_number: bookNumber,
         chapter_start: chapter,
         verse_start: anchorStart,
         chapter_end: chapter,
@@ -1914,6 +1924,7 @@ export default function BookDetailPage({
                   <ErrorBoundary variant="pane">
                     <ChapterView
                       bookName={ref.bookName}
+                      bookNumber={ref.bookNumber}
                       chapter={ref.chapter}
                       // Notes are per book: a neighbour in ANOTHER book has none
                       // loaded yet, and it only wears that state for the length
