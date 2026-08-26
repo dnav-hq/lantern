@@ -416,10 +416,9 @@ export default function NavBar({
         <span className="bottomnav-indicator" aria-hidden="true" />
         {navTab('bible', 'Bible', bibleIcon)}
         {navTab('journal', 'Journal', journalIcon)}
-        {/* Plain "Study" here, not "+ Study" — the badge icon already carries
-            the "+"; the desktop text-only tab keeps the prefix since it has
-            no icon to carry that signal instead. */}
-        {navTab('study', 'Study', studyIcon)}
+        {/* No "Study" tab on mobile: studying on a phone IS reading + the inline
+            composer, not a separate mode. The desktop Read/Study toggle covers
+            the workbench where there's room for it. */}
         {navTab('profile', 'Profile', profileIcon)}
       </nav>
     </>

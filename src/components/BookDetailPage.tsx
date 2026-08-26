@@ -282,6 +282,12 @@ function ChapterView({
   const [inlineText, setInlineText] = useState('')
   const [savingInline, setSavingInline] = useState(false)
   const isMobile = useIsMobile()
+  // Study is a DESKTOP mode (a workbench beside the text). On mobile there is no
+  // such surface — capture is the inline composer — so study behaviour must be
+  // inert here regardless of the studyOpen prop. Without this, the Study nav tab
+  // (which sets studyOpen) would leave a tapped verse aiming a non-existent
+  // workbench instead of opening the composer — i.e. highlight, but no note.
+  const studyMode = studyOpen && !isMobile
   // Mobile capture: what the composer is currently open on — a fresh note over
   // the selected range, or a saved note being re-opened. null = not composing.
   const [composing, setComposing] = useState<{
@@ -326,8 +332,8 @@ function ChapterView({
   const anchorNonce = useRef(0)
   // Read inside the marquee callback, which is created once — a plain closure
   // over `studyOpen` would go stale the moment the toggle flips.
-  const studyOpenRef = useRef(studyOpen)
-  studyOpenRef.current = studyOpen
+  const studyOpenRef = useRef(studyMode)
+  studyOpenRef.current = studyMode
   const aimStudyAnchor = (start: number, end: number): void => {
     anchorNonce.current += 1
     setAnchorRequest({ start, end, nonce: anchorNonce.current })
@@ -463,7 +469,7 @@ function ChapterView({
   const handleVerseClick = (v: number): void => {
     // Study: a click re-aims the draft at this one verse. No selection state, no
     // action bar — the note in the workbench is what the click is about.
-    if (studyOpen) {
+    if (studyMode) {
       if (suppressNextClick()) return
       aimStudyAnchor(v, v)
       return
@@ -1194,7 +1200,7 @@ function ChapterView({
             // not a moment — dimming the chapter for as long as a note is open
             // would leave you studying a greyed-out Bible.
             const isDimmed =
-              !studyOpen &&
+              !studyMode &&
               ((hasHighlightedVerse && !isHighlighted) || (selRange !== null && !isSelected))
             const showInline = inlineVerse === v.verse
             const bracketCat = bracketByVerse.get(v.verse)
