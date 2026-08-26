@@ -29,7 +29,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt', not 'autoUpdate': a new worker installs and waits rather than
+      // activating + force-reloading mid-session (that was the jarring white
+      // flash). The waiting worker is surfaced as a quiet refresh prompt (see
+      // src/offline/pwaUpdate.ts, src/components/PwaUpdatePrompt.tsx) and applies
+      // on tap or on the next full launch.
+      registerType: 'prompt',
       // App-shell precache; scripture/notes caching is handled by our own
       // IndexedDB layers (src/bible/cache.ts, src/offline/mirror.ts), not the
       // service worker's runtime cache.

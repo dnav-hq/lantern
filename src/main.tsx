@@ -1,7 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { registerSW } from 'virtual:pwa-register'
 import Root from './Root'
+import PwaUpdatePrompt from './components/PwaUpdatePrompt'
+import { initServiceWorker } from './offline/pwaUpdate'
 import { installGlobalErrorHandlers } from './telemetry/globalHandlers'
 // Scripture reading faces, self-hosted (see tokens.css --scripture-font per
 // [data-theme]; Georgia is still the fallback if a woff2 fails to load).
@@ -22,13 +23,12 @@ import './assets/motion.css'
 // No-ops entirely when Supabase isn't configured.
 installGlobalErrorHandlers()
 
-// Service worker: precache the app shell, auto-update in the background with
-// no user prompt (registerType: 'autoUpdate' in vite.config.ts). Supabase API
-// traffic is excluded from the SW cache (NetworkOnly) so this never masks
-// staleness for reads/writes — only the shell (JS/CSS/HTML/icons) is cached.
-if ('serviceWorker' in navigator) {
-  registerSW({ immediate: true })
-}
+// Service worker: precache the app shell and update via a PROMPT (a quiet
+// "new version ready" pill), not the old force-reload that flashed white a few
+// seconds into a session. See src/offline/pwaUpdate.ts. Supabase API traffic is
+// excluded from the SW cache (NetworkOnly) so this never masks staleness for
+// reads/writes — only the shell (JS/CSS/HTML/icons) is cached.
+initServiceWorker()
 
 // Tag the body with the current platform so CSS can target it precisely.
 // navigator.platform is 'MacIntel' / 'MacM1' on macOS, 'Win32' on Windows, etc.
@@ -65,5 +65,6 @@ if (navigator.platform.toLowerCase().includes('mac')) {
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <Root />
+    <PwaUpdatePrompt />
   </React.StrictMode>
 )
