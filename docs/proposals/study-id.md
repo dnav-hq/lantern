@@ -1,6 +1,24 @@
 # Is a `study_id` column actually needed?
 
-**Answer: no. Recommendation is (a) — no schema change.** The backlog item
+**SUPERSEDED 2026-08-26 — resolved by the note-centric model, not by this
+proposal's own recommendation.** This proposal argued (correctly, at the time)
+that `study_id` was unneeded because `passage_id` already provided the grouping
+it would add. The model has since moved further: "study" is no longer a
+container a user creates or reopens at all — see the "Notes & studies model"
+section and the "Note-centric model" decision-log entry in
+`docs/ARCHITECTURE.md`. There is no "study instance" concept left for a
+`study_id` (or the `passage_id` this proposal defends) to disambiguate; a note
+anchored to scripture is the only saved unit, and "study" is a derived view over
+notes. The `passages`/`sessions` tables this proposal reasons about are now
+interim, invisible storage, slated for retirement in `docs/BACKLOG.md`'s
+deferred cleanup (which also denormalises book/chapter onto `notes`). Kept below
+for its research value (the live-driven proof that the old model already
+supported multiple overlapping passages), not as live guidance.
+
+---
+
+**Original recommendation (superseded, kept for history): no. Recommendation is
+(a) — no schema change.** The backlog item
 (`docs/BACKLOG.md`, "Multiple study instances over the same verses") describes
 a feature that, once you actually drive the running app, turns out to already
 exist. `notes -> sessions -> passages` already provides exactly the grouping
@@ -166,3 +184,10 @@ entirely.
 should be rewritten (in a separate change, out of scope here) to drop the
 `study_id`/migration language entirely and, if kept at all, describe only the
 small optional `BookDetailPage` UI branch above.
+
+**Update 2026-08-26:** overtaken by events rather than done as described above.
+The note-centric model removed the "study instance" concept the entry was about
+(see the SUPERSEDED note at the top of this file), so there is no longer a
+"multiple distinct studies over the same verses" question to answer —
+`docs/BACKLOG.md` has been updated accordingly rather than rewriting this old
+entry in place.
