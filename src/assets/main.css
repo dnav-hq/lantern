@@ -6736,11 +6736,20 @@ body.dark .mobile-menu-btn:active {
       transform: translateY(140%);
     }
   }
-  /* Dismiss: the entrance played backwards — a clean slide back down, so
-     cancelling a selection feels as considered as making one. `both` holds the
-     off-screen end-state until React unmounts the bar a beat later. */
+  /* Dismiss: the exact opposite of the entrance — slides back down over the
+     same duration, with the entrance's ease-out reflected in time
+     (cubic-bezier(0.7, 0, 0.84, 0)) so it accelerates away as gracefully as it
+     eased in. A DEDICATED keyframe, not `mobile-selbar-in reverse`: reusing the
+     just-finished entrance keyframe makes the browser snap between endpoints
+     (the "teleport to 80% then 100%") instead of interpolating. `forwards`
+     holds it off-screen until React unmounts the bar a beat later. */
+  @keyframes mobile-selbar-out {
+    to {
+      transform: translateY(140%);
+    }
+  }
   .mobile-selbar.is-leaving {
-    animation: mobile-selbar-in var(--dur-3) var(--ease-out) reverse both;
+    animation: mobile-selbar-out var(--dur-3) cubic-bezier(0.7, 0, 0.84, 0) forwards;
   }
   .app-shell.reading-surface.chrome-hidden .mobile-selbar {
     bottom: calc(12px + env(safe-area-inset-bottom));
