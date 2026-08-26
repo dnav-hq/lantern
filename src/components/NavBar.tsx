@@ -9,7 +9,10 @@ export type Destination = 'bible' | 'journal' | 'study' | 'profile'
 // position the sliding active-tab indicator via a plain CSS transform
 // (translateX(n * 100%)), no layout measurement needed since all four
 // columns are equal-width (flex: 1).
-const BOTTOMNAV_ORDER: Destination[] = ['bible', 'journal', 'study', 'profile']
+// No 'study' on mobile: studying on a phone is reading + the inline composer,
+// not a separate destination. The sliding indicator's width is derived from this
+// length (see .bottomnav-indicator), so it stays 1:1 with however many tabs render.
+const BOTTOMNAV_ORDER: Destination[] = ['bible', 'journal', 'profile']
 
 interface NavBarProps {
   destination: Destination
@@ -409,7 +412,8 @@ export default function NavBar({
         aria-label="Primary"
         style={
           {
-            '--bottomnav-active-index': BOTTOMNAV_ORDER.indexOf(destination)
+            '--bottomnav-active-index': BOTTOMNAV_ORDER.indexOf(destination),
+            '--bottomnav-count': BOTTOMNAV_ORDER.length
           } as React.CSSProperties
         }
       >

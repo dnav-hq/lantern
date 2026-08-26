@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import { BiblePassage, NoteWithPassageInfo, NoteCategory, Passage } from '../types'
 import { BibleBook, findBookByAlias, readingShortBookName } from '../utils/bibleBooks'
 import { parseNoteLine } from '../utils/noteParser'
@@ -14,6 +13,7 @@ import ErrorBoundary from './ErrorBoundary'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import MobileNoteComposer from './MobileNoteComposer'
+import MobileSelectionBar from './MobileSelectionBar'
 import StudyWorkbench, { type AnchorRequest, type StudyRange } from './StudyWorkbench'
 import ReadingControls from './ReadingControls'
 import type { DisplayPrefs } from './ReadingPrefs'
@@ -1372,34 +1372,16 @@ function ChapterView({
       {/* Touch: the prototype's selection bar — the reference, a clear button
         and one primary action. Everything else about a selection (start a
         study, the Alt-drag copy hint) is a desktop affordance. */}
-      {/* Portaled to <body>: the chapter deck sets a transform (for the swipe),
-        which would otherwise trap this position:fixed bar inside that
-        containing block — pinning it to the bottom of the tall chapter, far
-        off-screen, instead of the viewport. The prototype had no transformed
-        ancestor, so this only shows up here. */}
-      {isMobile &&
-        selRange !== null &&
-        composing === null &&
-        createPortal(
-          <div className="mobile-selbar" role="toolbar" aria-label="Selection actions">
-            <span className="mobile-selbar-ref">{selReference}</span>
-            <span className="mobile-selbar-tip" data-quiet={selRange[0] !== selRange[1]}>
-              tap more to extend
-            </span>
-            <button
-              type="button"
-              className="mobile-selbar-clear"
-              onClick={clearSelection}
-              aria-label="Clear selection"
-            >
-              ✕
-            </button>
-            <button type="button" className="mobile-selbar-note" onClick={openComposerOnSelection}>
-              Note
-            </button>
-          </div>,
-          document.body
-        )}
+      {/* The touch selection bar (portals itself to <body>, and owns its own
+        enter/exit slide so a cancelled selection settles as cleanly as it
+        opened). Desktop keeps the fuller verse-action-bar below. */}
+      <MobileSelectionBar
+        shown={isMobile && selRange !== null && composing === null}
+        reference={selReference}
+        multi={selRange !== null && selRange[0] !== selRange[1]}
+        onClear={clearSelection}
+        onNote={openComposerOnSelection}
+      />
 
       {!isMobile && !studyOpen && selRange !== null && inlineVerse === null && (
         <div className="verse-action-bar" role="toolbar" aria-label="Selection actions">

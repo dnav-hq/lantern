@@ -6667,6 +6667,12 @@ body.dark .mobile-menu-btn:active {
       transform: translateY(140%);
     }
   }
+  /* Dismiss: the entrance played backwards — a clean slide back down, so
+     cancelling a selection feels as considered as making one. `both` holds the
+     off-screen end-state until React unmounts the bar a beat later. */
+  .mobile-selbar.is-leaving {
+    animation: mobile-selbar-in var(--dur-3) var(--ease-out) reverse both;
+  }
   .app-shell.reading-surface.chrome-hidden .mobile-selbar {
     bottom: calc(12px + env(safe-area-inset-bottom));
   }

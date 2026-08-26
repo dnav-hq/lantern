@@ -658,7 +658,10 @@
   top: 6px;
   bottom: 6px;
   left: 0;
-  width: 25%;
+  /* One tab wide, whatever the tab count — kept 1:1 with the rendered tabs.
+     translateX is a multiple of the indicator's OWN width, so index * 100%
+     lands it exactly over tab N. */
+  width: calc(100% / var(--bottomnav-count, 4));
   border-radius: 12px;
   background: var(--accent-weak);
   z-index: 0;
