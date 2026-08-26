@@ -879,10 +879,14 @@ body.dark .search-backdrop {
   line-height: 1.65;
 }
 
-/* Journal index — study sessions grouped by book */
+/* Journal — a derived history: your notes, grouped by chapter and by when */
 .journal-index {
   max-width: 640px;
   margin: 0 auto;
+}
+
+.journal-header {
+  margin-bottom: 2px;
 }
 
 .journal-heading {
@@ -890,122 +894,340 @@ body.dark .search-backdrop {
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.3px;
-  margin: 0 0 4px;
+  margin: 0 0 6px;
 }
 
-.journal-sub {
-  font-size: 12px;
+/* The one line of framing on the page. Deliberately reflective — this is a
+   record to look back over, not a scoreboard, so there is no streak, target
+   or total anywhere on this surface. */
+.journal-masthead {
+  font-family: var(--scripture-font);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.5;
   color: var(--text-muted);
-  margin-bottom: 24px;
+  margin: 0;
+  max-width: 46ch;
 }
 
-/* Stand-in for .journal-sub while its real text (entry/book counts) is
-   still loading — same box footprint so the heading doesn't shift once the
-   real count line replaces it. */
-.journal-sub-skeleton {
-  display: block;
-  width: 160px;
-  height: 12px;
-  margin-bottom: 24px;
+/* View toggle + category filter. Sticky to the top of the journal's own
+   scroller so both stay reachable however far back you have scrolled; the
+   negative margin lets the opaque backing span the page's side padding. */
+.journal-controls {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px -24px 0;
+  padding: 10px 24px;
+  background: var(--bg);
+  border-bottom: 0.5px solid var(--border);
 }
 
-.journal-book-group {
-  margin-bottom: 24px;
+.journal-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  border-radius: 999px;
 }
 
-.journal-book-header {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-faint);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
+.journal-seg button {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color var(--dur-1) var(--ease-out),
+    background var(--dur-1) var(--ease-out);
 }
 
-.journal-entry {
-  display: block;
-  width: 100%;
-  text-align: left;
+.journal-seg button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--accent-ink);
+  box-shadow: var(--elev-2);
+}
+
+.journal-filter {
+  position: relative;
+  margin-left: auto;
+}
+
+.journal-filter-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
   background: var(--surface);
   border: 0.5px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin-bottom: 8px;
-  cursor: pointer;
+  border-radius: 999px;
+  color: var(--text-muted);
   font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.journal-entry:hover {
-  border-color: #d8d4f0;
-  background: #fbfaff;
+.journal-filter-caret {
+  font-size: 10px;
+  opacity: 0.7;
 }
 
-/* Row = the study card + its (hover-revealed) delete affordance. The card
-   itself stays a full button; the delete sits as a sibling overlaid at the
-   right edge so we never nest a button inside a button. */
-.journal-entry-row {
-  position: relative;
-}
-
-/* Reserve space at the card's right edge so neither the date nor the preview
-   sits under the delete icon when it appears. */
-.journal-entry-row .journal-entry {
-  padding-right: 40px;
-}
-
-.journal-entry-delete {
+.journal-filter-menu {
   position: absolute;
-  top: 50%;
-  right: 9px;
-  transform: translateY(-50%);
-  opacity: 0;
-  transition: opacity var(--dur-1) var(--ease-out);
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 30;
+  min-width: 178px;
+  padding: 5px;
+  background: var(--surface);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elev-3);
 }
 
-.journal-entry-row:hover .journal-entry-delete,
-.journal-entry-row:focus-within .journal-entry-delete {
+.journal-filter-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.journal-filter-option:hover {
+  background: var(--surface-2);
+}
+
+.journal-filter-check {
+  margin-left: auto;
+  color: var(--accent-ink);
+  font-weight: 700;
+  opacity: 0;
+}
+
+.journal-filter-option[aria-selected='true'] .journal-filter-check {
   opacity: 1;
 }
 
-/* Touch devices have no hover — keep the delete affordance always visible. */
-@media (hover: none) {
-  .journal-entry-delete {
-    opacity: 1;
-  }
+/* Category colour, used three ways: the filter trigger, the menu rows and the
+   per-chapter summary in the compact Chapters view. */
+.journal-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--border-strong);
 }
 
-.journal-entry-top {
+.journal-dot.cat-observation {
+  background: var(--cat-observation);
+}
+.journal-dot.cat-historical {
+  background: var(--cat-historical);
+}
+.journal-dot.cat-application {
+  background: var(--cat-application);
+}
+.journal-dot.cat-personal {
+  background: var(--cat-personal);
+}
+
+.journal-dot-all {
+  background: conic-gradient(
+    var(--cat-observation),
+    var(--cat-historical),
+    var(--cat-application),
+    var(--cat-personal),
+    var(--cat-observation)
+  );
+}
+
+/* Soft time buckets (Today / This week / Earlier this month / Older). A bucket
+   heading is only emitted when an entry lands in it, so filtering the notes
+   removes the empty stretches too. */
+.journal-bucket {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  margin-bottom: 4px;
+  margin: 26px 0 2px;
 }
 
-.journal-entry-ref {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
+.journal-bucket:first-child {
+  margin-top: 16px;
 }
 
-.journal-entry-date {
+.journal-bucket-label {
   font-size: 11px;
-  color: var(--text-muted);
-  flex-shrink: 0;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
 }
 
-.journal-entry-bottom {
+.journal-bucket-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.journal-chapter {
+  padding: 12px 0 8px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.journal-chapter-head {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  min-width: 0;
+  width: 100%;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out);
 }
 
-.journal-entry-count {
-  font-size: 11px;
+.journal-chapter-head:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.journal-chapter-head:disabled {
+  cursor: default;
+}
+
+.journal-chapter-ref {
+  font-family: var(--scripture-font);
+  font-size: 20px;
   font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.journal-chapter-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.journal-chapter-dots .journal-dot {
+  width: 7px;
+  height: 7px;
+}
+
+.journal-chapter-count {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.journal-chapter-when {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.journal-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+/* One note: the verse it is anchored to in the rail, the note itself as prose.
+   The left rail carries the category colour, so no badge is needed. */
+.journal-note {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 7px 0 7px 11px;
+  border-left: 2px solid var(--border-strong);
+}
+
+.journal-note.cat-observation {
+  border-left-color: var(--cat-observation);
+}
+.journal-note.cat-historical {
+  border-left-color: var(--cat-historical);
+}
+.journal-note.cat-application {
+  border-left-color: var(--cat-application);
+}
+.journal-note.cat-personal {
+  border-left-color: var(--cat-personal);
+}
+
+/* Sub-notes (indent_level > 0) sit under their parent, same as in the reader. */
+.journal-note-sub {
+  margin-left: 18px;
+}
+
+.journal-note-verse {
+  padding-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-faint);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.journal-note.cat-observation .journal-note-verse {
+  color: var(--cat-observation-ink);
+}
+.journal-note.cat-historical .journal-note-verse {
+  color: var(--cat-historical-ink);
+}
+.journal-note.cat-application .journal-note-verse {
+  color: var(--cat-application-ink);
+}
+.journal-note.cat-personal .journal-note-verse {
+  color: var(--cat-personal-ink);
+}
+
+.journal-note-text {
+  font-family: var(--scripture-font);
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.journal-note-more {
+  align-self: flex-start;
+  padding: 8px 2px 4px 13px;
+  border: 0;
+  background: transparent;
   color: var(--accent-ink);
-  flex-shrink: 0;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Every chapter filtered away — the list is empty but the history isn't. */
+.journal-empty-filter {
+  margin: 28px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 .journal-entry-skeleton {
@@ -1020,15 +1242,6 @@ body.dark .search-backdrop {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-}
-
-.journal-entry-preview {
-  font-size: 12px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
 }
 
 .profile-page-header {
@@ -5892,29 +6105,17 @@ body.dark .journal-page-hint {
   color: var(--text-faint);
 }
 body.dark .journal-heading,
-body.dark .journal-entry-ref {
+body.dark .journal-chapter-ref,
+body.dark .journal-note-text {
   color: var(--text);
 }
-body.dark .journal-sub,
-body.dark .journal-entry-preview {
+body.dark .journal-masthead,
+body.dark .journal-chapter-count {
+  color: var(--text-muted);
+}
+body.dark .journal-bucket-label,
+body.dark .journal-chapter-when {
   color: var(--text-faint);
-}
-body.dark .journal-book-header {
-  color: var(--text-faint);
-}
-body.dark .journal-entry {
-  background: var(--surface);
-  border-color: rgba(255, 255, 255, 0.07);
-}
-body.dark .journal-entry:hover {
-  border-color: #4a4570;
-  background: var(--surface-2);
-}
-body.dark .journal-entry-date {
-  color: var(--text-faint);
-}
-body.dark .journal-entry-count {
-  color: var(--accent-ink);
 }
 body.dark .profile-page-avatar {
   background: var(--accent-hover);
