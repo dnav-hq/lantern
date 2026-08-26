@@ -1337,7 +1337,7 @@ function ChapterView({
         <div className="mobile-selbar" role="toolbar" aria-label="Selection actions">
           <span className="mobile-selbar-ref">{selReference}</span>
           <span className="mobile-selbar-tip" data-quiet={selRange[0] !== selRange[1]}>
-            tap more verses to extend
+            tap more to extend
           </span>
           <button
             type="button"

@@ -70,8 +70,10 @@ export function measureKeyboardHeight(): number {
 export function composerTop(opts: {
   windowHeight: number
   keyboardHeight: number
-  // Viewport y of the header's bottom edge — a rect, not a height, because the
-  // reading chrome is sticky inside its own scroller and slides away on scroll.
+  // Height of the sticky reading chrome. Its HEIGHT, not its current rect: the
+  // chrome auto-hides on scroll-down and slides back on scroll-up, so measuring
+  // where it happens to be right now can land the composer underneath it the
+  // moment it returns. Assuming it is fully visible is the safe direction.
   headerBottom: number
   composerHeight: number
 }): number {
@@ -153,7 +155,7 @@ export function useKeyboardCompose(headerSelector: string): KeyboardCompose {
           windowHeight: window.innerHeight,
           // Exact after the first keyboard on this device; a sane guess before.
           keyboardHeight: readCachedKb() || Math.round(window.innerHeight * KB_FALLBACK_RATIO),
-          headerBottom: Math.max(0, header?.getBoundingClientRect().bottom ?? 0),
+          headerBottom: header?.offsetHeight ?? 0,
           composerHeight: composer.offsetHeight
         })
         // Instant and invisible — the one and only scroll of this open.
