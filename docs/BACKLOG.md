@@ -303,6 +303,27 @@ prioritized.
 
 ## Done
 
+- **Desktop Read/Study focus toggle; StudyMode retired (2026-08-26).** Studying is
+  now a mode you switch on while reading a chapter, not a page you navigate to.
+  At wide desktop widths (`>=1160px`) the reading page carries a Read/Study
+  segmented toggle: Study slides a notes workbench (`StudyWorkbench.tsx`) in
+  beside the scripture and moves the chapter's notes into it, leaving the reading
+  column clean. The layout change is a pure `transform` on the reading column and
+  its chrome — combined with the FIXED scripture measure the hide-notes control
+  already relies on, the verse text never re-lays-out or re-wraps mid-animation.
+  The workbench edits the note's stored content line directly, so the existing
+  `RichEditInput` gives live `v4-6` pills and the `@` category dropdown for free,
+  and the existing `useVerseMarquee` drag re-aims the draft's anchor (replacing
+  the leading token, never appending). The standalone `study` destination and
+  `StudyMode.tsx` are gone: the Study nav tab and every "open this study" entry
+  point now land in the reading page with the workbench open. Mobile is untouched
+  — it keeps the inline composer, and the mode cannot be turned on there.
+  Along the way this fixed a real pre-existing bug: `createAnchoredNote` handed
+  `findOverlappingPassage` the whole-Bible `getPassages()` list, and that check
+  compares chapter/verse keys only — so a note on John 1:4-6 could be written
+  onto the Genesis 1:1-5 passage and disappear from John. The lookup is now
+  scoped to the book being read.
+
 - **Reading display popover — the "aA" quick settings (2026-08-19).** Changing a
   reading preference used to mean leaving the chapter for Profile → Settings and
   navigating back. Every reading surface (BookDetailPage, ReadingMode, StudyMode's
