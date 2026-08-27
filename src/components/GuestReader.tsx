@@ -8,6 +8,7 @@ import { adjacentChapter, chapterLabel } from '../utils/useChapterNavigation'
 import BibleLibrary from './BibleLibrary'
 import InlineTagInput from './InlineTagInput'
 import MobileNoteComposer from './MobileNoteComposer'
+import QuickEditCard from './QuickEditCard'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import Wordmark from './Wordmark'
 
@@ -327,45 +328,27 @@ function GuestChapter({
                         />
                       </div>
                     ) : (
-                      // Desktop: the inline quick-edit card, matching the signed-in
-                      // desktop "Quick note". The ambient label is the ONE place a
-                      // guest is invited to sign in (§2a), scoped to this moment.
+                      // Desktop: the SAME QuickEditCard as the signed-in desktop
+                      // "Quick note" — reused, not reimplemented — in its ephemeral
+                      // guest form (nothing persists; the primary action is the one
+                      // sign-in invite, §2a).
                       <div className="inline-note-row">
-                        <div className="quick-edit-card guest-sandbox-card">
-                          <div className="guest-sandbox-label" role="status">
-                            You&apos;re trying this out. Nothing you type here is saved.{' '}
-                            <button
-                              type="button"
-                              className="guest-sandbox-signin-link"
-                              onClick={() => onSignIn()}
-                            >
-                              Sign in to keep it
-                            </button>
-                          </div>
-                          <div className="quick-edit-body">
-                            <InlineTagInput
-                              value={sandboxText}
-                              onChange={setSandboxText}
-                              onEscape={() => handleVerseSelect(v.verse)}
-                              className="inline-note-input"
-                              placeholder={`v${v.verse} type a note…`}
-                              autoFocus
-                              multiline
-                            />
-                          </div>
-                          <div className="quick-edit-footer">
-                            <span className="quick-edit-hint">
-                              <kbd>@</kbd> category · <kbd>v4</kbd> verse · <kbd>esc</kbd> close
-                            </span>
-                            <button
-                              type="button"
-                              className="quick-edit-btn quick-edit-btn-cancel"
-                              onClick={() => handleVerseSelect(v.verse)}
-                            >
-                              Close
-                            </button>
-                          </div>
-                        </div>
+                        <QuickEditCard
+                          mode="create"
+                          guest={{ onSignIn }}
+                          onSave={() => {}}
+                          onCancel={() => handleVerseSelect(v.verse)}
+                        >
+                          <InlineTagInput
+                            value={sandboxText}
+                            onChange={setSandboxText}
+                            onEscape={() => handleVerseSelect(v.verse)}
+                            className="inline-note-input"
+                            placeholder={`v${v.verse} type a note…`}
+                            autoFocus
+                            multiline
+                          />
+                        </QuickEditCard>
                       </div>
                     ))}
                 </div>

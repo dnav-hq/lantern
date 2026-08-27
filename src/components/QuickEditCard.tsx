@@ -14,6 +14,11 @@ interface QuickEditCardProps {
   onSave: () => void
   onCancel: () => void
   children: React.ReactNode
+  // When set, this is the EPHEMERAL guest preview of the SAME card: identical
+  // chrome, but nothing persists — the primary action becomes the one "sign in
+  // to keep it" invite, with an ambient notice. Keeps guest on the base
+  // component instead of a divergent copy.
+  guest?: { onSignIn: () => void }
 }
 
 // The shared chrome around both quick-note flows — creating a brand new
@@ -29,10 +34,16 @@ export default function QuickEditCard({
   saveDisabled,
   onSave,
   onCancel,
-  children
+  children,
+  guest
 }: QuickEditCardProps): React.ReactElement {
   return (
     <div className={`quick-edit-card cat-${category || 'none'}`}>
+      {guest && (
+        <div className="quick-edit-notice" role="status">
+          You&apos;re trying this out. Nothing you write here is saved.
+        </div>
+      )}
       <div className="quick-edit-body">{children}</div>
       <div className="quick-edit-footer">
         <span className="quick-edit-hint">
@@ -55,26 +66,37 @@ export default function QuickEditCard({
             </svg>
             Cancel
           </button>
-          <button
-            type="button"
-            className="quick-edit-btn quick-edit-btn-save"
-            onClick={onSave}
-            disabled={saveDisabled}
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {guest ? (
+            // A guest can't save — the honest primary is the one invite.
+            <button
+              type="button"
+              className="quick-edit-btn quick-edit-btn-save"
+              onClick={guest.onSignIn}
             >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            {mode === 'create' ? 'Save note' : 'Save changes'}
-          </button>
+              Sign in to keep it
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="quick-edit-btn quick-edit-btn-save"
+              onClick={onSave}
+              disabled={saveDisabled}
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              {mode === 'create' ? 'Save note' : 'Save changes'}
+            </button>
+          )}
         </div>
       </div>
     </div>
