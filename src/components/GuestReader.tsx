@@ -7,8 +7,29 @@ import { GUEST_TRANSLATIONS, useGuestTranslation } from '../utils/useTranslation
 import { adjacentChapter, chapterLabel } from '../utils/useChapterNavigation'
 import BibleLibrary from './BibleLibrary'
 import InlineTagInput from './InlineTagInput'
+import MobileNoteComposer from './MobileNoteComposer'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import Wordmark from './Wordmark'
+
+// Matches BookDetailPage's breakpoint: below it, capture is the polished
+// keyboard-aware composer (the signed-in mobile surface); at/above it, the
+// inline quick-edit card (the signed-in desktop quick-note surface). Guest
+// mirrors the app's own per-viewport split so a preview feels like the app.
+const MOBILE_QUERY = '(max-width: 768px)'
+
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window.matchMedia === 'function' && window.matchMedia(MOBILE_QUERY).matches
+  )
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia(MOBILE_QUERY)
+    const onChange = (): void => setIsMobile(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return isMobile
+}
 
 /* ─── The guest reading surface ───────────────────────────────────────────────
    The one thing an unauthenticated visitor can reach: scripture, and nothing
@@ -174,6 +195,7 @@ function GuestChapter({
   onSignIn: () => void
 }): React.ReactElement {
   const [translation] = useGuestTranslation()
+  const isMobile = useIsMobile()
   const [passage, setPassage] = useState<BiblePassage | null>(null)
   const [loading, setLoading] = useState(true)
   const [sandboxVerse, setSandboxVerse] = useState<number | null>(null)
@@ -290,49 +312,62 @@ function GuestChapter({
                     <span className="verse-text">{v.text}</span>
                   </div>
 
-                  {sandboxVerse === v.verse && (
-                    <div className="inline-note-row">
-                      <div className="quick-edit-card guest-sandbox-card">
-                        {/* Permanent, ambient state label — present the instant the
-                            editor opens, before any keystroke. Never a toast, never
-                            "unsaved": this is the ONE place a guest is invited to
-                            sign in (§2a), scoped to this note-taking moment only. */}
-                        <div className="guest-sandbox-label" role="status">
-                          You&apos;re trying this out. Nothing you type here is saved.{' '}
-                          <button
-                            type="button"
-                            className="guest-sandbox-signin-link"
-                            onClick={() => onSignIn()}
-                          >
-                            Sign in to keep it
-                          </button>
-                        </div>
-                        <div className="quick-edit-body">
-                          <InlineTagInput
-                            value={sandboxText}
-                            onChange={setSandboxText}
-                            onEscape={() => handleVerseSelect(v.verse)}
-                            className="inline-note-input"
-                            placeholder={`v${v.verse} type a note…`}
-                            autoFocus
-                            multiline
-                          />
-                        </div>
-                        <div className="quick-edit-footer">
-                          <span className="quick-edit-hint">
-                            <kbd>@</kbd> category · <kbd>v4</kbd> verse · <kbd>esc</kbd> close
-                          </span>
-                          <button
-                            type="button"
-                            className="quick-edit-btn quick-edit-btn-cancel"
-                            onClick={() => handleVerseSelect(v.verse)}
-                          >
-                            Close
-                          </button>
+                  {sandboxVerse === v.verse &&
+                    (isMobile ? (
+                      // Mobile: the real keyboard-aware composer, ephemeral. Same
+                      // surface as the signed-in phone flow — a guest sees the
+                      // actual thing, minus the save.
+                      <div className="mobile-composer-row">
+                        <MobileNoteComposer
+                          reference={`${book.name} ${chapter}:${v.verse}`}
+                          mode="create"
+                          onSave={() => {}}
+                          onCancel={() => handleVerseSelect(v.verse)}
+                          guest={{ onSignIn }}
+                        />
+                      </div>
+                    ) : (
+                      // Desktop: the inline quick-edit card, matching the signed-in
+                      // desktop "Quick note". The ambient label is the ONE place a
+                      // guest is invited to sign in (§2a), scoped to this moment.
+                      <div className="inline-note-row">
+                        <div className="quick-edit-card guest-sandbox-card">
+                          <div className="guest-sandbox-label" role="status">
+                            You&apos;re trying this out. Nothing you type here is saved.{' '}
+                            <button
+                              type="button"
+                              className="guest-sandbox-signin-link"
+                              onClick={() => onSignIn()}
+                            >
+                              Sign in to keep it
+                            </button>
+                          </div>
+                          <div className="quick-edit-body">
+                            <InlineTagInput
+                              value={sandboxText}
+                              onChange={setSandboxText}
+                              onEscape={() => handleVerseSelect(v.verse)}
+                              className="inline-note-input"
+                              placeholder={`v${v.verse} type a note…`}
+                              autoFocus
+                              multiline
+                            />
+                          </div>
+                          <div className="quick-edit-footer">
+                            <span className="quick-edit-hint">
+                              <kbd>@</kbd> category · <kbd>v4</kbd> verse · <kbd>esc</kbd> close
+                            </span>
+                            <button
+                              type="button"
+                              className="quick-edit-btn quick-edit-btn-cancel"
+                              onClick={() => handleVerseSelect(v.verse)}
+                            >
+                              Close
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    ))}
                 </div>
               ))}
             </div>

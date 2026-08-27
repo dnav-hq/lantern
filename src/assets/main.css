@@ -2140,6 +2140,17 @@ body.dark .search-backdrop {
   margin-bottom: 0;
 }
 
+/* A verse block whose inline note editor has the @-tag dropdown open must sit
+   above the verses below it. The dropdown overflows the block, but the entrance
+   animation (fadeRise) leaves every block its OWN stacking context, so the
+   dropdown's z-index is local — the next verses' text painted over its lower
+   items. Lifting the whole block clears it. (:has, desktop quick-note + the
+   guest desktop sandbox.) */
+.reading-verse-block:has(.tag-dropdown) {
+  position: relative;
+  z-index: 5;
+}
+
 /* The rail column. A rail note is a grid item in column 2 spanning its verse
    rows; the bracket is an accent bar down the left of the note. */
 .rail-note {
@@ -6908,6 +6919,17 @@ body.dark .mobile-menu-btn:active {
   }
   .mobile-composer-quiet.is-alone {
     margin-left: auto;
+  }
+  /* Guest-only ambient notice inside the composer: the one quiet "nothing is
+     saved" line, styled as a calm application-tinted note (not a warning). */
+  .mobile-composer-notice {
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--cat-application-ink);
+    background: var(--cat-application-weak);
+    border-radius: 7px;
+    padding: 6px 10px;
+    margin-bottom: 10px;
   }
   .mobile-composer-field {
     display: block;

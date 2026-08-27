@@ -37,6 +37,12 @@ interface MobileNoteComposerProps {
   onCancel: () => void
   // Only supplied in edit mode — a saved note can be deleted from here.
   onDelete?: () => void
+  // When set, this is the EPHEMERAL guest preview of the composer: it wears the
+  // exact same surface as the signed-in one (so a guest sees the real thing),
+  // but nothing persists. The primary action becomes the single "sign in to
+  // keep it" invite (§2a — the one place a guest is nudged), and there is no
+  // discard-confirm because there is nothing to lose.
+  guest?: { onSignIn: () => void }
 }
 
 export default function MobileNoteComposer({
@@ -47,7 +53,8 @@ export default function MobileNoteComposer({
   saving = false,
   onSave,
   onCancel,
-  onDelete
+  onDelete,
+  guest
 }: MobileNoteComposerProps): React.ReactElement {
   const [text, setText] = useState(initialText)
   const [category, setCategory] = useState<NoteCategory | null>(initialCategory)
@@ -86,6 +93,11 @@ export default function MobileNoteComposer({
   }, [menuOpen])
 
   const handleCancel = (): void => {
+    // A guest note never persisted, so closing loses nothing worth a prompt.
+    if (guest) {
+      onCancel()
+      return
+    }
     // An empty draft is not worth a question — it just goes away. A draft with
     // words in it is; losing a written thought silently is the one thing this
     // surface must never do.
@@ -160,6 +172,12 @@ export default function MobileNoteComposer({
         </button>
       </div>
 
+      {guest && (
+        <div className="mobile-composer-notice" role="status">
+          You&apos;re trying this out. Nothing you write here is saved.
+        </div>
+      )}
+
       <textarea
         ref={fieldRef}
         className="mobile-composer-field"
@@ -220,14 +238,21 @@ export default function MobileNoteComposer({
             </div>
           )}
         </div>
-        <button
-          type="button"
-          className="mobile-composer-save"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? 'Saving…' : 'Save'}
-        </button>
+        {guest ? (
+          // A guest can't save — the honest primary action is the one invite.
+          <button type="button" className="mobile-composer-save" onClick={guest.onSignIn}>
+            Sign in to keep it
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="mobile-composer-save"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        )}
       </div>
     </div>
   )
