@@ -15,12 +15,14 @@ import { parseDeepLink, type DeepLinkTarget } from './utils/deepLink'
 //   - Supabase configured -> auth-gated app (sign-in -> onboarding -> App).
 //   - otherwise            -> in-memory stub (dev fallback), with a console warning.
 
-// `guest` is a signed-OUT phase, not a lesser signed-in one: it renders
-// OUTSIDE ApiProvider, which is the whole guest boundary
-// (docs/proposals/guest-preview-mode.md §4). Anything touching an account or
-// stored data lives in `ready` and is therefore unreachable from `guest` by
-// construction rather than by a check — a new feature is gated by default and
-// only becomes guest-visible by being deliberately placed in this tree.
+// `guest` is a signed-OUT phase, not a lesser signed-in one. It runs the REAL
+// App — same NavBar, reading page, Read/Study toggle, Journal — backed by the
+// ephemeral in-memory API instead of Supabase, so a guest gets the actual
+// product (not an imitation of it) with a backend that simply forgets on
+// reload. The "limit" is only that nothing persists and there is no account;
+// signing in is one tap away. (This supersedes the earlier isolated
+// guest-reader tree; the memory API has no credentials, so there is nothing to
+// leak by letting guest reach it.)
 type Phase = 'loading' | 'signedOut' | 'guest' | 'onboarding' | 'ready'
 
 // The landing page is the signed-out surface: marketing copy, four looping
@@ -28,11 +30,7 @@ type Phase = 'loading' | 'signedOut' | 'guest' | 'onboarding' | 'ready'
 // sees it — does not download any of that to reach their notes.
 const Landing = lazy(() => import('./components/landing/Landing'))
 
-// Same reasoning in reverse: a signed-in user never renders the guest reader,
-// so it stays out of their bundle until something actually enters guest mode.
-const GuestReader = lazy(() => import('./components/GuestReader'))
-
-// Where a session-less visitor lands: the guest reader if this browser chose it
+// Where a session-less visitor lands: the guest app if this browser chose it
 // (a reload or a PWA relaunch returns to scripture, not the wall), otherwise the
 // landing page. A real session always wins — signing in is never downgraded to
 // guest, because `enter()` runs on any session regardless of the flag.
@@ -72,6 +70,11 @@ function SupabaseRoot(): React.ReactElement {
   // handed to App as a prop so it can seed-or-hydrate on first render rather
   // than flashing local values before an async fetch resolves.
   const [accountSettings, setAccountSettings] = useState<UserSettings | null>(null)
+  // The guest backend: a fresh, UNSEEDED in-memory API. It holds a guest's
+  // notes for the length of the session and forgets them on reload — the
+  // ephemeral "try it out" store. Created once so navigating within guest keeps
+  // its data.
+  const [guestApi] = useState(() => createMemoryApi())
 
   // Resolve api + profile for a signed-in user and pick the phase.
   const enter = React.useCallback(async (): Promise<void> => {
@@ -141,20 +144,22 @@ function SupabaseRoot(): React.ReactElement {
   }
 
   if (phase === 'guest') {
-    // Rendered OUTSIDE ApiProvider on purpose — see the Phase comment above.
+    // The real App on the ephemeral memory API. `guestSignIn` is the one
+    // account nudge: it leaves guest for good (the landing page holds the real
+    // sign-in CTAs, and a later reload must not bounce a half-signed-in visitor
+    // back into guest).
     return (
-      <Suspense fallback={<div className="app-boot" />}>
-        <GuestReader
-          onSignIn={() => {
-            // Starting the sign-in flow leaves guest mode for good: the landing
-            // page is where the real sign-in CTAs live, and a later reload must
-            // not bounce a half-signed-in visitor back into the guest reader.
+      <ApiProvider api={guestApi}>
+        <App
+          displayName={null}
+          onSignOut={null}
+          guestSignIn={() => {
             exitGuestMode()
             setPhase('signedOut')
           }}
-          initialLocation={deepLinkTarget}
+          initialDeepLink={deepLinkTarget}
         />
-      </Suspense>
+      </ApiProvider>
     )
   }
 

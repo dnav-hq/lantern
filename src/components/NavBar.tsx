@@ -21,6 +21,8 @@ interface NavBarProps {
   onOpenSettings: () => void
   // Sign-out handler, or null when there is no auth (memory stub / dev).
   onSignOut: (() => Promise<void>) | null
+  // Set only in guest mode: swaps the account avatar for a "Sign in" button.
+  guestSignIn?: () => void
   // The always-present desktop search box (rendered in the top bar between the
   // tabs and the avatar). Hidden on mobile via CSS.
   searchSlot?: React.ReactNode
@@ -64,6 +66,7 @@ export default function NavBar({
   displayName,
   onOpenSettings,
   onSignOut,
+  guestSignIn,
   searchSlot,
   onOpenSearch,
   canInstall = false,
@@ -340,68 +343,74 @@ export default function NavBar({
           )}
 
           <div className="topnav-trail">
-            <div className="profile-menu-host" ref={profileRef}>
-              <button
-                className="avatar-btn"
-                onClick={() => setProfileOpen(o => !o)}
-                aria-haspopup="menu"
-                aria-expanded={profileOpen}
-                aria-label="Account menu"
-              >
-                {initial}
+            {guestSignIn ? (
+              <button type="button" className="guest-signin-btn" onClick={guestSignIn}>
+                Sign in
               </button>
-              {/* Kept mounted for the shared open/close menu motion. */}
-              <div
-                className={`nav-menu profile-menu${profileOpen ? ' open' : ''}`}
-                role="menu"
-                aria-hidden={!profileOpen}
-              >
-                <div className="nav-menu-name">{displayName || 'Studying locally'}</div>
-                <div className="nav-menu-divider" />
+            ) : (
+              <div className="profile-menu-host" ref={profileRef}>
                 <button
-                  className="nav-menu-item"
-                  role="menuitem"
-                  onClick={() => {
-                    setProfileOpen(false)
-                    onOpenSettings()
-                  }}
+                  className="avatar-btn"
+                  onClick={() => setProfileOpen(o => !o)}
+                  aria-haspopup="menu"
+                  aria-expanded={profileOpen}
+                  aria-label="Account menu"
                 >
-                  Settings
+                  {initial}
                 </button>
-                <button
-                  className="nav-menu-item"
-                  role="menuitem"
-                  disabled={exportState === 'exporting'}
-                  onClick={() => void handleExport()}
+                {/* Kept mounted for the shared open/close menu motion. */}
+                <div
+                  className={`nav-menu profile-menu${profileOpen ? ' open' : ''}`}
+                  role="menu"
+                  aria-hidden={!profileOpen}
                 >
-                  {exportState === 'exporting' ? 'Exporting…' : 'Export notes'}
-                </button>
-                {canInstall && onInstall && (
+                  <div className="nav-menu-name">{displayName || 'Studying locally'}</div>
+                  <div className="nav-menu-divider" />
                   <button
                     className="nav-menu-item"
                     role="menuitem"
                     onClick={() => {
                       setProfileOpen(false)
-                      onInstall()
+                      onOpenSettings()
                     }}
                   >
-                    Install app
+                    Settings
                   </button>
-                )}
-                {onSignOut && (
-                  <>
-                    <div className="nav-menu-divider" />
+                  <button
+                    className="nav-menu-item"
+                    role="menuitem"
+                    disabled={exportState === 'exporting'}
+                    onClick={() => void handleExport()}
+                  >
+                    {exportState === 'exporting' ? 'Exporting…' : 'Export notes'}
+                  </button>
+                  {canInstall && onInstall && (
                     <button
                       className="nav-menu-item"
                       role="menuitem"
-                      onClick={() => void onSignOut()}
+                      onClick={() => {
+                        setProfileOpen(false)
+                        onInstall()
+                      }}
                     >
-                      Sign out
+                      Install app
                     </button>
-                  </>
-                )}
+                  )}
+                  {onSignOut && (
+                    <>
+                      <div className="nav-menu-divider" />
+                      <button
+                        className="nav-menu-item"
+                        role="menuitem"
+                        onClick={() => void onSignOut()}
+                      >
+                        Sign out
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </header>

@@ -1326,6 +1326,17 @@ body.dark .search-backdrop {
   opacity: 0.6;
   cursor: default;
 }
+/* The guest sign-in call-to-action — the one accent action on the page. */
+.profile-page-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.profile-page-btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
 .profile-page-btn-signout {
   color: #c0392b;
 }

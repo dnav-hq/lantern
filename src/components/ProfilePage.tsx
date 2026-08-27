@@ -7,6 +7,8 @@ interface ProfilePageProps {
   onOpenSettings: () => void
   // Sign-out handler, or null when there is no auth (memory stub / dev).
   onSignOut: (() => Promise<void>) | null
+  // Set only in guest mode — the sign-in call-to-action for the profile page.
+  guestSignIn?: () => void
   // Home-screen install — mirrors the desktop avatar menu's entry. Hidden when
   // already installed or unsupported (see platform/install.ts).
   canInstall?: boolean
@@ -21,6 +23,7 @@ export default function ProfilePage({
   displayName,
   onOpenSettings,
   onSignOut,
+  guestSignIn,
   canInstall = false,
   onInstall
 }: ProfilePageProps): React.ReactElement {
@@ -44,9 +47,21 @@ export default function ProfilePage({
     <div className="profile-page">
       <div className="profile-page-header">
         <div className="profile-page-avatar">{initial}</div>
-        <div className="profile-page-name">{displayName || 'Studying locally'}</div>
-        <div className="profile-page-workspace">Personal workspace</div>
+        <div className="profile-page-name">
+          {displayName || (guestSignIn ? 'Trying Lantern' : 'Studying locally')}
+        </div>
+        <div className="profile-page-workspace">
+          {guestSignIn ? 'Nothing here is saved yet' : 'Personal workspace'}
+        </div>
       </div>
+
+      {guestSignIn && (
+        <div className="profile-page-actions">
+          <button className="profile-page-btn profile-page-btn-primary" onClick={guestSignIn}>
+            Sign in to keep your notes
+          </button>
+        </div>
+      )}
 
       <div className="profile-page-actions">
         <button className="profile-page-btn" onClick={onOpenSettings}>

@@ -78,6 +78,11 @@ interface AppProps {
   // of the library. Read once, into the initial state below; v1 is on-load
   // parsing only, so this is never consulted again after mount.
   initialDeepLink?: DeepLinkTarget | null
+  // Set only in guest mode: leaves the ephemeral preview and starts real
+  // sign-in. Its presence is what puts the whole App in "guest" framing — a
+  // "Sign in" affordance in the nav/profile instead of an account, and the
+  // quiet reminder that nothing here is kept.
+  guestSignIn?: () => void
 }
 
 interface AppState {
@@ -94,7 +99,8 @@ export default function App({
   displayName,
   onSignOut,
   accountSettings = null,
-  initialDeepLink = null
+  initialDeepLink = null,
+  guestSignIn
 }: AppProps): React.ReactElement {
   const api = useApi()
   const [isDark, , setDark] = useDarkMode()
@@ -434,6 +440,7 @@ export default function App({
           displayName={displayName}
           onOpenSettings={() => setSettingsOpen(true)}
           onSignOut={onSignOut}
+          guestSignIn={guestSignIn}
           canInstall={install.capability !== 'none'}
           onInstall={install.openInstall}
         />
@@ -510,6 +517,7 @@ export default function App({
         displayName={displayName}
         onOpenSettings={() => setSettingsOpen(true)}
         onSignOut={onSignOut}
+        guestSignIn={guestSignIn}
         onOpenSearch={() => setSearchOpen(true)}
         canInstall={install.capability !== 'none'}
         onInstall={install.openInstall}
