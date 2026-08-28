@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { BiblePassage, NoteWithPassageInfo, NoteCategory, Passage } from '../types'
-import { BibleBook, findBookByAlias, readingShortBookName } from '../utils/bibleBooks'
+import { BibleBook, readingShortBookName } from '../utils/bibleBooks'
 import { parseNoteLine } from '../utils/noteParser'
 import { useApi } from '../api/context'
 import { getBibleVerse } from '../bible/service'
@@ -233,6 +233,10 @@ function RenderedNoteContent({ content }: { content: string }): React.ReactEleme
 
 interface ChapterViewProps {
   bookName: string
+  // USFM book number for this pane — passed in (the parent already has it) rather
+  // than re-derived from bookName via findBookByAlias, which silently fell back
+  // to 1 (Genesis) on any miss.
+  bookNumber: number
   chapter: number
   notes: NoteWithPassageInfo[]
   onNotesChanged: () => void
@@ -258,6 +262,7 @@ interface ChapterViewProps {
 
 function ChapterView({
   bookName,
+  bookNumber,
   chapter,
   notes,
   onNotesChanged,
@@ -353,7 +358,7 @@ function ChapterView({
   // so persisting a draft to IndexedDB — which WOULD survive a reload — would
   // contradict "nothing you write here is kept." Drafts are off for guests.
   const isGuest = useIsGuest()
-  const draftKey = `chapter:${findBookByAlias(bookName)?.number ?? 0}:${chapter}`
+  const draftKey = `chapter:${bookNumber}:${chapter}`
   // A draft found on load, surfaced as a quiet, dismissible "recover" prompt —
   // never auto-reopened (see the note-model UX decision).
   const [recoverDraft, setRecoverDraft] = useState<{
@@ -859,7 +864,6 @@ function ChapterView({
     // verse that opened the compose box when the tag was edited away.
     const anchorStart = parsed.anchorStart ?? fallbackVerse
     const anchorEnd = parsed.anchorEnd ?? anchorStart
-    const bookNumber = findBookByAlias(bookName)?.number ?? 1
     // Scoped to THIS BOOK. findOverlappingPassage compares chapter/verse keys
     // only, so handed the whole-Bible getPassages() list it happily matches
     // another book's passage at the same numbers — a note on John 1:4 landing
@@ -2119,6 +2123,7 @@ export default function BookDetailPage({
                   <ErrorBoundary variant="pane">
                     <ChapterView
                       bookName={ref.bookName}
+                      bookNumber={ref.bookNumber}
                       chapter={ref.chapter}
                       // Notes are per book: a neighbour in ANOTHER book has none
                       // loaded yet, and it only wears that state for the length

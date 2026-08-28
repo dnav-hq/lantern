@@ -733,7 +733,10 @@ body.dark .search-backdrop {
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--surface-2);
-  color: var(--text-faint);
+  /* --text-muted, not --text-faint: on --surface-2 the fainter token measured
+     ~2.75:1, under the 3:1 non-text-contrast floor. Muted keeps the badge quiet
+     at this size while clearing the bar. */
+  color: var(--text-muted);
   font-family: var(--ui-font);
   font-size: 10.5px;
   font-weight: 600;
