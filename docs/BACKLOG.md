@@ -10,6 +10,32 @@ prioritized.
 
 ## Deferred
 
+- **Guest cleanup after the guest-is-the-App change (2026-08-27).** Two loose
+  ends from `c6e18b9` (see Done): (1) **limit guest to BSB/KJV** — the full
+  app's translation switcher offers ESV, but a guest has no account key, so
+  picking ESV hits the proxy's "not configured" degrade; scope the guest
+  translation options to English public-domain only (BSB/KJV), matching the
+  original guest-preview stance. (2) **Remove the dead `guest-*` CSS** left by
+  the deleted `GuestReader` (`.guest-topbar*`, `.guest-shell`, `.guest-scripture*`,
+  `.guest-chapter-label`, `.chapter-flow-*`, `.guest-icon-btn`, etc. — ~19 lines
+  in `main.css`). Both are mechanical, prod-safe, low-review. A third, optional:
+  a subtle in-reader "preview" indicator so a guest mid-reading (not just on the
+  Profile tab) knows nothing is saved.
+
+- **Note-capture editor: tag selector + verse pills + type-@-to-select
+  (taste — prototype with Dennis).** The desktop quick-note (`QuickEditCard` +
+  `InlineTagInput`) shows the verse tag as plain text (`v2-5`) while the edit
+  path (`RichEditInput` + `renderRich`) renders styled pills — inconsistent.
+  Dennis's direction (2026-08-27): give the quick-note a **tag SELECTOR** like
+  the mobile composer / study workbench, render **verse pills** while typing,
+  AND let the reader **type `@category`** so it applies to the selector and
+  removes itself from the text. Touches both signed-in and guest desktop (shared
+  component). Taste-heavy: prototype the interaction with Dennis before speccing;
+  a blind build would be redone. (HQ capture 56d4cfcb.) Note: a standalone
+  "`@`-dropdown click doesn't select" bug was reported but could not be
+  reproduced in current code (clicking inserts the tag in tests) — re-check on a
+  real device; the selector redesign supersedes that dropdown anyway.
+
 - **Retire `passages`/`sessions` tables; denormalise book/chapter onto `notes`.**
   The note-centric model (2026-08-26, see `docs/ARCHITECTURE.md`'s decision log)
   shipped on the *existing* `passages`/`sessions` schema deliberately kept as
@@ -350,6 +376,43 @@ prioritized.
   experience so it never feels crippled.
 
 ## Done
+
+- **Guest is now the real App on an ephemeral backend (2026-08-27, `c6e18b9`).**
+  The separate `GuestReader` tree (rendered outside `ApiProvider`, the old §4
+  structural boundary) is **deleted**. The `guest` phase in `Root.tsx` now mounts
+  the actual `App` inside `<ApiProvider api={createMemoryApi() /* unseeded */}>`,
+  so a guest gets the whole product — the real `NavBar` (Bible · Journal ·
+  + Study), `BookDetailPage`, the desktop Read/Study workbench, the Journal —
+  backed by an in-memory API that forgets on reload. A guest can create notes
+  (they render inline and appear in the Journal) and study; nothing persists and
+  there is no account. A `guestSignIn` prop threads through `App` → `NavBar`
+  (swaps the account avatar for a "Sign in" button) and `ProfilePage` ("Trying
+  Lantern · Nothing here is saved yet · Sign in to keep your notes"). The memory
+  API has no credentials, so letting guest reach it leaks nothing — this
+  supersedes the maintain-forever isolation boundary. This makes the guest UI
+  impossible to drift from the signed-in app: it IS the signed-in app.
+  **Supersedes G1 (isolated guest reader) and G2 (ephemeral sandbox editor)
+  below** — they are historical now, not the shipped shape.
+  Follow-ups this created (see Deferred): limit guest to BSB/KJV (the full app's
+  translation picker still offers ESV, which needs a key a guest doesn't have),
+  and sweep the now-dead `guest-*` CSS (`.guest-topbar`, `.guest-scripture`,
+  `.guest-chapter-label`, `.chapter-flow-*`, etc. — ~19 lines in `main.css`).
+
+- **Prod polish + dark-mode contrast sweep (2026-08-27).** A run of small
+  prod-facing fixes: the PWA update pill and the verse-selection bars no longer
+  stack (`:has()` offsets the pill; hidden while composing); restored button
+  press feedback after the OS tap-flash was killed; a selected verse keeps its
+  accent on hover instead of a grey box; the desktop verse-action-bar was
+  invisible (position:fixed trapped by `.chapter-deck`'s permanent
+  `transform` — now portaled to `<body>`); the `@`-tag dropdown's lower items
+  were painted over by later verses (`.reading-verse-block:has(.tag-dropdown)`
+  z-index); the PWA update pill is hidden on desktop (it's for the installed
+  mobile PWA). Plus a dark/OLED contrast sweep: the "+ Study" nav pill rendered
+  invisible text (a `body.dark …nav-tab.active` rule forced `--accent-ink`,
+  which in dark IS `--accent`, onto the accent fill); an automated auditor found
+  the same failure-mode family and fixed it (`.study-btn-save`,
+  `.study-btn-danger`, `.study-note-act .is-yes`, `.guest-signin-btn`,
+  `.offline-toast`) — all ≥ 4.5:1 in both themes now.
 
 - **Desktop Read/Study focus toggle; StudyMode retired (2026-08-26).** Studying is
   now a mode you switch on while reading a chapter, not a page you navigate to.
