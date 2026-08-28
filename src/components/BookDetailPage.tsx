@@ -6,6 +6,7 @@ import { parseNoteLine } from '../utils/noteParser'
 import { useApi } from '../api/context'
 import { getBibleVerse } from '../bible/service'
 import { useReadingTranslation } from '../utils/useTranslation'
+import { useIsGuest } from '../utils/guestContext'
 import InlineTagInput from './InlineTagInput'
 import RichEditInput from './RichEditInput'
 import InlineDeleteConfirm from './InlineDeleteConfirm'
@@ -19,6 +20,7 @@ import StudyWorkbench, { type AnchorRequest, type StudyRange } from './StudyWork
 import ReadingControls from './ReadingControls'
 import type { DisplayPrefs } from './ReadingPrefs'
 import TranslationFooter from './TranslationFooter'
+import { writeDraft, readDraft, clearDraft } from '../offline/draft'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
 import { useChromeAutoHide } from '../utils/useScrollDirection'
 import {
@@ -341,6 +343,112 @@ function ChapterView({
     setAnchorRequest({ start, end, nonce: anchorNonce.current })
   }
 
+  // ── In-progress note draft persistence ──────────────────────────────────────
+  // A note the reader is writing but hasn't saved is persisted (debounced) to
+  // IndexedDB so an accidental reload or tab-close can offer it back rather than
+  // losing the words. One draft per chapter (a reader writes one note at a
+  // time); the note's canonical content line carries its own anchor + category,
+  // so the stored shape is just that line.
+  // A guest's whole session is ephemeral (the in-memory API forgets on reload),
+  // so persisting a draft to IndexedDB — which WOULD survive a reload — would
+  // contradict "nothing you write here is kept." Drafts are off for guests.
+  const isGuest = useIsGuest()
+  const draftKey = `chapter:${findBookByAlias(bookName)?.number ?? 0}:${chapter}`
+  // A draft found on load, surfaced as a quiet, dismissible "recover" prompt —
+  // never auto-reopened (see the note-model UX decision).
+  const [recoverDraft, setRecoverDraft] = useState<{
+    content: string
+    noteId: string | null
+  } | null>(null)
+  // Handed to the desktop workbench when the reader taps "recover"; seeds its
+  // composer once. Mobile restores through `composing` + `restoredCompose` below.
+  const [workbenchRecover, setWorkbenchRecover] = useState<{
+    content: string
+    noteId: string | null
+  } | null>(null)
+  // Initial body/category for the mobile composer when it is opened by a recover
+  // tap (otherwise it seeds from the saved note or blank).
+  const [restoredCompose, setRestoredCompose] = useState<{
+    body: string
+    category: NoteCategory | null
+  } | null>(null)
+  const draftTimer = useRef<number | null>(null)
+
+  const persistDraft = useCallback(
+    (content: string, noteId: string | null): void => {
+      if (isGuest) return
+      if (draftTimer.current !== null) window.clearTimeout(draftTimer.current)
+      draftTimer.current = window.setTimeout(() => {
+        void writeDraft(draftKey, {
+          reference: content,
+          lines: [{ text: content, indent: 0, noteId: noteId ?? undefined }]
+        })
+      }, 400)
+    },
+    [draftKey, isGuest]
+  )
+
+  // Stable across renders (only re-created when the open composer changes), so
+  // the composer's change effect doesn't re-arm the debounce timer on every
+  // unrelated parent re-render.
+  const handleComposerDraftChange = useCallback(
+    (body: string, category: NoteCategory | null): void => {
+      if (composing === null) return
+      persistDraft(
+        composeNoteContent(body, composing.start, composing.end, category),
+        composing.noteId ?? null
+      )
+    },
+    [composing, persistDraft]
+  )
+
+  const clearDraftNow = useCallback((): void => {
+    if (draftTimer.current !== null) window.clearTimeout(draftTimer.current)
+    void clearDraft(draftKey)
+    setRecoverDraft(null)
+  }, [draftKey])
+
+  // Look for a leftover draft when the chapter mounts. Only a draft with real
+  // prose is worth offering (an anchor/category with no words is not a lost
+  // thought).
+  useEffect(() => {
+    if (isGuest) return
+    let live = true
+    void readDraft(draftKey).then(d => {
+      const content = d?.lines[0]?.text ?? ''
+      if (!live || !content || !composerBodyOf(content).trim()) return
+      setRecoverDraft({ content, noteId: d!.lines[0].noteId ?? null })
+    })
+    return () => {
+      live = false
+    }
+  }, [draftKey, isGuest])
+
+  // Recover tapped: resume the unsaved note where the reader left off. On mobile
+  // this reopens the inline composer on the draft's anchor; on desktop it hands
+  // the draft to the workbench (opening Study if it isn't already).
+  const handleRecoverDraft = (): void => {
+    if (!recoverDraft) return
+    const { content, noteId } = recoverDraft
+    if (isMobile) {
+      const parsed = parseNoteLine(content)
+      const start = parsed.anchorStart ?? 1
+      const end = parsed.anchorEnd ?? start
+      const noteExists = noteId != null && localNotes.some(n => n.id === noteId)
+      setRestoredCompose({ body: composerBodyOf(content), category: parsed.category })
+      setComposing({
+        mode: noteExists ? 'edit' : 'create',
+        start,
+        end,
+        noteId: noteExists ? noteId! : undefined
+      })
+    } else {
+      setWorkbenchRecover({ content, noteId })
+      if (!studyMode) onEnterStudy()
+    }
+    setRecoverDraft(null)
+  }
+
   const chapterNotes = localNotes.filter(
     n => n.chapter_start <= chapter && chapter <= n.chapter_end
   )
@@ -627,6 +735,8 @@ function ChapterView({
   const closeComposer = (): void => {
     setComposing(null)
     clearSelection()
+    clearDraftNow()
+    setRestoredCompose(null)
   }
 
   const handleComposerSave = async (body: string, category: NoteCategory | null): Promise<void> => {
@@ -713,12 +823,21 @@ function ChapterView({
         key={composing.noteId ?? `new-${composing.start}-${composing.end}`}
         reference={verseRefLabel(composing.start, composing.end)}
         mode={composing.mode}
-        initialText={composingNote ? composerBodyOf(composingNote.content) : ''}
-        initialCategory={composingNote?.category ?? null}
+        initialText={
+          restoredCompose
+            ? restoredCompose.body
+            : composingNote
+              ? composerBodyOf(composingNote.content)
+              : ''
+        }
+        initialCategory={
+          restoredCompose ? restoredCompose.category : (composingNote?.category ?? null)
+        }
         saving={savingInline}
         onSave={(body, category) => void handleComposerSave(body, category)}
         onCancel={closeComposer}
         onDelete={composing.mode === 'edit' ? () => void handleComposerDelete() : undefined}
+        onDraftChange={handleComposerDraftChange}
       />
     )
   }
@@ -1154,6 +1273,34 @@ function ChapterView({
           </div>
         </div>
 
+        {recoverDraft && composing === null && (
+          <div className="draft-recover" role="note">
+            <span className="draft-recover-text">
+              You have an unsaved note
+              {(() => {
+                const p = parseNoteLine(recoverDraft.content)
+                return p.anchorStart != null
+                  ? ` on ${verseRefLabel(p.anchorStart, p.anchorEnd ?? p.anchorStart)}`
+                  : ''
+              })()}
+              .
+            </span>
+            <div className="draft-recover-actions">
+              <button type="button" className="draft-recover-go" onClick={handleRecoverDraft}>
+                Recover
+              </button>
+              <button
+                type="button"
+                className="draft-recover-dismiss"
+                onClick={clearDraftNow}
+                aria-label="Discard the unsaved note"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        )}
+
         {showVerseHint && (
           <div className="verse-select-hint" role="note">
             <span className="verse-select-hint-text">
@@ -1440,6 +1587,9 @@ function ChapterView({
           onActiveRangeChange={handleStudyRangeChange}
           onSave={handleWorkbenchSave}
           onDelete={handleWorkbenchDelete}
+          onDraftChange={persistDraft}
+          onDraftClear={clearDraftNow}
+          recoverDraft={workbenchRecover}
         />
       )}
     </div>

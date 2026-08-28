@@ -51,16 +51,6 @@ prioritized.
   redundant row today. Revisit once the interim shape has proven itself in
   real use, or sooner if the extra join starts showing up as a real cost.
 
-- **Re-wire note-draft persistence after the note-centric refactor.**
-  `src/offline/draft.ts` (IndexedDB, "Persist in-progress note drafts" below)
-  was written against the now-deleted `StudyMode` and is currently dead code —
-  neither `StudyWorkbench` (desktop) nor `MobileNoteComposer` (mobile) calls
-  `writeDraft`/`readDraft`/`clearDraft`. Found while updating docs for the
-  note-centric model (2026-08-26); not fixed here because it's a `src/**`
-  change, out of this doc-only task's scope. Until reconnected, a failed save
-  or an accidental reload/tab-close can silently lose an in-progress note on
-  both surfaces — the toast/pill in `docs/ARCHITECTURE.md`'s offline section
-  still fires, but the draft it used to protect no longer survives underneath.
 
 - **Guest preview mode.**
   `docs/proposals/guest-preview-mode.md` (2026-08-03) resolves the guest-write
@@ -369,6 +359,29 @@ prioritized.
   experience so it never feels crippled.
 
 ## Done
+
+- **Note-draft persistence reconnected — quiet "recover" prompt (2026-08-28).**
+  `src/offline/draft.ts` (IndexedDB write/read/clear) was dead code after the
+  note-centric refactor; it is now wired into both capture surfaces so an
+  accidental reload/tab-close no longer silently loses an in-progress note. The
+  low-level store is reused unchanged (its tests stay green): a note's canonical
+  `content` line ("v10 @observation prose") already carries anchor + category, so
+  a draft is just `{lines:[{text: content, noteId?}]}` keyed per chapter
+  (`chapter:${bookNumber}:${chapter}`). Persistence is **host-owned** in
+  `BookDetailPage.ChapterView`: `MobileNoteComposer` and `StudyWorkbench` each
+  emit an `onDraftChange` as the reader types (only once genuinely dirty); the
+  host debounces (400 ms) and writes, and clears on save/discard/cancel.
+  Recovery is Dennis's chosen **quiet, dismissible prompt** (`.draft-recover`, a
+  calm surface card — never a modal or a nagging badge): on chapter load a
+  leftover draft with real prose surfaces "You have an unsaved note on John
+  3:16 · Recover / Discard". Recover reopens the mobile composer on the draft's
+  anchor (restored body + category) or hands the draft to the desktop workbench
+  (opening Study if needed); Discard clears it. **Guests are excluded** — their
+  session is already ephemeral, so a reload-surviving IndexedDB draft would
+  contradict "nothing you write here is kept" (gated via `useIsGuest`). Verified
+  live on both surfaces (memory stub): typing writes the debounced draft with
+  the anchor preserved, reload shows the recover chip, Recover restores the
+  editor, and Save clears the draft on both mobile and desktop.
 
 - **Guest cleanup: BSB/KJV-only translations + dead-CSS sweep (2026-08-28).**
   The two mechanical loose ends from the guest-is-the-App change. (1) **Guest is

@@ -37,6 +37,10 @@ interface MobileNoteComposerProps {
   onCancel: () => void
   // Only supplied in edit mode — a saved note can be deleted from here.
   onDelete?: () => void
+  // Fired (only once the draft is dirty) as the reader types, so the host can
+  // persist an in-progress note against a reload/tab-close. Not called for a
+  // guest — nothing a guest writes is ever kept.
+  onDraftChange?: (body: string, category: NoteCategory | null) => void
   // When set, this is the EPHEMERAL guest preview of the composer: it wears the
   // exact same surface as the signed-in one (so a guest sees the real thing),
   // but nothing persists. The primary action becomes the single "sign in to
@@ -54,6 +58,7 @@ export default function MobileNoteComposer({
   onSave,
   onCancel,
   onDelete,
+  onDraftChange,
   guest
 }: MobileNoteComposerProps): React.ReactElement {
   const [text, setText] = useState(initialText)
@@ -65,6 +70,15 @@ export default function MobileNoteComposer({
   const { reveal } = useKeyboardCompose(HEADER_SELECTOR)
 
   const dirty = text.trim() !== initialText.trim() || category !== initialCategory
+
+  // Persist the in-progress note as it changes (host writes it to IndexedDB,
+  // debounced) so an accidental reload can offer it back. Only once dirty, and
+  // never for a guest — a fresh edit that matches the saved note must not leave
+  // a phantom "recover" draft behind.
+  useEffect(() => {
+    if (guest || !dirty) return
+    onDraftChange?.(text, category)
+  }, [text, category, dirty, guest, onDraftChange])
 
   // One deterministic open: position, focus, breathe in. Layout effect so it
   // runs before the browser has painted the composer anywhere.

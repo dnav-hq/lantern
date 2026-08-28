@@ -166,6 +166,15 @@ interface StudyWorkbenchProps {
   onActiveRangeChange: (range: StudyRange | null) => void
   onSave: (noteId: string | null, content: string) => Promise<void>
   onDelete: (noteId: string) => Promise<void>
+  // Draft persistence (host writes to IndexedDB, debounced). onDraftChange fires
+  // with the live raw content as the reader types a not-yet-saved note; onDraftClear
+  // fires when the editor is emptied by a save, discard or cancel. Optional so the
+  // workbench still renders in tests/stories without a persistence host.
+  onDraftChange?: (content: string, noteId: string | null) => void
+  onDraftClear?: () => void
+  // A draft handed back by the host's "recover" affordance: seeds the composer
+  // once so an accidental reload can resume the in-progress note.
+  recoverDraft?: { content: string; noteId: string | null } | null
 }
 
 export default function StudyWorkbench({
@@ -175,7 +184,10 @@ export default function StudyWorkbench({
   saving,
   onActiveRangeChange,
   onSave,
-  onDelete
+  onDelete,
+  onDraftChange,
+  onDraftClear,
+  recoverDraft
 }: StudyWorkbenchProps): React.ReactElement {
   // null = the blank composer at the top of the panel; otherwise the note being
   // edited in place (its card is replaced by the editor).
@@ -222,6 +234,28 @@ export default function StudyWorkbench({
     []
   )
 
+  // Persist the in-progress note as it changes (host debounce-writes to
+  // IndexedDB) so a reload can offer it back. Only a genuinely dirty draft —
+  // prose present and, when editing, actually diverged from the saved note.
+  const draftBaseline = editingNote ? editingNote.content : ''
+  useEffect(() => {
+    if (prose && text.trim() !== draftBaseline.trim()) onDraftChange?.(text.trim(), editingId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, prose, editingId, draftBaseline])
+
+  // Seed the composer from a host "recover" action (an accidental reload's
+  // draft). Once per distinct draft, so re-renders don't clobber later edits.
+  const recoveredSig = useRef<string | null>(null)
+  useEffect(() => {
+    if (!recoverDraft) return
+    const sig = `${recoverDraft.noteId ?? 'new'}:${recoverDraft.content}`
+    if (recoveredSig.current === sig) return
+    recoveredSig.current = sig
+    setEditingId(recoverDraft.noteId)
+    reseed(recoverDraft.content)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recoverDraft])
+
   // A verse click or a marquee release REFRESHES the draft's anchor.
   const lastNonce = useRef<number | null>(null)
   useEffect(() => {
@@ -237,6 +271,8 @@ export default function StudyWorkbench({
   }
 
   const resetToComposer = (): void => {
+    onDraftClear?.()
+    recoveredSig.current = null
     setEditingId(null)
     setText('')
     setConfirming(false)
