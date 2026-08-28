@@ -5,7 +5,7 @@ import { BibleBook, findBookByAlias, readingShortBookName } from '../utils/bible
 import { parseNoteLine } from '../utils/noteParser'
 import { useApi } from '../api/context'
 import { getBibleVerse } from '../bible/service'
-import { useTranslation } from '../utils/useTranslation'
+import { useReadingTranslation } from '../utils/useTranslation'
 import InlineTagInput from './InlineTagInput'
 import RichEditInput from './RichEditInput'
 import InlineDeleteConfirm from './InlineDeleteConfirm'
@@ -266,7 +266,7 @@ function ChapterView({
   suppressEntrance
 }: ChapterViewProps): React.ReactElement {
   const api = useApi()
-  const [translation] = useTranslation()
+  const [translation] = useReadingTranslation()
   // Frozen at mount: this instance is keyed per chapter, so whether it arrived
   // via a swipe is decided once. Freezing it means a later re-render (notes
   // loading) can't drop the class and accidentally trigger the entrance
@@ -1570,7 +1570,7 @@ export default function BookDetailPage({
   initialHighlightVerses
 }: BookDetailPageProps): React.ReactElement {
   const api = useApi()
-  const [translation] = useTranslation()
+  const [translation] = useReadingTranslation()
   const [allNotes, setAllNotes] = useState<NoteWithPassageInfo[]>([])
   const chapterSelectorRef = useRef<HTMLDivElement>(null)
   // The scroll container. On mobile the whole layout scrolls (the header +

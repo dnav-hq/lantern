@@ -10,17 +10,10 @@ prioritized.
 
 ## Deferred
 
-- **Guest cleanup after the guest-is-the-App change (2026-08-27).** Two loose
-  ends from `c6e18b9` (see Done): (1) **limit guest to BSB/KJV** — the full
-  app's translation switcher offers ESV, but a guest has no account key, so
-  picking ESV hits the proxy's "not configured" degrade; scope the guest
-  translation options to English public-domain only (BSB/KJV), matching the
-  original guest-preview stance. (2) **Remove the dead `guest-*` CSS** left by
-  the deleted `GuestReader` (`.guest-topbar*`, `.guest-shell`, `.guest-scripture*`,
-  `.guest-chapter-label`, `.chapter-flow-*`, `.guest-icon-btn`, etc. — ~19 lines
-  in `main.css`). Both are mechanical, prod-safe, low-review. A third, optional:
-  a subtle in-reader "preview" indicator so a guest mid-reading (not just on the
-  Profile tab) knows nothing is saved.
+- **Guest cleanup after the guest-is-the-App change (2026-08-27) — the two
+  mechanical loose ends are DONE (2026-08-28, see Done); one optional item
+  remains.** A subtle in-reader "preview" indicator so a guest mid-reading (not
+  just on the Profile tab) knows nothing is saved. Optional polish, not started.
 
 - **Note-capture editor: tag selector + verse pills + type-@-to-select
   (taste — prototype with Dennis).** The desktop quick-note (`QuickEditCard` +
@@ -376,6 +369,28 @@ prioritized.
   experience so it never feels crippled.
 
 ## Done
+
+- **Guest cleanup: BSB/KJV-only translations + dead-CSS sweep (2026-08-28).**
+  The two mechanical loose ends from the guest-is-the-App change. (1) **Guest is
+  limited to BSB/KJV.** A `GuestContext` (`src/utils/guestContext.ts`) is
+  provided at the App root from the presence of the `guestSignIn` callback; two
+  guest-aware hooks in `useTranslation.ts` consume it — `useTranslationOptions`
+  (returns `GUEST_TRANSLATIONS`, i.e. BSB/KJV only, when guest) drives both
+  pickers (`TranslationFooter`, `ReadingPrefs`), and `useReadingTranslation`
+  (coerces the read value via `toGuestTranslation` when guest, but the setter
+  still writes the true preference) replaces the raw `useTranslation` read at
+  every scripture-fetch site (`BookDetailPage` ×2, `ReadingMode`). So a browser
+  that already chose ESV while signed in never hands a guest a translation they
+  can't fetch — the guest reads BSB and signing in later lands back on ESV. The
+  Bible-language switcher in `ReadingPrefs` is also hidden for guests (English
+  public-domain only). Verified live in guest mode: stored ESV → footer and aA
+  popover both offer BSB/KJV only, BSB scripture loads (no ESV degrade), no
+  language switcher. (2) **Dead `guest-*` CSS removed** — the old `GuestReader`
+  chrome (`.guest-topbar*`, `.guest-icon-btn`, `.guest-chapter-label`,
+  `.guest-scripture-error`, `.guest-entry-fab`, and their `@media` rules) is
+  gone from `main.css`; `.guest-signin-btn` (still used by `NavBar`) was kept.
+  Note: `.chapter-flow-*` was listed as dead but is LIVE (cross-chapter nav in
+  `BookDetailPage`) — left untouched.
 
 - **Guest is now the real App on an ephemeral backend (2026-08-27, `c6e18b9`).**
   The separate `GuestReader` tree (rendered outside `ApiProvider`, the old §4

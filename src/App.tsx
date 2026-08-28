@@ -15,6 +15,7 @@ import { useApi } from './api/context'
 import { useDarkMode } from './utils/useDarkMode'
 import { useTheme, usePureBlack, LOOKS, lookIdFor, type LookId } from './utils/useTheme'
 import { useTranslation } from './utils/useTranslation'
+import { GuestContext } from './utils/guestContext'
 import { useTextSize } from './utils/useTextSize'
 import { useInstallPrompt } from './utils/useInstallPrompt'
 import { resolveSettingsAdoption, type UserSettings } from './api/types'
@@ -508,79 +509,81 @@ export default function App({
   }
 
   return (
-    <div className={shellClass}>
-      <NavBar
-        // Study is a mode, not a place — the tab lights up when the reading
-        // page's workbench is open.
-        destination={studyOpen ? 'study' : destination}
-        onNavigate={handleNavigate}
-        displayName={displayName}
-        onOpenSettings={() => setSettingsOpen(true)}
-        onSignOut={onSignOut}
-        guestSignIn={guestSignIn}
-        onOpenSearch={() => setSearchOpen(true)}
-        canInstall={install.capability !== 'none'}
-        onInstall={install.openInstall}
-        searchSlot={
-          <GlobalSearch
-            variant="bar"
-            onJumpToChapter={handleJumpToChapter}
-            onOpenStudy={handleOpenStudy}
-          />
-        }
-      />
-
-      <div className="main-area">{renderMain()}</div>
-
-      {/* Dedicated mobile search surface (overlay). Desktop uses the top-bar box. */}
-      {searchOpen && (
-        <div className="search-surface" role="dialog" aria-modal="true" aria-label="Search">
-          <div className="search-surface-head">
+    <GuestContext.Provider value={Boolean(guestSignIn)}>
+      <div className={shellClass}>
+        <NavBar
+          // Study is a mode, not a place — the tab lights up when the reading
+          // page's workbench is open.
+          destination={studyOpen ? 'study' : destination}
+          onNavigate={handleNavigate}
+          displayName={displayName}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onSignOut={onSignOut}
+          guestSignIn={guestSignIn}
+          onOpenSearch={() => setSearchOpen(true)}
+          canInstall={install.capability !== 'none'}
+          onInstall={install.openInstall}
+          searchSlot={
             <GlobalSearch
-              variant="surface"
-              autoFocus
+              variant="bar"
               onJumpToChapter={handleJumpToChapter}
               onOpenStudy={handleOpenStudy}
-              onClose={() => setSearchOpen(false)}
             />
-            <button
-              className="search-surface-close"
-              onClick={() => setSearchOpen(false)}
-              aria-label="Close search"
-            >
-              Cancel
-            </button>
+          }
+        />
+
+        <div className="main-area">{renderMain()}</div>
+
+        {/* Dedicated mobile search surface (overlay). Desktop uses the top-bar box. */}
+        {searchOpen && (
+          <div className="search-surface" role="dialog" aria-modal="true" aria-label="Search">
+            <div className="search-surface-head">
+              <GlobalSearch
+                variant="surface"
+                autoFocus
+                onJumpToChapter={handleJumpToChapter}
+                onOpenStudy={handleOpenStudy}
+                onClose={() => setSearchOpen(false)}
+              />
+              <button
+                className="search-surface-close"
+                onClick={() => setSearchOpen(false)}
+                aria-label="Close search"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <SettingsModal
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        lookId={lookId}
-        onSelectLook={selectLook}
-        textSize={textSize}
-        onSetTextSize={setTextSize}
-        hideNotes={hideNotes}
-        onSetHideNotes={setHideNotes}
-        onSignOut={onSignOut}
-      />
+        <SettingsModal
+          isOpen={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          lookId={lookId}
+          onSelectLook={selectLook}
+          textSize={textSize}
+          onSetTextSize={setTextSize}
+          hideNotes={hideNotes}
+          onSetHideNotes={setHideNotes}
+          onSignOut={onSignOut}
+        />
 
-      <OfflineIndicator />
+        <OfflineIndicator />
 
-      {/* At most one of these is ever on screen: the once-ever nudge, or the
+        {/* At most one of these is ever on screen: the once-ever nudge, or the
           iOS instructions opened from it or from the menu. */}
-      {install.hintVisible ? (
-        <InstallNudge variant="hint" onDismiss={install.closeHint} />
-      ) : (
-        install.nudgeVisible && (
-          <InstallNudge
-            variant="nudge"
-            onAccept={install.acceptNudge}
-            onDismiss={install.dismissNudge}
-          />
-        )
-      )}
-    </div>
+        {install.hintVisible ? (
+          <InstallNudge variant="hint" onDismiss={install.closeHint} />
+        ) : (
+          install.nudgeVisible && (
+            <InstallNudge
+              variant="nudge"
+              onAccept={install.acceptNudge}
+              onDismiss={install.dismissNudge}
+            />
+          )
+        )}
+      </div>
+    </GuestContext.Provider>
   )
 }

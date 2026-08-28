@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { TranslationId } from '../bible/provider'
-import { translationsForLanguage, useTranslation } from '../utils/useTranslation'
+import { useReadingTranslation, useTranslationOptions } from '../utils/useTranslation'
 import { useBibleLanguage } from '../utils/useBibleLanguage'
 
 /** Closes the picker on an outside click OR any scroll (the menu is anchored to
@@ -43,7 +43,7 @@ function useDismissMenu(
  * once-ever choice and would be clutter on every passage.
  */
 export default function TranslationFooter(): React.ReactElement {
-  const [translation, setTranslation] = useTranslation()
+  const [translation, setTranslation] = useReadingTranslation()
   const [open, setOpen] = useState(false)
   const hostRef = useRef<HTMLDivElement>(null)
 
@@ -54,7 +54,7 @@ export default function TranslationFooter(): React.ReactElement {
   )
 
   const [language] = useBibleLanguage()
-  const options = translationsForLanguage(language)
+  const options = useTranslationOptions(language)
   const current = options.find(t => t.id === translation)
 
   return (

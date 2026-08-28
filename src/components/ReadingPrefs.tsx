@@ -1,7 +1,8 @@
 import React from 'react'
 import { LOOKS, type LookId } from '../utils/useTheme'
 import { TEXT_SIZES, type TextSizeId } from '../utils/useTextSize'
-import { translationsForLanguage, useTranslation } from '../utils/useTranslation'
+import { useReadingTranslation, useTranslationOptions } from '../utils/useTranslation'
+import { useIsGuest } from '../utils/guestContext'
 import {
   BIBLE_LANGUAGES,
   HAS_MULTIPLE_LANGUAGES,
@@ -141,7 +142,11 @@ function TextSizeSection({
 // language to choose between, so a single-language build carries no clutter.
 function LanguageSection(): React.ReactElement | null {
   const [language, setLanguage] = useBibleLanguage()
-  if (!HAS_MULTIPLE_LANGUAGES) return null
+  const isGuest = useIsGuest()
+  // A guest reads English public-domain only (BSB/KJV) — no account, no key for
+  // the licensed/other-language texts — so the language choice would offer
+  // nothing a guest can act on. Hidden entirely rather than shown-but-inert.
+  if (isGuest || !HAS_MULTIPLE_LANGUAGES) return null
   return (
     <>
       <div className="rpref-divider" />
@@ -176,13 +181,14 @@ function LanguageSection(): React.ReactElement | null {
 // primary translation (useBibleLanguage), so this list always contains the
 // active one.
 function TranslationSection(): React.ReactElement {
-  const [translation, setTranslation] = useTranslation()
+  const [translation, setTranslation] = useReadingTranslation()
   const [language] = useBibleLanguage()
+  const options = useTranslationOptions(language)
   return (
     <div className="rpref-section">
       <div className="rpref-section-label">Translation</div>
       <div className="translation-picker" role="radiogroup" aria-label="Bible translation">
-        {translationsForLanguage(language).map(t => (
+        {options.map(t => (
           <button
             key={t.id}
             className={`translation-option${translation === t.id ? ' active' : ''}`}

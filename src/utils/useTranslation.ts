@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import type { BibleLanguageId, TranslationId } from '../bible/provider'
+import { useIsGuest } from './guestContext'
 
 const STORAGE_KEY = 'berean-translation'
 
@@ -131,4 +132,23 @@ export function toGuestTranslation(translation: TranslationId): TranslationId {
 export function useGuestTranslation(): [TranslationId, (t: TranslationId) => void] {
   const [translation, set] = useTranslation()
   return [toGuestTranslation(translation), set]
+}
+
+// The guest-aware pair the reading surfaces and pickers actually use. When the
+// App is running as a guest (useIsGuest), the read value is coerced to a
+// guest-allowed translation — so a browser that already chose ESV while signed
+// in never hands a guest a translation they cannot fetch — while the setter
+// still writes the true preference, so signing in later lands back on ESV. When
+// not a guest it is exactly useTranslation.
+export function useReadingTranslation(): [TranslationId, (t: TranslationId) => void] {
+  const [translation, set] = useTranslation()
+  const isGuest = useIsGuest()
+  return [isGuest ? toGuestTranslation(translation) : translation, set]
+}
+
+// The translations a picker should offer: a guest gets BSB/KJV only (English,
+// ESV-free); everyone else gets the chosen language's full list.
+export function useTranslationOptions(language: BibleLanguageId): TranslationOption[] {
+  const isGuest = useIsGuest()
+  return isGuest ? GUEST_TRANSLATIONS : translationsForLanguage(language)
 }

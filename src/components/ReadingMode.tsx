@@ -3,7 +3,7 @@ import { Passage, Note, BiblePassage, NoteCategory } from '../types'
 import { parseNoteLine } from '../utils/noteParser'
 import { useApi } from '../api/context'
 import { getBibleVerse } from '../bible/service'
-import { useTranslation } from '../utils/useTranslation'
+import { useReadingTranslation } from '../utils/useTranslation'
 import InlineTagInput from './InlineTagInput'
 import RichEditInput from './RichEditInput'
 import InlineDeleteConfirm from './InlineDeleteConfirm'
@@ -150,7 +150,7 @@ export default function ReadingMode({
   displayPrefs
 }: ReadingModeProps): React.ReactElement {
   const api = useApi()
-  const [translation] = useTranslation()
+  const [translation] = useReadingTranslation()
   const [biblePassage, setBiblePassage] = useState<BiblePassage | null>(null)
   const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
