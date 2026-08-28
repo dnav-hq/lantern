@@ -1304,6 +1304,14 @@ body.dark .search-backdrop {
   margin: 0 auto;
 }
 
+.profile-page-version {
+  margin-top: 28px;
+  text-align: center;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+}
+
 .profile-page-btn {
   width: 100%;
   padding: 11px 14px;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { syncBrowserChrome } from './useDarkMode'
 
 const STORAGE_KEY = 'berean-visual-theme'
 // Sibling of the keys above — hyphenated to match berean-theme /
@@ -155,6 +156,10 @@ export function usePureBlack(): [boolean, (value: boolean) => void] {
     } else {
       document.documentElement.removeAttribute('data-pure-black')
     }
+    // Browser chrome / iOS status bar follow the canvas to true black (and back)
+    // — the same meta tags useDarkMode owns, kept in sync when pure-black alone
+    // toggles (dark mode itself hasn't changed, so useDarkMode's effect won't run).
+    syncBrowserChrome()
     try {
       localStorage.setItem(PURE_BLACK_KEY, pureBlack ? 'on' : 'off')
     } catch {

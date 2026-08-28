@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { version as appVersion } from './package.json'
 
 // The deploy's commit, for telemetry. It is the single highest-value field in
 // the payload: it is what lets HQ correlate an error spike with the deploy that
@@ -14,7 +15,10 @@ const commitSha =
 
 export default defineConfig({
   define: {
-    'import.meta.env.VITE_COMMIT_SHA': JSON.stringify(commitSha.slice(0, 40))
+    'import.meta.env.VITE_COMMIT_SHA': JSON.stringify(commitSha.slice(0, 40)),
+    // The app version (package.json), surfaced quietly in Profile so a user can
+    // see which build they are on.
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion)
   },
   build: {
     // 'hidden', NOT true. Both emit .map files; only 'hidden' omits the

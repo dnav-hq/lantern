@@ -91,6 +91,10 @@ export default function ProfilePage({
           </button>
         )}
       </div>
+
+      {/* A quiet build marker — so a user (or Dennis, on his phone) can tell at a
+          glance which version they are on. Deliberately faint and unobtrusive. */}
+      <div className="profile-page-version">Lantern v{import.meta.env.VITE_APP_VERSION}</div>
     </div>
   )
 }

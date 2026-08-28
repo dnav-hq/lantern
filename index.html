@@ -35,7 +35,12 @@
             ? storedMode === 'dark'
             : window.matchMedia('(prefers-color-scheme: dark)').matches
           var i = isDark ? 1 : 0
-          var bg = (BG[visualTheme] || BG.berean)[i]
+          // Pure black (OLED) drops the dark canvas to true black — mirror it on
+          // the splash + theme-color so the first paint matches, with no flash of
+          // the theme's ordinary near-black before React boots. Light is
+          // unaffected (pure-black is a dark-only modifier).
+          var pureBlack = localStorage.getItem('berean-pure-black') === 'on'
+          var bg = isDark && pureBlack ? '#000000' : (BG[visualTheme] || BG.berean)[i]
           var rootStyle = document.documentElement.style
           rootStyle.setProperty('--boot-bg', bg)
           rootStyle.setProperty('--boot-ink', INK[i])

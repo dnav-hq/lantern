@@ -345,20 +345,27 @@ prioritized.
 - **Tauri desktop wrap.** Same idea for desktop, replacing the frozen Electron
   app. The web code is the source of truth.
 
-- **Pure black (OLED): boot splash + browser chrome colour.** The Pure black
-  toggle deepens the app itself, but two paint surfaces outside it still use the
-  theme's ordinary dark canvas: `index.html`'s synchronous boot script (so the
-  splash flashes `#17140f` before React paints `#000`) and the `theme-color` /
-  iOS status-bar meta tags, which `useDarkMode.ts` pins to a literal `DARK_BG`.
-  Both need the pure-black preference read alongside `berean-theme` — a small
-  change, deliberately left out of the toggle's own change because those two
-  files were out of its scope.
 
 - **Paid tier considerations.** If/when hosting or AI costs warrant it: what's
   free vs paid, billing, quota enforcement. Design the free single-user
   experience so it never feels crippled.
 
 ## Done
+
+- **Pure black (OLED) boot splash + browser chrome + visible app version
+  (2026-08-28).** Two small prod-polish items. (1) **OLED reaches the paint
+  surfaces outside the app.** `index.html`'s synchronous boot script now reads
+  `berean-pure-black` alongside the theme, so when dark + pure-black the splash
+  and initial `theme-color` paint true `#000000` instead of the theme's ordinary
+  near-black (no flash of `#17140f` before React boots). At runtime a shared
+  `syncBrowserChrome()` helper in `useDarkMode.ts` sets `theme-color` +
+  `apple-mobile-web-app-status-bar-style` from the live DOM flags (`body.dark`,
+  `data-pure-black`); both `useDarkMode` and `usePureBlack` call it, so toggling
+  pure-black alone (dark mode unchanged) still updates the chrome. Verified live:
+  dark+OLED → `#000000` everywhere, dark-only → `#17140f`. (2) **App version in
+  Profile.** `package.json`'s version is injected via a Vite `define`
+  (`import.meta.env.VITE_APP_VERSION`) and shown as a quiet, faint
+  "Lantern v2.0.0-dev" line at the foot of the Profile page.
 
 - **Note-draft persistence reconnected — quiet "recover" prompt (2026-08-28).**
   `src/offline/draft.ts` (IndexedDB write/read/clear) was dead code after the
