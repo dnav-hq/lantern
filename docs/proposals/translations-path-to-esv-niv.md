@@ -66,7 +66,7 @@ NIV is not built and is the harder of the two by a wide margin.
   of any copyrighted translation checked here, and NLT is familiar to the same
   churchgoers who read NIV.
 
-Full ranking in [Section 6](#6-the-recommendation).
+Full ranking in [Section 7](#7-the-recommendation-and-the-one-thing-to-do-first).
 
 ## 1. The eight routes
 
@@ -157,6 +157,11 @@ Australia" rather than as a private individual.
 (checked 2026-08-30): **"Our policy is to license to organizations, not to
 individuals or solo developers."**
 
+**Exact obligations.** Same as Route 2, plus the ordinary obligations of an ABN:
+you must actually be carrying on an enterprise to be entitled to one, and a
+registered business name must be renewed. Nothing about an ABN changes the ESV
+attribution, key-handling or storage rules.
+
 **Cost** (all Australian, current):
 - ABN: free. "It's free to register for an ABN through the Australian
   Government's Australian Business Register (ABR)"
@@ -184,6 +189,17 @@ is even the right shape.
 
 **What it is.** Create an actual separate legal person that can hold the
 licence. Two forms worth considering, with very different characters.
+
+**Exact obligations.** Whatever licence Crossway grants, plus the standing
+obligations of the entity itself: for a company, an annual review and a company
+tax return; for an incorporated association, a committee, a constitution, an
+annual general meeting and an annual statement lodged with the state regulator.
+These are permanent, and they continue whether or not the ESV licence is ever
+granted.
+
+**Cost.** See the two options below. Route 4a is $636 up front and $342 every
+year thereafter; Route 4b is under $250 in either state worked below, with much
+heavier non-monetary obligations.
 
 **Option 4a, Pty Ltd** (a company; the closest Australian analogue to the US LLC
 that Harvous trades through):
@@ -377,6 +393,11 @@ aggressively than the ESV rules allow.
 - **A parachurch ministry or Bible society** sponsoring the app the way they
   sponsor other free resources. Same shape as the church option, wider pool,
   slower.
+
+**Exact obligations.** The partner organisation holds the licence and carries
+the compliance, so Lantern inherits both their terms and their governance. In
+practice that means the app's translation availability depends on a
+relationship continuing, and the licence does not travel with Dennis if it ends.
 
 **Cost.** $0 in fees. High in independence.
 
@@ -705,7 +726,32 @@ Thanks for building Harvous, and for keeping the free tier as generous as it is.
 Dennis
 lanternword.com
 
-## 6. The recommendation
+## 6. Sources
+
+All checked 2026-08-30 unless noted.
+
+| Source | Used for |
+|---|---|
+| [api.esv.org](https://api.esv.org/) | ESV API terms, verbatim: non-commercial definition, 500-verse query and storage caps, caching, attribution, rate limits, organizations-not-individuals policy, licensing contacts |
+| [crosswaygnp.formstack.com/forms/esv_digital_licensing_proposal](https://crosswaygnp.formstack.com/forms/esv_digital_licensing_proposal) | Existence and title of the ESV Digital Licensing Proposal form (field list unverified) |
+| [crossway.org/permissions/digital/](https://www.crossway.org/permissions/digital/) | ESV Digital Permission Request Form: individual-or-company field, requested details, no stated fee |
+| [api.nlt.to](https://api.nlt.to/) | Tyndale NLT API terms: anonymous vs key limits, non-commercial default, commercial-by-explanation path |
+| [The Other Cheek, 2023-12-03](https://theothercheek.com.au/bible-publishers-stewards-or-gatekeepers/) | Biblica's 49-field permission form; Biblica reversing course on open-source apps; Australian/NZ/South African NIV licences held by local Bible Societies |
+| [biblica.com/permission-request-form/](https://www.biblica.com/permission-request-form/) | NIV permission process (site returned 403 to this runner; details corroborated from secondary sources, partly unverified) |
+| [biblesociety.org.au/terms-and-conditions/](https://www.biblesociety.org.au/terms-and-conditions/) | Confirms no published NIV developer-licensing terms; Route 6 obligations unverified |
+| [harvous.com](https://harvous.com/) and [harvous.com/about](https://www.harvous.com/about) | Harvous: 11 translations including ESV and NIV, free tier, Plus at $5/mo or $45/yr, Testament Made LLC, derek@harvous.com |
+| [HN 27599606](https://news.ycombinator.com/item?id=27599606) and [HN 27593067](https://news.ycombinator.com/item?id=27593067), both 2021-06 | SparkBible developer stating he pays for NIV, ESV and NRSV licences |
+| [care.api.bible/article/409](https://care.api.bible/article/409-express-licensing-for-commercial-use) | NIV commercial use unavailable; other translations from ~$10/month; context only, API.Bible is a settled rejection |
+| [bibliaapi.com Available Bibles](https://bibliaapi.com/docs/Available_Bibles) and [Terms of Use](https://bibliaapi.com/docs/Terms_of_Use) | Faithlife no longer carries ESV; anti-competition and no-alternate-storage clauses |
+| [sword-devel June 2019](https://www.crosswire.org/pipermail/sword-devel/2019-June/047095.html), [AndBible #390](https://github.com/AndBible/and-bible/issues/390) | Crossway ending ESV distribution through SWORD; And Bible removing ESV |
+| [mirailegal.au/guides/asic-fees](https://mirailegal.au/guides/asic-fees) | ASIC 2026-27 fees: company $636, annual review $342, business name $47/$108 (secondary source citing the fee regulations; ASIC's own pages render placeholders) |
+| [nsw.gov.au incorporated associations fees](https://www.nsw.gov.au/business-and-economy/incorporated-associations/incorporated-associations-forms-and-fees) | NSW registration $220 / $171 reserved; annual summary $59 Tier 2, $250 Tier 1 (page updated 1 July 2026) |
+| [consumer.vic.gov.au fees and forms](https://www.consumer.vic.gov.au/clubs-and-fundraising/incorporated-associations/fees-and-forms) | Victoria 2026-27: incorporation $86.40 model rules / $518.10 own rules; annual statement $51.80 / $103.60 / $207.20 |
+| [business.gov.au ABN registration](https://business.gov.au/registrations/register-for-an-australian-business-number-abn) | ABN is free to register |
+| `docs/proposals/translations-esv-niv.md` (read only, unmodified) | Prior licensing analysis this brief builds on |
+| `docs/BACKLOG.md` | Current ESV production status, proxy, metering, LRU cache |
+
+## 7. The recommendation, and the one thing to do first
 
 **Try Route 2 first: email `licensing@crossway.org` as an individual, this
 week, using the draft in 5a.**
@@ -763,28 +809,3 @@ forward regardless of how these answers land. Lantern already ships ESV
 lawfully. If it never charges for anything, it can keep shipping ESV lawfully
 forever, at zero cost, today. Everything above is about buying optionality
 beyond that, not about rescuing something that is broken.
-
-## Sources
-
-All checked 2026-08-30 unless noted.
-
-| Source | Used for |
-|---|---|
-| [api.esv.org](https://api.esv.org/) | ESV API terms, verbatim: non-commercial definition, 500-verse query and storage caps, caching, attribution, rate limits, organizations-not-individuals policy, licensing contacts |
-| [crosswaygnp.formstack.com/forms/esv_digital_licensing_proposal](https://crosswaygnp.formstack.com/forms/esv_digital_licensing_proposal) | Existence and title of the ESV Digital Licensing Proposal form (field list unverified) |
-| [crossway.org/permissions/digital/](https://www.crossway.org/permissions/digital/) | ESV Digital Permission Request Form: individual-or-company field, requested details, no stated fee |
-| [api.nlt.to](https://api.nlt.to/) | Tyndale NLT API terms: anonymous vs key limits, non-commercial default, commercial-by-explanation path |
-| [The Other Cheek, 2023-12-03](https://theothercheek.com.au/bible-publishers-stewards-or-gatekeepers/) | Biblica's 49-field permission form; Biblica reversing course on open-source apps; Australian/NZ/South African NIV licences held by local Bible Societies |
-| [biblica.com/permission-request-form/](https://www.biblica.com/permission-request-form/) | NIV permission process (site returned 403 to this runner; details corroborated from secondary sources, partly unverified) |
-| [biblesociety.org.au/terms-and-conditions/](https://www.biblesociety.org.au/terms-and-conditions/) | Confirms no published NIV developer-licensing terms; Route 6 obligations unverified |
-| [harvous.com](https://harvous.com/) and [harvous.com/about](https://www.harvous.com/about) | Harvous: 11 translations including ESV and NIV, free tier, Plus at $5/mo or $45/yr, Testament Made LLC, derek@harvous.com |
-| [HN 27599606](https://news.ycombinator.com/item?id=27599606) and [HN 27593067](https://news.ycombinator.com/item?id=27593067), both 2021-06 | SparkBible developer stating he pays for NIV, ESV and NRSV licences |
-| [care.api.bible/article/409](https://care.api.bible/article/409-express-licensing-for-commercial-use) | NIV commercial use unavailable; other translations from ~$10/month; context only, API.Bible is a settled rejection |
-| [bibliaapi.com Available Bibles](https://bibliaapi.com/docs/Available_Bibles) and [Terms of Use](https://bibliaapi.com/docs/Terms_of_Use) | Faithlife no longer carries ESV; anti-competition and no-alternate-storage clauses |
-| [sword-devel June 2019](https://www.crosswire.org/pipermail/sword-devel/2019-June/047095.html), [AndBible #390](https://github.com/AndBible/and-bible/issues/390) | Crossway ending ESV distribution through SWORD; And Bible removing ESV |
-| [mirailegal.au/guides/asic-fees](https://mirailegal.au/guides/asic-fees) | ASIC 2026-27 fees: company $636, annual review $342, business name $47/$108 (secondary source citing the fee regulations; ASIC's own pages render placeholders) |
-| [nsw.gov.au incorporated associations fees](https://www.nsw.gov.au/business-and-economy/incorporated-associations/incorporated-associations-forms-and-fees) | NSW registration $220 / $171 reserved; annual summary $59 Tier 2, $250 Tier 1 (page updated 1 July 2026) |
-| [consumer.vic.gov.au fees and forms](https://www.consumer.vic.gov.au/clubs-and-fundraising/incorporated-associations/fees-and-forms) | Victoria 2026-27: incorporation $86.40 model rules / $518.10 own rules; annual statement $51.80 / $103.60 / $207.20 |
-| [business.gov.au ABN registration](https://business.gov.au/registrations/register-for-an-australian-business-number-abn) | ABN is free to register |
-| `docs/proposals/translations-esv-niv.md` (read only, unmodified) | Prior licensing analysis this brief builds on |
-| `docs/BACKLOG.md` | Current ESV production status, proxy, metering, LRU cache |
