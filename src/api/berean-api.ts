@@ -41,6 +41,15 @@ const PASSAGE_COLS =
 const NOTE_COLS =
   'id, session_id, content, anchor_start_verse, anchor_end_verse, anchor_book_override, anchor_chapter_override, category, indent_level, created_at, updated_at'
 
+// PostgREST silently caps any select with no explicit .range() at this many
+// rows and returns the truncated page as if it were the whole result — no
+// error, no warning. Confirmed for this project in supabase/config.toml
+// (`[api] max_rows = 1000`), not assumed. Every list query below that reads
+// from a table with no natural small bound (passages/notes grow for as long
+// as someone uses the app) pages through with .range() instead of trusting a
+// single select to come back complete.
+const PAGE_SIZE = 1000
+
 export class SupabaseBereanApi implements BereanApi {
   private readonly db: SupabaseClient
   private readonly workspaceId: string
@@ -76,6 +85,31 @@ export class SupabaseBereanApi implements BereanApi {
     if (error) throw new Error(error.message)
     if (data === null) throw new Error('No data returned')
     return data
+  }
+
+  // Walks a query in PAGE_SIZE chunks via .range(from, to) until a
+  // short (or empty) page proves there's nothing left, rather than trusting
+  // one select to have returned everything. `build` must construct the query
+  // fresh each call — a Postgrest builder is a one-shot thenable, not
+  // reusable across pages — and its .order() must be a total order (a
+  // tiebreaker column, not just created_at/reference_label alone) so rows
+  // that share a sort key can't be skipped or double-counted across the
+  // page boundary.
+  private async selectAllPages<Row>(
+    build: (
+      from: number,
+      to: number
+    ) => PromiseLike<{ data: Row[] | null; error: { message: string } | null }>
+  ): Promise<Row[]> {
+    const rows: Row[] = []
+    let from = 0
+    for (;;) {
+      const { data, error } = await build(from, from + PAGE_SIZE - 1)
+      const page = this.assert(data, error)
+      rows.push(...page)
+      if (page.length < PAGE_SIZE) return rows
+      from += PAGE_SIZE
+    }
   }
 
   // ── Offline plumbing ────────────────────────────────────────────────────
@@ -121,23 +155,30 @@ export class SupabaseBereanApi implements BereanApi {
 
   async getPassages(): Promise<Passage[]> {
     return this.read('getPassages', undefined, async () => {
-      const { data, error } = await this.db
-        .from('passages')
-        .select(PASSAGE_COLS)
-        .eq('workspace_id', this.workspaceId)
-        .order('reference_label', { ascending: true })
-      return this.assert(data, error) as Passage[]
+      return this.selectAllPages<Passage>((from, to) =>
+        this.db
+          .from('passages')
+          .select(PASSAGE_COLS)
+          .eq('workspace_id', this.workspaceId)
+          .order('reference_label', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
     })
   }
 
   async getPassagesByBook(bookNumber: number): Promise<Passage[]> {
     return this.read('getPassagesByBook', bookNumber, async () => {
-      const { data, error } = await this.db
-        .from('passages')
-        .select(PASSAGE_COLS)
-        .eq('workspace_id', this.workspaceId)
-        .eq('book_number', bookNumber)
-      return this.assert(data, error) as Passage[]
+      return this.selectAllPages<Passage>((from, to) =>
+        this.db
+          .from('passages')
+          .select(PASSAGE_COLS)
+          .eq('workspace_id', this.workspaceId)
+          .eq('book_number', bookNumber)
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
     })
   }
 
@@ -182,21 +223,26 @@ export class SupabaseBereanApi implements BereanApi {
   async getJournalEntries(): Promise<JournalEntry[]> {
     return this.read('getJournalEntries', undefined, async () => {
       // Two queries: all passages, plus one join query pulling every note's
-      // (content, created_at, passage_id) in the workspace; aggregate here.
+      // (id, content, created_at, passage_id) in the workspace; aggregate here.
       const passages = await this.getPassages()
-      const { data, error } = await this.db
-        .from('notes')
-        .select(
-          'content, created_at, sessions!inner ( passage_id, passages!inner ( workspace_id ) )'
-        )
-        .eq('sessions.passages.workspace_id', this.workspaceId)
-        .order('created_at', { ascending: true })
-      const first = <T>(v: T | T[]): T => (Array.isArray(v) ? v[0] : v)
-      const rows = this.assert(data, error) as unknown as Array<{
+      type JournalNoteRow = {
+        id: string
         content: string
         created_at: string
         sessions: { passage_id: string } | { passage_id: string }[]
-      }>
+      }
+      const rows = await this.selectAllPages<JournalNoteRow>((from, to) =>
+        this.db
+          .from('notes')
+          .select(
+            'id, content, created_at, sessions!inner ( passage_id, passages!inner ( workspace_id ) )'
+          )
+          .eq('sessions.passages.workspace_id', this.workspaceId)
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
+      const first = <T>(v: T | T[]): T => (Array.isArray(v) ? v[0] : v)
       const byPassage = new Map<string, { content: string; created_at: string }[]>()
       for (const r of rows) {
         const pid = first(r.sessions).passage_id
@@ -217,12 +263,15 @@ export class SupabaseBereanApi implements BereanApi {
 
   async getSessionsByPassage(passageId: string): Promise<Session[]> {
     return this.read('getSessionsByPassage', passageId, async () => {
-      const { data, error } = await this.db
-        .from('sessions')
-        .select('id, passage_id, created_at')
-        .eq('passage_id', passageId)
-        .order('created_at', { ascending: false })
-      return this.assert(data, error) as Session[]
+      return this.selectAllPages<Session>((from, to) =>
+        this.db
+          .from('sessions')
+          .select('id, passage_id, created_at')
+          .eq('passage_id', passageId)
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
     })
   }
 
@@ -240,12 +289,15 @@ export class SupabaseBereanApi implements BereanApi {
 
   async getNotesBySession(sessionId: string): Promise<Note[]> {
     return this.read('getNotesBySession', sessionId, async () => {
-      const { data, error } = await this.db
-        .from('notes')
-        .select(NOTE_COLS)
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: true })
-      return this.assert(data, error) as Note[]
+      return this.selectAllPages<Note>((from, to) =>
+        this.db
+          .from('notes')
+          .select(NOTE_COLS)
+          .eq('session_id', sessionId)
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
     })
   }
 
@@ -254,42 +306,55 @@ export class SupabaseBereanApi implements BereanApi {
       const sessions = await this.getSessionsByPassage(passageId)
       const ids = sessions.map(s => s.id)
       if (ids.length === 0) return []
-      const { data, error } = await this.db
-        .from('notes')
-        .select(NOTE_COLS)
-        .in('session_id', ids)
-        .order('created_at', { ascending: true })
-      return this.assert(data, error) as Note[]
+      return this.selectAllPages<Note>((from, to) =>
+        this.db
+          .from('notes')
+          .select(NOTE_COLS)
+          .in('session_id', ids)
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
     })
   }
 
   async getNotesByBook(bookNumber: number): Promise<NoteWithPassageInfo[]> {
     return this.read('getNotesByBook', bookNumber, async () => {
       // One join query: notes -> sessions -> passages filtered by book + workspace.
-      const { data, error } = await this.db
-        .from('notes')
-        .select(
-          `${NOTE_COLS}, sessions!inner ( passage_id, passages!inner ( workspace_id, book_number, chapter_start, chapter_end, verse_start, verse_end, reference_label, created_at ) )`
-        )
-        .eq('sessions.passages.workspace_id', this.workspaceId)
-        .eq('sessions.passages.book_number', bookNumber)
-        .order('created_at', { ascending: true })
-      return this.mapNotesWithPassageInfo(this.assert(data, error))
+      const rows = await this.selectAllPages<Record<string, unknown>>((from, to) =>
+        this.db
+          .from('notes')
+          .select(
+            `${NOTE_COLS}, sessions!inner ( passage_id, passages!inner ( workspace_id, book_number, chapter_start, chapter_end, verse_start, verse_end, reference_label, created_at ) )`
+          )
+          .eq('sessions.passages.workspace_id', this.workspaceId)
+          .eq('sessions.passages.book_number', bookNumber)
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
+      return this.mapNotesWithPassageInfo(rows)
     })
   }
 
   // Every note in the workspace, enriched exactly like getNotesByBook — same
-  // join query, just without the book filter.
+  // join query, just without the book filter. This is the Journal's source of
+  // truth, so it must never come back short of a real page: PAGE_SIZE-chunked
+  // via .range() rather than one unranged select PostgREST would silently cap.
   async getAllNotes(): Promise<NoteWithPassageInfo[]> {
     return this.read('getAllNotes', undefined, async () => {
-      const { data, error } = await this.db
-        .from('notes')
-        .select(
-          `${NOTE_COLS}, sessions!inner ( passage_id, passages!inner ( workspace_id, book_number, chapter_start, chapter_end, verse_start, verse_end, reference_label, created_at ) )`
-        )
-        .eq('sessions.passages.workspace_id', this.workspaceId)
-        .order('created_at', { ascending: true })
-      return this.mapNotesWithPassageInfo(this.assert(data, error))
+      const rows = await this.selectAllPages<Record<string, unknown>>((from, to) =>
+        this.db
+          .from('notes')
+          .select(
+            `${NOTE_COLS}, sessions!inner ( passage_id, passages!inner ( workspace_id, book_number, chapter_start, chapter_end, verse_start, verse_end, reference_label, created_at ) )`
+          )
+          .eq('sessions.passages.workspace_id', this.workspaceId)
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to)
+      )
+      return this.mapNotesWithPassageInfo(rows)
     })
   }
 
