@@ -170,7 +170,7 @@ Measured against the real download (§11 for the method):
 | Distinct Hebrew Strong's numbers | 8,539 |
 | Distinct Greek Strong's numbers | 5,337 |
 | Verses covered | 31,085 |
-| Distinct morphology parsing codes | 3,818 |
+| Distinct morphology parsing codes | 3,819 |
 | Translator footnote cells | 4,854, across 4,314 verses (13.9%) |
 | File size / last modified | 85,525,373 bytes; Fri 31 Jul 2026 |
 
@@ -311,7 +311,7 @@ public/bible/lexicon.json.gz                one file
   (senses omitted for Hebrew entries — §4.2)
 
 public/bible/parsing.json.gz                one file
-  { "<parseCode>": "<expanded English>" }   3,818 entries
+  { "<parseCode>": "<expanded English>" }   3,819 entries
 
 public/bible/wordnotes.json.gz              one file
   { "<b>": { "<c>": { "<v>": [note, …] } } }
@@ -333,7 +333,7 @@ header note).
 | — Ecclesiastes / John / Romans | 32,471 / 98,062 / 53,177 B | |
 | Lexicon, gloss + morph only | 292,166 B | |
 | Lexicon, with Greek sense text (the §4.2 shape) | ≈1.05 MB Greek + 158 KB Hebrew | |
-| Parsing-code table | 33,778 B | |
+| Parsing-code table | 33,793 B | |
 | Word-anchored footnotes | 86,274 B | |
 | *(reference)* `public/bible/bsb.json.gz` today | 1,273,758 B | |
 
@@ -410,7 +410,7 @@ Every tagged word instance shows its expanded parsing ("Verb — Qal — Perfect
 third person masculine singular"), in plain English, attached to *this*
 occurrence. Where the parsing distinguishes this instance from another
 occurrence of the same lemma, that difference is visible rather than flattened.
-The tables give this for 437,587 word instances across 3,818 distinct codes;
+The tables give this for 437,587 word instances across 3,819 distinct codes;
 there is no reason to withhold it.
 
 *Prevents:* the loss Spackman identifies as the most dangerous thing about
