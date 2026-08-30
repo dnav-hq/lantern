@@ -72,11 +72,66 @@ dependencies. Ratings are build effort.
 | Layer | Source | License | Rating | Notes |
 |---|---|---|---|---|
 | **Footnotes / notes** | helloao BSB chapter JSON (`footnotes` + `noteId`) | free-use | **CHEAP** | Already in our fetch path. The *hebel* note is literally in `GET /api/BSB/Ecclesiastes/1.json`. We just don't render it. BSB only (public-domain KJV drops marginal notes). **Ship first.** |
-| **Word study** (tap word → original lemma, transliteration, sense range, where else used) | **BSB Translation Tables** (per-word Strong's-tagged) + **STEPBible** TBESH/TBESG lexicons; OpenScriptures Strong's fallback | CC0-leaning (Berean) · CC BY 4.0 (STEPBible) · MIT (OpenScriptures) | **MEDIUM** | Highest value. The hard problem (English word → lemma) is already solved: the BSB's own tables are tagged per word. Build-time ETL → compact gzip bundle next to `bsb.json.gz`. Concordance ("where else") falls out by indexing on Strong's number. |
+| **Word study** (tap word → original lemma, transliteration, sense range, where else used) | **BSB Translation Tables** (per-word Strong's-tagged) + **STEPBible** TBESG (Greek) and TBESH (Hebrew, Gloss column only) | CC0-leaning (Berean) · CC BY 4.0 (STEPBible, **with carve-outs — see the correction below**) | **MEDIUM** | Highest value. The hard problem (English word → lemma) is already solved: the BSB's own tables are tagged per word. Build-time ETL → compact gzip bundle next to `bsb.json.gz`. Concordance ("where else") falls out by indexing on Strong's number. |
 | **Geography / maps** | **OpenBible Bible-Geocoding-Data** (verse-linked places) | CC BY 4.0 | data **CHEAP** / basemap **MEDIUM–HEAVY** | Places are verse-linked (no NER needed): invert the `verses` index → "places in this chapter → coords". The trap is the *basemap* (see next section). |
 | **Book intros / author** | author our own ~66 short intros (research from ISBE PD + Wikipedia, do NOT copy) | we own it | **MEDIUM** (editorial) | No clean, neutral, freely-licensed importable source. Authoring fits our voice + humility better anyway. Bounded one-time content task. |
 | **Translation comparison** | — | — | **DROPPED for now** | The translations that would matter (NIV, NKJV) we don't have; ESV is metered. Not worth a door yet. |
 | **Cross-references** (built as the first prototype) | helloao `open-cross-ref` (OpenBible) + Luke Plant NT/OT quotation DB for quote-vs-echo typing | CC BY (refs) · verify quotation-DB license | done in prototype | Ranked by `score`. Quote phrase highlight is computable only for direct quotes (shared words); echoes/themes get a soft glow or nothing — never a fake phrase highlight. |
+
+### Correction — word-study licensing was wrong (2026-08-30)
+
+The table row above originally recorded the word-study data as "CC BY 4.0
+(STEPBible) · MIT (OpenScriptures)". **Both halves of that were wrong**, found
+by reading the actual file headers and repository rather than the summaries.
+Recorded here because this table has been treated as settled and is cited
+elsewhere. Full working in `docs/proposals/word-door-guardrails.md` §4.
+
+**1. STEPBible is not uniformly CC BY 4.0. The Hebrew and Greek halves sit in
+different legal positions.**
+
+TBESH's own header says, verbatim:
+
+> Meaning — These are based on the Abridged BDB by Online Bible, © Larry Pierce
+> of OnlineBible.net. They are for guidance only. **Permission should be gained
+> from Online Bible before these are applied in any project.**
+
+TBESG (Greek) carries no equivalent restriction: its Meaning column is
+Abbott-Smith with Middle Liddell fallback, both long out of copyright.
+
+So the plan changes rather than averaging over it:
+
+- **Greek:** ship TBESG glosses and sense text.
+- **Hebrew:** ship the TBESH **Gloss** column (Tyndale, CC BY 4.0) plus lemma,
+  transliteration and morph class. **Do NOT ship the TBESH Meaning column**
+  until either Dennis obtains permission from Online Bible, or it is replaced
+  with a public-domain Hebrew source.
+- This asymmetry is not visible as a defect, because the presentation rules
+  already de-emphasise definition text in favour of occurrences and grammar.
+  The Hebrew door shows gloss + grammar + occurrences; the Greek door adds the
+  sense range. Hebrew remains the better-populated door, since that is where
+  the morphology payload is richest.
+
+Attribution is therefore non-optional. Note also that both files ask readers
+not to redistribute them, which sits in tension with the CC BY 4.0 grant
+printed two lines above; our build derives a transformed subset rather than
+redistributing the files, which is squarely inside CC BY 4.0 and inside the
+licence's own permission to "download the data and reformat it for your
+application".
+
+**2. OpenScriptures Strong's is NOT MIT. It has no licence at all.**
+
+As of 2026-08-30 the repository has no `LICENSE` file and no `README.md`;
+GitHub's API reports `license: null`. It was last pushed 2021-07-15. The "MIT"
+recorded above was unverified and the evidence points the other way.
+
+**Consequence: OpenScriptures is out of the v1 build.** It was only ever the
+fallback for lemmas STEPBible misses, and that gap is small — measured,
+TBESH+TBESG cover 13,334 of the 13,876 (96.1%) distinct Strong's numbers the
+BSB tables actually use.
+
+**The lesson worth keeping:** both errors came from trusting a licence summary
+instead of opening the file. Every remaining "open licence" claim in this
+document should be verified the same way before it is built on, not after.
 
 ## The map — a signature feature (stays FREE core)
 
