@@ -10,6 +10,76 @@ prioritized.
 
 ## Deferred
 
+- **The note object — highlights, user-owned categories, and RETRIEVAL
+  (2026-08-30, new arc; see `docs/proposals/note-object.md`).** A research pass
+  contradicted the standing assumption that capture latency is Lantern's top
+  defect: serious users of mature note tools complain about *retrieval*
+  ("hard to find, hard to discover, hard to retrieve, hard to organize… the
+  single worst part of Logos") and fear "a complete mess of notes." Lantern has
+  not hit this yet only because it has one user with months of notes — the
+  defect scales with the product's own success. Three pieces: (1) **highlight =
+  a note with no body** (same verse anchor, same categories, same colour, one
+  action in the existing composer — deliberately NOT sub-verse word selection,
+  which would forfeit the translation-independence Lantern currently wins on);
+  (2) **user-owned categories** (rename/recolour free, add/remove with a cap
+  ~8, four defaults kept — this is a schema change touching the `BereanApi`
+  seam, not a settings toggle); (3) **the Journal becomes a retrieval surface**,
+  not just a derived history (needs its own design pass; nearest competitor
+  Harvous ships "Recall" and made resurfacing its thesis). Hard constraints
+  inherited from the research: no streaks, scores, or activity metrics; any
+  resurfacing is pull, never push. Note-object work sits *underneath* the
+  deep-dive layers and group sharing, and unlike them it depends on no
+  translation licence.
+
+- **Translations: the settled position + zero-cost next actions (2026-08-30;
+  see the addendum in `docs/proposals/translations-esv-niv.md`).** Settled:
+  **BSB + KJV + NET offline and permanent; ESV online-only while Lantern stays
+  free; NIV only if Biblica surprises us.** Decisions made: do NOT form a legal
+  entity (Australian Pty Ltd / incorporated association overhead is not worth
+  it for a free app with ~1 user, even though "organizations not individuals"
+  turns out to be an entity-form test that a small LLC clears); do NOT buy
+  API.Bible (it sells breadth, and cannot supply either translation Dennis
+  wants); do NOT take the YouVersion Platform's Biblica licence (forbids
+  offline, caps display at 25 verses, forbids AI-personalised content, and its
+  non-commercial obligation is **app-wide**, not scoped to NIV). **Tripwire:
+  any paid feature or donate button breaks ESV compliance today** — Crossway
+  counts donations as commercial and revokes at will. Zero-cost actions, none
+  blocking: test whether Harvous actually serves NIV offline; email Crossway
+  and Biblica (free, a "no" is still worth having); email Derek Castelli
+  (derek@harvous.com) and ask how he licensed his 11 translations; add a
+  comment in `src/bible/esv.ts` pointing at the tripwire.
+
+- **Add NET Bible as the third offline translation (2026-08-30, CHEAP).**
+  Already served by the provider Lantern uses: `bible.helloao.org` id `eng_net`
+  (verified live — 66 books, 1,189 chapters, plus a `complete.json` whole-Bible
+  bundle in the same shape as `bsb.json.gz`). Free, no key, no rate limit,
+  unlimited caching; attribution is one "(NET)" label linked to netbible.org.
+  **The licence grants the TEXT ONLY — the ~60k translator notes are excluded
+  and are not ours.** Worth doing on the merits, not just availability: NET
+  exists to show where translators disagree, so BSB/KJV/NET is a genuinely
+  informative three-way spread that feeds the deep dive's divergence signal.
+
+- **ESV performance: persist the cache + prefetch neighbours (2026-08-30,
+  compliant, unblocked).** ESV refetches on every reload because
+  `src/bible/esv-cache.ts` is in-memory only — a deliberately conservative
+  choice its own comment admits is "stricter than the letter of the license
+  requires." Two wins inside Crossway's 500-verse cap: (a) persist the cache to
+  IndexedDB so reloads stop refetching (tradeoff: writes licensed text to disk,
+  which the original author avoided on purpose — Dennis's call); (b) prefetch
+  the next/previous chapter on idle, which is where most of the perceived
+  slowness actually lives. Neither removes new-chapter latency beyond the cap;
+  only a Crossway licence could.
+
+- **Distribution / discoverability — the gap that is actually costing us
+  (2026-08-30).** Harvous is not beating Lantern on product; it is beating it
+  on being findable. It ships 40+ comparison pages (vs Notion, Obsidian,
+  YouVersion, Logos, Apple Notes, Olive Tree…), seven use-case landing pages,
+  and ten feature pages, and consequently owns search for "best Bible notes
+  app." Lantern has nothing comparable. Not 40 pages — the ten that matter,
+  including an honest Lantern-vs-Harvous page. Cheapest meaningful win
+  available, and it needs no licence and no schema change.
+
+
 - **Deep Dive — verse study exploration (the "go deeper" arc).** Full design +
   data research captured in `docs/proposals/deep-dive-study.md`; cross-references
   prototype in `design/reference-deep-dive.html`. The feature replicates the whole
@@ -20,8 +90,18 @@ prioritized.
   lexicons for word study = MEDIUM/highest-value; OpenBible verse-linked geocoding
   for a custom verifiable interactive map + timeline slider, kept in the FREE
   core; author ~66 book intros). Philosophy guardrail: primary data only, never
-  AI-authored meaning; epistemic humility. Next: fresh chat does a "how people
-  study" research pass, then roadmap, then build (footnotes → word door → map).
+  AI-authored meaning; epistemic humility. The "how people study" research pass
+  RAN 2026-08-30 (see the proposal's addendum): it confirmed the doorways thesis
+  and changed four things — doorways must open only AFTER a full read (never
+  auto-expand, so this stays behind the Read/Study toggle); translation
+  divergence returns as a SALIENCE SIGNAL routing into the word door rather than
+  a door of its own (BSB alternate-rendering footnotes first, NET later); the
+  word door needs a guardrail DESIGN (root fallacy / totality transfer) before a
+  build ticket; and "don't see for them" is revised to mean mediated by METHOD,
+  not by CONCLUSIONS, because raw lexicon data is not neutral. This also splits
+  the footnote layer in two: alternate-rendering footnotes are safe and ship
+  first, textual-variant footnotes ("some manuscripts omit") cause anxiety and
+  should be gated. Build order unchanged: footnotes → word door → map → intros.
   The deep-dive entry surface will likely be redesigned from scratch on the
   doorways model rather than reusing the connections prototype.
 

@@ -280,3 +280,189 @@ Primary/external sources (all as checked 2026-07-22): `api.esv.org/docs/`,
 `self-hosted.ts`'s existing comment and the BACKLOG.md "Self-hosted BSB
 fallback" entry), and `sellingjesus.org/articles/kjv` for the KJV US/UK
 copyright distinction.
+
+---
+
+## Addendum — 2026-08-30 (product-strategy session)
+
+The 2026-07-22 brief above is still correct on the law and the engineering.
+This addendum records what a later research pass added, and the product
+decisions that came out of it. Three things changed: a new distribution
+channel appeared, the "solo developer" blocker turned out to be an
+entity-form test, and the monetisation question stopped being separable from
+the translation question.
+
+### 1. The ESV compliance tripwire (act on this before monetising)
+
+Crossway's non-commercial definition is **site-wide, not scripture-scoped**:
+a qualifying site "does not charge for access to any part of the site," and
+they explicitly name *donations* as commercial ("primarily designed to
+motivate visitors to buy something, to pay for a service, **or to give a
+donation**").
+
+Consequences the July brief did not draw out:
+
+- **Any** paid feature breaks ESV compliance, even one with nothing to do
+  with scripture (group hosting, AI inference). So does a supporter/donate
+  button.
+- Lantern is therefore *already inside a non-commercial licence today*, via
+  the translation Dennis personally reads. The monetisation stance was never
+  an open question waiting to be decided — it was quietly pre-committed by
+  the ESV integration.
+- Crossway may revoke keys "at any time for any reason," and has done so
+  before: they withdrew ESV from the SWORD/CrossWire ecosystem after years,
+  forcing apps (e.g. And Bible) to remove it.
+
+**Decision (2026-08-30): keep ESV, stay free, and treat this as a deferred
+fork rather than a trap.** The `BibleProvider` seam makes ESV swappable, so
+if a paid tier ever becomes real the choice is made then. The failure mode to
+guard against is adding a donate button and leaving ESV in place without
+noticing — hence a comment in the ESV provider pointing here.
+
+### 2. "Organizations, not individuals" is an entity-form test
+
+Crossway's stated policy is that they license "to publishers or ministry
+organizations rather than to individuals," which reads as a hard wall for a
+solo developer. Competitor research (§5) showed it is not a *size* test: the
+bar appears clearable by an ordinary small legal entity, not by scale or
+distribution.
+
+**Decision (2026-08-30): do NOT form an entity.** Dennis is in Australia,
+where the equivalents (Pty Ltd, or a state-based incorporated association)
+carry real setup and annual overhead. Taking on recurring cost and
+administration for a product that is free and has ~1 user is premature. The
+entity is the gate for both a Crossway licence and any serious Biblica
+conversation, so this decision also means:
+
+- **NIV is realistically out** for now. Biblica's route is
+  organisation-shaped too, and NIV is barred from commercial use even via
+  aggregators.
+- Applications are free, though. Emailing Crossway and Biblica as an
+  individual costs nothing, and a "no" is more useful than an assumption.
+
+### 3. API.Bible is the wrong purchase for Lantern
+
+API.Bible Pro (~$29/mo) plus Express Licensing (~$10/mo per translation)
+*is* a real, self-serve, commercially-licensable route — but it buys
+**breadth** (NKJV, CSB, NLT, NASB, AMP, MSG) and cannot supply either
+translation Dennis actually wants: NIV is excluded from commercial licensing
+outright, and ESV is not on the platform at all.
+
+**Decision: skip API.Bible.** Dennis's stated preference is quality over
+breadth — "a couple of quality ones like NIV and ESV" — which makes the
+subscription pure cost with no payoff.
+
+### 4. YouVersion Platform (launched ~March 2026) — evaluated and rejected
+
+New since the July brief. Life.Church exposes their own publisher agreements
+to third-party developers: ~1,479 Bibles, 10 publishers, free, instant
+automatic approval. Catalog verified live 2026-08-30.
+
+- **ESV is not on it** (no Crossway licence exists there) and **KJV is not
+  either** (blocked indefinitely, per a YouVersion engineer, June 2026).
+  Moving the read path there would *lose* a translation Lantern already
+  self-hosts.
+- NIV is present (id 111, opt-in) under the **Biblica Fast-track License**,
+  which forbids downloading content to the device, caps display at 25 verses
+  or 2 chapters, forbids AI-personalised content, requires encryption against
+  reproduction, and demands destruction of all content within 72 hours of
+  termination (impossible for a PWA to honour).
+- Critically, Biblica's non-commercial obligation attaches to "the WORK",
+  defined as **the whole application** — app-wide, not scoped to the NIV
+  text. A hybrid (PD offline core + NIV online-only) would forfeit Lantern's
+  entire monetisation future to gain one online translation.
+- The licences are *not* uniform: **Lockman** (NASB 1995/2020, AMP)
+  explicitly permits "download to the user's device" with no verse cap, and
+  **Wycliffe** grants "store" rights and says "online and offline". If
+  Lantern ever wants more translations without the Biblica trap, PD/CC +
+  Lockman is the viable subset.
+
+**Decision: do not take the Biblica licence.** Offline reading and the deep
+dive's ambitions are two of the three things Lantern is.
+
+### 5. Competitor evidence: Harvous
+
+[harvous.com](https://harvous.com) — solo-built (Derek Castelli, Testament
+Made LLC, US), web-first PWA, notes-first Bible study app. Ships **11
+translations (KJV, NKJV, ESV, NIV, NLT, NET, BSB, NASB 1995, CSB, AMP, MSG)
+on a free tier** while charging $5/mo for hosted Shared Spaces.
+
+That combination looked impossible given the above. The explanation is mostly
+mundane:
+
+- The translation set decomposes into three sources: API.Bible for the
+  aggregated set, `api.esv.org` for ESV (the only route), `api.nlt.to` for
+  NLT, plus free NET/BSB. **Five integrations, not one deal.**
+- **Testament Made LLC** is an ordinary freelance web-design business
+  (registered 2020, four small products). That is what satisfies Crossway's
+  "organizations" rule. No loophole was found.
+- His position is not clearly clean: API.Bible bars NIV from commercial use
+  and names *freemium models* as commercial; Harvous is textbook freemium.
+  No scripture attribution was found anywhere on his public site (it is
+  contractually mandatory, though it may be in-app where research could not
+  reach). He has never publicly written about Bible licensing despite
+  blogging openly about everything else.
+- **His "offline sync" claim is unverified and may mean notes, not
+  scripture.** Biblica forbids offline NIV in writing, so if his reader
+  serves NIV with no connection, he is outside the licence. Test before
+  treating offline-licensed-scripture as a solved problem.
+
+**Do not copy the posture.** Lantern's clean licensing position is a
+durability asset: if a publisher ever sends a letter, Harvous has a
+product-breaking problem and Lantern does not.
+
+### 6. The settled position
+
+**BSB + KJV + NET offline and permanent; ESV online-only while Lantern stays
+free; NIV only if Biblica surprises us.**
+
+Two supporting points make this a coherent product rather than a compromise:
+
+- **NET Bible is already available on helloao** as `eng_net` (verified live:
+  66 books, 1,189 chapters, plus a `complete.json` whole-Bible bundle in the
+  same shape as `bsb.json.gz`). Free, no key, no rate limit, unlimited
+  caching; attribution is one "(NET)" label linked to netbible.org. The
+  licence grants the **text only** — the ~60k translator notes are excluded
+  and are NOT ours. It is also the right third translation on the merits: a
+  modern translation whose reason for existing is showing where translators
+  disagree, which feeds the divergence signal (see `deep-dive-study.md`).
+- **Notes are translation-independent** because they anchor to
+  `book_number` + verse. A reader can read NIV or ESV, lose signal, fall back
+  to BSB, and their notes are still exactly where they left them. This is a
+  live complaint about YouVersion ("notes don't transfer between versions")
+  that Lantern already solves. Say it out loud in the product.
+
+### 7. Zero-cost next actions (none block building)
+
+1. Test whether Harvous actually serves NIV offline. If it does not, nobody
+   has solved offline licensed scripture and Lantern is not behind.
+2. Email Crossway describing Lantern honestly, asking specifically about
+   caching for offline reading in per-user browser storage, never
+   exportable. Do this *before* any paid tier exists.
+3. Email Biblica. Expect no; the answer is still worth having.
+4. Email Derek Castelli (derek@harvous.com) founder-to-founder and ask how he
+   handled licensing. Highest-value single question outstanding.
+5. Add a comment in `src/bible/esv.ts` / `esv-cache.ts` pointing at §1 so a
+   future paid feature cannot silently break compliance.
+
+### 8. Engineering wins available today (compliant, unblocked)
+
+- **Persist the ESV cache to IndexedDB under the existing 500-verse cap.**
+  `esv-cache.ts` is in-memory only by choice, and its own comment concedes
+  this is "stricter than the letter of the license requires". Persisting
+  stops every reload refetching. Tradeoff: it writes licensed text to disk,
+  which the original author deliberately avoided. Dennis's call.
+- **Prefetch the next/previous chapter on idle.** Under a 500-verse ceiling
+  new-chapter latency cannot be removed, but it can be moved out of the
+  reader's way. Most of the perceived slowness is navigation, not reload.
+
+### Sources added by this pass (checked 2026-08-30)
+
+`api.esv.org` (terms), `crossway.org/permissions`, `platform.youversion.com/terms`,
+`developers.youversion.com`, `api.youversion.com/v1/licenses` and `/v1/bibles`
+(queried live), the Biblica / Lockman / Wycliffe fast-track licence documents
+(public Google Docs linked from the licences API), `api.bible` pricing and
+`care.api.bible` Express Licensing, `api.nlt.to`, `netbible.com/copyright`,
+`ebible.org/engnet/copyright.htm`, `bible.helloao.org/api/available_translations.json`,
+`harvous.com` (homepage, pricing, features, terms, about),
+`sellingjesus.org/articles/bible-publishers`.

@@ -153,3 +153,180 @@ project roadmap.
    with monetization as a decision point, landed as HQ goals.
 3. Then build, starting with footnotes and the word door; likely redesign the
    deep-dive entry surface from scratch on the "doorways" model.
+
+---
+
+## Addendum — 2026-08-30 (research pass on how people actually study)
+
+The "Next steps" above called for a research pass on how people actually study
+the Bible before spec'ing this feature. That pass ran the same day (methods
+literature, spiritual-formation writers, competitor reviews, and a separate
+Reddit pass via the Chrome connector). It **confirmed the core thesis and
+changed four things**. Recorded here so the spec starts from the corrected
+version.
+
+### Confirmed: doorways, and now with a mechanism
+
+- **Verse mapping is this feature, already invented on paper.** The taught
+  sequence is: write the verse, write it in 2–4 other translations, note where
+  they diverge, pull 3–5 keywords, chase Strong's, read every other occurrence,
+  restate in your own words, apply. That is the zoom spectrum, in the order
+  this document guessed. Lantern is removing friction from an existing
+  practice, not inventing a behaviour.
+- **"Prime the gap, don't fill it" now has a name.** Loewenstein's
+  information-gap theory: curiosity is produced by a gap between what you know
+  and what you want to know, and **complete ignorance produces little
+  curiosity**. A reader shown nothing about a place name is not curious about
+  it; one shown "a place, four days' walk from there" is. So a doorway should
+  show the *smallest fact that makes a question askable*, never the answer.
+- **The 2–4 cap is right, for a reason.** The same literature finds unresolved
+  gaps at volume become aversive. Three or four doors, hard cap.
+
+### Change 1: doorways must open LATER than this document assumes
+
+Every narrated study session found in the research starts a hop from a
+*specific irritant*, never from a wish to be shown what is interesting: a
+repeated word, an unknown word, a footnote link, a remembered echo. One user:
+"I just read until I hit something I didn't know what it was."
+
+The ordering rule is stated explicitly by practitioners, and every method
+(Precept, BSF, Hendricks) teaches it: read fully first, tools second.
+
+> "The 2 most key ways to understand well are to read fully through entire
+> chapters at a time… And then, after you have read this way… then it's ok
+> finally after that to come back to a verse. And there are many good tools at
+> Biblehub for that… But that's always 2nd, never first, for me, now, based on
+> what I've learned from experience."
+
+**Consequence:** the deep dive must never auto-expand on arrival, and belongs
+behind a deliberate act — which is what the existing desktop Read/Study toggle
+already is. Keep it out of the Read path entirely. This also resolves the
+tension with the formational tradition (Whitney's "read less, meditate more";
+Peterson's target being speed and mastery): the tension does not dissolve, it
+is *contained* by keeping depth in Study.
+
+Note a real minority who consider any doorway a snare, upvoted not buried:
+"Outside influence is equivalent to trusting something other than God over God,
+which is an idol." Small, but they exist, and they are an argument for the
+opt-in default rather than against the feature.
+
+### Change 2: the translation door returns — as a SIGNAL, not a door
+
+This document dropped translation comparison because NIV/NKJV are unavailable
+and ESV is metered. The research says divergence is **the single most common
+upstream trigger** for going deeper in verse-mapping practice.
+
+But a divergence *door* is the wrong shape, and the objection is Dennis's:
+showing a reader two translations they do not use invites "so which one is
+right?", which is the footnote-anxiety failure mode wearing a different hat.
+
+**The reframe: divergence is a salience signal that routes to the word door.**
+When competent translators land on different English words, the underlying
+Hebrew or Greek has more range than one English word can hold. The reader is
+never asked to adjudicate; they land on sense range, which is the honest
+explanation of *why* the translations differ. This is also "mediated by method,
+not by conclusions" (§ Change 4) — the method being "difference in English
+means look at the original," exactly what verse mapping teaches.
+
+Two cheap sources for the signal, in order of preference:
+
+1. **BSB's own alternate-rendering footnotes** ("or …", "literally …",
+   "Hebrew …"). Divergence evidence from *inside* the translation the reader is
+   already reading, with the translators as the source, so no second
+   translation is staged against the first. Strictly better on trust.
+2. **NET vs BSB**, once NET is added (it is already available on helloao as
+   `eng_net`, free and cacheable — see `translations-esv-niv.md` addendum §6).
+   NET exists to show where translators disagree, which makes BSB/KJV/NET a
+   genuinely informative three-way spread.
+
+**This also splits the footnote layer in two, which the table above treats as
+one item.** Alternate-rendering footnotes are the good, low-risk ones.
+*Textual-variant* footnotes ("some manuscripts omit…") are the anxiety ones:
+readers "often do not have enough information in the footnote to evaluate the
+variants." Ship the first; gate the second behind a deliberate action, and
+consider whether it needs a sentence of factual framing to be responsible.
+
+### Change 3: the word door needs a guardrail DESIGN, not just data
+
+The word study remains the highest-value layer. It is now also the
+highest-risk one, and the risk is documented in exactly the feature being
+built: **root fallacy** and **illegitimate totality transfer**. Critics call
+Strong's "purely an amateur book," and its observed effect on untrained users
+is "a sort of interpretative gumbo." From Reddit, unprompted:
+
+> "I would be careful about thinking that words in common are a good way to
+> link together different parts of different texts… If you go too far with
+> these types of practices, you can end up just using the bible like a magic
+> 8-ball."
+
+Mitigations that stay strictly inside "primary data only":
+
+- Show occurrences **in their sentences**, never as a bare gloss list.
+- Show the **range of senses**; never rank definitions or present one as "the"
+  meaning.
+- Surface **morphology** where the data has it (Strong's omits tense/voice/mood,
+  which is where much of Greek's meaning lives).
+- Never present a lexicon entry as "what the word really means."
+
+**This is a design pass before it is a build ticket.**
+
+### Change 4: "don't see for them" cannot mean "unmediated data"
+
+The sharpest pushback from the research, and it is worth stating plainly
+because it revises a philosophy guardrail rather than a feature:
+
+Shipping raw lexicon data with no interpretive scaffolding does not avoid
+seeing for the reader. It hands them a tool that reliably makes them see
+*wrongly*, with the app's implicit endorsement. Primary data is not neutral.
+
+**The revised line: mediated by METHOD, not by CONCLUSIONS.** Lantern may
+teach and enforce a way of looking (occurrences in context, sense ranges,
+commentary last, observation before interpretation). It may not tell the reader
+what the passage means. This is a harder engineering and design problem than
+"show the data," and it is the thing that makes the feature defensible.
+
+Corroborating demand, and a better positioning line than "help the reader SEE":
+
+> "Very few people have ever been purposely taught 'how' to read and study
+> their Bibles. It's just assumed people know where to start and how to do it.
+> As a result, many have picked up bad habits and built on them."
+
+People ask "how do you study the Bible?" constantly and get book
+recommendations. **The demand is for method, expressed as ignorance of method.**
+
+Also worth recording honestly: **"it gives me information but doesn't help me
+SEE" is not a user complaint.** Nobody says it. Users complain about clutter,
+ads, crashes, price, and bad note editors; the information/formation critique
+comes from teachers and formation writers. The philosophy is defensible as a
+design thesis, but positioning it as what users are asking for would be
+overclaiming.
+
+### Two additions worth carrying into the spec
+
+- **Semantic distance should govern presentation weight.** Hypertext research
+  finds that links to semantically *distant* material interfere with
+  comprehension far more than links to close material. Concretely: a lexicon
+  gloss, a footnote, and immediate context are cheap and can be inline or a
+  peek; a cross-reference into another book is expensive and should require a
+  deliberate act with a visible way back. This is empirical support for the
+  prototype's hold-firm stacking and breadcrumb, which turn out to be the
+  load-bearing parts rather than aesthetic ones.
+- **Provenance and confidence are an uncopied differentiator.** OpenBible
+  publishes confidence levels per identification across 400+ sources. Surfacing
+  that ("scholars disagree on this location") is philosophically consistent,
+  cheap, and something no competitor bothers with. It is also the most honest
+  possible answer to the objection that curating a free tier is itself an
+  interpretive act.
+
+### Competitive position (checked 2026-08-30)
+
+The nearest competitor, [Harvous](https://harvous.com) (solo-built, notes-first,
+11 translations, $5/mo for shared spaces), has **no answer to this feature**:
+its only comprehension tool is Easton's Dictionary (1897). No Strong's, no
+cross-references, no maps, no timeline, no book intros. Its roadmap points at
+retention (spaced review, "study seasons") and an AI connector, i.e. away from
+understanding the text.
+
+**The deep dive is uncontested**, and the map most of all. See
+`note-object.md` for where Harvous *is* ahead (retrieval), and
+`translations-esv-niv.md` for the licensing findings.
