@@ -10,6 +10,21 @@ prioritized.
 
 ## Deferred
 
+- **Deep Dive — verse study exploration (the "go deeper" arc).** Full design +
+  data research captured in `docs/proposals/deep-dive-study.md`; cross-references
+  prototype in `design/reference-deep-dive.html`. The feature replicates the whole
+  roving study experience across a zoom spectrum (word → whole-Bible), presented
+  psychology-first as ranked "doorways" that anticipate the question a verse
+  provokes, never a dump. Data for every layer is confirmed open + self-hostable
+  (helloao footnotes = CHEAP/ship-first; BSB per-word Strong's + STEPBible
+  lexicons for word study = MEDIUM/highest-value; OpenBible verse-linked geocoding
+  for a custom verifiable interactive map + timeline slider, kept in the FREE
+  core; author ~66 book intros). Philosophy guardrail: primary data only, never
+  AI-authored meaning; epistemic humility. Next: fresh chat does a "how people
+  study" research pass, then roadmap, then build (footnotes → word door → map).
+  The deep-dive entry surface will likely be redesigned from scratch on the
+  doorways model rather than reusing the connections prototype.
+
 - **Guest cleanup after the guest-is-the-App change (2026-08-27) — the two
   mechanical loose ends are DONE (2026-08-28, see Done); one optional item
   remains.** A subtle in-reader "preview" indicator so a guest mid-reading (not

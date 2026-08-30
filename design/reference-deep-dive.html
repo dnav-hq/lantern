@@ -1,0 +1,949 @@
+<title>Deep Dive — Reference navigation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap"
+/>
+
+<style>
+  :root {
+    --ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --scripture-font: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --scripture-size: 19px;
+    --scripture-lh: 1.72;
+    --bg: #f4f0e8;
+    --surface: #fbf9f4;
+    --surface-2: #ece6da;
+    --border: #e2dccf;
+    --border-strong: #d8d0c0;
+    --text: #201e1a;
+    --text-muted: #6a6353;
+    --text-faint: #938a77;
+    --accent: #6b62d6;
+    --accent-ink: #594fd1;
+    --accent-weak: rgba(107, 98, 214, 0.11);
+    --accent-soft: rgba(107, 98, 214, 0.18);
+    --on-accent: #ffffff;
+    --quote: #6b62d6;
+    --quote-ink: #594fd1;
+    --echo: #2f8f8f;
+    --echo-ink: #237070;
+    --theme: #b5732a;
+    --theme-ink: #8a5820;
+    --elev-2: 0 2px 6px rgba(20, 16, 8, 0.06), 0 8px 20px -6px rgba(20, 16, 8, 0.1);
+    --elev-3: 0 8px 20px -6px rgba(20, 16, 8, 0.14), 0 24px 46px -14px rgba(20, 16, 8, 0.2);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --dur-2: 200ms;
+    --dur-3: 320ms;
+  }
+  :root[data-theme='dark'] {
+    --bg: #17140f;
+    --surface: #211d17;
+    --surface-2: #2b2620;
+    --border: #38322a;
+    --border-strong: #473f34;
+    --text: #ece4d6;
+    --text-muted: #a99f8e;
+    --text-faint: #7a7264;
+    --accent: #a49cf0;
+    --accent-ink: #a49cf0;
+    --accent-weak: rgba(164, 156, 240, 0.14);
+    --accent-soft: rgba(164, 156, 240, 0.26);
+    --quote: #a49cf0;
+    --quote-ink: #a49cf0;
+    --echo: #56c6c6;
+    --echo-ink: #56c6c6;
+    --theme: #e0a15e;
+    --theme-ink: #e0a15e;
+    --elev-2: 0 2px 6px rgba(0, 0, 0, 0.3), 0 8px 20px -6px rgba(0, 0, 0, 0.45);
+    --elev-3: 0 8px 20px -6px rgba(0, 0, 0, 0.5), 0 24px 46px -14px rgba(0, 0, 0, 0.6);
+  }
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    font-family: var(--ui-font);
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+  button {
+    font: inherit;
+    cursor: pointer;
+    color: inherit;
+  }
+  .frame {
+    max-width: 420px;
+    margin: 0 auto;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+  .top {
+    flex: none;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .top .name {
+    font-family: var(--scripture-font);
+    font-weight: 600;
+    font-size: 17px;
+  }
+  .top .spacer {
+    margin-left: auto;
+  }
+  .icon-btn {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 999px;
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    display: grid;
+    place-items: center;
+    color: var(--text-muted);
+    flex: none;
+  }
+  .reader {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 18px 20px 120px;
+  }
+  .chap-kicker {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+  }
+  .chap-title {
+    font-family: var(--scripture-font);
+    font-weight: 600;
+    font-size: 30px;
+    margin: 3px 0 14px;
+  }
+  .verse {
+    font-family: var(--scripture-font);
+    font-size: var(--scripture-size);
+    line-height: var(--scripture-lh);
+    padding: 2px 0;
+    cursor: pointer;
+  }
+  .verse .vn {
+    font-family: var(--ui-font);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-ink);
+    vertical-align: 0.35em;
+    margin-right: 3px;
+    opacity: 0.72;
+  }
+  .verse .vtext {
+    border-radius: 7px;
+    padding: 2px 5px;
+    margin: 0 -3px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    transition: background var(--dur-2);
+  }
+  .verse.sel .vtext {
+    background: var(--accent-weak);
+    box-shadow: 0 0 0 1px var(--accent-soft) inset;
+  }
+  .verse .anchor {
+    box-shadow: inset 0 -0.09em 0 0 transparent;
+    transition: box-shadow var(--dur-2);
+    border-radius: 3px;
+  }
+  body.hints .anchor,
+  .verse.sel .anchor {
+    box-shadow: inset 0 -0.09em 0 0 var(--accent-soft);
+  }
+  .caption {
+    margin: 26px 0 8px;
+    padding: 16px 0 0;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-faint);
+  }
+  .caption b {
+    color: var(--text-muted);
+  }
+  .selbar {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    z-index: 45;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    box-shadow: var(--elev-3);
+    padding: 9px 9px 9px 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transform: translateY(160%);
+    transition: transform var(--dur-3) var(--ease-out);
+  }
+  .selbar.on {
+    transform: translateY(0);
+  }
+  .selbar .ref {
+    font-family: var(--scripture-font);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent-ink);
+    flex: 1;
+  }
+  .selbar button {
+    border: 0;
+    border-radius: 11px;
+    font-weight: 600;
+    font-size: 13.5px;
+    padding: 9px 14px;
+    flex: none;
+  }
+  .selbar .explore {
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: var(--elev-2);
+  }
+  .selbar .note {
+    background: var(--surface-2);
+    color: var(--text-muted);
+  }
+  .selbar .x {
+    background: transparent;
+    color: var(--text-faint);
+    width: 30px;
+    padding: 0;
+    height: 34px;
+    font-size: 17px;
+  }
+  .scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 16, 8, 0.38);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-3);
+    z-index: 50;
+  }
+  .scrim.on {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 55;
+    height: 80vh;
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    box-shadow: var(--elev-3);
+    transform: translateY(104%);
+    transition: transform var(--dur-3) var(--ease-out);
+    display: flex;
+    flex-direction: column;
+  }
+  .sheet.on {
+    transform: translateY(0);
+  }
+  .sheet-grip {
+    width: 38px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border-strong);
+    margin: 9px auto 8px;
+    flex: none;
+  }
+
+  /* reasoning breadcrumb — every level tappable, scrolls when long, relationship
+     verbs between refs. This is the precise navigation. */
+  .trail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px 9px 12px;
+    flex: none;
+  }
+  .crumbs {
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    scrollbar-width: none;
+  }
+  .crumbs::-webkit-scrollbar {
+    display: none;
+  }
+  .crumb {
+    font-family: var(--scripture-font);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-faint);
+    padding: 4px 2px;
+    cursor: pointer;
+    flex: none;
+  }
+  .crumb.cur {
+    color: var(--text);
+    cursor: default;
+  }
+  .cverb {
+    font-family: var(--ui-font);
+    font-size: 10px;
+    font-style: italic;
+    color: var(--text-faint);
+    opacity: 0.75;
+    margin: 0 6px;
+    flex: none;
+  }
+  .trail .close {
+    border: 0;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    font-size: 16px;
+    flex: none;
+  }
+
+  /* the stage: a visible pile of previous cards behind the current one.
+     Tapping the pile goes back one level. */
+  .stage {
+    position: relative;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+  /* each layer is a full card; going deeper the new one rises as the old recedes
+     back into the stack, going back the top one peels down to reveal the real
+     card beneath (never a blank) */
+  .front {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--surface);
+    padding: 12px 20px calc(28px + env(safe-area-inset-bottom));
+  }
+  @keyframes riseUp {
+    from {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes recedeBack {
+    to {
+      transform: translateY(-18px) scale(0.955);
+      opacity: 0;
+    }
+  }
+  @keyframes leaveDown {
+    to {
+      transform: translateY(100%);
+      opacity: 0.5;
+    }
+  }
+  .front.rise {
+    animation: riseUp 460ms var(--ease-out);
+    box-shadow: 0 -12px 28px -12px rgba(20, 16, 8, 0.22);
+  }
+  .front.recede {
+    animation: recedeBack 460ms var(--ease-out) forwards;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .front.leave {
+    animation: leaveDown 440ms var(--ease-out) forwards;
+    z-index: 3;
+    pointer-events: none;
+    box-shadow: 0 -12px 28px -12px rgba(20, 16, 8, 0.22);
+  }
+
+  /* focus verse — the SUBJECT of this layer. Airy, not boxed: an accent hairline
+     and a quiet kicker set it apart; the scripture reads like scripture. */
+  .focus {
+    border-left: 2px solid var(--accent);
+    padding: 2px 0 2px 16px;
+    margin: 10px 0 22px;
+  }
+  .focus-kind {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    opacity: 0.9;
+  }
+  .focus-kind .acts {
+    margin-left: auto;
+    display: flex;
+    gap: 14px;
+  }
+  .focus-kind button {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 11.5px;
+    color: var(--accent-ink);
+    background: none;
+    border: 0;
+    font-weight: 600;
+    padding: 0;
+  }
+  .focus-ref {
+    font-family: var(--scripture-font);
+    font-weight: 600;
+    font-size: 20px;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .focus-ctx {
+    font-family: var(--scripture-font);
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--text-faint);
+  }
+  .focus-cur {
+    font-family: var(--scripture-font);
+    font-size: 16.5px;
+    line-height: 1.62;
+    margin: 4px 0;
+    border-radius: 6px;
+    transition: background var(--dur-3);
+  }
+  .focus-cur .sp {
+    border-radius: 3px;
+    box-shadow: inset 0 -0.55em 0 0 transparent;
+    transition: box-shadow var(--dur-3);
+  }
+  .focus.lit-quote .focus-cur .sp {
+    box-shadow: inset 0 -0.62em 0 0 var(--accent-soft);
+  }
+  .focus.lit-soft .focus-cur {
+    background: var(--accent-weak);
+    padding: 4px 7px;
+    margin: 4px -7px;
+  }
+  .divider {
+    display: none;
+  }
+  .ghead {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 17px 0 8px;
+  }
+  .ghead .gtitle {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .ghead.g-quote .gtitle {
+    color: var(--quote-ink);
+  }
+  .ghead.g-echo .gtitle {
+    color: var(--echo-ink);
+  }
+  .ghead.g-theme .gtitle {
+    color: var(--theme-ink);
+  }
+  .ghead .gloss {
+    font-size: 11.5px;
+    color: var(--text-faint);
+    margin-left: auto;
+  }
+
+  /* connection — an airy entry, not a filled box. KIND = hue (dot + reference).
+     RELEVANCE = colour INTENSITY of the dot and the reference: the strongest
+     link's reference is vivid, the weakest fades toward grey — legible even
+     between two full entries. Prominence (text amount) thins the weak ones. */
+  .card {
+    --kindc: var(--quote);
+    display: flex;
+    gap: 13px;
+    padding: 10px 8px;
+    margin: 0;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: background var(--dur-2);
+  }
+  .card.k-echo {
+    --kindc: var(--echo);
+  }
+  .card:hover {
+    background: color-mix(in srgb, var(--kindc) 6%, var(--surface));
+  }
+  .card .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    flex: none;
+    margin-top: 8px;
+    background: var(--kindc);
+    opacity: calc(0.3 + 0.7 * var(--rel, 0.5));
+  }
+  .card .cbody {
+    flex: 1;
+    min-width: 0;
+  }
+  .card-ref {
+    font-family: var(--scripture-font);
+    font-weight: 600;
+    color: color-mix(in srgb, var(--kindc) calc(38% + var(--rel, 0.5) * 62%), var(--text-faint));
+  }
+  .card.t-prime .card-ref {
+    font-size: 15.5px;
+  }
+  .card.t-mid .card-ref {
+    font-size: 14px;
+  }
+  .card.t-faint {
+    padding: 8px 8px;
+  }
+  .card.t-faint .card-ref {
+    font-size: 13.5px;
+  }
+  .card .vtext {
+    font-family: var(--scripture-font);
+    line-height: 1.52;
+    color: var(--text-muted);
+    margin-top: 3px;
+  }
+  .card.t-prime .vtext {
+    font-size: 14.5px;
+  }
+  .card.t-mid .vtext {
+    font-size: 13.5px;
+    color: var(--text-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card .vtext .sp {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 2px 0;
+  }
+  .chip {
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 999px;
+    padding: 5px 11px;
+    font-family: var(--scripture-font);
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .more {
+    border: 0;
+    background: transparent;
+    color: var(--accent-ink);
+    font-weight: 600;
+    font-size: 12px;
+    padding: 8px 2px;
+  }
+  .toast {
+    position: absolute;
+    left: 50%;
+    bottom: 100px;
+    transform: translateX(-50%) translateY(20px);
+    z-index: 70;
+    background: var(--text);
+    color: var(--bg);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 9px 15px;
+    border-radius: 999px;
+    max-width: 84%;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity var(--dur-2),
+      transform var(--dur-2);
+  }
+  .toast.on {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+
+<div class="frame">
+  <div class="top">
+    <span class="name" id="bookName">Romans</span>
+    <span class="spacer"></span>
+    <button class="icon-btn" id="hintsBtn" title="Opt-in connection hints">◌</button>
+    <button class="icon-btn" id="themeBtn" title="Theme">☾</button>
+  </div>
+
+  <div class="reader" id="reader">
+    <div id="verses"></div>
+    <div class="caption">
+      <b>Prototype — deep dive (v4).</b> Tap a verse → <b>↔ Connections</b>. Each connection’s
+      <b>rail fills by its own relevance</b> (per-verse, not per-group). One tap follows it and
+      the linking words light up on arrival. Going deeper <b>never leaves the page</b>: the
+      previous verse becomes a <b>card you can see behind</b> the new one (tap it, or Home, to go
+      back). <b>Home</b> (your origin verse) is always pinned; a long chain collapses to “+N”. ◌
+      = opt-in hints; ☾ = dark.
+    </div>
+  </div>
+
+  <div class="selbar" id="selbar">
+    <span class="ref" id="selRef">Romans 4:3</span>
+    <button class="x" id="selClose">×</button>
+    <button class="note">✎ Note</button>
+    <button class="explore" id="exploreBtn">↔ Connections</button>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+
+  <div class="sheet" id="sheet">
+    <div class="sheet-grip"></div>
+    <div class="trail" id="trail"></div>
+    <div class="stage" id="stage"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+  const CHAPTERS = {
+    'Romans 4': {
+      book: 'Romans',
+      kicker: 'Chapter 4',
+      title: 'Romans 4',
+      verses: {
+        1: 'What then shall we say that Abraham, our forefather, has discovered?',
+        2: 'If Abraham was justified by works, he had something to boast about, but not before God.',
+        3: 'For what does the Scripture say? {a}“Abraham believed God, and it was credited to him as righteousness.”{/a}',
+        4: 'Now to the one who works, wages are not credited as a gift, but as an obligation.',
+        5: 'However, to the one who does not work, but believes in Him who justifies the wicked, his faith is credited as righteousness.',
+        6: 'And David speaks likewise of the blessedness of the man to whom God credits righteousness apart from works:',
+        7: '“Blessed are they whose lawless acts are forgiven, whose sins are covered.',
+        8: 'Blessed is the man whose sin the Lord will never count against him.”'
+      }
+    }
+  };
+  const REF = {
+    'Romans 4:3': {
+      chapter: 'Romans 4',
+      ctxAbove: '…he had something to boast about, but not before God.',
+      cur: 'For what does the Scripture say? {p}“Abraham believed God, and it was credited to him as righteousness.”{/p}',
+      ctxBelow: 'Now to the one who works, wages are not credited as a gift…',
+      groups: [
+        { kind: 'quote', verb: 'quotes', title: 'Quotes this from', gloss: 'the Old Testament source',
+          items: [{ ref: 'Genesis 15:6', score: 99, text: '{p}Abram believed the LORD, and it was credited to him as righteousness.{/p}' }] },
+        { kind: 'quote', verb: 'paralleled in', title: 'The same quote elsewhere', gloss: 'other NT citations',
+          items: [
+            { ref: 'Galatians 3:6', score: 88, text: 'So also, {p}“Abraham believed God, and it was credited to him as righteousness.”{/p}' },
+            { ref: 'James 2:23', score: 71, text: 'And the Scripture was fulfilled: {p}“Abraham believed God…”{/p}' }
+          ] },
+        { kind: 'echo', verb: 'echoes', title: 'Echoes of this idea', gloss: 'the same truth, differently',
+          items: [
+            { ref: 'Romans 1:17', score: 64, text: '…“The righteous will live by faith.”' },
+            { ref: 'Habakkuk 2:4', score: 49, text: '…but the righteous will live by his faith.' },
+            { ref: 'Romans 4:22', score: 33, text: 'This is why “it was credited to him as righteousness.”' }
+          ] },
+        { kind: 'theme', verb: 'shares a theme with', title: 'Same theme', gloss: 'credited righteousness', chips: true,
+          items: [{ ref: 'Psalm 106:31', score: 40 }, { ref: 'Philippians 3:9', score: 33 }, { ref: 'Romans 9:30', score: 28 }],
+          hidden: [{ ref: '2 Corinthians 5:21', score: 24 }, { ref: 'Galatians 2:16', score: 22 }] }
+      ]
+    },
+    'Genesis 15:6': {
+      chapter: 'Genesis 15',
+      ctxAbove: '“Look to the heavens and count the stars… So shall your offspring be.”',
+      cur: '{p}Abram believed the LORD, and it was credited to him as righteousness.{/p}',
+      ctxBelow: 'The LORD also told him, “I am the LORD, who brought you out of Ur…”',
+      groups: [
+        { kind: 'quote', verb: 'quoted in', title: 'Quoted in the New Testament', gloss: 'where the NT cites this',
+          items: [
+            { ref: 'Romans 4:3', score: 99, text: 'For what does the Scripture say? {p}“Abraham believed God…”{/p}' },
+            { ref: 'Galatians 3:6', score: 90, text: 'So also, {p}“Abraham believed God…”{/p}' },
+            { ref: 'James 2:23', score: 74, text: 'And the Scripture was fulfilled, {p}“Abraham believed God…”{/p}' }
+          ] },
+        { kind: 'echo', verb: 'echoes', title: 'Echoes', gloss: 'the faith-counted thread',
+          items: [
+            { ref: 'Romans 4:9', score: 56, text: 'Abraham’s faith was credited to him as righteousness.' },
+            { ref: 'Psalm 106:31', score: 43, text: 'And it was credited to him as righteousness…' }
+          ] },
+        { kind: 'theme', verb: 'shares a theme with', title: 'Same theme', gloss: 'the faith of Abraham', chips: true,
+          items: [{ ref: 'Hebrews 11:8', score: 36 }, { ref: 'Romans 4:22', score: 34 }] }
+      ]
+    },
+    'Galatians 3:6': {
+      chapter: 'Galatians 3',
+      ctxAbove: 'Does God give you His Spirit by works, or by hearing with faith?',
+      cur: 'Consider Abraham: {p}“He believed God, and it was credited to him as righteousness.”{/p}',
+      ctxBelow: 'Understand, then, that those who have faith are sons of Abraham.',
+      groups: [
+        { kind: 'quote', verb: 'quotes', title: 'Quotes this from', gloss: 'the Old Testament source',
+          items: [{ ref: 'Genesis 15:6', score: 97, text: '{p}Abram believed the LORD, and it was credited to him as righteousness.{/p}' }] },
+        { kind: 'echo', verb: 'echoes', title: 'Echoes', gloss: 'same argument, elsewhere',
+          items: [{ ref: 'Romans 4:3', score: 82, text: 'For what does the Scripture say? “Abraham believed God…”' }] }
+      ]
+    }
+  };
+
+  const $ = (s) => document.querySelector(s);
+  const reader = $('#reader');
+  const sheet = $('#sheet');
+  const scrim = $('#scrim');
+  const selbar = $('#selbar');
+  let currentObj = CHAPTERS['Romans 4'];
+  let selectedVerse = null;
+  let stack = []; // {ref, verb, kind} — verb/kind describe the step taken TO this ref
+  const phrase = (s) => (s || '').replace(/\{p\}/g, '<span class="sp">').replace(/\{\/p\}/g, '</span>');
+  const tierOf = (n) => (n >= 70 ? 'prime' : n >= 45 ? 'mid' : 'faint');
+
+  function renderPage(obj) {
+    currentObj = obj;
+    $('#bookName').textContent = obj.book;
+    let html = `<div class="chap-kicker">${obj.kicker}</div><div class="chap-title">${obj.title}</div>`;
+    for (const [n, raw] of Object.entries(obj.verses)) {
+      const t = raw.replace('{a}', '<span class="anchor">').replace('{/a}', '</span>');
+      html += `<div class="verse" data-v="${n}"><span class="vn">${n}</span><span class="vtext">${t}</span></div>`;
+    }
+    $('#verses').innerHTML = html;
+    reader.querySelectorAll('.verse').forEach((v) => v.addEventListener('click', () => selectVerse(v)));
+    selectedVerse = null;
+    hideSelbar();
+  }
+  function selectVerse(v) {
+    reader.querySelectorAll('.verse.sel').forEach((e) => e.classList.remove('sel'));
+    v.classList.add('sel');
+    selectedVerse = v;
+    const ref = `${currentObj.book} ${currentObj.title.split(' ').pop()}:${v.dataset.v}`;
+    $('#selRef').textContent = ref;
+    $('#exploreBtn').style.display = REF[ref] ? '' : 'none';
+    selbar.classList.add('on');
+  }
+  function hideSelbar() {
+    selbar.classList.remove('on');
+  }
+
+  function openPeek() {
+    stack = [{ ref: $('#selRef').textContent, verb: null, kind: null }];
+    hideSelbar();
+    $('#stage').innerHTML = '';
+    scrim.classList.add('on');
+    sheet.classList.add('on');
+    render('none');
+  }
+  function follow(ref, verb, kind) {
+    stack.push({ ref, verb, kind });
+    render('fwd');
+  }
+  function back() {
+    if (stack.length <= 1) return;
+    stack.pop();
+    render('back');
+  }
+  function jumpTo(level) {
+    if (level >= stack.length - 1) return;
+    stack = stack.slice(0, level + 1);
+    render('back');
+  }
+  function closePeek() {
+    scrim.classList.remove('on');
+    sheet.classList.remove('on');
+    stack = [];
+    setTimeout(() => {
+      if (!sheet.classList.contains('on')) $('#stage').innerHTML = '';
+    }, 340);
+  }
+
+  // reasoning breadcrumb — every level tappable, scrolls when long
+  function updateBreadcrumb() {
+    const crumbs = stack
+      .map((s, i) => {
+        const cur = i === stack.length - 1;
+        const verb = s.verb ? `<span class="cverb">${s.verb}</span>` : '';
+        return `${verb}<span class="crumb${cur ? ' cur' : ''}" data-level="${i}">${i === 0 ? '⌂ ' : ''}${s.ref}</span>`;
+      })
+      .join('');
+    $('#trail').innerHTML = `<div class="crumbs" id="crumbs">${crumbs}</div><button class="close" id="closeBtn">×</button>`;
+    document
+      .querySelectorAll('#trail .crumb[data-level]')
+      .forEach((c) => c.addEventListener('click', () => jumpTo(+c.dataset.level)));
+    $('#closeBtn').addEventListener('click', closePeek);
+    const cr = $('#crumbs');
+    if (cr) cr.scrollLeft = cr.scrollWidth;
+  }
+
+  function frontInner(entry) {
+    const data = REF[entry.ref] || { chapter: entry.ref.replace(/:.*/, ''), cur: '(This verse and its own connections load here in the app.)', groups: [] };
+    const lit = entry.kind === 'quote' ? ' lit-quote' : entry.kind === 'echo' ? ' lit-soft' : '';
+    let h = `<div class="focus${lit}">
+        <div class="focus-kind">Reading now
+          <span class="acts"><button data-note>✎ Note</button><button data-open="${data.chapter || ''}">Open chapter ↗</button></span>
+        </div>
+        <div class="focus-ref">${entry.ref}</div>`;
+    if (data.ctxAbove) h += `<div class="focus-ctx">${data.ctxAbove}</div>`;
+    h += `<div class="focus-cur">${phrase(data.cur)}</div>`;
+    if (data.ctxBelow) h += `<div class="focus-ctx">${data.ctxBelow}</div>`;
+    h += `</div>`;
+    (data.groups || []).forEach((g, gi) => {
+      h += `<div class="ghead g-${g.kind}"><span class="gtitle">${g.title}</span><span class="gloss">${g.gloss}</span></div>`;
+      if (g.chips) {
+        h += `<div class="chips">` + g.items.map((it) => chip(it, g)).join('') + `</div>`;
+        if (g.hidden) {
+          h += `<button class="more" data-more="${gi}">+ ${g.hidden.length} more</button>`;
+          h += `<div class="chips" data-wrap="${gi}" style="display:none">` + g.hidden.map((it) => chip(it, g)).join('') + `</div>`;
+        }
+      } else {
+        h += g.items.map((it) => card(it, g)).join('');
+      }
+    });
+    return h;
+  }
+
+  function wireFront(el) {
+    el.querySelectorAll('[data-ref]').forEach((x) =>
+      x.addEventListener('click', () => follow(x.dataset.ref, x.dataset.verb, x.dataset.kind))
+    );
+    el.querySelector('[data-note]').addEventListener('click', startNote);
+    el.querySelector('[data-open]').addEventListener('click', (e) => openChapter(e.target.dataset.open));
+    el.querySelectorAll('[data-more]').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const w = el.querySelector(`[data-wrap="${btn.dataset.more}"]`);
+        w.style.display = 'flex';
+        w.querySelectorAll('[data-ref]').forEach((x) =>
+          x.addEventListener('click', () => follow(x.dataset.ref, x.dataset.verb, x.dataset.kind))
+        );
+        btn.remove();
+      })
+    );
+  }
+
+  // Two coexisting layers during a move, so content is never blank mid-animation:
+  // fwd -> new card rises over the old, which recedes into the stack.
+  // back -> the top card peels down and away, revealing the real card beneath.
+  function render(dir) {
+    updateBreadcrumb();
+    const stage = $('#stage');
+    const el = document.createElement('div');
+    el.className = 'front';
+    el.innerHTML = frontInner(stack[stack.length - 1]);
+    wireFront(el);
+    const old = stage.querySelector('.front');
+    if (dir === 'none') {
+      stage.querySelectorAll('.front').forEach((f) => f.remove());
+      stage.appendChild(el);
+    } else if (dir === 'fwd') {
+      el.classList.add('rise');
+      stage.appendChild(el);
+      if (old) {
+        old.classList.add('recede');
+        setTimeout(() => old.remove(), 480);
+      }
+    } else {
+      if (old) stage.insertBefore(el, old);
+      else stage.appendChild(el);
+      if (old) {
+        old.classList.add('leave');
+        setTimeout(() => old.remove(), 460);
+      }
+    }
+  }
+
+  function card(it, g) {
+    const tier = tierOf(it.score);
+    const body = tier === 'faint' ? '' : `<div class="vtext">${phrase(it.text)}</div>`;
+    return `<div class="card k-${g.kind} t-${tier}" style="--rel:${(it.score / 100).toFixed(2)}" data-ref="${it.ref}" data-verb="${g.verb}" data-kind="${g.kind}">
+        <span class="dot"></span>
+        <div class="cbody"><div class="card-ref">${it.ref}</div>${body}</div>
+      </div>`;
+  }
+  function chip(it, g) {
+    return `<button class="chip" data-ref="${it.ref}" data-verb="${g.verb}" data-kind="${g.kind}">${it.ref}</button>`;
+  }
+
+  function openChapter(key) {
+    if (CHAPTERS[key]) {
+      closePeek();
+      renderPage(CHAPTERS[key]);
+      showToast('Opened ' + key);
+    } else showToast('In the app this opens ' + key);
+  }
+  function startNote() {
+    showToast('Note on ' + stack[stack.length - 1].ref + ' — remembers: ' + stack.map((s) => s.ref).join(' › '));
+  }
+  let toastT;
+  function showToast(msg) {
+    const el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('on');
+    clearTimeout(toastT);
+    toastT = setTimeout(() => el.classList.remove('on'), 2400);
+  }
+
+  $('#exploreBtn').addEventListener('click', openPeek);
+  $('#selClose').addEventListener('click', () => {
+    hideSelbar();
+    reader.querySelectorAll('.verse.sel').forEach((e) => e.classList.remove('sel'));
+  });
+  // Clicking the grey area steps back toward the origin rather than exiting
+  // outright: deep in a chain it collapses to the first-level popup, and only a
+  // second click (already at the origin) closes — so an accidental tap never
+  // loses your whole dive.
+  $('#scrim').addEventListener('click', () => {
+    if (stack.length > 1) jumpTo(0);
+    else closePeek();
+  });
+  $('.selbar .note').addEventListener('click', () => {
+    hideSelbar();
+    showToast('Note composer would open here');
+  });
+  $('#hintsBtn').addEventListener('click', () => {
+    document.body.classList.toggle('hints');
+    $('#hintsBtn').textContent = document.body.classList.contains('hints') ? '◉' : '◌';
+  });
+  $('#themeBtn').addEventListener('click', () => {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+    $('#themeBtn').textContent = dark ? '☾' : '☀';
+  });
+
+  renderPage(CHAPTERS['Romans 4']);
+  setTimeout(() => {
+    const v = reader.querySelector('.verse[data-v="3"]');
+    if (v) selectVerse(v);
+  }, 400);
+</script>
