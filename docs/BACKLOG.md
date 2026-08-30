@@ -239,7 +239,26 @@ prioritized.
   cache design can't be fully scoped yet). Recommendation: don't build until
   a real user asks for NIV specifically and Dennis is willing to get Biblica's
   direct written confirmation that an app is a licensable use — see the
-  proposal's "Trigger to revisit."
+  proposal's "Trigger to revisit." **Superseded on the licensing question by
+  `docs/proposals/translations-path-to-esv-niv.md` (2026-08-30)**, which
+  enumerates eight routes to ESV and/or NIV and adds an Australian one nobody
+  has tried: the NIV licence for Australia/NZ/South Africa reportedly sits with
+  the local Bible Societies rather than Biblica direct.
+
+- **Two unanswered ESV licensing questions — ask Crossway before they bite.**
+  `docs/proposals/translations-path-to-esv-niv.md` (2026-08-30) found both, and
+  both are cheap now and expensive later. (1) Crossway's free tier defines a
+  non-commercial site as one that "does not charge for access to any part of the
+  site", so on the plain reading **any** paid feature anywhere in Lantern ends
+  ESV eligibility, not just a paid scripture feature; a plain donate button is a
+  closer call and also unresolved. (2) Crossway's policy is to "license to
+  organizations, not to individuals or solo developers", and it is unresolved
+  whether an Australian sole trader with an ABN clears that or whether a
+  separate legal person (Pty Ltd, $636 + $342/yr) is genuinely required. The
+  brief recommends emailing `licensing@crossway.org` first, before spending
+  anything, and ships the ready-to-send draft. Blocks nothing today: ESV is live
+  and compliant, and stays lawful indefinitely as long as Lantern charges for
+  nothing.
 
 - **Groups / shared workspaces.** `docs/proposals/groups-shared-workspaces.md`
   (2026-07-22) researched this in full and found the "no migration" framing
