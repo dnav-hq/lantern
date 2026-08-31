@@ -8,6 +8,10 @@ new. Don't let it drift.
 Items are roughly ordered by when they're likely to matter, not strictly
 prioritized.
 
+**Arc-level sequencing lives in `docs/ROADMAP.md`** (added 2026-08-31). This
+file stays the item-level source of truth; the roadmap says which arc an item
+belongs to and why that arc comes when it does.
+
 ## Deferred
 
 - **The note object — highlights, user-owned categories, and RETRIEVAL
