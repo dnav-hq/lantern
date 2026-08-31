@@ -2616,7 +2616,7 @@ body.dark .search-backdrop {
   display: none;
 }
 
-/* Inline "add a quick note" mount point — the card itself (.quick-edit-card,
+/* Inline "add a quick note" mount point — the composer itself (.composer,
    below) supplies all the visual chrome now; this is just its margin slot. */
 .inline-note-row {
   margin: 4px 0 14px;
@@ -2636,10 +2636,9 @@ body.dark .search-backdrop {
 }
 
 /* ─── Quick-edit card ─────────────────────────────────────────────────────────
-   Shared chrome for both quick-note flows (QuickEditCard.tsx): creating a
-   fresh verse-anchored note and editing an existing one. Replaces what used
-   to be a bare textarea with text-link buttons — a real bordered, elevated
-   card with a category-colored accent and labeled icon buttons. */
+   Now only the inline delete confirmation (InlineDeleteConfirm.tsx) wears this
+   chrome — the note-writing surface itself moved to the shared `.composer-*`
+   rules below, which it shares with the mobile composer. */
 .quick-edit-card {
   margin: 6px 0 14px;
   padding: 12px 14px 10px;
@@ -2649,34 +2648,10 @@ body.dark .search-backdrop {
   border-left: 3px solid var(--accent);
   box-shadow: var(--elev-2);
 }
-.quick-edit-card.cat-observation {
-  border-left-color: var(--cat-observation);
-}
-.quick-edit-card.cat-historical {
-  border-left-color: var(--cat-historical);
-}
-.quick-edit-card.cat-application {
-  border-left-color: var(--cat-application);
-}
-.quick-edit-card.cat-personal {
-  border-left-color: var(--cat-personal);
-}
 .quick-edit-card--danger {
   border-left-color: #e83d3d;
 }
 
-/* Guest-only ambient notice inside the quick-edit card — the one calm "nothing
-   is saved" line. Mirrors .mobile-composer-notice so the two capture surfaces
-   read identically. */
-.quick-edit-notice {
-  font-size: 12.5px;
-  line-height: 1.4;
-  color: var(--cat-application-ink);
-  background: var(--cat-application-weak);
-  border-radius: 7px;
-  padding: 6px 10px;
-  margin-bottom: 10px;
-}
 .quick-edit-body {
   min-height: 1.6em;
 }
@@ -2698,23 +2673,6 @@ body.dark .search-backdrop {
   margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid var(--surface-2);
-}
-
-.quick-edit-hint {
-  font-size: 11px;
-  color: var(--text-faint);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.quick-edit-hint kbd {
-  font-family: var(--ui-font);
-  font-size: 10px;
-  font-weight: 600;
-  background: var(--surface-2);
-  border-radius: 4px;
-  padding: 1px 4px;
-  color: var(--text-muted);
 }
 
 .quick-edit-actions {
@@ -2743,18 +2701,6 @@ body.dark .search-backdrop {
   background: var(--surface-2);
   color: var(--text);
 }
-.quick-edit-btn-save {
-  background: var(--accent);
-  color: var(--on-accent);
-  border: 1px solid var(--accent);
-}
-.quick-edit-btn-save:hover {
-  background: var(--accent-hover);
-}
-.quick-edit-btn-save:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 .quick-edit-btn-danger {
   background: #e83d3d;
   color: #fff;
@@ -2762,6 +2708,223 @@ body.dark .search-backdrop {
 }
 .quick-edit-btn-danger:hover {
   background: #d43333;
+}
+
+/* ─── The note composer — ONE surface, both breakpoints ───────────────────────
+   These rules are the composer's visual language, and they are deliberately
+   NOT inside a breakpoint: the mobile composer (MobileNoteComposer.tsx,
+   `.mobile-composer-*`) and the desktop card (QuickEditCard.tsx,
+   `.composer-*`) are driven by the same declarations, so the two capture
+   surfaces cannot drift into looking like two different products.
+
+   A category-coloured rail on a tinted ground; a head carrying the reference
+   and the way out; the writing; then a foot of tag-pill and Save.
+
+   What is genuinely per-surface stays per-surface: mobile keeps its 17px
+   iOS-safe field, its upward-opening tag menu and its discard confirmation in
+   the touch block far below; desktop keeps the shortcut hint, the CategoryMenu
+   popover and the inline-in-the-reading-column margins, just below here. */
+.composer,
+.mobile-composer {
+  position: relative;
+  border-left: 2.5px solid var(--rail, var(--accent));
+  border-radius: 0 12px 12px 0;
+  background: var(--accent-weaker);
+  padding: 11px 12px 12px 13px;
+}
+.composer[data-cat='observation'],
+.mobile-composer[data-cat='observation'] {
+  --rail: var(--cat-observation);
+}
+.composer[data-cat='historical'],
+.mobile-composer[data-cat='historical'] {
+  --rail: var(--cat-historical);
+}
+.composer[data-cat='application'],
+.mobile-composer[data-cat='application'] {
+  --rail: var(--cat-application);
+}
+.composer[data-cat='personal'],
+.mobile-composer[data-cat='personal'] {
+  --rail: var(--cat-personal);
+}
+.composer-head,
+.mobile-composer-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.composer-ref,
+.mobile-composer-ref {
+  font-family: var(--scripture-font);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--rail, var(--accent-ink));
+}
+.composer-quiet,
+.mobile-composer-danger,
+.mobile-composer-quiet {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.mobile-composer-danger {
+  margin-left: auto;
+  color: var(--cat-personal-ink);
+}
+.composer-quiet,
+.mobile-composer-quiet {
+  color: var(--text-muted);
+}
+.composer-quiet.is-alone,
+.mobile-composer-quiet.is-alone {
+  margin-left: auto;
+}
+/* Guest-only ambient notice inside the composer: the one quiet "nothing is
+   saved" line, styled as a calm application-tinted note (not a warning). */
+.composer-notice,
+.mobile-composer-notice {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--cat-application-ink);
+  background: var(--cat-application-weak);
+  border-radius: 7px;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+}
+.composer-foot,
+.mobile-composer-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 11px;
+}
+.composer-save,
+.mobile-composer-save {
+  margin-left: auto;
+  flex: none;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 18px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: var(--elev-2);
+  cursor: pointer;
+}
+.composer-save:disabled,
+.mobile-composer-save:disabled {
+  opacity: 0.6;
+}
+
+/* Category: one optional choice, shown as the colour it will brand the note
+   with. */
+.composer-tag,
+.mobile-composer-tag {
+  position: relative;
+}
+.composer-tag-trigger,
+.mobile-composer-tag-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 7px 11px 7px 12px;
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.composer-tag-trigger[data-cat]:not([data-cat='none']),
+.mobile-composer-tag-trigger[data-cat]:not([data-cat='none']) {
+  color: var(--text);
+}
+.composer-dot,
+.mobile-composer-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--dot, var(--border-strong));
+}
+[data-cat='observation'] > .composer-dot,
+[data-cat='observation'] > .mobile-composer-dot {
+  --dot: var(--cat-observation);
+}
+[data-cat='historical'] > .composer-dot,
+[data-cat='historical'] > .mobile-composer-dot {
+  --dot: var(--cat-historical);
+}
+[data-cat='application'] > .composer-dot,
+[data-cat='application'] > .mobile-composer-dot {
+  --dot: var(--cat-application);
+}
+[data-cat='personal'] > .composer-dot,
+[data-cat='personal'] > .mobile-composer-dot {
+  --dot: var(--cat-personal);
+}
+.composer-chev,
+.mobile-composer-chev {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* ── Desktop-only: what the reading column needs and the phone does not ──────
+   The card sits INLINE in the column (never a keyboard-aware sheet), so it
+   owns its own vertical rhythm; the free-form "@category / v4" typing model is
+   the fast path here, so it stays announced; and the picker is CategoryMenu,
+   opening downward because no keyboard is coming up to meet it. */
+.composer-inline {
+  margin: 6px 0 14px;
+}
+.composer-body {
+  min-height: 1.6em;
+}
+/* Whichever input the caller passed (InlineTagInput / RichEditInput) wears the
+   composer's writing surface — scripture face, no border of its own. */
+.composer-body .inline-note-input,
+.composer-body .note-edit-textarea {
+  font-family: var(--scripture-font);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.composer-body .inline-note-input::placeholder {
+  color: var(--text-faint);
+  font-style: italic;
+}
+.composer-hint {
+  font-size: 11px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.composer-hint kbd {
+  font-family: var(--ui-font);
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--surface-2);
+  border-radius: 4px;
+  padding: 1px 4px;
+  color: var(--text-muted);
+}
+.composer-tag-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
 }
 
 /* ─── Verse-range selection floating action bar ─────────────────────────────── */
@@ -6299,8 +6462,9 @@ body.dark .upd-popover-btn-ghost:hover {
     font-size: 16px;
   }
 
-  /* Quick-edit card: the tag hint truncates to nothing useful at this width
-     ("@ ...") — hide it and let Cancel/Save have the room instead. */
+  /* The composer: the tag hint truncates to nothing useful at this width
+     ("@ ...") — hide it and let the tag pill and Save have the room instead. */
+  .composer-hint,
   .quick-edit-hint {
     display: none;
   }
@@ -7177,68 +7341,6 @@ body.dark .mobile-menu-btn:active {
     padding-left: 24px;
     margin: 4px 0 10px;
   }
-  .mobile-composer {
-    position: relative;
-    border-left: 2.5px solid var(--rail, var(--accent));
-    border-radius: 0 12px 12px 0;
-    background: var(--accent-weaker);
-    padding: 11px 12px 12px 13px;
-  }
-  .mobile-composer[data-cat='observation'] {
-    --rail: var(--cat-observation);
-  }
-  .mobile-composer[data-cat='historical'] {
-    --rail: var(--cat-historical);
-  }
-  .mobile-composer[data-cat='application'] {
-    --rail: var(--cat-application);
-  }
-  .mobile-composer[data-cat='personal'] {
-    --rail: var(--cat-personal);
-  }
-  .mobile-composer-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-  .mobile-composer-ref {
-    font-family: var(--scripture-font);
-    font-size: 13.5px;
-    font-weight: 600;
-    color: var(--rail, var(--accent-ink));
-  }
-  .mobile-composer-danger,
-  .mobile-composer-quiet {
-    border: none;
-    background: transparent;
-    font-family: inherit;
-    font-size: 12.5px;
-    font-weight: 600;
-    padding: 4px 6px;
-    cursor: pointer;
-  }
-  .mobile-composer-danger {
-    margin-left: auto;
-    color: var(--cat-personal-ink);
-  }
-  .mobile-composer-quiet {
-    color: var(--text-muted);
-  }
-  .mobile-composer-quiet.is-alone {
-    margin-left: auto;
-  }
-  /* Guest-only ambient notice inside the composer: the one quiet "nothing is
-     saved" line, styled as a calm application-tinted note (not a warning). */
-  .mobile-composer-notice {
-    font-size: 12.5px;
-    line-height: 1.4;
-    color: var(--cat-application-ink);
-    background: var(--cat-application-weak);
-    border-radius: 7px;
-    padding: 6px 10px;
-    margin-bottom: 10px;
-  }
   .mobile-composer-field {
     display: block;
     width: 100%;
@@ -7260,75 +7362,8 @@ body.dark .mobile-menu-btn:active {
     color: var(--text-faint);
     font-style: italic;
   }
-  .mobile-composer-foot {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 11px;
-  }
-  .mobile-composer-save {
-    margin-left: auto;
-    flex: none;
-    border: none;
-    border-radius: 10px;
-    padding: 9px 18px;
-    background: var(--accent);
-    color: var(--on-accent);
-    font-family: inherit;
-    font-size: 13.5px;
-    font-weight: 600;
-    box-shadow: var(--elev-2);
-    cursor: pointer;
-  }
-  .mobile-composer-save:disabled {
-    opacity: 0.6;
-  }
-
   /* Category: one optional choice, shown as the colour it will brand the note
      with. Opens upward — the keyboard owns everything below. */
-  .mobile-composer-tag {
-    position: relative;
-  }
-  .mobile-composer-tag-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    border: 0.5px solid var(--border-strong);
-    border-radius: 999px;
-    padding: 7px 11px 7px 12px;
-    background: var(--surface);
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-muted);
-    cursor: pointer;
-  }
-  .mobile-composer-tag-trigger[data-cat]:not([data-cat='none']) {
-    color: var(--text);
-  }
-  .mobile-composer-dot {
-    flex: none;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: var(--dot, var(--border-strong));
-  }
-  [data-cat='observation'] > .mobile-composer-dot {
-    --dot: var(--cat-observation);
-  }
-  [data-cat='historical'] > .mobile-composer-dot {
-    --dot: var(--cat-historical);
-  }
-  [data-cat='application'] > .mobile-composer-dot {
-    --dot: var(--cat-application);
-  }
-  [data-cat='personal'] > .mobile-composer-dot {
-    --dot: var(--cat-personal);
-  }
-  .mobile-composer-chev {
-    font-size: 10px;
-    opacity: 0.7;
-  }
   /* Above the sticky reading chrome (z-index 30) and the tab bar: the menu
      opens upward, and the composer often sits high enough that the chapter
      strip would otherwise clip "No tag" clean off the top of it. */
