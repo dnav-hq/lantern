@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { EsvBibleProvider } from './esv'
 import { EsvCachedBibleProvider } from './esv-cache'
+import type { EsvStore, PersistedState } from './esv-store'
 import { CodedError } from '../errors'
 import type { BibleProvider, BibleVerseLine } from './provider'
 
@@ -195,5 +196,123 @@ describe('EsvCachedBibleProvider', () => {
     await cached.getChapter(43, 2)
     expect(calls).toHaveLength(7)
     expect(calls[6]).toEqual([43, 2])
+  })
+})
+
+describe('EsvCachedBibleProvider persistence', () => {
+  // A fake EsvStore, so these tests need no IndexedDB. Note the production
+  // store degrades to a no-op when indexedDB is undefined, which is why every
+  // other test in this file still passes without one.
+  function makeStore(initial: PersistedState | null = null): {
+    store: EsvStore
+    saved: PersistedState[]
+  } {
+    const saved: PersistedState[] = []
+    let current = initial
+    return {
+      saved,
+      store: {
+        load: async () => current,
+        save: async state => {
+          current = state
+          saved.push(state)
+        }
+      }
+    }
+  }
+
+  function makeInner(versesPerChapter: number): {
+    provider: BibleProvider
+    calls: number[]
+  } {
+    const calls: number[] = []
+    const provider: BibleProvider = {
+      async getChapter(bookNumber, chapter) {
+        calls.push(chapter)
+        return Array.from({ length: versesPerChapter }, (_, i) => ({
+          verse: i + 1,
+          text: `book${bookNumber} ch${chapter} v${i + 1}`
+        }))
+      }
+    }
+    return { provider, calls }
+  }
+
+  it('survives a reload: a chapter read before is served without re-fetching', async () => {
+    const { store } = makeStore()
+    const first = makeInner(10)
+    const before = new EsvCachedBibleProvider(first.provider, store)
+    const verses = await before.getChapter(43, 3)
+    expect(first.calls).toHaveLength(1)
+
+    // A new instance is what a page reload produces.
+    const second = makeInner(10)
+    const after = new EsvCachedBibleProvider(second.provider, store)
+    await expect(after.getChapter(43, 3)).resolves.toEqual(verses)
+    expect(second.calls).toHaveLength(0)
+  })
+
+  it('never persists more than the 500-verse licence cap', async () => {
+    const { store, saved } = makeStore()
+    const inner = makeInner(100)
+    const cached = new EsvCachedBibleProvider(inner.provider, store)
+
+    for (let ch = 1; ch <= 12; ch++) await cached.getChapter(43, ch)
+
+    expect(saved.length).toBeGreaterThan(0)
+    for (const state of saved) {
+      const verses = state.entries.reduce((n, e) => n + e.verses.length, 0)
+      expect(verses).toBeLessThanOrEqual(500)
+    }
+  })
+
+  it('re-enforces the cap on hydration rather than trusting what was on disk', async () => {
+    // A state that exceeds the cap — a corrupted record, or one written by a
+    // build with a different limit. The cap is a licence term, so it must be
+    // enforced on the way IN, not only on the way out.
+    const oversized: PersistedState = {
+      entries: Array.from({ length: 10 }, (_, i) => ({
+        key: `43/${i + 1}`,
+        verses: Array.from({ length: 100 }, (_, v) => ({ verse: v + 1, text: 't' }))
+      }))
+    }
+    const { store, saved } = makeStore(oversized)
+    const inner = makeInner(10)
+    const cached = new EsvCachedBibleProvider(inner.provider, store)
+
+    await cached.getChapter(43, 99) // any read triggers hydration
+    const latest = saved[saved.length - 1]
+    const verses = latest.entries.reduce((n, e) => n + e.verses.length, 0)
+    expect(verses).toBeLessThanOrEqual(500)
+  })
+
+  it('persists a cache HIT too, so LRU order survives a reload', async () => {
+    const { store, saved } = makeStore()
+    const inner = makeInner(10)
+    const cached = new EsvCachedBibleProvider(inner.provider, store)
+
+    await cached.getChapter(43, 1)
+    await cached.getChapter(43, 2)
+    const writesBefore = saved.length
+    await cached.getChapter(43, 1) // a hit, which reorders
+
+    expect(saved.length).toBeGreaterThan(writesBefore)
+    const order = saved[saved.length - 1].entries.map(e => e.key)
+    expect(order[order.length - 1]).toBe('43/1') // most-recently-used last
+  })
+
+  it('still works when the store fails entirely', async () => {
+    const failing: EsvStore = {
+      load: async () => {
+        throw new Error('storage blocked')
+      },
+      save: async () => {
+        throw new Error('storage blocked')
+      }
+    }
+    const inner = makeInner(10)
+    const cached = new EsvCachedBibleProvider(inner.provider, failing)
+    // Hydration rejecting must not take the read down with it.
+    await expect(cached.getChapter(43, 1)).rejects.toThrow('storage blocked')
   })
 })

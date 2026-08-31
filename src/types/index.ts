@@ -1,3 +1,4 @@
+import type { TranslationId } from '../bible/provider'
 export type NoteCategory = 'observation' | 'historical' | 'application' | 'personal'
 
 // All ids are client-generated UUIDs (crypto.randomUUID()).
@@ -47,6 +48,15 @@ export interface BiblePassage {
   reference: string
   text: string
   verses: BibleVerse[]
+  /**
+   * Set ONLY when the text came from a different translation than the one
+   * asked for — i.e. a fallback fired. Undefined on every normal read.
+   *
+   * A caller that opts into fallback (see `getBibleVerse`'s options) MUST
+   * surface this to the reader. Showing substituted text under the original
+   * translation's name would be worse than showing nothing.
+   */
+  servedTranslation?: TranslationId
 }
 
 export type NoteSegmentType = 'text' | 'verse-anchor' | 'cross-ref' | 'tag'

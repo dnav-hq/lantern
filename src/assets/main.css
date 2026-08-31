@@ -1246,6 +1246,21 @@ body.dark .search-backdrop {
 }
 
 /* Every chapter filtered away — the list is empty but the history isn't. */
+/* Shown when scripture was served from a different translation than the one
+   chosen — see getBibleVerse's fallbackTo. Deliberately quiet but not hidden:
+   it is a statement of fact the reader needs, not a warning. */
+.translation-substituted {
+  margin: 0 0 14px;
+  padding: 7px 11px;
+  border: 0.5px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-sm, 7px);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
 .journal-empty-filter {
   margin: 28px 0 0;
   font-size: 13px;

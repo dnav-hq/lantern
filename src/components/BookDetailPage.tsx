@@ -5,6 +5,7 @@ import { BibleBook, readingShortBookName } from '../utils/bibleBooks'
 import { parseNoteLine } from '../utils/noteParser'
 import { useApi } from '../api/context'
 import { getBibleVerse } from '../bible/service'
+import type { TranslationId } from '../bible/provider'
 import { useReadingTranslation } from '../utils/useTranslation'
 import { useIsGuest } from '../utils/guestContext'
 import InlineTagInput from './InlineTagInput'
@@ -258,6 +259,10 @@ interface ChapterViewProps {
   // a swipe/edge-arrow (its text was already slid on screen), so it doesn't
   // flicker by fading in again on commit.
   suppressEntrance?: boolean
+  /** Reports the translation actually rendered, when it differs from the one
+   *  chosen because a fallback fired. Lets the footer attribute the text that
+   *  is really on screen. */
+  onServedTranslation?: (t: TranslationId | undefined) => void
 }
 
 function ChapterView({
@@ -270,7 +275,8 @@ function ChapterView({
   onEnterStudy,
   preloaded,
   initialHighlightVerses,
-  suppressEntrance
+  suppressEntrance,
+  onServedTranslation
 }: ChapterViewProps): React.ReactElement {
   const api = useApi()
   const [translation] = useReadingTranslation()
@@ -494,7 +500,11 @@ function ChapterView({
     let cancelled = false
     setLoading(true)
     setBibleData(null)
-    getBibleVerse(`${bookName} ${chapter}`, translation)
+    // Opt into the BSB fallback: ESV draws on a quota shared by every Lantern
+    // user, so a reader can hit a dead end through no fault of their own.
+    // Substituted text is only honest because the notice below renders
+    // `servedTranslation` — see getBibleVerse's options.
+    getBibleVerse(`${bookName} ${chapter}`, translation, { fallbackTo: 'BSB' })
       .then(data => {
         if (!cancelled) setBibleData(data)
       })
@@ -505,6 +515,13 @@ function ChapterView({
       cancelled = true
     }
   }, [bookName, chapter, translation])
+
+  // Tell the parent what was actually served, so the translation footer names
+  // and attributes the right text. Reported from an effect rather than during
+  // the fetch so a preloaded pane reports too.
+  useEffect(() => {
+    onServedTranslation?.(bibleData?.servedTranslation)
+  }, [bibleData?.servedTranslation, onServedTranslation])
 
   useEffect(() => {
     setLocalNotes(notes)
@@ -1244,6 +1261,14 @@ function ChapterView({
       onPointerDown={containerPointerDown}
       onClick={handleBackgroundClick}
     >
+      {/* Substituted scripture must say so. Showing another translation's text
+          silently under the name of the one the reader chose would be worse
+          than showing nothing at all. */}
+      {bibleData.servedTranslation && (
+        <p className="translation-substituted" role="status">
+          {translation} isn&apos;t available right now, so this is {bibleData.servedTranslation}.
+        </p>
+      )}
       {marquee && (
         <div
           className="verse-marquee"
@@ -1809,6 +1834,12 @@ export default function BookDetailPage({
     preloadEnabled
   )
 
+  // The translation actually rendered by the CURRENT pane. Differs from the
+  // chosen one only when a fallback fired (see getBibleVerse's fallbackTo), and
+  // exists so the footer attributes the text on screen rather than the text the
+  // reader asked for.
+  const [servedTranslation, setServedTranslation] = useState<TranslationId | undefined>()
+
   const deckRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -2122,6 +2153,7 @@ export default function BookDetailPage({
                       remount the very subtree we are preserving. */}
                   <ErrorBoundary variant="pane">
                     <ChapterView
+                      onServedTranslation={peek ? undefined : setServedTranslation}
                       bookName={ref.bookName}
                       bookNumber={ref.bookNumber}
                       chapter={ref.chapter}
@@ -2145,7 +2177,7 @@ export default function BookDetailPage({
                     />
                   </ErrorBoundary>
                   {!peek && <ChapterFlowNav prev={prev} next={next} onGo={swipe.go} />}
-                  {!peek && <TranslationFooter />}
+                  {!peek && <TranslationFooter servedTranslation={servedTranslation} />}
                 </div>
               )
             })}
