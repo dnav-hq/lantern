@@ -484,3 +484,126 @@ type), `supabase/functions/` and `supabase/templates/` directory listings
 `docs/proposals/study-id.md`, `docs/proposals/offline-write-outbox.md`,
 `docs/proposals/onboarding-hints.md` and `docs/proposals/scripture-search.md`
 (structure/tone reference only), `docs/BACKLOG.md`, `CLAUDE.md`.
+
+---
+
+## Addendum — 2026-08-30 (research + product-strategy session)
+
+The brief above asked for "a named trigger" before building. This addendum
+records what the research pass found about whether group study is a real
+market need, and a product decision that changes the *shape* of the first
+slice rather than its size.
+
+### The demand evidence is weak, and the recoil is sharper than expected
+
+A Reddit pass (via the Chrome connector; ~15 threads across r/Christianity,
+r/Reformed, r/TrueChristian, r/Christian, r/youthministry, r/Bible) looked
+specifically for how groups share study notes today.
+
+- **Nobody described sharing personal study notes with their group.** Not
+  once, across every prep-and-leading thread read. Targeted searches for the
+  expected mechanics (Google Docs, WhatsApp, screenshots, email) returned
+  essentially nothing.
+- The only artifacts that actually move between people are church-produced
+  study guides, published curricula, DVD series, and the leader's spoken
+  questions.
+- **What leaders produce is questions, not notes.** The most concrete prep
+  description found is entirely question-authoring: "What questions am I going
+  to ask each week? Are the questions that I'm asking worded in such a way that
+  facilitates or promotes conversation/participation?"
+
+Caveat, stated honestly: absence of Reddit discussion is weak evidence. The
+practice could be too mundane to post about. But it is **not** the signature of
+a painful, latent, unmet need.
+
+### The hard constraint: no activity visibility, ever
+
+The strongest reaction in the entire research corpus came from a
+r/youthministry thread where a founder described a leader dashboard —
+explicitly *not* a feed, explicitly framed as non-policing:
+
+> "I know that if my youth leader wanted to keep track of my Bible reading via
+> an app, I'd immediately bail. That's a level of intrusion and oversight I
+> wouldn't deal with… Adults don't want to be ordered around that way in their
+> spiritual lives, and I doubt kids do, either."
+
+> "The Bible cannot be school. Faith grows in lived experience."
+
+The offence was **observability of activity itself**, not note contents. The
+builder's protest that he was "not at all policing" did not help.
+
+**Constraint: members see what someone deliberately shared and nothing else.**
+No "who's read," no last-seen, no participation counts, no leader dashboard, no
+aggregate progress. Per-note opt-in does not by itself satisfy this; the
+constraint is about *activity signals*, which per-note sharing does not create
+but a dashboard would.
+
+Corroborating from the YouVersion social backlash: "I liked it better when it
+was just a Bible app and not trying so hard to be this social ... thing." The
+same commenter then designed the acceptable version unprompted, which is close
+to a spec:
+
+> "a little unobtrusive micro-star or subtle highlight that if I wished, I
+> could hover on and see that my buddy highlighted… **Nothing to get in the way
+> of the study, and content that is ideally directly relevant to the text.**"
+
+Anchored to the verse, ambient, pull not push, zero surface area when you are
+not curious.
+
+### The shape decision: this is TWO products, not one
+
+Dennis's own two situations split cleanly, and forcing them into one model is
+the mistake to avoid.
+
+**A. The one-on-one / study partner.** Wanting to trade ideas in a shared
+environment. Dennis named the dealbreaker himself: writing a note into a group
+space and then not having it in his personal notes.
+
+> **Sharing must be a property of the note, not a different place you write.**
+
+One row, a visibility flag, appearing in both the personal Journal and the
+shared view because it *is* the same note. Nothing forks; the journal stays
+whole. This is materially less work than a second workspace, and it matches the
+ambient, verse-anchored model above.
+
+**B. The 10+ group.** Dennis: "it's less about personal study… I don't mind it
+just being in a group note space." Different job, different primary object. The
+research points at what that object should be: **a leader's passage plus two or
+three questions, with responses in place.** That is not a personal anchored
+note and should not be modelled as one.
+
+**Sequencing consequence:** A is a visibility flag on an object that already
+exists. B is a genuinely new object. **A does not commit Lantern to B**, which
+is a better decomposition than the "read-only groups first" slice proposed in
+§7 above — it delivers something useful to Dennis sooner and defers more.
+
+### Where this leaves §7's recommendation
+
+The §7 MVP ordering (membership/RLS first, conflict-safe `updateNote`
+alongside, roles later) is still correct **for the workspace-shaped feature
+(B)**. It is heavier than needed for (A), which may not require a second
+workspace at all.
+
+Two items from §7 survive unchanged and remain the real cost:
+
+- **Conflict-safe `updateNote` (§5) is still non-optional** the moment two
+  people can write near each other.
+- **The member-visibility RLS work (§2) is still genuinely new** and still the
+  part worth getting right in isolation.
+
+### Revised trigger
+
+The brief said: build when there is "an actual expressed want for shared study
+— a spouse, a small group, a Bible study cohort." That trigger **has fired for
+Dennis personally** (a one-on-one study and a 10+ group), and **has not fired
+as a market**.
+
+Both can be true. The honest position: build (A) small, private, invite-only,
+because Dennis wants it for his own study — the same dogfooding logic that
+justifies everything else in Lantern. Do not productise (B) or position groups
+as a growth feature on this evidence.
+
+**Priority note:** the 2026-08-30 session concluded that the **note object**
+work (highlights, user-owned categories, retrieval — see `note-object.md`) sits
+*underneath* group sharing and should come first. Sharing-as-a-visibility-flag
+is much cheaper once the note object has been revisited anyway.
