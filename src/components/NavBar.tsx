@@ -34,6 +34,10 @@ interface NavBarProps {
   // than offering something that can't happen. See platform/install.ts.
   canInstall?: boolean
   onInstall?: () => void
+  // The Study workbench has a hard 1160px floor (App.tsx's STUDY_QUERY). Below
+  // it the tab used to stay in the bar and do nothing at all when clicked, so
+  // it is hidden instead of lying about being a destination.
+  canStudy?: boolean
 }
 
 /** Closes the dropdown when a click lands outside `ref`. */
@@ -70,7 +74,8 @@ export default function NavBar({
   searchSlot,
   onOpenSearch,
   canInstall = false,
-  onInstall
+  onInstall,
+  canStudy
 }: NavBarProps): React.ReactElement {
   const api = useApi()
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
@@ -313,7 +318,7 @@ export default function NavBar({
           />
           {navTab('bible', 'Bible', bibleIcon)}
           {navTab('journal', 'Journal', journalIcon)}
-          {navTab('study', '+ Study', studyIcon)}
+          {canStudy !== false && navTab('study', '+ Study', studyIcon)}
         </nav>
 
         {/* Grouped so the grid's outer two columns (lead / right) are forced to
@@ -366,6 +371,20 @@ export default function NavBar({
                 >
                   <div className="nav-menu-name">{displayName || 'Studying locally'}</div>
                   <div className="nav-menu-divider" />
+                  {/* The Profile page's only other entry point is the mobile
+                      bottom nav, which is display:none on desktop — so without
+                      this a desktop reader could not reach the workspace
+                      identity, the guest sign-in, or the app version at all. */}
+                  <button
+                    className="nav-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setProfileOpen(false)
+                      onNavigate('profile')
+                    }}
+                  >
+                    Profile
+                  </button>
                   <button
                     className="nav-menu-item"
                     role="menuitem"

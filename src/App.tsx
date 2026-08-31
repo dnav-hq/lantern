@@ -551,6 +551,7 @@ export default function App({
           onSignOut={onSignOut}
           guestSignIn={guestSignIn}
           onOpenSearch={() => setSearchOpen(true)}
+          canStudy={canStudy}
           canInstall={install.capability !== 'none'}
           onInstall={install.openInstall}
           searchSlot={

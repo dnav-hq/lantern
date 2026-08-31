@@ -74,3 +74,20 @@ export function resetNoteCategoriesForTest(): void {
   loadedFor = null
   emit()
 }
+
+/**
+ * The same definitions as a key → label lookup, for the surfaces that render a
+ * stored category as a name rather than offering a picker.
+ *
+ * This exists because three of them (StudyWorkbench, BookDetailPage's note
+ * cards, ReadingMode) each kept a private hardcoded map and so never noticed a
+ * rename — the exact bug the shared store was introduced to end, living on in
+ * the components that did not subscribe. A lookup is the shape those call sites
+ * already wanted, so there is no longer a reason to write the map out by hand.
+ */
+export function useCategoryLabels(): Record<string, string> {
+  const categories = useNoteCategories()
+  const labels: Record<string, string> = {}
+  for (const c of categories) labels[c.key] = c.label
+  return labels
+}

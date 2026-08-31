@@ -42,13 +42,6 @@ import { formatRelativeTime } from '../utils/relativeTime'
 
 // ─── tiny helpers ────────────────────────────────────────────────────────────
 
-const CATEGORY_LABELS: Record<NoteCategory, string> = {
-  observation: 'Observation',
-  historical: 'Historical',
-  application: 'Application',
-  personal: 'Personal'
-}
-
 interface NoteGroup {
   main: NoteWithPassageInfo
   subnotes: NoteWithPassageInfo[]
@@ -885,7 +878,7 @@ function ChapterView({
       >
         <div className="mobile-inote-meta">
           <span className="mobile-inote-label">
-            {note.category ? CATEGORY_LABELS[note.category] : 'Note'}
+            {note.category ? categoryLabel(note.category) : 'Note'}
           </span>
           <span className="mobile-inote-ref">
             {verseRefLabel(start, end)}
@@ -1178,7 +1171,7 @@ function ChapterView({
             )}
             {main.category && (
               <span className={`reading-note-meta cat-${main.category}`}>
-                {CATEGORY_LABELS[main.category]}
+                {categoryLabel(main.category)}
               </span>
             )}
           </div>
@@ -1266,7 +1259,7 @@ function ChapterView({
                       <div style={{ flex: 1 }} onClick={() => handleNoteClick(sub)}>
                         {sub.category && (
                           <div className={`reading-subnote-meta cat-${sub.category}`}>
-                            {CATEGORY_LABELS[sub.category]}
+                            {categoryLabel(sub.category)}
                           </div>
                         )}
                         <RenderedNoteContent content={sub.content} />

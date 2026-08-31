@@ -18,6 +18,7 @@ import { useVerseMarquee } from '../utils/useVerseMarquee'
 import { useChromeAutoHide } from '../utils/useScrollDirection'
 import { bookByNumber } from '../utils/bibleBooks'
 import { markInstallEngagement } from '../utils/installNudge'
+import { useCategoryLabels } from '../utils/useNoteCategories'
 
 interface ReadingModeProps {
   passage: Passage
@@ -38,13 +39,6 @@ interface ReadingModeProps {
   onToggleHideNotes: () => void
   // Look / text size for the header's display-options popover (owned by App).
   displayPrefs: DisplayPrefs
-}
-
-const CATEGORY_LABELS: Record<NoteCategory, string> = {
-  observation: 'Observation',
-  historical: 'Historical',
-  application: 'Application',
-  personal: 'Personal'
 }
 
 interface NoteGroup {
@@ -149,6 +143,7 @@ export default function ReadingMode({
   onToggleHideNotes,
   displayPrefs
 }: ReadingModeProps): React.ReactElement {
+  const categoryLabels = useCategoryLabels()
   const api = useApi()
   const [translation] = useReadingTranslation()
   const [biblePassage, setBiblePassage] = useState<BiblePassage | null>(null)
@@ -593,7 +588,7 @@ export default function ReadingMode({
           )}
           {main.category && (
             <span className={`reading-note-meta cat-${main.category}`}>
-              {CATEGORY_LABELS[main.category]}
+              {categoryLabels[main.category] ?? main.category}
             </span>
           )}
           <time className="note-timestamp" dateTime={main.updated_at || main.created_at}>
@@ -671,7 +666,7 @@ export default function ReadingMode({
                       <div style={{ flex: 1 }} onClick={() => handleNoteClick(sub)}>
                         {sub.category && (
                           <div className={`reading-subnote-meta cat-${sub.category}`}>
-                            {CATEGORY_LABELS[sub.category]}
+                            {categoryLabels[sub.category] ?? sub.category}
                           </div>
                         )}
                         <RenderedNoteContent content={sub.content} />

@@ -22,22 +22,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { NoteCategory, NoteWithPassageInfo } from '../types'
 import { parseNoteLine } from '../utils/noteParser'
+import { useCategoryLabels, useNoteCategories } from '../utils/useNoteCategories'
 import RichEditInput from './RichEditInput'
 import ConfirmDialog from './ConfirmDialog'
-
-const CATEGORIES: { id: NoteCategory; label: string }[] = [
-  { id: 'observation', label: 'Observation' },
-  { id: 'historical', label: 'Historical' },
-  { id: 'application', label: 'Application' },
-  { id: 'personal', label: 'Personal' }
-]
-
-const CATEGORY_LABELS: Record<NoteCategory, string> = {
-  observation: 'Observation',
-  historical: 'Historical',
-  application: 'Application',
-  personal: 'Personal'
-}
 
 // The LEADING anchor token only. Clicking or dragging verses REFRESHES this one
 // token rather than appending another, which is why a second drag re-aims the
@@ -103,6 +90,7 @@ function NoteCard({
   onDelete: () => void
 }): React.ReactElement {
   const [confirming, setConfirming] = useState(false)
+  const labels = useCategoryLabels()
   const range = rangeOf(note.content)
   const category = parseNoteLine(note.content).category ?? note.category
   return (
@@ -123,7 +111,7 @@ function NoteCard({
           }
         }}
       >
-        {category && <span className="study-note-cat">{CATEGORY_LABELS[category]}</span>}
+        {category && <span className="study-note-cat">{labels[category] ?? category}</span>}
         {range && <span className="pill-verse">{anchorLabel(range.start, range.end)}</span>}
         <span className="study-note-body">{noteProse(note.content)}</span>
       </div>
@@ -192,6 +180,7 @@ export default function StudyWorkbench({
   // null = the blank composer at the top of the panel; otherwise the note being
   // edited in place (its card is replaced by the editor).
   const [editingId, setEditingId] = useState<string | null>(null)
+  const categories = useNoteCategories()
   const [text, setText] = useState('')
   // Remount key for the editor. RichEditInput seeds itself from `initialValue`
   // once and then owns its own DOM (it must — it manages a caret), so an
@@ -368,14 +357,14 @@ export default function StudyWorkbench({
         <div className="study-editor-foot">
           {!confirming && (
             <div className="study-chips">
-              {CATEGORIES.map(c => (
+              {categories.map(c => (
                 <button
-                  key={c.id}
+                  key={c.key}
                   type="button"
-                  className={`study-chip cat-${c.id}`}
-                  aria-pressed={category === c.id}
+                  className={`study-chip cat-${c.key}`}
+                  aria-pressed={category === c.key}
                   onMouseDown={e => e.preventDefault()}
-                  onClick={() => setCategory(c.id)}
+                  onClick={() => setCategory(c.key as NoteCategory)}
                 >
                   <span className="study-chip-dot" />
                   {c.label}
