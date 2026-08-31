@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { NoteCategory, NoteWithPassageInfo } from '../types'
+import { NoteCategory, NoteCategoryDef, NoteWithPassageInfo } from '../types'
 import { findBookByAlias } from '../utils/bibleBooks'
 import { isHighlight, noteProse } from '../utils/noteKind'
+import { useNoteCategories } from '../utils/useNoteCategories'
 import {
   ALL,
   applyJournalFilters,
@@ -21,13 +22,13 @@ interface JournalPageProps {
 type ViewMode = 'notes' | 'chapters'
 type CategoryFilter = NoteCategory | 'all'
 
-const CATEGORY_OPTIONS: Array<{ id: CategoryFilter; label: string }> = [
-  { id: 'all', label: 'All notes' },
-  { id: 'observation', label: 'Observation' },
-  { id: 'historical', label: 'Historical' },
-  { id: 'application', label: 'Application' },
-  { id: 'personal', label: 'Personal' }
-]
+// Labels come from the reader's own naming; only "All notes" is ours.
+function categoryOptions(defs: NoteCategoryDef[]): Array<{ id: CategoryFilter; label: string }> {
+  return [
+    { id: 'all' as CategoryFilter, label: 'All notes' },
+    ...defs.map(d => ({ id: d.key as CategoryFilter, label: d.label }))
+  ]
+}
 
 // A chapter with more notes than this collapses behind a "show more" toggle, so
 // one heavily-annotated chapter can't push the rest of the history off-screen.
@@ -186,6 +187,9 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
   const [filter, setFilter] = useState<CategoryFilter>('all')
   const [bookFilter, setBookFilter] = useState<number | typeof ALL>(ALL)
   const [kindFilter, setKindFilter] = useState<KindFilter>(ALL)
+  // The reader's own names for the four kinds (Settings > Note categories).
+  const categoryDefs = useNoteCategories()
+  const CATEGORY_OPTIONS = useMemo(() => categoryOptions(categoryDefs), [categoryDefs])
   const [filterOpen, setFilterOpen] = useState(false)
   const [bookOpen, setBookOpen] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())

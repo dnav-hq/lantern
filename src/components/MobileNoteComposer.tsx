@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { NoteCategory } from '../types'
+import { useNoteCategories } from '../utils/useNoteCategories'
 import { useKeyboardCompose } from '../utils/useKeyboardCompose'
 
 // The mobile note composer: the calm space that eases up when you tap "Note"
@@ -9,19 +10,8 @@ import { useKeyboardCompose } from '../utils/useKeyboardCompose'
 // Deliberately NOT a modal. It grows in the reading flow, right under the
 // verses it is about, so writing a note never costs you your place.
 
-const CATEGORY_OPTIONS: { value: NoteCategory; label: string }[] = [
-  { value: 'observation', label: 'Observation' },
-  { value: 'historical', label: 'Historical' },
-  { value: 'application', label: 'Application' },
-  { value: 'personal', label: 'Personal' }
-]
-
-const CATEGORY_LABELS: Record<NoteCategory, string> = {
-  observation: 'Observation',
-  historical: 'Historical',
-  application: 'Application',
-  personal: 'Personal'
-}
+// Labels come from the reader's own naming (Settings > Note categories); the
+// KEYS are fixed, so a rename can never orphan a note.
 
 // The sticky reading chrome the composer must never ride up underneath.
 const HEADER_SELECTOR = '.book-detail-chrome'
@@ -64,6 +54,9 @@ export default function MobileNoteComposer({
   const [text, setText] = useState(initialText)
   const [category, setCategory] = useState<NoteCategory | null>(initialCategory)
   const [menuOpen, setMenuOpen] = useState(false)
+  const categoryOptions = useNoteCategories()
+  const labelOf = (key: NoteCategory | null): string | null =>
+    key ? (categoryOptions.find(c => c.key === key)?.label ?? key) : null
   const [confirming, setConfirming] = useState<'discard' | 'delete' | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const fieldRef = useRef<HTMLTextAreaElement>(null)
@@ -223,7 +216,7 @@ export default function MobileNoteComposer({
             }}
           >
             <span className="mobile-composer-dot" />
-            {category ? CATEGORY_LABELS[category] : 'Add tag'}
+            {labelOf(category) ?? 'Add tag'}
             <span className="mobile-composer-chev" aria-hidden="true">
               ▾
             </span>
@@ -234,7 +227,10 @@ export default function MobileNoteComposer({
               role="listbox"
               onClick={e => e.stopPropagation()}
             >
-              {[{ value: null, label: 'No tag' }, ...CATEGORY_OPTIONS].map(opt => (
+              {[
+                { value: null as NoteCategory | null, label: 'No tag' },
+                ...categoryOptions.map(c => ({ value: c.key as NoteCategory, label: c.label }))
+              ].map(opt => (
                 <button
                   key={opt.value ?? 'none'}
                   type="button"

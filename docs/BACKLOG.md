@@ -502,6 +502,32 @@ belongs to and why that arc comes when it does.
 
 ## Done
 
+- **User-owned categories, slice 1: RENAME (DONE 2026-08-31).**
+  `note-object.md` §3. Categories are the retrieval index, so a reader who
+  studies mostly typology or prayer needs to be able to call them what they
+  call them. Migration `0010_note_categories.sql` adds a definitions table
+  (label/colour/order per workspace) — deliberately NOT a foreign key from
+  `notes`, so there is no backfill, deleting a category cannot cascade into
+  notes, and a note whose category was removed degrades gracefully. No seeding
+  and no trigger: absence of rows means the built-in four, which is what every
+  workspace does today, so this changes nothing for anyone not using it. The
+  `check (category in (...))` constraint from 0001 is dropped, since keeping it
+  would make the feature impossible. Labels flow through Settings, the Journal
+  filter and the composer tag menu via a SHARED store (useSyncExternalStore,
+  the same pattern useTranslation uses) — a per-component fetch was the first
+  attempt and left already-mounted surfaces showing stale names, caught by
+  actually renaming one and looking at the Journal. 14 resolver tests, all
+  about never rendering an empty or unnamed category set, since a composer with
+  no categories cannot capture a note.
+  **DEFERRED, with reasons:** (a) RECOLOUR — category colours have separately
+  tuned light and dark values in tokens.css, so a free hex picker would let
+  someone choose a colour that reads in one theme and fails in the other. It
+  wants a curated palette of light/dark PAIRS, which is a taste and
+  accessibility decision for Dennis, not a control to bolt on. (b) ADD/REMOVE
+  custom keys — the keys are what the note parser's @tag regex is built from
+  and what every stored note carries, so that slice carries the real parser
+  work. Both are the next steps for this feature.
+
 - **Highlights as bodiless notes (DONE 2026-08-31, mobile capture; desktop
   gesture still open).** `note-object.md` §2: a highlight is a note with no
   body — same anchor, same categories, same colour, same Journal, same export.
