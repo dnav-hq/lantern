@@ -34,9 +34,10 @@ of that has one cause.
   signed-out path. Console output, page errors, failed requests and every
   4xx/5xx response were collected per surface.
 - No `.env` in this checkout, so the app runs on the in-memory stub with its
-  seed data (4 books, 4 passages, 10 notes) and the dev fixture scripture
-  provider. The signed-out surfaces were reached by running a second dev server
-  with placeholder Supabase env vars, which puts Root on the auth-gated path.
+  seed data (4 books, 4 passages, a dozen notes across five chapters) and the
+  dev fixture scripture provider. The signed-out surfaces were reached by
+  running a second dev server with placeholder Supabase env vars, which puts
+  Root on the auth-gated path.
 
 ---
 
@@ -278,6 +279,11 @@ The token file documents `--text-muted` as "AA (~4.8:1) on cream" and
 `--text-faint` as "de-emphasised labels, placeholders" — so this is deliberate,
 consistently applied, and identical on mobile. It is listed because the brief
 asked for text that fails to carry, not because it is a regression.
+
+**Repro** — 1440×900, light (dark behaves the same against its own canvas):
+1. Open Genesis 1. 2. Read the verse numbers down the left, the "CHAPTER 1"
+rule, and the `BSB` button in the footer. 3. Each is `#938a77` on `#f4f0e8` —
+3.01:1, against the 4.5:1 AA needs at those sizes.
 
 **Probably lives in**: `src/assets/tokens.css:74` and its per-theme siblings.
 
