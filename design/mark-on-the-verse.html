@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lantern — where a mark belongs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f4f0e8;
+        --surface: #fbf9f4;
+        --surface-2: #ece6da;
+        --border: #e2dccf;
+        --border-strong: #d8d0c0;
+        --text: #201e1a;
+        --text-muted: #6a6353;
+        --text-faint: #938a77;
+        --accent: #6b62d6;
+        --accent-ink: #594fd1;
+        --cat-observation: #6b62d6;
+        --cat-historical: #3f8f5b;
+        --cat-application: #b5732a;
+        --cat-personal: #c05070;
+        --cat-personal-weak: rgba(192, 80, 112, 0.12);
+        --cat-observation-weak: rgba(107, 98, 214, 0.12);
+        --ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --scripture-font: 'Source Serif 4', Georgia, serif;
+        --elev-2: 0 2px 6px rgba(20, 16, 8, 0.06), 0 8px 20px -6px rgba(20, 16, 8, 0.1);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--ui-font);
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 28px 20px 72px;
+      }
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 0 0 6px;
+      }
+      h1 {
+        font-family: var(--scripture-font);
+        font-size: 26px;
+        font-weight: 600;
+        margin: 0 0 8px;
+      }
+      .sub {
+        color: var(--text-muted);
+        font-size: 14px;
+        line-height: 1.65;
+        max-width: 66ch;
+        margin: 0 0 22px;
+      }
+      .concede {
+        margin: 0 0 32px;
+        padding: 13px 15px;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--cat-historical);
+        border-radius: 8px;
+        background: var(--surface);
+        font-size: 13.5px;
+        line-height: 1.65;
+        color: var(--text-muted);
+      }
+      .concede strong {
+        color: var(--text);
+      }
+
+      .opt {
+        margin: 0 0 38px;
+      }
+      .opt-head {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 4px;
+      }
+      .opt-num {
+        font-family: var(--scripture-font);
+        font-size: 19px;
+        font-weight: 600;
+      }
+      .opt-name {
+        font-size: 13px;
+        color: var(--text-faint);
+      }
+      .opt-note {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin: 0 0 12px;
+        max-width: 66ch;
+      }
+
+      .reader {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface);
+        box-shadow: var(--elev-2);
+        padding: 20px 26px 22px;
+      }
+      .row {
+        display: flex;
+        align-items: baseline;
+        gap: 9px;
+        border-radius: 5px;
+        padding: 3px 5px;
+        margin-left: -5px;
+        position: relative;
+      }
+      .vn {
+        font-family: var(--ui-font);
+        font-size: 10.5px;
+        color: var(--text-faint);
+        flex: none;
+        width: 16px;
+        text-align: right;
+        align-self: flex-start;
+        padding-top: 7px;
+      }
+      .vt {
+        font-family: var(--scripture-font);
+        font-size: 17px;
+        line-height: 1.72;
+      }
+
+      /* a real note, for contrast */
+      .note {
+        margin: 4px 0 10px 30px;
+        padding-left: 11px;
+        border-left: 2px solid var(--cat-observation);
+        font-family: var(--scripture-font);
+        font-size: 14.5px;
+        line-height: 1.6;
+        color: var(--text-muted);
+      }
+
+      /* ── A: coloured verse number only ─────────────────────────── */
+      .a .marked .vn {
+        color: var(--cat-personal);
+        font-weight: 700;
+      }
+
+      /* ── B: soft tint across the verse ─────────────────────────── */
+      .b .marked {
+        background: var(--cat-personal-weak);
+      }
+
+      /* ── C: margin rule, like a pencil line in a paper Bible ───── */
+      .c .marked {
+        box-shadow: inset 2px 0 0 var(--cat-personal);
+      }
+      .c .marked.obs {
+        box-shadow: inset 2px 0 0 var(--cat-observation);
+      }
+
+      /* ── D: underline the text itself ──────────────────────────── */
+      .d .marked .vt {
+        background-image: linear-gradient(transparent 62%, var(--cat-personal-weak) 62%);
+      }
+
+      .verdict {
+        margin-top: 10px;
+        font-size: 12.5px;
+        color: var(--text-faint);
+        line-height: 1.65;
+        max-width: 66ch;
+      }
+      .verdict b {
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+
+      .journal {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--surface);
+        padding: 14px 16px;
+        margin-top: 10px;
+      }
+      .j-row {
+        display: flex;
+        gap: 10px;
+        align-items: baseline;
+        padding: 5px 0;
+      }
+      .j-ref {
+        font-family: var(--ui-font);
+        font-size: 10.5px;
+        color: var(--text-faint);
+        width: 34px;
+        flex: none;
+        text-align: right;
+      }
+      .j-text {
+        font-family: var(--scripture-font);
+        font-size: 14.5px;
+        color: var(--text);
+      }
+      .j-mark {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .j-swatch {
+        width: 22px;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--cat-personal);
+      }
+      .j-old {
+        font-style: italic;
+        color: var(--text-faint);
+        font-family: var(--scripture-font);
+        font-size: 14.5px;
+      }
+
+      .closing {
+        margin-top: 38px;
+        border-top: 1px solid var(--border);
+        padding-top: 22px;
+      }
+      .closing h3 {
+        font-family: var(--scripture-font);
+        font-size: 17px;
+        margin: 0 0 10px;
+      }
+      .closing p,
+      .closing ul {
+        font-size: 13.5px;
+        line-height: 1.75;
+        color: var(--text-muted);
+        max-width: 66ch;
+      }
+      .closing ul {
+        padding-left: 18px;
+      }
+      .closing strong {
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <p class="eyebrow">Design ideation · needs your call</p>
+      <h1>Where a mark belongs</h1>
+      <p class="sub">
+        Psalm 23, with verse 4 marked and verse 1 carrying a written note, so the two can be told
+        apart at a glance.
+      </p>
+
+      <div class="concede">
+        <strong>You are right, and it is a model mistake rather than a styling one.</strong> A note
+        is <em>appended to</em> a verse: you read the words and they tell you what they belong to.
+        A mark has no words, so putting it in the same place borrows the note's structure and
+        delivers none of its meaning — a row that takes up the space of a thought without containing
+        one. <strong>A mark is not a thing below the verse. It is a property of the verse.</strong>
+        That is what highlighting means on paper, and it answers "what does it belong to" by
+        construction, because the verse <em>is</em> the mark. It also makes the progression clean:
+        mark a verse now, write something later, and it moves from the text into the note rail on
+        its own.
+      </div>
+
+      <!-- A -->
+      <section class="opt a">
+        <div class="opt-head"><span class="opt-num">A</span><span class="opt-name">Coloured verse number</span></div>
+        <p class="opt-note">
+          The lightest possible touch. Nothing happens to the scripture itself; only the number
+          beside it changes.
+        </p>
+        <div class="reader">
+          <div class="row">
+            <span class="vn">1</span>
+            <span class="vt">The LORD is my shepherd; I shall not want.</span>
+          </div>
+          <p class="note">A shepherd metaphor from a man who had actually kept sheep.</p>
+          <div class="row">
+            <span class="vn">2</span>
+            <span class="vt">He makes me lie down in green pastures; He leads me beside quiet waters.</span>
+          </div>
+          <div class="row">
+            <span class="vn">3</span>
+            <span class="vt">He restores my soul; He guides me in the paths of righteousness for the sake of His name.</span>
+          </div>
+          <div class="row marked">
+            <span class="vn">4</span>
+            <span class="vt">Even though I walk through the valley of the shadow of death, I will fear no evil, for You are with me.</span>
+          </div>
+        </div>
+        <p class="verdict">
+          <b>For:</b> completely leaves scripture alone; unmistakably a property of the verse.
+          <b>Against:</b> very easy to miss, and on mobile the number is tiny.
+        </p>
+      </section>
+
+      <!-- B -->
+      <section class="opt b">
+        <div class="opt-head"><span class="opt-num">B</span><span class="opt-name">Soft tint behind the verse</span></div>
+        <p class="opt-note">
+          The closest thing to a highlighter pen, and the one most people will already understand
+          without being told.
+        </p>
+        <div class="reader">
+          <div class="row">
+            <span class="vn">1</span>
+            <span class="vt">The LORD is my shepherd; I shall not want.</span>
+          </div>
+          <p class="note">A shepherd metaphor from a man who had actually kept sheep.</p>
+          <div class="row">
+            <span class="vn">2</span>
+            <span class="vt">He makes me lie down in green pastures; He leads me beside quiet waters.</span>
+          </div>
+          <div class="row">
+            <span class="vn">3</span>
+            <span class="vt">He restores my soul; He guides me in the paths of righteousness for the sake of His name.</span>
+          </div>
+          <div class="row marked">
+            <span class="vn">4</span>
+            <span class="vt">Even though I walk through the valley of the shadow of death, I will fear no evil, for You are with me.</span>
+          </div>
+        </div>
+        <p class="verdict">
+          <b>For:</b> instantly legible, needs no explanation, scales to a whole page of marks.
+          <b>Against:</b> it collides with the existing selection and search-jump washes, which
+          already tint a verse. Three different tints on one screen would be one too many.
+        </p>
+      </section>
+
+      <!-- C -->
+      <section class="opt c">
+        <div class="opt-head"><span class="opt-num">C</span><span class="opt-name">Margin rule beside the verse</span></div>
+        <p class="opt-note">
+          A coloured line in the margin, which is what people actually do in a paper Bible. Shown
+          here with verse 1 also marked, in a different category, to show two side by side.
+        </p>
+        <div class="reader">
+          <div class="row marked obs">
+            <span class="vn">1</span>
+            <span class="vt">The LORD is my shepherd; I shall not want.</span>
+          </div>
+          <p class="note">A shepherd metaphor from a man who had actually kept sheep.</p>
+          <div class="row">
+            <span class="vn">2</span>
+            <span class="vt">He makes me lie down in green pastures; He leads me beside quiet waters.</span>
+          </div>
+          <div class="row">
+            <span class="vn">3</span>
+            <span class="vt">He restores my soul; He guides me in the paths of righteousness for the sake of His name.</span>
+          </div>
+          <div class="row marked">
+            <span class="vn">4</span>
+            <span class="vt">Even though I walk through the valley of the shadow of death, I will fear no evil, for You are with me.</span>
+          </div>
+        </div>
+        <p class="verdict">
+          <b>For:</b> reads as a margin annotation, which is exactly what it is; survives a
+          multi-verse span cleanly; does not touch the scripture or fight the selection wash.
+          <b>Against:</b> the selected state already uses an inset left rule in the accent colour,
+          so the two would need to be told apart.
+        </p>
+      </section>
+
+      <!-- D -->
+      <section class="opt d">
+        <div class="opt-head"><span class="opt-num">D</span><span class="opt-name">Underline the words</span></div>
+        <p class="opt-note">A tinted band under the text, like a soft highlighter stroke.</p>
+        <div class="reader">
+          <div class="row">
+            <span class="vn">1</span>
+            <span class="vt">The LORD is my shepherd; I shall not want.</span>
+          </div>
+          <p class="note">A shepherd metaphor from a man who had actually kept sheep.</p>
+          <div class="row marked">
+            <span class="vn">4</span>
+            <span class="vt">Even though I walk through the valley of the shadow of death, I will fear no evil, for You are with me.</span>
+          </div>
+        </div>
+        <p class="verdict">
+          <b>For:</b> the most "I marked this" of the four. <b>Against:</b> it is the only one that
+          touches the scripture itself, and it fights the reading rhythm on wrapped lines.
+        </p>
+      </section>
+
+      <div class="closing">
+        <h3>And the Journal needs changing too</h3>
+        <p>
+          Today a mark shows as a row with the word "Marked" in it, which has the same problem you
+          described: it occupies a note's space and says nothing. Better is to show it as what it
+          is, with no word at all.
+        </p>
+        <div class="journal">
+          <div class="j-row">
+            <span class="j-ref">23:1</span>
+            <span class="j-text">A shepherd metaphor from a man who had actually kept sheep.</span>
+          </div>
+          <div class="j-row">
+            <span class="j-ref">23:4</span>
+            <span class="j-old">Marked</span>
+          </div>
+          <div class="j-row">
+            <span class="j-ref">23:4</span>
+            <span class="j-mark"><span class="j-swatch"></span></span>
+          </div>
+        </div>
+        <p style="margin-top: 10px">
+          Second row is today. Third is the proposal: the reference, and a short rule in the
+          category colour. Nothing pretending to be prose.
+        </p>
+
+        <h3 style="margin-top: 26px">What I would do</h3>
+        <ul>
+          <li>
+            <strong>C, the margin rule.</strong> It is the only one that says "this is my mark on
+            the page" without touching the scripture or competing with the two tints the reader
+            already meets (selection, and the search-jump highlight). It is also what the rail
+            bracket already does for multi-verse notes, so marks and notes would read as the same
+            family — which they are.
+          </li>
+          <li>
+            <strong>B is the popular answer and I would still not pick it</strong>, purely because
+            of the tint collision. If you would rather have the familiarity, the honest cost is
+            re-designing the selected and jumped-to states so three washes stay distinguishable.
+          </li>
+          <li>
+            <strong>Either way, nothing goes in the note rail for a mark.</strong> That is the part
+            that matters, and it is your point.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>
