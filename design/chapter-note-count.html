@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lantern — the note count in a chapter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f4f0e8;
+        --surface: #fbf9f4;
+        --surface-2: #ece6da;
+        --border: #e2dccf;
+        --border-strong: #d8d0c0;
+        --text: #201e1a;
+        --text-muted: #6a6353;
+        --text-faint: #938a77;
+        --accent: #6b62d6;
+        --accent-ink: #594fd1;
+        --accent-weak: rgba(107, 98, 214, 0.11);
+        --cat-observation: #6b62d6;
+        --cat-historical: #3f8f5b;
+        --cat-application: #b5732a;
+        --cat-personal: #c05070;
+        --ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --scripture-font: 'Source Serif 4', Georgia, serif;
+        --elev-2: 0 2px 6px rgba(20, 16, 8, 0.06), 0 8px 20px -6px rgba(20, 16, 8, 0.1);
+        --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--ui-font);
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 28px 20px 72px;
+      }
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 0 0 6px;
+      }
+      h1 {
+        font-family: var(--scripture-font);
+        font-size: 26px;
+        font-weight: 600;
+        margin: 0 0 8px;
+      }
+      .sub {
+        color: var(--text-muted);
+        font-size: 14px;
+        line-height: 1.6;
+        max-width: 64ch;
+        margin: 0 0 8px;
+      }
+      .question {
+        margin: 18px 0 30px;
+        padding: 13px 15px;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent);
+        border-radius: 8px;
+        background: var(--surface);
+        font-size: 13.5px;
+        line-height: 1.65;
+        color: var(--text-muted);
+      }
+      .question strong {
+        color: var(--text);
+      }
+
+      .opt {
+        margin: 0 0 40px;
+      }
+      .opt-head {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 4px;
+      }
+      .opt-num {
+        font-family: var(--scripture-font);
+        font-size: 19px;
+        font-weight: 600;
+      }
+      .opt-name {
+        font-size: 13px;
+        color: var(--text-faint);
+      }
+      .opt-note {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.6;
+        margin: 0 0 14px;
+        max-width: 64ch;
+      }
+
+      /* ── the shared fake reader ───────────────────────────────── */
+      .reader {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface);
+        box-shadow: var(--elev-2);
+        overflow: hidden;
+      }
+      .reader-head {
+        padding: 16px 22px 12px;
+        text-align: center;
+        border-bottom: 1px solid var(--border);
+      }
+      .reader-title {
+        font-family: var(--scripture-font);
+        font-size: 22px;
+        font-weight: 600;
+      }
+      .reader-sub {
+        font-size: 11.5px;
+        color: var(--text-faint);
+        margin-top: 2px;
+      }
+      .chips {
+        display: flex;
+        gap: 5px;
+        padding: 10px 22px;
+        border-bottom: 1px solid var(--border);
+        overflow: hidden;
+      }
+      .chip {
+        width: 26px;
+        height: 24px;
+        border-radius: 6px;
+        display: grid;
+        place-items: center;
+        font-size: 11.5px;
+        color: var(--text-faint);
+        flex: none;
+      }
+      .chip.on {
+        background: var(--accent-weak);
+        color: var(--accent-ink);
+        font-weight: 600;
+      }
+      .body {
+        padding: 20px 26px 26px;
+      }
+      .v {
+        font-family: var(--scripture-font);
+        font-size: 17px;
+        line-height: 1.72;
+        margin: 0 0 9px;
+        display: flex;
+        gap: 10px;
+      }
+      .vn {
+        font-family: var(--ui-font);
+        font-size: 10.5px;
+        color: var(--text-faint);
+        padding-top: 6px;
+        flex: none;
+        width: 14px;
+        text-align: right;
+      }
+      .noted {
+        box-shadow: inset 2px 0 0 var(--cat-observation);
+        padding-left: 8px;
+        margin-left: -10px;
+      }
+
+      /* ── option 1: a line under the title ─────────────────────── */
+      .count-line {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 5px;
+        font-size: 11.5px;
+        color: var(--accent-ink);
+        background: none;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        font-family: var(--ui-font);
+      }
+      .count-line:hover {
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      .count-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--cat-observation);
+      }
+
+      /* ── option 2: a corner chip ──────────────────────────────── */
+      .reader-head.rel {
+        position: relative;
+      }
+      .corner {
+        position: absolute;
+        right: 18px;
+        top: 18px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11.5px;
+        color: var(--text-muted);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 4px 10px;
+        cursor: pointer;
+        font-family: var(--ui-font);
+      }
+      .corner:hover {
+        color: var(--text);
+        border-color: var(--border-strong);
+      }
+      .corner .dots {
+        display: inline-flex;
+        gap: 2px;
+      }
+      .corner .dots i {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        display: block;
+      }
+
+      /* ── option 3: at the end of the chapter ──────────────────── */
+      .tail {
+        margin-top: 22px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        text-align: center;
+      }
+      .tail-line {
+        font-family: var(--scripture-font);
+        font-style: italic;
+        font-size: 14px;
+        color: var(--text-muted);
+        margin: 0 0 8px;
+      }
+      .tail-btn {
+        font-size: 12px;
+        color: var(--accent-ink);
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 5px 13px;
+        cursor: pointer;
+        font-family: var(--ui-font);
+      }
+      .tail-btn:hover {
+        border-color: var(--accent);
+      }
+
+      .verdict {
+        margin-top: 8px;
+        font-size: 12.5px;
+        color: var(--text-faint);
+        line-height: 1.6;
+        max-width: 64ch;
+      }
+      .verdict b {
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+
+      .closing {
+        margin-top: 40px;
+        border-top: 1px solid var(--border);
+        padding-top: 22px;
+      }
+      .closing h3 {
+        font-family: var(--scripture-font);
+        font-size: 17px;
+        margin: 0 0 10px;
+      }
+      .closing ul {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 13.5px;
+        line-height: 1.75;
+        color: var(--text-muted);
+      }
+      .closing strong {
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <p class="eyebrow">Design ideation · needs your call</p>
+      <h1>How does a chapter say it already has notes?</h1>
+      <p class="sub">
+        "Everything I have ever written about this chapter" already works — every note anchored in
+        the chapter renders in the reading view, whichever passage row stores it. The only thing
+        missing is a way to know that before you scroll. Three ways to say it, all on Romans 8 with
+        twelve notes.
+      </p>
+
+      <div class="question">
+        <strong>The tension.</strong> A count is genuinely useful: it is the difference between
+        "somewhere in here I wrote something" and knowing. But a number on a page of scripture is
+        also the first step toward a page that keeps score, and the whole project is committed to no
+        streaks, no metrics, no sense of a tally. So the question is not which looks nicest. It is
+        <strong>how much presence a number earns on a page whose job is to be quiet.</strong>
+      </div>
+
+      <!-- 1 -->
+      <section class="opt">
+        <div class="opt-head">
+          <span class="opt-num">1</span>
+          <span class="opt-name">Under the chapter title</span>
+        </div>
+        <p class="opt-note">
+          Sits where the chapter count already sits, in the same register. Reads as part of the
+          heading rather than as an annotation on the text.
+        </p>
+        <div class="reader">
+          <div class="reader-head">
+            <div class="reader-title">Romans</div>
+            <div class="reader-sub">16 chapters</div>
+            <button class="count-line">
+              <span class="count-dot"></span>
+              12 notes in this chapter
+            </button>
+          </div>
+          <div class="chips">
+            <span class="chip">6</span><span class="chip">7</span><span class="chip on">8</span
+            ><span class="chip">9</span><span class="chip">10</span><span class="chip">11</span>
+          </div>
+          <div class="body">
+            <p class="v noted">
+              <span class="vn">28</span> And we know that God works all things together for the good
+              of those who love Him, who are called according to His purpose.
+            </p>
+            <p class="v">
+              <span class="vn">29</span> For those God foreknew, He also predestined to be conformed
+              to the image of His Son.
+            </p>
+          </div>
+        </div>
+        <p class="verdict">
+          <b>For:</b> quiet, expected, easy to ignore. <b>Against:</b> it is the first thing under
+          the book name, so it greets you before the text does.
+        </p>
+      </section>
+
+      <!-- 2 -->
+      <section class="opt">
+        <div class="opt-head">
+          <span class="opt-num">2</span>
+          <span class="opt-name">A corner chip, with categories</span>
+        </div>
+        <p class="opt-note">
+          Off to the side rather than in the reading column, and it carries a little more: the
+          colours say what kind of notes are in there, not just how many.
+        </p>
+        <div class="reader">
+          <div class="reader-head rel">
+            <button class="corner">
+              <span class="dots">
+                <i style="background: var(--cat-observation)"></i>
+                <i style="background: var(--cat-historical)"></i>
+                <i style="background: var(--cat-personal)"></i>
+              </span>
+              12
+            </button>
+            <div class="reader-title">Romans</div>
+            <div class="reader-sub">16 chapters</div>
+          </div>
+          <div class="chips">
+            <span class="chip">6</span><span class="chip">7</span><span class="chip on">8</span
+            ><span class="chip">9</span><span class="chip">10</span><span class="chip">11</span>
+          </div>
+          <div class="body">
+            <p class="v noted">
+              <span class="vn">28</span> And we know that God works all things together for the good
+              of those who love Him, who are called according to His purpose.
+            </p>
+            <p class="v">
+              <span class="vn">29</span> For those God foreknew, He also predestined to be conformed
+              to the image of His Son.
+            </p>
+          </div>
+        </div>
+        <p class="verdict">
+          <b>For:</b> out of the reading column entirely; the category dots are real information.
+          <b>Against:</b> a bare number in a chip is the most scoreboard-like of the three, and it
+          competes with the chapter strip for the same corner.
+        </p>
+      </section>
+
+      <!-- 3 -->
+      <section class="opt">
+        <div class="opt-head">
+          <span class="opt-num">3</span>
+          <span class="opt-name">At the end, after the reading</span>
+        </div>
+        <p class="opt-note">
+          Nothing at the top at all. The chapter ends, and then it tells you. This is the only option
+          that respects observe-before-consult, which every study method teaches and which the deep
+          dive is already built around.
+        </p>
+        <div class="reader">
+          <div class="reader-head">
+            <div class="reader-title">Romans</div>
+            <div class="reader-sub">16 chapters</div>
+          </div>
+          <div class="chips">
+            <span class="chip">6</span><span class="chip">7</span><span class="chip on">8</span
+            ><span class="chip">9</span><span class="chip">10</span><span class="chip">11</span>
+          </div>
+          <div class="body">
+            <p class="v noted">
+              <span class="vn">28</span> And we know that God works all things together for the good
+              of those who love Him, who are called according to His purpose.
+            </p>
+            <p class="v">
+              <span class="vn">29</span> For those God foreknew, He also predestined to be conformed
+              to the image of His Son.
+            </p>
+            <div class="tail">
+              <p class="tail-line">You have written twelve notes on this chapter.</p>
+              <button class="tail-btn">See them together</button>
+            </div>
+          </div>
+        </div>
+        <p class="verdict">
+          <b>For:</b> the reading page stays completely clean; the sentence is warmer than a number.
+          <b>Against:</b> you only learn it after scrolling, which is exactly the thing this was
+          meant to fix.
+        </p>
+      </section>
+
+      <div class="closing">
+        <h3>What I would pick, and why it is still your call</h3>
+        <ul>
+          <li>
+            <strong>Option 1, with one change: no number until it matters.</strong> Show a plain "you
+            have notes here" for small counts and only quantify past, say, five. A count of 3 is
+            noise; a count of 30 is genuinely useful information about a chapter you have lived in.
+          </li>
+          <li>
+            <strong>Option 3 is the most on-philosophy and I still would not choose it alone.</strong>
+            Observe-before-consult argues for it, but the point of this affordance is knowing before
+            you scroll. It could be added <em>as well</em>, cheaply.
+          </li>
+          <li>
+            <strong>Option 2 is the one I would avoid.</strong> A bare number in a pill is the
+            closest any of these comes to a scoreboard, and that is the line the project has drawn.
+          </li>
+          <li>
+            <strong>All three link to the same place:</strong> the Journal, filtered to that book —
+            which now exists, so this is a link, not a new screen. No third surface rendering the
+            same notes.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>
