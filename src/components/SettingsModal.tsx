@@ -4,7 +4,6 @@ import { exportAllNotesAsZip } from '../platform/export'
 import { type LookId } from '../utils/useTheme'
 import { type TextSizeId } from '../utils/useTextSize'
 import ReadingPrefs from './ReadingPrefs'
-import CategoryNames from './CategoryNames'
 import { isTelemetryOptedOut, setTelemetryOptedOut } from '../telemetry/client'
 
 interface SettingsModalProps {
@@ -122,20 +121,6 @@ export default function SettingsModal({
               Leaves only scripture on the reading screens. Your notes stay untouched; open a study
               to see and edit them.
             </p>
-          </div>
-
-          <div className="smodal-divider" />
-
-          {/* Categories — the words YOU use for the four kinds of note. The
-              category set is how notes are found again, so being able to call
-              them what you actually call them matters more than it looks. */}
-          <div className="smodal-section">
-            <div className="smodal-section-label">Note categories</div>
-            <p className="smodal-vault-desc">
-              Call them what you call them. Renaming never moves a note — the four kinds stay the
-              same, only their names change.
-            </p>
-            <CategoryNames />
           </div>
 
           <div className="smodal-divider" />

@@ -1270,12 +1270,30 @@ body.dark .search-backdrop {
   color: var(--text-faint);
 }
 
-/* A highlight in the Journal: a note the reader made with no words. Shown as
-   a quiet label rather than an empty row, and set in italics so it reads as the
-   app describing the mark rather than as something the reader wrote. */
+/* A highlight in the Journal. It has no words, so it gets none: a short rule in
+   the category colour, which the row's own cat-* class already supplies. The
+   word "Marked" was worse than nothing — it occupied a note's space and said
+   something the reader had not written. */
 .journal-note-mark {
-  font-style: italic;
-  color: var(--text-faint);
+  display: inline-block;
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+  /* Falls back to the row's own left-border colour when the note carries no
+     category, rather than vanishing into the background. */
+  background: var(--cat-observation);
+  opacity: 0.8;
+  align-self: center;
+  margin-top: 7px;
+}
+.journal-note.cat-historical .journal-note-mark {
+  background: var(--cat-historical);
+}
+.journal-note.cat-application .journal-note-mark {
+  background: var(--cat-application);
+}
+.journal-note.cat-personal .journal-note-mark {
+  background: var(--cat-personal);
 }
 
 /* The written-vs-marked toggle. Same segmented control as the Notes/Chapters
@@ -1285,69 +1303,199 @@ body.dark .search-backdrop {
   font-size: 11.5px;
 }
 
-/* Renaming the four note categories (SettingsModal). Rows are quiet and
-   uniform — this is a place you visit once, not a control panel. */
-.category-names-row {
+/* ── Category menu ──────────────────────────────────────────────────────────
+   The picker, and the only place a category is renamed. Naming happens where
+   the name is USED rather than in Settings, following the pattern Notion,
+   Linear and Todoist use for editable select options: the menu looks like a
+   plain picker, and the rename affordance appears only on hover or focus, so a
+   reader who never wants it never meets it. */
+.cat-menu {
+  min-width: 210px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: var(--elev-3);
+}
+.cat-menu-title {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 5px 9px 7px;
+}
+.cat-menu-row {
   display: flex;
   align-items: center;
   gap: 9px;
-  margin-bottom: 7px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
 }
-.category-names-dot {
-  width: 9px;
-  height: 9px;
+.cat-menu-row:hover,
+.cat-menu-row:focus-visible {
+  background: var(--surface-2);
+}
+.cat-menu-row.is-editing {
+  background: var(--surface-2);
+  cursor: default;
+}
+.cat-menu-dot {
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex: none;
   background: var(--accent);
 }
-.category-names-dot.cat-observation {
+.cat-menu-dot-none {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+}
+.cat-menu-dot.cat-observation {
   background: var(--cat-observation);
 }
-.category-names-dot.cat-historical {
+.cat-menu-dot.cat-historical {
   background: var(--cat-historical);
 }
-.category-names-dot.cat-application {
+.cat-menu-dot.cat-application {
   background: var(--cat-application);
 }
-.category-names-dot.cat-personal {
+.cat-menu-dot.cat-personal {
   background: var(--cat-personal);
 }
-.category-names-input {
+.cat-menu-label {
   flex: 1;
   min-width: 0;
-  font: inherit;
-  font-size: 13px;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 6px 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.category-names-input:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-.category-names-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-}
-.category-names-reset,
-.category-names-saved {
-  font-size: 12px;
+.cat-menu-check {
   color: var(--text-faint);
-  background: none;
-  border: 0;
-  padding: 0;
+  font-size: 12px;
 }
-.category-names-reset {
-  cursor: pointer;
+/* Invisible until the row is engaged — the whole point of the pattern. */
+.cat-menu-rename {
+  font-size: 11px;
+  color: var(--text-faint);
+  opacity: 0;
+  flex: none;
+}
+.cat-menu-row:hover .cat-menu-rename,
+.cat-menu-row:focus-within .cat-menu-rename,
+.cat-menu-rename:focus-visible {
+  opacity: 1;
+}
+.cat-menu-rename:hover {
+  color: var(--text);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.category-names-reset:hover {
-  color: var(--text-muted);
+.cat-menu-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 4px 7px;
+}
+.cat-menu-input:focus {
+  outline: none;
+}
+.cat-menu-foot {
+  border-top: 1px solid var(--border);
+  margin-top: 5px;
+  padding: 8px 9px 4px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+/* ── A highlighted verse ────────────────────────────────────────────────────
+   A mark is a property OF the verse, not a row beneath it. A note is appended
+   to a verse and you read the words; a mark has no words, so putting it in the
+   note rail would take a thought's worth of space and say nothing.
+
+   The category NAME is what distinguishes a mark from a SELECTION: both tint
+   the row, but only a mark says what it is, and a selection is gone the moment
+   you tap away. The label deliberately reuses .reading-note-meta's treatment so
+   marks and notes read as the same family. */
+.reading-verse-row.marked {
+  background: var(--mark-tint, var(--accent-weak));
+}
+.reading-verse-row.marked.cat-observation {
+  --mark-tint: rgba(107, 98, 214, 0.15);
+  --mark-ink: var(--cat-observation-ink);
+}
+.reading-verse-row.marked.cat-historical {
+  --mark-tint: rgba(63, 143, 91, 0.15);
+  --mark-ink: var(--cat-historical-ink);
+}
+.reading-verse-row.marked.cat-application {
+  --mark-tint: rgba(181, 115, 42, 0.15);
+  --mark-ink: var(--cat-application-ink);
+}
+.reading-verse-row.marked.cat-personal {
+  --mark-tint: rgba(192, 80, 112, 0.16);
+  --mark-ink: var(--cat-personal-ink);
+}
+/* Selection must still win: it is transient and the reader is acting on it. */
+.reading-verse-row.marked.selected {
+  background: var(--accent-soft);
+}
+.verse-mark-label {
+  font-family: var(--ui-font);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--mark-ink, var(--text-muted));
+  align-self: flex-start;
+  margin-left: auto;
+  padding-left: 12px;
+  padding-top: 7px;
+  flex: none;
+}
+.reading-verse-row.selected .verse-mark-label {
+  opacity: 0.45;
+}
+
+/* The highlight picker, anchored to its button in both bars. */
+.verse-action-hl,
+.mobile-selbar-highlight {
+  position: relative;
+}
+.verse-action-hl-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+}
+.mobile-selbar-menu {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  z-index: 30;
+}
+.mobile-selbar-hl {
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
 }
 
 .journal-empty-filter {
@@ -2043,8 +2191,31 @@ body.dark .search-backdrop {
 .reading-verse-row:hover .verse-add-btn {
   opacity: 1;
 }
+/* SEARCH JUMP — a brief pulse, not a resting wash. It is saying "here it is",
+   not "this is a state you are in", and a persistent tint here would be a third
+   simultaneous tint alongside the selection wash and a highlight. Fading it out
+   leaves exactly one persistent tint on the page: the reader's own mark. */
+@keyframes verse-jump-pulse {
+  0% {
+    background: var(--accent-weak);
+  }
+  70% {
+    background: var(--accent-weak);
+  }
+  100% {
+    background: transparent;
+  }
+}
 .reading-verse-row.highlighted {
-  background: var(--accent-weak);
+  animation: verse-jump-pulse 2.4s var(--ease-out, ease-out) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Without motion the pulse cannot fade, so keep the wash rather than
+     flashing it away instantly. */
+  .reading-verse-row.highlighted {
+    animation: none;
+    background: var(--accent-weak);
+  }
 }
 .reading-verse-row.selected {
   background: var(--accent-soft);

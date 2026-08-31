@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import CategoryMenu from './CategoryMenu'
 
 // The mobile verse-selection bar: the small floating toolbar that rises when you
-// select verses, offering "Note". It lives here (rather than inline in
+// select verses, offering TWO choices: "Note" (opens the composer and the
+// keyboard) and "Highlight" (opens four colours and opens neither). Two actions
+// that look like two actions — a single button that changed meaning depending
+// on whether you had typed was a hidden mode. It lives here (rather than inline in
 // BookDetailPage) so it can own its own enter/exit animation — it stays mounted
 // through a reverse slide-out on dismiss instead of vanishing.
 //
@@ -18,16 +22,20 @@ interface MobileSelectionBarProps {
   reference: string
   onClear: () => void
   onNote: () => void
+  /** Applies a highlight in the chosen category. Never opens the keyboard. */
+  onHighlight: (category: string) => void
 }
 
 export default function MobileSelectionBar({
   shown,
   reference,
   onClear,
-  onNote
+  onNote,
+  onHighlight
 }: MobileSelectionBarProps): React.ReactElement | null {
   const [mounted, setMounted] = useState(shown)
   const [leaving, setLeaving] = useState(false)
+  const [picking, setPicking] = useState(false)
   // The selection (and so the reference) clears the instant `shown` goes false,
   // but the bar is still sliding out — freeze the last content so it reads right
   // for the length of that exit.
@@ -56,6 +64,7 @@ export default function MobileSelectionBar({
     return () => window.clearTimeout(t)
   }, [shown, mounted])
 
+  if (!shown && picking) setPicking(false)
   if (!mounted) return null
   const content = shown ? { reference } : last.current
 
@@ -75,6 +84,30 @@ export default function MobileSelectionBar({
       >
         ✕
       </button>
+      {/* Two visible choices, not one that changes meaning. "Note" opens the
+          composer and the keyboard; "Highlight" opens four colours and never
+          does either. */}
+      <div className="mobile-selbar-highlight">
+        <button
+          type="button"
+          className="mobile-selbar-hl"
+          onClick={() => setPicking(p => !p)}
+          aria-expanded={picking}
+        >
+          Highlight
+        </button>
+        {picking && (
+          <div className="mobile-selbar-menu">
+            <CategoryMenu
+              title="Highlight as…"
+              onPick={key => {
+                setPicking(false)
+                onHighlight(key)
+              }}
+            />
+          </div>
+        )}
+      </div>
       <button type="button" className="mobile-selbar-note" onClick={onNote}>
         Note
       </button>
