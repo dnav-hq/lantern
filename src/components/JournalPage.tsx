@@ -540,9 +540,15 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
                         >
                           <span className="journal-note-verse">{note.verse}</span>
                           {note.highlight ? (
-                            // No words to show, so say what it is rather than
-                            // rendering an empty row the reader cannot explain.
-                            <span className="journal-note-text journal-note-mark">Marked</span>
+                            // A mark has no words, so it gets none. A short rule
+                            // in the category colour says "you marked this" with
+                            // nothing pretending to be prose — the same reason it
+                            // does not sit in the note rail while reading.
+                            <span
+                              className="journal-note-mark"
+                              aria-label="Highlighted"
+                              title="Highlighted"
+                            />
                           ) : (
                             <span className="journal-note-text">{note.text}</span>
                           )}

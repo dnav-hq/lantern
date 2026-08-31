@@ -502,6 +502,34 @@ belongs to and why that arc comes when it does.
 
 ## Done
 
+- **Highlighting reworked as its own action (DONE 2026-08-31).** Replaces the
+  first attempt, where the composer's Save button silently became "Mark" when
+  you had not typed — a hidden mode Dennis rightly called unintuitive. Now two
+  visible choices on a verse selection, on both mobile and desktop: **Note**
+  opens the composer and the keyboard, **Highlight** opens four colour swatches
+  and opens neither. Two taps, no typing.
+  A mark is now a property OF the verse rather than a row beneath it: category
+  tint on the verse plus the category NAME. The name is what distinguishes a
+  mark from a SELECTION — both tint the row, but only a mark says what it is,
+  and a selection vanishes the moment you tap away. The label reuses
+  `.reading-note-meta`'s exact treatment so marks and notes read as one family,
+  and notes are completely untouched. Search-jump changed from a resting wash to
+  a fading pulse (with a reduced-motion fallback), so exactly one persistent
+  tint remains on the page: the reader's own mark.
+  The Journal mark is now a short rule in the category colour rather than the
+  word "Marked", which had the same flaw one surface over — occupying a note's
+  space and saying something the reader had not written.
+  **Category renaming moved out of Settings** into the category menu itself,
+  following the pattern Notion, Linear and Todoist use for editable select
+  options: the menu looks like a plain picker and the Rename affordance appears
+  only on hover or focus, so a reader who never wants it never meets it. The
+  Settings section and `CategoryNames.tsx` are deleted — one place, not two.
+  Design rounds: `design/mark-on-the-verse.html`, `note-or-highlight.html`,
+  `highlight-vs-selection.html`.
+  **Still open:** adding and removing custom categories (the keys are what the
+  note parser's @tag regex is built from, so that slice carries real parser
+  work), and an option to hide the category name on highlighted verses.
+
 - **User-owned categories, slice 1: RENAME (DONE 2026-08-31).**
   `note-object.md` §3. Categories are the retrieval index, so a reader who
   studies mostly typology or prayer needs to be able to call them what they

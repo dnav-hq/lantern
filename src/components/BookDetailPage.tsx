@@ -17,6 +17,9 @@ import ErrorBoundary from './ErrorBoundary'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import MobileNoteComposer from './MobileNoteComposer'
+import CategoryMenu from './CategoryMenu'
+import { isHighlight } from '../utils/noteKind'
+import { useNoteCategories } from '../utils/useNoteCategories'
 import MobileSelectionBar from './MobileSelectionBar'
 import StudyWorkbench, { type AnchorRequest, type StudyRange } from './StudyWorkbench'
 import ReadingControls from './ReadingControls'
@@ -297,6 +300,9 @@ function ChapterView({
   const [inlineVerse, setInlineVerse] = useState<number | null>(null)
   const [inlineText, setInlineText] = useState('')
   const [savingInline, setSavingInline] = useState(false)
+  // Desktop highlight picker open state. Mobile's lives in MobileSelectionBar.
+  const [highlightPicking, setHighlightPicking] = useState(false)
+
   const isMobile = useIsMobile()
   // Study is a DESKTOP mode (a workbench beside the text). On mobile there is no
   // such surface — capture is the inline composer — so study behaviour must be
@@ -320,6 +326,31 @@ function ChapterView({
   // real selection, then auto-dismissed (also dismissible explicitly).
   const [showVerseHint, setShowVerseHint] = useState(() => !verseHintAlreadySeen())
   const [localNotes, setLocalNotes] = useState<NoteWithPassageInfo[]>(notes)
+
+  // Verse -> category, for every HIGHLIGHT (a note with no body) anchored in
+  // this chapter. A highlight is a property OF the verse, not a row beneath it:
+  // a note is appended to a verse and you read it, whereas a mark has no words,
+  // so borrowing the note rail would take a thought's worth of space and say
+  // nothing. See design/highlight-vs-selection.html.
+  const categoryDefs = useNoteCategories()
+  const categoryLabel = useCallback(
+    (key: string) => categoryDefs.find(c => c.key === key)?.label ?? key,
+    [categoryDefs]
+  )
+
+  const markedVerses = useMemo(() => {
+    const marks = new Map<number, string>()
+    for (const note of localNotes) {
+      if (!isHighlight(note) || !note.category) continue
+      const start = note.anchor_start_verse
+      if (start === null) continue
+      const end = note.anchor_end_verse ?? start
+      // Last write wins on an overlap; the reader sees one colour per verse
+      // rather than a stack, which would turn scripture into a chart.
+      for (let v = start; v <= end; v++) marks.set(v, note.category)
+    }
+    return marks
+  }, [localNotes])
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<NoteWithPassageInfo | null>(null)
@@ -736,6 +767,22 @@ function ChapterView({
 
   const composingNote =
     composing?.noteId != null ? (localNotes.find(n => n.id === composing.noteId) ?? null) : null
+
+  // A HIGHLIGHT is a note with no body (src/utils/noteKind.ts). It is created
+  // through the same path a written note is, so it lands in the same place, is
+  // anchored the same way, and can grow a body later by simply being edited.
+  // The keyboard never opens: two taps, no typing, which is the point.
+  const handleHighlight = async (category: NoteCategory): Promise<void> => {
+    if (selRange === null || savingInline) return
+    const [start, end] = selRange
+    setSavingInline(true)
+    try {
+      await createAnchoredNote(composeNoteContent('', start, end, category), start)
+      clearSelection()
+    } finally {
+      setSavingInline(false)
+    }
+  }
 
   const openComposerOnSelection = (): void => {
     if (selRange === null) return
@@ -1435,7 +1482,7 @@ function ChapterView({
                     if (el) verseRowRefs.current.set(v.verse, el)
                     else verseRowRefs.current.delete(v.verse)
                   }}
-                  className={`reading-verse-row${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}`}
+                  className={`reading-verse-row${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}${markedVerses.get(v.verse) ? ` marked cat-${markedVerses.get(v.verse)}` : ''}`}
                   onPointerDown={e => {
                     tapRef.current = { t: Date.now(), x: e.clientX, y: e.clientY, moved: false }
                   }}
@@ -1460,6 +1507,14 @@ function ChapterView({
                   )}
                   <span className="verse-number">{v.verse}</span>
                   <span className="verse-text">{v.text}</span>
+                  {/* The category NAME is what tells a mark apart from a
+                      selection: both tint the row, only a mark says what it is.
+                      Carries the reader's own naming. */}
+                  {markedVerses.get(v.verse) && (
+                    <span className="verse-mark-label">
+                      {categoryLabel(markedVerses.get(v.verse)!)}
+                    </span>
+                  )}
                 </div>
 
                 {/* Single-verse notes render inline beneath their verse row. */}
@@ -1559,6 +1614,7 @@ function ChapterView({
         reference={selReference}
         onClear={clearSelection}
         onNote={openComposerOnSelection}
+        onHighlight={key => void handleHighlight(key as NoteCategory)}
       />
 
       {/* Portaled to <body>, like MobileSelectionBar: this bar is position:fixed,
@@ -1579,6 +1635,28 @@ function ChapterView({
               <button className="verse-action-btn primary" onClick={handleQuickNoteFromSelection}>
                 Quick note
               </button>
+              {/* Same two choices as mobile: writing and marking are different
+                  acts and should look like it. */}
+              <div className="verse-action-hl">
+                <button
+                  className="verse-action-btn"
+                  onClick={() => setHighlightPicking(p => !p)}
+                  aria-expanded={highlightPicking}
+                >
+                  Highlight
+                </button>
+                {highlightPicking && (
+                  <div className="verse-action-hl-menu">
+                    <CategoryMenu
+                      title="Highlight as…"
+                      onPick={key => {
+                        setHighlightPicking(false)
+                        void handleHighlight(key as NoteCategory)
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
               <button className="verse-action-btn" onClick={handleStudyOnSelection}>
                 Study these verses
               </button>
