@@ -94,6 +94,11 @@ interface AppState {
   selectedPassageId: string | null
   // Chapter to open when drilling into a book (e.g. a search jump). null = 1.
   selectedChapter: number | null
+  // Verse to land on when the jump targeted one — a note search result knows
+  // the verse its note is anchored to, and "get me back to the place" is the
+  // point of searching your own notes. Highlighted and scrolled to by
+  // BookDetailPage. null when the jump was chapter-level.
+  selectedVerse: number | null
 }
 
 export default function App({
@@ -226,7 +231,10 @@ export default function App({
       passages: [],
       selectedBookName: deepLinkBook?.name ?? null,
       selectedPassageId: null,
-      selectedChapter: deepLinkBook ? initialDeepLink!.chapter : null
+      selectedChapter: deepLinkBook ? initialDeepLink!.chapter : null,
+      // Deep links are chapter-level today (/read/<book>/<chapter>), so nothing
+      // to land on. If they ever carry a verse, this is where it arrives.
+      selectedVerse: null
     }
   })
   // Mobile-only: the dedicated search surface (an overlay). Desktop search is
@@ -261,7 +269,12 @@ export default function App({
       destination: dest,
       // Tapping "Bible" always lands on the library, not a stale drill-down.
       ...(dest === 'bible'
-        ? { selectedBookName: null, selectedPassageId: null, selectedChapter: null }
+        ? {
+            selectedBookName: null,
+            selectedPassageId: null,
+            selectedChapter: null,
+            selectedVerse: null
+          }
         : {})
     }))
   }
@@ -289,6 +302,7 @@ export default function App({
       destination: 'bible',
       selectedBookName: book.name,
       selectedChapter: recent.chapter_start,
+      selectedVerse: null,
       selectedPassageId: null
     }))
   }
@@ -309,7 +323,8 @@ export default function App({
       destination: 'bible',
       selectedBookName: bookName,
       selectedPassageId: null,
-      selectedChapter: null
+      selectedChapter: null,
+      selectedVerse: null
     }))
   }
 
@@ -317,13 +332,18 @@ export default function App({
   // a search jump, the chapter strip, and swiping/tapping to the next chapter —
   // so the app's view state is always the chapter actually on screen, even when
   // the reader crosses into a different book without going near the library.
-  const handleJumpToChapter = (bookName: string, chapter: number): void => {
+  const handleJumpToChapter = (
+    bookName: string,
+    chapter: number,
+    verse: number | null = null
+  ): void => {
     setSearchOpen(false)
     setState(prev => ({
       ...prev,
       destination: 'bible',
       selectedBookName: bookName,
       selectedChapter: chapter,
+      selectedVerse: verse,
       selectedPassageId: null
     }))
   }
@@ -351,7 +371,14 @@ export default function App({
     }))
   }
 
-  const { destination, passages, selectedBookName, selectedPassageId, selectedChapter } = state
+  const {
+    destination,
+    passages,
+    selectedBookName,
+    selectedPassageId,
+    selectedChapter,
+    selectedVerse
+  } = state
 
   const selectedPassage = passages.find(p => p.id === selectedPassageId) || null
   const selectedBibleBook = selectedBookName
@@ -464,6 +491,9 @@ export default function App({
           onToggleHideNotes={() => setHideNotes(h => !h)}
           displayPrefs={displayPrefs}
           onNavigateChapter={handleJumpToChapter}
+          // A search result knows the verse, so land on it rather than at the
+          // top of the chapter. BookDetailPage highlights and scrolls to it.
+          initialHighlightVerses={selectedVerse !== null ? [selectedVerse] : undefined}
           onBack={() => {
             setStudyOpen(false)
             setState(prev => ({ ...prev, selectedBookName: null, selectedChapter: null }))

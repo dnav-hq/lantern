@@ -3,10 +3,11 @@ import { NoteSearchResult } from '../types'
 import { parseScriptureQuery, parseNoteLine } from '../utils/noteParser'
 import { formatRelativeTime } from '../utils/relativeTime'
 import { useApi } from '../api/context'
+import { bookByNumber } from '../utils/bibleBooks'
 
 export interface SearchJumpTargets {
-  // Jump into the Bible view at a book/chapter (verse is advisory context only
-  // for v1 — the chapter reader has no verse-scroll hook yet).
+  // Jump into the Bible view at a book/chapter, landing on `verse` when one is
+  // given: BookDetailPage highlights it and scrolls it into view.
   onJumpToChapter: (bookName: string, chapter: number, verse: number | null) => void
   // Open the full study containing a matched note.
   onOpenStudy: (passageId: string) => void
@@ -21,7 +22,39 @@ interface GlobalSearchProps extends SearchJumpTargets {
   autoFocus?: boolean
 }
 
+/**
+ * Where a note result should actually take you.
+ *
+ * Under the note-centric model a passage is invisible interim storage, so
+ * "open the study" is not an honest destination — the honest one is the
+ * chapter, at the verse the note is anchored to, with the note in context.
+ * The note carries its own anchor (with per-note overrides winning), and the
+ * result row carries the book, so no extra fetch is needed.
+ */
+export function noteLanding(r: NoteSearchResult): {
+  bookName: string
+  chapter: number
+  verse: number | null
+} | null {
+  const book = bookByNumber(r.book_number)
+  if (!book) return null
+  // reference_label is "Romans 8" or "Romans 8:28-30"; the chapter is the
+  // number right after the book name. An anchor override wins when present.
+  const labelChapter = /\s(\d+)(?::|$|\s)/.exec(r.reference_label.trim())
+  const chapter =
+    r.note.anchor_chapter_override ?? (labelChapter ? parseInt(labelChapter[1], 10) : null)
+  if (!chapter) return null
+  return { bookName: book.name, chapter, verse: r.note.anchor_start_verse ?? null }
+}
+
 const DEBOUNCE_MS = 120
+
+// How many note matches the list shows. We ask for one MORE than this: if the
+// extra one comes back, there are more matches than we are showing, and the
+// reader is told so. Silently cutting the list off is how someone concludes a
+// note is lost — which is the exact failure this whole retrieval arc exists to
+// prevent.
+const NOTE_RESULT_LIMIT = 50
 
 // First-line preview of a note with tag tokens stripped, for the result row.
 function notePreview(content: string): string {
@@ -56,6 +89,7 @@ export default function GlobalSearch({
   const api = useApi()
   const [query, setQuery] = useState('')
   const [noteResults, setNoteResults] = useState<NoteSearchResult[]>([])
+  const [noteResultsTruncated, setNoteResultsTruncated] = useState(false)
   const [notesLoading, setNotesLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -91,12 +125,16 @@ export default function GlobalSearch({
     let cancelled = false
     const handle = window.setTimeout(() => {
       api
-        .searchNotes(q)
+        .searchNotes(q, NOTE_RESULT_LIMIT + 1)
         .then(rows => {
-          if (!cancelled) setNoteResults(rows)
+          if (cancelled) return
+          setNoteResultsTruncated(rows.length > NOTE_RESULT_LIMIT)
+          setNoteResults(rows.slice(0, NOTE_RESULT_LIMIT))
         })
         .catch(() => {
-          if (!cancelled) setNoteResults([])
+          if (cancelled) return
+          setNoteResultsTruncated(false)
+          setNoteResults([])
         })
         .finally(() => {
           if (!cancelled) setNotesLoading(false)
@@ -183,6 +221,19 @@ export default function GlobalSearch({
   const nothing =
     hasQuery && scriptureResults.length === 0 && !notesLoading && noteResults.length === 0
 
+  // A note result lands you at the VERSE it is anchored to, not at the passage
+  // container. Falls back to opening the study only when the anchor cannot be
+  // resolved (an unrecognised book, or a label we cannot parse), so a result is
+  // never a dead end.
+  const openNote = useCallback(
+    (r: NoteSearchResult) => {
+      const landing = noteLanding(r)
+      if (landing) onJumpToChapter(landing.bookName, landing.chapter, landing.verse)
+      else onOpenStudy(r.passage_id)
+    },
+    [onJumpToChapter, onOpenStudy]
+  )
+
   // Flat, render-order list of every selectable row (scripture first, then
   // notes) so arrow keys/Enter can walk it without caring which section a
   // row lives in. Rebuilt whenever either section's data changes; the reset
@@ -194,10 +245,10 @@ export default function GlobalSearch({
           choose(() => onJumpToChapter(scripture.bookName, scripture.chapter, scripture.verse))
       })),
       ...noteResults.map(r => ({
-        onSelect: () => choose(() => onOpenStudy(r.passage_id))
+        onSelect: () => choose(() => openNote(r))
       }))
     ],
-    [scriptureResults, noteResults, choose, onJumpToChapter, onOpenStudy]
+    [scriptureResults, noteResults, choose, onJumpToChapter, openNote]
   )
 
   // A fresh query (or the results it produced) invalidates whatever was
@@ -255,7 +306,10 @@ export default function GlobalSearch({
       {(notesLoading || noteResults.length > 0) && (
         <div className="search-section" data-section="notes">
           <div className="search-section-label">
-            Notes{!notesLoading && noteResults.length > 0 ? ` · ${noteResults.length}` : ''}
+            Notes
+            {!notesLoading && noteResults.length > 0
+              ? ` · ${noteResults.length}${noteResultsTruncated ? '+' : ''}`
+              : ''}
           </div>
           {notesLoading && noteResults.length === 0 ? (
             <div className="search-note-loading">Searching notes…</div>
@@ -270,7 +324,7 @@ export default function GlobalSearch({
                   role="option"
                   aria-selected={flatIndex === activeIndex}
                   onMouseEnter={() => setActiveIndex(flatIndex)}
-                  onClick={() => choose(() => onOpenStudy(r.passage_id))}
+                  onClick={() => choose(() => openNote(r))}
                 >
                   <div className="search-result-note-top">
                     <span className="search-result-ref">{r.reference_label}</span>
@@ -282,6 +336,13 @@ export default function GlobalSearch({
                 </button>
               )
             })
+          )}
+          {/* Say it, rather than cutting the list off in silence. A reader who
+              cannot see their note and is told nothing concludes it is gone. */}
+          {noteResultsTruncated && !notesLoading && (
+            <p className="search-truncated">
+              Showing the first {noteResults.length} matches. Narrow the search to see more.
+            </p>
           )}
         </div>
       )}

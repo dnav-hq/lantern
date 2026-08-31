@@ -426,10 +426,10 @@ export class SupabaseBereanApi implements BereanApi {
     })
   }
 
-  async searchNotes(query: string): Promise<NoteSearchResult[]> {
+  async searchNotes(query: string, limit = 50): Promise<NoteSearchResult[]> {
     const q = query.trim()
     if (!q) return []
-    return this.read('searchNotes', q, async () => {
+    return this.read('searchNotes', [q, limit], async () => {
       // v1: case-insensitive substring match via ilike, joined up to the
       // owning passage for the workspace filter + result context. A Postgres
       // full-text index is a future optimization (see docs/BACKLOG.md).
@@ -444,7 +444,11 @@ export class SupabaseBereanApi implements BereanApi {
         .eq('sessions.passages.workspace_id', this.workspaceId)
         .ilike('content', `%${escaped}%`)
         .order('updated_at', { ascending: false })
-        .limit(50)
+        // Deliberately NOT paged like the collection reads above: search is a
+        // "top N matches" surface, not a complete history, so a bound is
+        // correct here. What was wrong was hiding it — the caller now chooses
+        // the bound and can tell the reader when it bit.
+        .limit(limit)
       const first = <T>(v: T | T[]): T => (Array.isArray(v) ? v[0] : v)
       const rows = this.assert(data, error) as unknown as Array<
         Record<string, unknown> & {
