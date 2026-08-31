@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NoteCategory, NoteWithPassageInfo } from '../types'
 import { findBookByAlias } from '../utils/bibleBooks'
+import { ALL, applyJournalFilters, booksPresent, emptyResultMessage } from '../utils/journalFilters'
 import { parseNoteLine } from '../utils/noteParser'
 import { formatRelativeTime } from '../utils/relativeTime'
 import { useApi } from '../api/context'
@@ -186,9 +187,12 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [view, setView] = useState<ViewMode>('notes')
   const [filter, setFilter] = useState<CategoryFilter>('all')
+  const [bookFilter, setBookFilter] = useState<number | typeof ALL>(ALL)
   const [filterOpen, setFilterOpen] = useState(false)
+  const [bookOpen, setBookOpen] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const filterRef = useRef<HTMLDivElement>(null)
+  const bookRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let settled = false
@@ -210,12 +214,16 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
   // Dismiss the category menu on an outside click or Escape — same shape as
   // every other lightweight popover in the app.
   useEffect(() => {
-    if (!filterOpen) return
+    if (!filterOpen && !bookOpen) return
     const onPointer = (e: MouseEvent): void => {
       if (!filterRef.current?.contains(e.target as Node)) setFilterOpen(false)
+      if (!bookRef.current?.contains(e.target as Node)) setBookOpen(false)
     }
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setFilterOpen(false)
+      if (e.key === 'Escape') {
+        setFilterOpen(false)
+        setBookOpen(false)
+      }
     }
     document.addEventListener('mousedown', onPointer)
     document.addEventListener('keydown', onKey)
@@ -223,17 +231,28 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
       document.removeEventListener('mousedown', onPointer)
       document.removeEventListener('keydown', onKey)
     }
-  }, [filterOpen])
+  }, [filterOpen, bookOpen])
 
   const entries = useMemo(() => buildEntries(notes), [notes])
 
-  // The filter slices the NOTES, then any chapter left with nothing drops out.
-  const visible = useMemo(() => {
-    if (filter === 'all') return entries
-    return entries
-      .map(entry => ({ ...entry, notes: entry.notes.filter(n => n.category === filter) }))
-      .filter(entry => entry.notes.length > 0)
-  }, [entries, filter])
+  // Filters compose: book at the entry level, category at the note level, then
+  // any chapter left with nothing drops out. Logic lives in journalFilters.ts
+  // so the rules are unit-testable without rendering the page.
+  const filters = useMemo(
+    () => ({ category: filter, bookNumber: bookFilter }),
+    [filter, bookFilter]
+  )
+  const visible = useMemo(() => applyJournalFilters(entries, filters), [entries, filters])
+
+  // Only the books the reader has ACTUALLY written in, in canon order — never a
+  // 66-item picker, which would read as a Bible index rather than as your notes.
+  const bookOptions = useMemo(() => booksPresent(entries), [entries])
+  const activeBook = bookOptions.find(b => b.number === bookFilter)
+
+  const clearFilters = useCallback(() => {
+    setFilter('all')
+    setBookFilter(ALL)
+  }, [])
 
   const toggleExpanded = useCallback((key: string) => {
     setExpanded(prev => {
@@ -289,6 +308,67 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
           </div>
         )}
       </div>
+      {/* Book filter. Only rendered once there is more than one book to choose
+          between: with a single book the control would be a no-op that still
+          costs a glance. */}
+      {bookOptions.length > 1 && (
+        <div className="journal-filter" ref={bookRef}>
+          <button
+            className="journal-filter-trigger"
+            aria-haspopup="listbox"
+            aria-expanded={bookOpen}
+            onClick={() => setBookOpen(open => !open)}
+          >
+            {activeBook ? activeBook.name : 'All books'}
+            <span className="journal-filter-caret" aria-hidden="true">
+              ▾
+            </span>
+          </button>
+          {bookOpen && (
+            <div className="journal-filter-menu" role="listbox" aria-label="Filter by book">
+              <button
+                className="journal-filter-option"
+                role="option"
+                aria-selected={bookFilter === ALL}
+                onClick={() => {
+                  setBookFilter(ALL)
+                  setBookOpen(false)
+                }}
+              >
+                All books
+                <span className="journal-filter-check" aria-hidden="true">
+                  ✓
+                </span>
+              </button>
+              {bookOptions.map(book => (
+                <button
+                  key={book.number}
+                  className="journal-filter-option"
+                  role="option"
+                  aria-selected={bookFilter === book.number}
+                  onClick={() => {
+                    setBookFilter(book.number)
+                    setBookOpen(false)
+                  }}
+                >
+                  {book.name}
+                  <span className="journal-filter-check" aria-hidden="true">
+                    ✓
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {/* A filter you forgot you set is worse than no filter: you conclude a
+          note is gone. So the active state is always legible and always one tap
+          from cleared. */}
+      {(filter !== 'all' || bookFilter !== ALL) && (
+        <button className="journal-filter-clear" onClick={clearFilters}>
+          Clear filters
+        </button>
+      )}
     </div>
   )
 
@@ -361,7 +441,13 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
         <div className="journal-body">
           {visible.length === 0 && (
             <p className="journal-empty-filter">
-              No {filter === 'all' ? '' : `${filter} `}notes yet.
+              {emptyResultMessage(filters, {
+                category: CATEGORY_OPTIONS.find(o => o.id === filter)?.label,
+                book: activeBook?.name
+              })}{' '}
+              <button className="journal-empty-clear" onClick={clearFilters}>
+                Clear filters
+              </button>
             </p>
           )}
           {visible.map(entry => {
