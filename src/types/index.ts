@@ -1,6 +1,21 @@
 import type { TranslationId } from '../bible/provider'
 export type NoteCategory = 'observation' | 'historical' | 'application' | 'personal'
 
+/**
+ * How one category is presented in a workspace: its label and colour.
+ *
+ * `key` is what a note stores and is STABLE — renaming changes `label`, never
+ * `key`, so existing notes keep their category. See
+ * src/utils/noteCategories.ts and supabase/migrations/0010_note_categories.sql.
+ */
+export interface NoteCategoryDef {
+  key: string
+  label: string
+  /** Hex, e.g. '#6b62d6'. */
+  color: string
+  sort_order: number
+}
+
 // All ids are client-generated UUIDs (crypto.randomUUID()).
 // Book identity lives in src/utils/bibleBooks.ts as a USFM book_number (1–66);
 // there is no Books table.

@@ -11,7 +11,8 @@ import type {
   CreatePassageInput,
   CreateNoteInput,
   UpdateNoteInput,
-  DeleteNoteResult
+  DeleteNoteResult,
+  NoteCategoryDef
 } from '../types'
 import { bookByNumber } from '../utils/bibleBooks'
 import { parseReferenceLabel } from '../utils/noteParser'
@@ -48,6 +49,9 @@ function passageInfo(p: Passage): Omit<NoteWithPassageInfo, keyof Note> {
 }
 
 export function createMemoryApi(): BereanApi {
+  // Category definitions. Empty means "nothing customised" and the caller
+  // falls back to the built-in four; see src/utils/noteCategories.ts.
+  let noteCategories: NoteCategoryDef[] = []
   return {
     async getPassages() {
       return [...passages.values()].sort((a, b) =>
@@ -244,6 +248,17 @@ export function createMemoryApi(): BereanApi {
 
     async updateSettings(patch: Partial<UserSettings>) {
       settings = { ...settings, ...patch }
+    },
+
+    // Starts empty, exactly like a real workspace that has never customised
+    // anything — so the built-in fallback is what tests and a fresh checkout
+    // actually exercise.
+    async getNoteCategories() {
+      return noteCategories
+    },
+
+    async saveNoteCategories(defs) {
+      noteCategories = defs
     }
   }
 }

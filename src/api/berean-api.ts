@@ -11,7 +11,8 @@ import type {
   CreatePassageInput,
   CreateNoteInput,
   UpdateNoteInput,
-  DeleteNoteResult
+  DeleteNoteResult,
+  NoteCategoryDef
 } from '../types'
 import { getBibleVerse } from '../bible/service'
 import { pageAll } from './paging'
@@ -424,6 +425,40 @@ export class SupabaseBereanApi implements BereanApi {
       if (pDelErr) throw new Error(pDelErr.message)
       result.deletedPassageId = passageId
       return result
+    })
+  }
+
+  // ── Note categories ─────────────────────────────────────────────────────
+  //
+  // Definitions only: `notes.category` stays the text key it already is, and
+  // this table says what that key MEANS here. An empty result is the normal
+  // case, not an error — it means nothing has been customised, and the caller
+  // falls back to the built-in four (src/utils/noteCategories.ts).
+  async getNoteCategories(): Promise<NoteCategoryDef[]> {
+    return this.read('getNoteCategories', undefined, async () => {
+      const { data, error } = await this.db
+        .from('note_categories')
+        .select('key, label, color, sort_order')
+        .eq('workspace_id', this.workspaceId)
+        .order('sort_order', { ascending: true })
+      return this.assert(data, error) as NoteCategoryDef[]
+    })
+  }
+
+  // Replace wholesale. Delete-then-insert rather than upsert-then-prune,
+  // because "what is stored" must end up exactly equal to what was passed —
+  // a category the reader reset to its default has to disappear, not linger.
+  async saveNoteCategories(defs: NoteCategoryDef[]): Promise<void> {
+    return this.write(async () => {
+      const { error: delErr } = await this.db
+        .from('note_categories')
+        .delete()
+        .eq('workspace_id', this.workspaceId)
+      if (delErr) throw new Error(delErr.message)
+      if (defs.length === 0) return
+      const rows = defs.map(d => ({ ...d, workspace_id: this.workspaceId }))
+      const { error } = await this.db.from('note_categories').insert(rows)
+      if (error) throw new Error(error.message)
     })
   }
 

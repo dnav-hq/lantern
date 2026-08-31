@@ -9,7 +9,8 @@ import type {
   CreatePassageInput,
   CreateNoteInput,
   UpdateNoteInput,
-  DeleteNoteResult
+  DeleteNoteResult,
+  NoteCategoryDef
 } from '../types'
 import type { ThemeId } from '../utils/useTheme'
 import type { TranslationId } from '../bible/provider'
@@ -101,4 +102,17 @@ export interface BereanApi {
   // path — updateSettings is a merge patch, not a full replace.
   getSettings(): Promise<UserSettings>
   updateSettings(patch: Partial<UserSettings>): Promise<void>
+
+  /**
+   * Category definitions for this workspace. An EMPTY result means "nothing
+   * customised", and the caller falls back to the built-in four — see
+   * resolveCategories(). It is never an error state.
+   */
+  getNoteCategories(): Promise<NoteCategoryDef[]>
+  /**
+   * Replace the stored definitions wholesale. Callers pass only what differs
+   * from the built-ins (changedFromDefaults), so a workspace that resets to
+   * defaults stores nothing at all rather than four redundant rows.
+   */
+  saveNoteCategories(defs: NoteCategoryDef[]): Promise<void>
 }
