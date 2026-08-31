@@ -69,8 +69,8 @@ describe('guest mode flag', () => {
 })
 
 describe('guest translations', () => {
-  it('offers BSB and KJV only — never ESV', () => {
-    expect(GUEST_TRANSLATIONS.map(t => t.id)).toEqual(['BSB', 'KJV'])
+  it('offers the free self-hostable translations — never ESV', () => {
+    expect(GUEST_TRANSLATIONS.map(t => t.id)).toEqual(['BSB', 'KJV', 'NET'])
   })
 
   it('coerces a stored ESV preference to BSB for a guest', () => {

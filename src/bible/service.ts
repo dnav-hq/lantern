@@ -8,6 +8,7 @@ import { FixtureBibleProvider } from './fixture'
 import { SelfHostedBibleProvider } from './self-hosted'
 import { KjvBibleProvider } from './kjv'
 import { KjvSelfHostedBibleProvider } from './kjv-self-hosted'
+import { NetSelfHostedBibleProvider } from './net-self-hosted'
 import { EsvBibleProvider } from './esv'
 import { EsvCachedBibleProvider } from './esv-cache'
 import { CodedError } from '../errors'
@@ -79,12 +80,30 @@ const tcvProvider: BibleProvider = new CachedBibleProvider(
   'TCV'
 )
 
+// NET: same shape as KJV's composition — helloao PRIMARY (cache-forever,
+// keyed 'NET' so its chapters never collide with BSB's in IndexedDB), the
+// self-hosted complete NET bundle as FALLBACK. NET needs no network provider
+// of its own: HelloaoBibleProvider already takes a translation code.
+//
+// NET is here on the merits, not just because it is free: it is a modern
+// translation whose reason for existing is to show where translators disagree,
+// which makes BSB/KJV/NET a genuinely informative three-way spread and feeds
+// the deep dive's divergence signal (docs/proposals/deep-dive-study.md).
+//
+// The licence grants the TEXT ONLY — the ~60,000 NET translator notes are
+// excluded and are not ours to ship. See net-self-hosted.ts.
+const netProvider: BibleProvider = new FallbackBibleProvider(
+  new CachedBibleProvider(new HelloaoBibleProvider('eng_net'), 'NET'),
+  new NetSelfHostedBibleProvider()
+)
+
 // One BibleProvider per translation. BSB's `provider` above is unchanged by
 // this map's existence — it's still the only thing a BSB read ever touches.
 const providers: Record<TranslationId, BibleProvider> = {
   BSB: provider,
   KJV: kjvProvider,
   ESV: esvProvider,
+  NET: netProvider,
   IRV: irvProvider,
   TCV: tcvProvider
 }

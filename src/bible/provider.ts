@@ -18,7 +18,7 @@ export interface BibleProvider {
 // the reading surfaces. Each id maps to its own BibleProvider instance in
 // service.ts — the provider itself is never asked for a translation, since a
 // given instance only ever serves one (see cache.ts's `translation` ctor arg).
-export type TranslationId = 'BSB' | 'KJV' | 'ESV' | 'IRV' | 'TCV'
+export type TranslationId = 'BSB' | 'KJV' | 'ESV' | 'NET' | 'IRV' | 'TCV'
 
 // The LANGUAGE a reader reads scripture in — a separate choice from which
 // translation, and the one that scopes the translation switcher (see

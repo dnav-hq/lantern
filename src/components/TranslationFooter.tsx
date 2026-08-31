@@ -32,13 +32,13 @@ function useDismissMenu(
  * switcher — so changing translation never needs Settings, and the reading
  * header stays free of a control almost nobody touches after the first read.
  * Kept as minimal as possible on purpose: just the name for the public-domain
- * texts (BSB/KJV); ESV and the two Tamil translations additionally carry the
- * copyright/attribution line their licence requires, which we are not free to
- * drop (see FinePrint).
+ * texts (BSB/KJV); ESV, NET and the two Tamil translations
+ * additionally carry the copyright/attribution line their licence requires,
+ * which we are not free to drop (see FinePrint).
  *
  * The menu is SCOPED TO THE READER'S BIBLE LANGUAGE — it offers that language's
- * translations and nothing else, so an English reader sees exactly BSB/KJV/ESV
- * as they always have and never meets a Tamil option here. Language itself is
+ * translations and nothing else, so an English reader sees exactly BSB/KJV/ESV/NET
+ * and never meets a Tamil option here. Language itself is
  * changed in reading preferences (ReadingPrefs), not in this footer: it is a
  * once-ever choice and would be clutter on every passage.
  */
@@ -132,7 +132,9 @@ const CC_BY_SA = 'https://creativecommons.org/licenses/by-sa/4.0/'
 
 /**
  * The licence line, where the licence requires one. BSB and KJV need nothing;
- * ESV carries Crossway's copyright notice; both Tamil texts are CC BY-SA 4.0,
+ * ESV carries Crossway's copyright notice; NET carries Biblical Studies Press's
+ * notice plus the "(NET)" link its free-app terms ask for; both Tamil texts are
+ * CC BY-SA 4.0,
  * which requires naming the licensor and linking the licence wherever the text
  * is shown — so it renders on the same faint footer line, in the same place,
  * as ESV's. Same pattern, one component, no per-surface duplication.
@@ -146,6 +148,22 @@ function FinePrint({ translation }: { translation: TranslationId }): React.React
         permission. All rights reserved. ESV Text Edition: 2016.{' '}
         <a href="https://www.esv.org" target="_blank" rel="noopener noreferrer">
           esv.org
+        </a>
+      </p>
+    )
+  }
+  if (translation === 'NET') {
+    // The NET licence permits quotation in electronic media without written
+    // permission; for a free app the requirement is that the quotation carry
+    // "(NET)" linked to netbible.com, alongside the standard notice. The
+    // licence covers the TEXT ONLY — the NET translator notes are excluded and
+    // are not shipped (see src/bible/net-self-hosted.ts).
+    return (
+      <p className="translation-footer-fine">
+        Scripture quoted by permission from the NET Bible® copyright ©1996-2017 by Biblical Studies
+        Press, L.L.C. All rights reserved.{' '}
+        <a href="https://netbible.com" target="_blank" rel="noopener noreferrer">
+          (NET)
         </a>
       </p>
     )

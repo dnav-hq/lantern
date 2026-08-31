@@ -53,14 +53,16 @@ export default defineConfig({
         // pointless work with a publish-the-source failure mode.
         sourcemap: false,
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
-        // Keep the self-hosted BSB fallback bundle (~1.2 MB gzip) OUT of the
-        // service-worker precache. The glob above is extension-scoped and
-        // already wouldn't match a `.gz`, but this is explicit belt-and-braces:
-        // if that bundle ever landed in the precache manifest, every user would
-        // download the entire Bible on first load, which defeats the whole point
-        // of fetching it lazily (only when helloao is down). See
-        // src/bible/self-hosted.ts.
-        globIgnores: ['**/bible/bsb.json.gz'],
+        // Keep the self-hosted fallback bundles (~1.2-1.3 MB gzip EACH, for
+        // BSB, KJV and NET) OUT of the service-worker precache. The glob above
+        // is extension-scoped and already wouldn't match a `.gz`, but this is
+        // explicit belt-and-braces: if those bundles ever landed in the
+        // precache manifest, every user would download several complete Bibles
+        // on first load, which defeats the whole point of fetching them lazily
+        // (only when helloao is down). Wildcarded rather than listed one by
+        // one, so adding a fourth translation cannot silently opt into
+        // precaching. See src/bible/self-hosted.ts.
+        globIgnores: ['**/bible/*.json.gz'],
         navigateFallback: '/index.html',
         runtimeCaching: [
           {

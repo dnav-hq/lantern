@@ -53,16 +53,6 @@ belongs to and why that arc comes when it does.
   (derek@harvous.com) and ask how he licensed his 11 translations; add a
   comment in `src/bible/esv.ts` pointing at the tripwire.
 
-- **Add NET Bible as the third offline translation (2026-08-30, CHEAP).**
-  Already served by the provider Lantern uses: `bible.helloao.org` id `eng_net`
-  (verified live — 66 books, 1,189 chapters, plus a `complete.json` whole-Bible
-  bundle in the same shape as `bsb.json.gz`). Free, no key, no rate limit,
-  unlimited caching; attribution is one "(NET)" label linked to netbible.org.
-  **The licence grants the TEXT ONLY — the ~60k translator notes are excluded
-  and are not ours.** Worth doing on the merits, not just availability: NET
-  exists to show where translators disagree, so BSB/KJV/NET is a genuinely
-  informative three-way spread that feeds the deep dive's divergence signal.
-
 - **ESV performance: persist the cache + prefetch neighbours (2026-08-30,
   compliant, unblocked).** ESV refetches on every reload because
   `src/bible/esv-cache.ts` is in-memory only — a deliberately conservative
@@ -481,6 +471,21 @@ belongs to and why that arc comes when it does.
   experience so it never feels crippled.
 
 ## Done
+
+- **Add NET Bible as the third offline translation (DONE 2026-08-31).** Shipped
+  as `NET`: helloao `eng_net` PRIMARY (cache-forever, keyed 'NET') with a
+  self-hosted `public/bible/net.json.gz` bundle as FALLBACK, mirroring the KJV
+  composition. Needed no network provider of its own — `HelloaoBibleProvider`
+  already takes a translation code. Bundle built by
+  `scripts/build-net-bundle.mjs`: 66 books, 1,189 chapters, 31,085 verses,
+  1.29 MB gzipped. Attribution renders in `TranslationFooter`'s FinePrint with
+  the "(NET)" link the free-app terms require. The licence grants the TEXT
+  ONLY; the ~60k NET translator notes are excluded and must not be shipped.
+  Also: guests get NET automatically (`GUEST_TRANSLATIONS` was already written
+  as a rule, not a list — free and self-hostable, unlike metered ESV), the
+  PWA precache ignore was widened to `**/bible/*.json.gz` so a fourth bundle
+  cannot silently opt in, and `FallbackBibleProvider`'s console message no
+  longer claims the fallback text is "real BSB".
 
 - **Pure black (OLED) boot splash + browser chrome + visible app version
   (2026-08-28).** Two small prod-polish items. (1) **OLED reaches the paint
