@@ -14,6 +14,21 @@ belongs to and why that arc comes when it does.
 
 ## Deferred
 
+- **Journal retrieval, step 1 of 5: FILTERING (DONE 2026-08-31).** Composable
+  book + category filters on the Journal, entirely client-side over the notes
+  already fetched — no API method, no migration, per
+  `docs/proposals/journal-retrieval.md` §3.1. Logic is in
+  `src/utils/journalFilters.ts` (structurally typed, React-free, 17 tests) so
+  the rules are testable without rendering. Categories are DERIVED from the
+  notes present rather than hardcoded, so user-owned categories need no second
+  pass here. Books offered are only the ones actually written in, in canon
+  order — never a 66-item picker. Both of the brief's rules are honoured: the
+  active filter is always visible with one-tap clear, and an empty result is a
+  sentence naming its cause ("No historical notes in Romans.") with the undo
+  inline. Remaining steps, in order: finish the existing search (land the
+  reader at the VERSE not the passage, and stop truncating silently at 50),
+  surface the passage-centric view, upgrade export, then saved filters.
+
 - **The note object — highlights, user-owned categories, and RETRIEVAL
   (2026-08-30, new arc; see `docs/proposals/note-object.md`).** A research pass
   contradicted the standing assumption that capture latency is Lantern's top
