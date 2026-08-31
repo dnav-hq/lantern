@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { NoteCategory } from '../types'
 import { useNoteCategories } from '../utils/useNoteCategories'
 import { useKeyboardCompose } from '../utils/useKeyboardCompose'
+import CategoryMenu from './CategoryMenu'
 
 // The mobile note composer: the calm space that eases up when you tap "Note"
 // on a verse selection. Ported from design/mobile-note-capture.html — see
@@ -205,7 +206,7 @@ export default function MobileNoteComposer({
           <button
             type="button"
             className="mobile-composer-tag-trigger"
-            aria-haspopup="listbox"
+            aria-haspopup="menu"
             aria-expanded={menuOpen}
             data-cat={category || 'none'}
             onClick={e => {
@@ -220,34 +221,19 @@ export default function MobileNoteComposer({
             </span>
           </button>
           {menuOpen && (
-            <div
-              className="mobile-composer-tag-menu"
-              role="listbox"
-              onClick={e => e.stopPropagation()}
-            >
-              {[
-                { value: null as NoteCategory | null, label: 'No tag' },
-                ...categoryOptions.map(c => ({ value: c.key as NoteCategory, label: c.label }))
-              ].map(opt => (
-                <button
-                  key={opt.value ?? 'none'}
-                  type="button"
-                  role="option"
-                  className="mobile-composer-tag-opt"
-                  data-cat={opt.value ?? 'none'}
-                  aria-selected={category === opt.value}
-                  onClick={() => {
-                    setCategory(opt.value)
-                    setMenuOpen(false)
-                  }}
-                >
-                  <span className="mobile-composer-dot" />
-                  {opt.label}
-                  <span className="mobile-composer-check" aria-hidden="true">
-                    ✓
-                  </span>
-                </button>
-              ))}
+            <div className="mobile-composer-tag-menu" onClick={e => e.stopPropagation()}>
+              <CategoryMenu
+                selected={category}
+                noneLabel="No tag"
+                onPickNone={() => {
+                  setCategory(null)
+                  setMenuOpen(false)
+                }}
+                onPick={key => {
+                  setCategory(key as NoteCategory)
+                  setMenuOpen(false)
+                }}
+              />
             </div>
           )}
         </div>
