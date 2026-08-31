@@ -29,6 +29,21 @@ belongs to and why that arc comes when it does.
   reader at the VERSE not the passage, and stop truncating silently at 50),
   surface the passage-centric view, upgrade export, then saved filters.
 
+- **ESV's quota ceiling is a SCALING constraint, and it should be watched
+  (2026-08-31).** Crossway's 5,000/day, 1,000/hour, 60/minute limit is PER
+  APPLICATION, so it is shared across every Lantern user, not per person
+  (`supabase/functions/esv-proxy/handler.ts`). With the cache now persisting,
+  a rough capacity estimate is 1,000-1,500 DAILY-ACTIVE ESV readers before the
+  daily cap binds. That is roughly two orders of magnitude beyond today, so it
+  blocks nothing now — but it is the one part of Lantern that does NOT scale for
+  free, and it is worth knowing before a growth push. Note the constraint is on
+  ESV, not on the app: BSB/KJV/NET are self-hosted and cost nothing per read at
+  any scale, so the failure mode is "one translation stops scaling", not "the
+  app cannot stay free". Mitigation already shipped: the reader falls back to
+  BSB with a visible notice rather than hitting a dead end. Next lever if it
+  ever binds: per-user metering in the proxy, or the licence conversation in
+  `translations-path-to-esv-niv.md` from a position of real traction.
+
 - **The note object — highlights, user-owned categories, and RETRIEVAL
   (2026-08-30, new arc; see `docs/proposals/note-object.md`).** A research pass
   contradicted the standing assumption that capture latency is Lantern's top
@@ -486,6 +501,29 @@ belongs to and why that arc comes when it does.
   experience so it never feels crippled.
 
 ## Done
+
+- **ESV cache now persists across reloads (DONE 2026-08-31).** `esv-cache.ts`
+  was in-memory only, a deliberate conservatism its own comment called
+  "stricter than the letter of the license requires", which meant every reload
+  refetched. It now persists via `esv-store.ts`, strictly inside the SAME
+  500-verse cap (a licence term, not a tuning knob), in its own IndexedDB
+  database so `purgeEsvStore()` can remove every stored verse in one call if
+  the licence ever changes. This is quota-POSITIVE as well as faster: fewer
+  refetches means a lighter draw on the per-application ceiling shared by all
+  users. The cap is re-enforced on hydration rather than trusting what was on
+  disk. Dennis approved the disk-write tradeoff. 5 new tests.
+
+- **Scripture falls back to BSB instead of a dead end (DONE 2026-08-31).**
+  When a translation fails (ESV quota exhausted, proxy down), the chapter
+  reader now serves BSB rather than showing "not available". Deliberately
+  OPT-IN per call site via `getBibleVerse(ref, translation, { fallbackTo })`,
+  because substituted text is only honest if the surface says so and not every
+  caller has somewhere to say it — `CrossRefPill`, `ReadingMode` and the API
+  layer keep the previous null behaviour. Where it is on, two things say so:
+  an inline notice above the text, and the translation footer, which names and
+  attributes the translation ACTUALLY shown. That second part matters: showing
+  Crossway's ESV copyright notice over BSB text would be a false attribution,
+  worse than the outage it papers over.
 
 - **Add NET Bible as the third offline translation (DONE 2026-08-31).** Shipped
   as `NET`: helloao `eng_net` PRIMARY (cache-forever, keyed 'NET') with a

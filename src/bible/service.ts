@@ -144,29 +144,56 @@ function parseReference(reference: string): ParsedReference | null {
   }
 }
 
+export interface GetBibleVerseOptions {
+  /**
+   * Serve this translation instead if the requested one fails, rather than
+   * returning null.
+   *
+   * OPT-IN PER CALL SITE, deliberately. ESV is metered against a quota shared
+   * by every Lantern user (5,000/day per application), so a reader can hit a
+   * dead end through no fault of their own — falling back to a self-hosted
+   * translation keeps them reading. But substituted text is only honest if the
+   * surface SAYS so, and not every caller has somewhere to say it. So the
+   * default stays "return null and let the surface show its own unavailable
+   * state", and a caller opts in only once it renders `servedTranslation`.
+   */
+  fallbackTo?: TranslationId
+}
+
 export async function getBibleVerse(
   reference: string,
-  translation: TranslationId = 'BSB'
+  translation: TranslationId = 'BSB',
+  options: GetBibleVerseOptions = {}
 ): Promise<BiblePassage | null> {
   if (!reference.trim()) return null
   const parsed = parseReference(reference)
   if (!parsed) return null
 
   let chapterVerses
+  let servedTranslation: TranslationId | undefined
   try {
     chapterVerses = await providers[translation].getChapter(parsed.bookNumber, parsed.chapterStart)
   } catch (err) {
-    // No translation-wide fallback lives here (BSB/KJV already have their own
-    // self-hosted fallback wrapped INSIDE their provider; ESV has none by
-    // design — see service.ts's esvProvider comment). Degrading to null lets
-    // every reading surface show its own "not available" state instead of an
-    // unhandled rejection.
+    // BSB/KJV/NET each have a self-hosted fallback wrapped INSIDE their
+    // provider, so reaching here for them means both the network and the
+    // bundle failed. ESV has no such bundle by design (a copyright-restricted
+    // translation cannot legally have one), so this is its only safety net.
     console.warn(
       `[lantern] ${translation} chapter fetch failed`,
       err instanceof CodedError ? err.code : err,
       err instanceof CodedError ? err.detailForConsole() : ''
     )
-    return null
+
+    const fallback = options.fallbackTo
+    if (!fallback || fallback === translation) return null
+    try {
+      chapterVerses = await providers[fallback].getChapter(parsed.bookNumber, parsed.chapterStart)
+      servedTranslation = fallback
+    } catch {
+      // The fallback failing too is not more informative than the original
+      // failure, which is already logged above.
+      return null
+    }
   }
   if (chapterVerses.length === 0) return null
 
@@ -180,6 +207,7 @@ export async function getBibleVerse(
   return {
     reference,
     text: verses.map(v => v.text).join(' '),
-    verses
+    verses,
+    ...(servedTranslation ? { servedTranslation } : {})
   }
 }

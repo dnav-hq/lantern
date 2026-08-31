@@ -42,8 +42,22 @@ function useDismissMenu(
  * changed in reading preferences (ReadingPrefs), not in this footer: it is a
  * once-ever choice and would be clutter on every passage.
  */
-export default function TranslationFooter(): React.ReactElement {
+/**
+ * `servedTranslation` is set only when scripture was substituted because the
+ * chosen translation failed (see getBibleVerse's fallbackTo). When it is, this
+ * footer must name and attribute the translation ACTUALLY ON SCREEN — showing
+ * Crossway's ESV copyright notice over BSB text would be a false attribution,
+ * which is worse than the outage it papers over.
+ */
+export default function TranslationFooter({
+  servedTranslation
+}: {
+  servedTranslation?: TranslationId
+} = {}): React.ReactElement {
   const [translation, setTranslation] = useReadingTranslation()
+  // What the reader CHOSE still drives the switcher; what was SERVED drives the
+  // label and the licence line.
+  const shown = servedTranslation ?? translation
   const [open, setOpen] = useState(false)
   const hostRef = useRef<HTMLDivElement>(null)
 
@@ -68,7 +82,7 @@ export default function TranslationFooter(): React.ReactElement {
           aria-expanded={open}
           title={current ? `Switch translation (now ${current.label})` : 'Switch translation'}
         >
-          {translation}
+          {shown}
           <svg
             className="translation-footer-caret"
             width="8"
@@ -123,7 +137,7 @@ export default function TranslationFooter(): React.ReactElement {
         </div>
       </div>
 
-      <FinePrint translation={translation} />
+      <FinePrint translation={shown} />
     </div>
   )
 }

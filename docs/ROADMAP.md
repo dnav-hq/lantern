@@ -124,9 +124,16 @@ and not in a grey area.
 - **No entity.** Crossway's licensing form auto-declines individuals and
   requires an organisation with a signatory, so ESV parity has a price of
   admission Dennis has judged not worth paying for a free app with one user.
-- **Unblocked work regardless:** add NET (queued), persist the ESV cache
-  within the 500-verse cap and prefetch neighbours (queued). Together these
-  close most of the felt speed gap; what remains is true offline.
+- **Shipped 2026-08-31:** NET added; the ESV cache now persists across reloads
+  within the cap (faster AND a lighter draw on the shared quota); and a failed
+  translation falls back to BSB with a visible notice rather than a dead end.
+  What remains is true offline, which needs a licence.
+- **The one ceiling on this arc.** Crossway's quota is per APPLICATION, shared
+  across all users, so ESV is the single part of Lantern that does not scale
+  for free — roughly 1,000-1,500 daily-active ESV readers. Everything else
+  (notes, retrieval, deep dive, map) costs nothing per read at any scale. So
+  the honest framing is "one translation stops scaling", not "the app cannot
+  stay free". Watch it before any growth push; see docs/BACKLOG.md.
 - **Revisit when:** Harvous replies, or a real paid feature exists and is worth
   trading ESV for.
 
