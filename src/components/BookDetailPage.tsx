@@ -353,6 +353,11 @@ function ChapterView({
   }, [localNotes])
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
+  // RichEditInput is uncontrolled (it owns a contenteditable), so a category
+  // picked from the menu reaches the text by remounting it on a fresh key.
+  // Only the picker bumps this — typing never does, so the caret is only ever
+  // moved by an action the reader just took deliberately.
+  const [editEpoch, setEditEpoch] = useState(0)
   const [confirmDelete, setConfirmDelete] = useState<NoteWithPassageInfo | null>(null)
   // Brief accent pulse on a note card right after a quick-edit save commits —
   // the quick-edit card itself unmounts synchronously on save, so this is
@@ -765,6 +770,21 @@ function ChapterView({
   const verseRefLabel = (start: number, end: number): string =>
     start === end ? `${bookName} ${chapter}:${start}` : `${bookName} ${chapter}:${start}-${end}`
 
+  // Desktop capture is free-form: the category lives in the prose as an
+  // "@observation" token, which noteParser reads back out. So the composer's
+  // category pill does not hold a second, parallel piece of state — it rewrites
+  // that token, exactly as typing it would. (The pattern mirrors noteParser's
+  // TAG_PATTERN; it is not exported, and this file is the only other place that
+  // needs to WRITE one.)
+  const CATEGORY_TOKEN = /@(obs(?:ervation)?|hist(?:orical)?|app(?:lication)?|per(?:sonal)?)\b ?/gi
+  const withCategoryToken = (text: string, key: NoteCategory | null): string => {
+    const stripped = text.replace(CATEGORY_TOKEN, '')
+    if (!key) return stripped
+    // Appended at the end, where a reader's own typing would leave it, rather
+    // than in front of the words they just wrote.
+    return `${stripped.replace(/\s+$/, '')} @${key} `.replace(/^ /, '')
+  }
+
   const composingNote =
     composing?.noteId != null ? (localNotes.find(n => n.id === composing.noteId) ?? null) : null
 
@@ -1120,6 +1140,14 @@ function ChapterView({
     )
   }
 
+  // What the composer's category pill shows: whatever the prose currently says.
+  const inlineParsed = parseNoteLine(inlineText)
+  const editParsed = parseNoteLine(editText)
+  const pickEditCategory = (key: NoteCategory | null): void => {
+    setEditText(t => withCategoryToken(t, key))
+    setEditEpoch(n => n + 1)
+  }
+
   const renderNoteGroup = (group: NoteGroup, opts?: { chip?: boolean }): React.ReactElement => {
     const { main, subnotes } = group
     const isHighlighted = highlightedNoteIds.has(main.id)
@@ -1157,13 +1185,23 @@ function ChapterView({
         )}
         {isEditing ? (
           <QuickEditCard
-            category={main.category}
+            category={editParsed.category ?? main.category}
             mode="edit"
+            reference={
+              hasAnchor
+                ? verseRefLabel(
+                    main.anchor_start_verse!,
+                    main.anchor_end_verse ?? main.anchor_start_verse!
+                  )
+                : undefined
+            }
+            onPickCategory={pickEditCategory}
             saveDisabled={!editText.trim()}
             onSave={() => void handleSaveEdit()}
             onCancel={() => setEditingNoteId(null)}
           >
             <RichEditInput
+              key={editEpoch}
               className="note-edit-textarea"
               initialValue={editText}
               onChange={setEditText}
@@ -1199,13 +1237,15 @@ function ChapterView({
                   {isSubEditing ? (
                     <div style={{ flex: 1 }}>
                       <QuickEditCard
-                        category={sub.category}
+                        category={editParsed.category ?? sub.category}
                         mode="edit"
+                        onPickCategory={pickEditCategory}
                         saveDisabled={!editText.trim()}
                         onSave={() => void handleSaveEdit()}
                         onCancel={() => setEditingNoteId(null)}
                       >
                         <RichEditInput
+                          key={editEpoch}
                           className="note-edit-textarea"
                           initialValue={editText}
                           onChange={setEditText}
@@ -1550,6 +1590,12 @@ function ChapterView({
                   <div className="inline-note-row">
                     <QuickEditCard
                       mode="create"
+                      reference={verseRefLabel(
+                        inlineParsed.anchorStart ?? v.verse,
+                        inlineParsed.anchorEnd ?? inlineParsed.anchorStart ?? v.verse
+                      )}
+                      category={inlineParsed.category}
+                      onPickCategory={key => setInlineText(t => withCategoryToken(t, key))}
                       saveDisabled={!inlineText.trim() || savingInline}
                       onSave={() => void handleInlineSave()}
                       onCancel={() => {
@@ -1604,8 +1650,8 @@ function ChapterView({
       </div>
 
       {/* Touch: the prototype's selection bar — the reference, a clear button
-        and one primary action. Everything else about a selection (start a
-        study, the Alt-drag copy hint) is a desktop affordance. */}
+        and one primary action. Starting a study is the desktop affordance the
+        touch bar leaves out. */}
       {/* The touch selection bar (portals itself to <body>, and owns its own
         enter/exit slide so a cancelled selection settles as cleanly as it
         opened). Desktop keeps the fuller verse-action-bar below. */}
@@ -1630,7 +1676,6 @@ function ChapterView({
         createPortal(
           <div className="verse-action-bar" role="toolbar" aria-label="Selection actions">
             <span className="verse-action-ref">{selReference}</span>
-            <span className="verse-action-hint">Hold Alt and drag to select the text to copy</span>
             <div className="verse-action-btns">
               <button className="verse-action-btn primary" onClick={handleQuickNoteFromSelection}>
                 Quick note
