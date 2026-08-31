@@ -38,6 +38,12 @@ export const SESSION_THRESHOLD = 2
 
 export interface InstallNudgeState {
   capability: InstallCapability
+  /**
+   * Phone/tablet viewport, matching the same breakpoint `useIsMobile` (in
+   * BookDetailPage.tsx) already uses for the touch layout — the nudge and the
+   * rest of the app must never disagree about what "mobile" means.
+   */
+  isMobile: boolean
   sessionCount: number
   engaged: boolean
   shown: boolean
@@ -47,12 +53,14 @@ export interface InstallNudgeState {
 /**
  * The whole decision, pure. Every clause is a "never":
  *  - never where there is nothing to install (already standalone → 'none'),
+ *  - never on a desktop viewport — there is no home screen to add to there,
  *  - never on a first visit or first paint,
  *  - never before a real engagement action,
  *  - never twice: once seen, or once dismissed, it is done for good.
  */
 export function shouldShowInstallNudge(state: InstallNudgeState): boolean {
   if (state.capability === 'none') return false
+  if (!state.isMobile) return false
   if (state.dismissed || state.shown) return false
   if (state.sessionCount < SESSION_THRESHOLD) return false
   if (!state.engaged) return false

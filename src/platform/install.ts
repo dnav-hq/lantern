@@ -162,6 +162,26 @@ export function subscribeInstallCapability(
   }
 }
 
+// ─── Viewport ────────────────────────────────────────────────────────────────
+//
+// Same breakpoint `useIsMobile` (BookDetailPage.tsx) uses for the touch reading
+// layout. A home screen is a phone/tablet thing; matching that breakpoint means
+// the install nudge and the rest of the app can never disagree about what
+// "mobile" means.
+const MOBILE_QUERY = '(max-width: 768px)'
+
+/** True on a phone/tablet-width viewport, false on desktop. */
+export function isMobileViewport(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
+  try {
+    return window.matchMedia(MOBILE_QUERY).matches
+  } catch {
+    // matchMedia exists everywhere we ship, but an odd webview throwing here
+    // must not take the app down over a nudge.
+    return false
+  }
+}
+
 /**
  * Replay the stashed prompt. Returns the user's answer, or 'unavailable' when
  * there was nothing to replay (iOS, or a browser that never fired the event).

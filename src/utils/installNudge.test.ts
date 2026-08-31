@@ -6,6 +6,7 @@ import { shouldShowInstallNudge, SESSION_THRESHOLD, type InstallNudgeState } fro
 // below turns exactly one thing off, so each assertion names one "never".
 const QUALIFIED: InstallNudgeState = {
   capability: 'prompt',
+  isMobile: true,
   sessionCount: SESSION_THRESHOLD,
   engaged: true,
   shown: false,
@@ -61,11 +62,35 @@ describe('shouldShowInstallNudge — never where there is nothing to install', (
     expect(
       shouldShowInstallNudge({
         capability: 'none',
+        isMobile: true,
         sessionCount: 99,
         engaged: true,
         shown: false,
         dismissed: false
       })
     ).toBe(false)
+  })
+})
+
+describe('shouldShowInstallNudge — mobile only', () => {
+  it('does not show on a desktop viewport, even with every other condition met', () => {
+    expect(shouldShowInstallNudge({ ...QUALIFIED, isMobile: false })).toBe(false)
+  })
+
+  it('stays closed on desktop no matter how engaged or long-returning the reader is', () => {
+    expect(
+      shouldShowInstallNudge({
+        capability: 'prompt',
+        isMobile: false,
+        sessionCount: 99,
+        engaged: true,
+        shown: false,
+        dismissed: false
+      })
+    ).toBe(false)
+  })
+
+  it('composes with the other rules rather than overriding them: mobile alone is not enough', () => {
+    expect(shouldShowInstallNudge({ ...QUALIFIED, isMobile: true, engaged: false })).toBe(false)
   })
 })
