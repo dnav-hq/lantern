@@ -321,9 +321,11 @@ prioritized.
   direct written confirmation that an app is a licensable use — see the
   proposal's "Trigger to revisit." **Superseded on the licensing question by
   `docs/proposals/translations-path-to-esv-niv.md` (2026-08-30)**, which
-  enumerates eight routes to ESV and/or NIV and adds an Australian one nobody
-  has tried: the NIV licence for Australia/NZ/South Africa reportedly sits with
-  the local Bible Societies rather than Biblica direct.
+  enumerates eight routes to ESV and/or NIV. **Corrected 2026-08-31:** the
+  brief's Australian angle (NIV rights sitting with Bible Society Australia)
+  is a dead end — BSA holds a PRINT publishing licence only, and Biblica Inc.
+  holds rest-of-world digital rights directly. See the corrections section at
+  the top of that brief.
 
 - **Two unanswered ESV licensing questions — ask Crossway before they bite.**
   `docs/proposals/translations-path-to-esv-niv.md` (2026-08-30) found both, and
@@ -336,9 +338,19 @@ prioritized.
   whether an Australian sole trader with an ABN clears that or whether a
   separate legal person (Pty Ltd, $636 + $342/yr) is genuinely required. The
   brief recommends emailing `licensing@crossway.org` first, before spending
-  anything, and ships the ready-to-send draft. Blocks nothing today: ESV is live
-  and compliant, and stays lawful indefinitely as long as Lantern charges for
-  nothing.
+  anything, and ships the ready-to-send draft. **Question (2) is now ANSWERED,
+  2026-08-31:** Crossway's ESV Digital Licensing Proposal form states on its
+  first field that "we do not license to individuals; such requests will be
+  automatically declined", and requires a legal organization name, a history of
+  the organization, and a signatory with a position. An entity is mandatory,
+  not merely preferred, and the wording is "organization or ministry" — which
+  in Australia points at an incorporated association rather than the Pty Ltd
+  the brief costed. **Do not submit that form as an individual**; a decline
+  spends the first contact. Blocks nothing today: api.esv.org explicitly
+  permits use in mobile apps and other digital media WITHOUT formal permission,
+  so the current integration is lawful and stays that way indefinitely as long
+  as Lantern charges for nothing. Dennis's call 2026-08-31: not pursuing the
+  publisher enquiries for now; only the peer enquiry to Harvous was sent.
 
 - **Groups / shared workspaces.** `docs/proposals/groups-shared-workspaces.md`
   (2026-07-22) researched this in full and found the "no migration" framing

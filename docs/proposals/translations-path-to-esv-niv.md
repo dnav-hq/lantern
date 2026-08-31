@@ -26,6 +26,96 @@ demanding licensing fees", forcing projects to remove the NIV
 ([The Other Cheek, 2023-12-03](https://theothercheek.com.au/bible-publishers-stewards-or-gatekeepers/),
 checked 2026-08-30). A route that depends on nobody looking is not a route.
 
+## Corrections after live verification (2026-08-31)
+
+Two of this brief's findings were checked against the live sites the day after
+it was written, and both need amending. The brief's reasoning holds; two of its
+facts do not. Read this section before acting on Routes 2, 3, 4 or 6.
+
+### Route 6 (Bible Society Australia) is a dead end — print rights only
+
+The brief called this "the most interesting finding". It is half right, and the
+half that is wrong is the half that mattered.
+
+BSA **does** hold an Australian NIV licence: their own publishing page lists
+NIV editions they publish (NIV Thinline, NIV Bicentennial Edition, NIV
+Bicentenary Gospel of Luke — biblesociety.org.au/publishing/, checked
+2026-08-31). But that is a **print publishing** licence. Nothing anywhere on
+biblesociety.org.au mentions permissions, rights, copyright licensing, or
+digital text licensing, and their only contact is a general enquiries address
+(bibles@biblesociety.org.au).
+
+Biblica's actual NIV territory split is HarperCollins Christian (US/Canada),
+Hodder & Stoughton (UK/EU/EFTA), and **Biblica Inc. directly for the rest of
+the world**. Australia sits in that last bucket, and Biblica's Terms of Use §6
+routes every above-guideline permission request to their Rights and Permissions
+Administrator with no regional carve-out.
+
+**So Biblica is the only NIV route, not a parallel one.** Their permission
+request form (biblica.com/permission-request-form/, live 2026-08-31) has a
+dedicated Section 6, "Electronic Use of Biblica's Bible Texts and Audios",
+which is the correct intake. Writing to BSA first would at best be forwarded.
+
+### Route 2 (apply to Crossway as an individual) is not a long shot, it is an
+### automatic decline
+
+The brief recommended emailing `licensing@crossway.org` first and treated the
+individual-versus-organisation question as genuinely open. The live ESV Digital
+Licensing Proposal form settles it. Its first field carries this note, verbatim
+(read 2026-08-31):
+
+> *Note on Eligibility: Please ensure you are applying on behalf of a formal
+> organization or ministry. As a matter of policy, we do not license to
+> individuals; such requests will be automatically declined.*
+
+The form also requires a **Legal Organization Name**, a **History of
+Organization**, and a **Signatory for the Company or Organization** with a
+named Position. There is no path through it for a person.
+
+Consequences:
+
+- **Do not submit the form as an individual.** A declined application is worse
+  than none: it spends the first contact and puts the "no" on record.
+- The email to Crossway should therefore ask an **eligibility question**, not
+  make an application: which entity form would qualify, and is offline caching
+  even grantable to a small licensee. Ask before registering anything, so that
+  if an entity is ever formed it is the right one.
+- The wording is **"organization or ministry"**, not "company". In Australia
+  that points at an **incorporated association** (the standard small
+  not-for-profit structure, cheaper to run than a Pty Ltd) rather than the
+  Pty Ltd the brief costed. Ask about that specifically.
+- The form also asks **"Will your digital platform or application incorporate
+  or use any form of Artificial Intelligence (AI) technology?"** Biblica has an
+  equivalent requirement. Given the deep-dive roadmap, answer this by
+  describing intent (no AI-authored interpretation of scripture, no training on
+  the text) rather than ticking a box, or a granted licence may not cover what
+  gets built later.
+
+### One thing the live check found in Lantern's favour
+
+api.esv.org states plainly (read 2026-08-31):
+
+> "While the ESV API is primarily recommended for website integration... its
+> use in mobile apps or other digital media is permitted **without formal
+> permission**, provided all general conditions stated above are met."
+
+So Lantern being a PWA is explicitly fine as it stands. Nothing about the
+current integration is in a grey area. **The only thing that needs a licence is
+exceeding the caps** — which is exactly the offline ask, and nothing else.
+
+### Where this leaves the recommendation
+
+The brief's ranked first move (ask Crossway before spending anything) survives,
+with its purpose changed from "apply" to "establish eligibility". Everything
+else is unchanged: Lantern stays free, ESV stays live and lawful, and no entity
+is formed until an answer makes clear it would buy something specific.
+
+**Decision recorded 2026-08-31:** Dennis is not sending the Crossway or Biblica
+enquiries at this stage, judging the organisation-shaped intake unlikely to go
+anywhere for a solo developer. Only the peer enquiry to Harvous
+(derek@harvous.com) was sent. This section stands as the record of what the
+routes actually are, if and when that changes.
+
 ## Where Lantern actually stands today
 
 ESV is **already live in production** on Crossway's free `api.esv.org` tier,
