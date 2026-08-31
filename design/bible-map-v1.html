@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lantern — map v1 ideation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f4f0e8;
+        --surface: #fbf9f4;
+        --surface-2: #ece6da;
+        --border: #e2dccf;
+        --border-strong: #d8d0c0;
+        --text: #201e1a;
+        --text-muted: #6a6353;
+        --text-faint: #938a77;
+        --accent: #6b62d6;
+        --accent-ink: #594fd1;
+        --accent-weak: rgba(107, 98, 214, 0.11);
+        --accent-soft: rgba(107, 98, 214, 0.18);
+        --on-accent: #fff;
+        --cat-historical: #3f8f5b;
+        --cat-historical-ink: #316f47;
+        --ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --scripture-font: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+        --radius-sm: 7px;
+        --radius-md: 12px;
+        --radius-lg: 18px;
+        --elev-2: 0 2px 6px rgba(20, 16, 8, 0.06), 0 8px 20px -6px rgba(20, 16, 8, 0.1);
+        --elev-3: 0 6px 16px -4px rgba(20, 16, 8, 0.12), 0 20px 40px -12px rgba(20, 16, 8, 0.18);
+        --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        --ease-calm: cubic-bezier(0.45, 0, 0.15, 1);
+
+        /* map-specific, proposed */
+        --map-sea: #dfe3e2;
+        --map-sea-deep: #d3d9d8;
+        --map-land: #efe9dc;
+        --map-land-high: #e7dfcd;
+        --map-contour: rgba(150, 138, 112, 0.28);
+        --map-coast: #c9c0ab;
+        --map-water: #b9c4c6;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--ui-font);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 20px 64px;
+      }
+
+      .page-head {
+        margin-bottom: 22px;
+      }
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 0 0 6px;
+      }
+      h1 {
+        font-family: var(--scripture-font);
+        font-weight: 600;
+        font-size: 26px;
+        margin: 0 0 6px;
+        letter-spacing: -0.01em;
+      }
+      .sub {
+        color: var(--text-muted);
+        font-size: 14px;
+        margin: 0;
+        max-width: 62ch;
+        line-height: 1.55;
+      }
+
+      .callout {
+        margin: 18px 0 26px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--cat-historical);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text-muted);
+      }
+      .callout strong {
+        color: var(--text);
+      }
+
+      /* ---------- the doorway that opens the map ---------- */
+      .door {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        text-align: left;
+        padding: 14px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        font: inherit;
+        color: inherit;
+        transition: box-shadow 200ms var(--ease-out), transform 200ms var(--ease-out);
+        margin-bottom: 26px;
+      }
+      .door:hover {
+        box-shadow: var(--elev-2);
+        transform: translateY(-1px);
+      }
+      .door-mark {
+        flex: none;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: var(--accent-weak);
+        display: grid;
+        place-items: center;
+      }
+      .door-mark svg {
+        display: block;
+      }
+      .door-text {
+        font-family: var(--scripture-font);
+        font-size: 17px;
+      }
+      .door-meta {
+        display: block;
+        font-family: var(--ui-font);
+        font-size: 12px;
+        color: var(--text-faint);
+        margin-top: 2px;
+      }
+
+      /* ---------- layout ---------- */
+      .board {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 316px;
+        gap: 18px;
+        align-items: start;
+      }
+      @media (max-width: 880px) {
+        .board {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      .map-card {
+        position: relative;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        background: var(--map-sea);
+        box-shadow: var(--elev-2);
+      }
+      svg.map {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .map-title {
+        position: absolute;
+        top: 14px;
+        left: 16px;
+        font-family: var(--scripture-font);
+        font-size: 13px;
+        letter-spacing: 0.02em;
+        color: var(--text-muted);
+        background: rgba(251, 249, 244, 0.82);
+        backdrop-filter: blur(3px);
+        padding: 4px 9px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+      }
+
+      /* place marks */
+      .place {
+        cursor: pointer;
+      }
+      .place .hit {
+        fill: transparent;
+      }
+      .place .dot {
+        fill: var(--surface);
+        stroke: #4a4336;
+        stroke-width: 1.4;
+        transition: r 200ms var(--ease-out);
+      }
+      .place.certain .dot {
+        fill: #4a4336;
+      }
+      .place.disputed .dot {
+        fill: var(--surface);
+        stroke-dasharray: 2.2 2;
+      }
+      .place .label {
+        font-family: var(--scripture-font);
+        font-size: 11.5px;
+        fill: var(--text);
+        paint-order: stroke;
+        stroke: rgba(244, 240, 232, 0.9);
+        stroke-width: 3px;
+        stroke-linejoin: round;
+        pointer-events: none;
+      }
+      .place.disputed .label {
+        fill: var(--text-muted);
+        font-style: italic;
+      }
+      .place:hover .dot,
+      .place.active .dot {
+        fill: var(--accent);
+        stroke: var(--accent-ink);
+      }
+      .place.active .halo {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .halo {
+        fill: var(--accent-soft);
+        opacity: 0;
+        transform: scale(0.4);
+        transform-origin: center;
+        transform-box: fill-box;
+        transition: opacity 260ms var(--ease-out), transform 260ms var(--ease-out);
+        pointer-events: none;
+      }
+
+      /* the journey */
+      .journey {
+        fill: none;
+        stroke: var(--accent);
+        stroke-width: 1.6;
+        stroke-dasharray: 4 4.5;
+        opacity: 0.55;
+        stroke-linecap: round;
+      }
+      .journey-glow {
+        fill: none;
+        stroke: var(--accent);
+        stroke-width: 5;
+        opacity: 0.07;
+        stroke-linecap: round;
+      }
+
+      /* scale bar */
+      .scale text {
+        font-family: var(--ui-font);
+        font-size: 9.5px;
+        fill: var(--text-faint);
+      }
+      .scale line {
+        stroke: var(--text-faint);
+        stroke-width: 1;
+      }
+
+      /* ---------- side panel ---------- */
+      .panel {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--surface);
+        padding: 16px 16px 18px;
+        box-shadow: var(--elev-2);
+        min-height: 300px;
+      }
+      .panel h2 {
+        font-family: var(--scripture-font);
+        font-size: 20px;
+        margin: 0 0 2px;
+        font-weight: 600;
+      }
+      .panel .modern {
+        font-size: 12px;
+        color: var(--text-faint);
+        margin: 0 0 12px;
+      }
+
+      .confidence {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        margin-bottom: 12px;
+        border: 1px solid transparent;
+      }
+      .confidence.certain {
+        background: rgba(63, 143, 91, 0.12);
+        color: var(--cat-historical-ink);
+        border-color: rgba(63, 143, 91, 0.22);
+      }
+      .confidence.disputed {
+        background: var(--surface-2);
+        color: var(--text-muted);
+        border-color: var(--border-strong);
+      }
+
+      .verse {
+        font-family: var(--scripture-font);
+        font-size: 15px;
+        line-height: 1.68;
+        margin: 0 0 10px;
+        padding-left: 11px;
+        border-left: 2px solid var(--border-strong);
+      }
+      .verse .ref {
+        display: block;
+        font-family: var(--ui-font);
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin-bottom: 3px;
+      }
+
+      .prov {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+        font-size: 11.5px;
+        line-height: 1.6;
+        color: var(--text-faint);
+      }
+      .prov a {
+        color: var(--accent-ink);
+      }
+
+      .empty {
+        color: var(--text-faint);
+        font-size: 13px;
+        line-height: 1.6;
+        font-family: var(--scripture-font);
+        font-size: 15px;
+      }
+
+      /* legend */
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-top: 14px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+      .legend .item {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .swatch {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        border: 1.4px solid #4a4336;
+        flex: none;
+      }
+      .swatch.solid {
+        background: #4a4336;
+      }
+      .swatch.open {
+        background: var(--surface);
+        border-style: dashed;
+      }
+      .swatch.line {
+        width: 20px;
+        height: 0;
+        border: 0;
+        border-top: 1.6px dashed var(--accent);
+        border-radius: 0;
+      }
+
+      .notes {
+        margin-top: 34px;
+        border-top: 1px solid var(--border);
+        padding-top: 22px;
+      }
+      .notes h3 {
+        font-family: var(--scripture-font);
+        font-size: 17px;
+        margin: 0 0 10px;
+      }
+      .notes ul {
+        margin: 0 0 18px;
+        padding-left: 18px;
+        color: var(--text-muted);
+        font-size: 13.5px;
+        line-height: 1.7;
+      }
+      .notes li {
+        margin-bottom: 6px;
+      }
+      .notes strong {
+        color: var(--text);
+      }
+      .q {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 14px 16px;
+        font-size: 13.5px;
+        line-height: 1.7;
+        color: var(--text-muted);
+      }
+      .q p:first-child {
+        margin-top: 0;
+      }
+      .q p:last-child {
+        margin-bottom: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="page-head">
+        <p class="eyebrow">Design ideation · not built</p>
+        <h1>The map, as a doorway</h1>
+        <p class="sub">
+          One screen of Genesis 12, to argue three things: that the map is a door you open rather
+          than a panel that is always there, that geography is a lens on the text rather than a
+          picture beside it, and that admitting what scholars do not know is a feature.
+        </p>
+      </div>
+
+      <div class="callout">
+        <strong>Honesty note.</strong> Place coordinates below are real, to roughly the precision
+        OpenBible publishes. The coastline and contours are <strong>illustrative placeholder
+        geometry drawn for this mockup</strong> and are not accurate. In the real build they come
+        from Natural Earth via the build-time ETL in
+        <code>docs/proposals/bible-map-v1.md</code>. Nothing here should be treated as authentic
+        cartography yet.
+      </div>
+
+      <button class="door" id="door">
+        <span class="door-mark" aria-hidden="true">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+            <path
+              d="M8.5 15.5s5.5-4.6 5.5-8.6a5.5 5.5 0 1 0-11 0c0 4 5.5 8.6 5.5 8.6Z"
+              stroke="#594fd1"
+              stroke-width="1.4"
+              stroke-linejoin="round"
+            />
+            <circle cx="8.5" cy="6.9" r="1.9" stroke="#594fd1" stroke-width="1.4" />
+          </svg>
+        </span>
+        <span class="door-text">
+          Follow Abram's journey
+          <span class="door-meta">6 places · about 1,000 km on foot</span>
+        </span>
+      </button>
+
+      <div class="board">
+        <div>
+          <div class="map-card">
+            <div class="map-title">Genesis 12 · Haran to Egypt</div>
+            <svg
+              class="map"
+              viewBox="0 0 720 560"
+              role="img"
+              aria-label="Stylised map of the ancient Near East showing places in Genesis 12"
+            >
+              <defs>
+                <!-- faint paper grain -->
+                <filter id="grain">
+                  <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="7" />
+                  <feColorMatrix
+                    type="matrix"
+                    values="0 0 0 0 0.55 0 0 0 0 0.5 0 0 0 0 0.4 0 0 0 0.055 0"
+                  />
+                </filter>
+                <clipPath id="frame"><rect x="0" y="0" width="720" height="560" /></clipPath>
+              </defs>
+
+              <g clip-path="url(#frame)">
+                <!-- sea -->
+                <rect width="720" height="560" fill="var(--map-sea)" />
+
+                <!-- landmass: ILLUSTRATIVE ONLY -->
+                <path
+                  id="land"
+                  d="M-20,-20 L740,-20 L740,120 C700,150 640,150 600,180
+                     C560,210 540,250 500,280 C470,302 440,300 415,325
+                     C395,345 385,380 380,420 C376,455 372,500 368,580
+                     L200,580 C205,520 215,470 225,430 C200,415 175,400 150,395
+                     C110,388 70,400 30,420 L-20,440 Z"
+                  fill="var(--map-land)"
+                  stroke="var(--map-coast)"
+                  stroke-width="1.2"
+                />
+                <!-- highland shading -->
+                <path
+                  d="M400,150 C470,145 520,190 505,250 C492,300 430,315 400,290
+                     C372,266 368,190 400,150 Z"
+                  fill="var(--map-land-high)"
+                  opacity="0.85"
+                />
+                <path
+                  d="M330,300 C370,296 392,340 380,392 C370,432 336,442 318,412
+                     C300,382 302,318 330,300 Z"
+                  fill="var(--map-land-high)"
+                  opacity="0.7"
+                />
+                <!-- contour hints -->
+                <g stroke="var(--map-contour)" fill="none" stroke-width="0.8">
+                  <path d="M410,170 C465,168 505,205 494,250 C484,290 435,300 412,280" />
+                  <path d="M420,192 C462,190 490,215 482,248 C475,278 440,286 423,270" />
+                  <path d="M336,318 C368,316 382,352 373,390 C365,420 342,428 328,404" />
+                  <path d="M344,336 C368,335 376,360 370,388 C364,410 348,414 338,396" />
+                </g>
+
+                <!-- Jordan / Dead Sea / Galilee, illustrative -->
+                <g fill="var(--map-water)" opacity="0.85">
+                  <ellipse cx="404" cy="286" rx="9" ry="12" />
+                  <ellipse cx="399" cy="372" rx="8" ry="26" />
+                </g>
+                <path
+                  d="M404,298 C401,320 400,332 399,346"
+                  stroke="var(--map-water)"
+                  stroke-width="2"
+                  fill="none"
+                />
+                <!-- Nile, illustrative -->
+                <path
+                  d="M150,560 C160,500 170,470 176,440 C182,412 176,398 160,392"
+                  stroke="var(--map-water)"
+                  stroke-width="2.4"
+                  fill="none"
+                  opacity="0.85"
+                />
+
+                <text
+                  x="120"
+                  y="140"
+                  font-family="'Source Serif 4', Georgia, serif"
+                  font-size="13"
+                  fill="#8d9695"
+                  font-style="italic"
+                  letter-spacing="0.16em"
+                >
+                  THE GREAT SEA
+                </text>
+
+                <!-- journey + places injected here -->
+                <g id="journeyLayer"></g>
+                <g id="placeLayer"></g>
+
+                <!-- scale bar -->
+                <g class="scale" transform="translate(560,516)">
+                  <line x1="0" y1="0" x2="96" y2="0" />
+                  <line x1="0" y1="-4" x2="0" y2="4" />
+                  <line x1="96" y1="-4" x2="96" y2="4" />
+                  <text x="48" y="-8" text-anchor="middle">200 km</text>
+                </g>
+
+                <rect width="720" height="560" filter="url(#grain)" opacity="0.5" />
+              </g>
+            </svg>
+          </div>
+
+          <div class="legend">
+            <span class="item"><span class="swatch solid"></span> Location agreed</span>
+            <span class="item"><span class="swatch open"></span> Location debated</span>
+            <span class="item"><span class="swatch line"></span> Journey in this chapter</span>
+          </div>
+        </div>
+
+        <aside class="panel" id="panel">
+          <p class="empty">Tap a place to see what happens there in this chapter.</p>
+        </aside>
+      </div>
+
+      <div class="notes">
+        <h3>What this mockup is arguing</h3>
+        <ul>
+          <li>
+            <strong>The map is behind a door, not always on.</strong> It opens from one line in the
+            reader's own words, and only because Genesis 12 actually has geography worth opening.
+            A chapter with no places shows no door.
+          </li>
+          <li>
+            <strong>The door names the payoff, not the feature.</strong> "Follow Abram's journey ·
+            about 1,000 km on foot" primes a question. "Map" would not. The distance is the hook,
+            because the thing most readers have never felt is how far this was.
+          </li>
+          <li>
+            <strong>Disputed locations look disputed.</strong> A dashed open ring and an italic
+            label, not a confident pin. 58% of biblical places have more than one proposed
+            location, so this is the normal case and the design has to carry it without apology.
+          </li>
+          <li>
+            <strong>Provenance is visible.</strong> Every place links back to its OpenBible entry.
+            No competitor bothers, and it is the cheapest possible proof that we did not invent
+            the geography.
+          </li>
+          <li>
+            <strong>Geography points back at the text.</strong> Tapping a place gives you the
+            verses set there, not an encyclopedia entry. The map is a way into scripture, not a
+            destination.
+          </li>
+        </ul>
+
+        <h3>Open questions for you</h3>
+        <div class="q">
+          <p>
+            <strong>1. How hand-made should it look?</strong> This is deliberately restrained:
+            paper grain, two tones of land, a few contour strokes. The alternative is a much more
+            drawn, illustrative style with hachured hills and lettered regions, closer to a
+            printed study Bible plate. More beautiful, considerably more work, and harder to keep
+            legible on a phone.
+          </p>
+          <p>
+            <strong>2. Does the journey line belong here at all?</strong> It is the most striking
+            thing on the screen, and it is also the most interpretive: sequencing places into a
+            route is a reading of the chapter. Genesis 12 is explicit about the order, so it is
+            safe here. Many chapters are not.
+          </p>
+          <p>
+            <strong>3. Labels on the map, or only in the panel?</strong> Labels make it feel like
+            a real map and are the first thing to break on a small screen.
+          </p>
+          <p>
+            <strong>4. Is the distance figure earned?</strong> "About 1,000 km" is computed from
+            the coordinates, so it is honest as straight-line distance between points, but nobody
+            walked in straight lines. Say "as the crow flies", or drop the number?
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Real coordinates, roughly the precision OpenBible publishes.
+      // confidence: 'certain' | 'disputed'
+      const PLACES = [
+        {
+          id: 'haran',
+          name: 'Haran',
+          modern: 'Harran, Şanlıurfa, Türkiye',
+          lat: 36.86,
+          lon: 39.03,
+          confidence: 'certain',
+          verses: [
+            {
+              ref: 'Genesis 12:4',
+              text: 'So Abram departed, as the LORD had directed him, and Lot went with him. Abram was seventy-five years old when he left Haran.',
+            },
+          ],
+          openbible: 'https://www.openbible.info/geo/',
+        },
+        {
+          id: 'shechem',
+          name: 'Shechem',
+          modern: 'Tell Balata, near Nablus',
+          lat: 32.21,
+          lon: 35.28,
+          confidence: 'certain',
+          verses: [
+            {
+              ref: 'Genesis 12:6',
+              text: 'Abram traveled through the land as far as the site of the Oak of Moreh at Shechem. And at that time the Canaanites were in the land.',
+            },
+          ],
+          openbible: 'https://www.openbible.info/geo/',
+        },
+        {
+          id: 'bethel',
+          name: 'Bethel',
+          modern: 'Beitin (debated)',
+          lat: 31.93,
+          lon: 35.22,
+          confidence: 'disputed',
+          verses: [
+            {
+              ref: 'Genesis 12:8',
+              text: 'From there Abram moved on to the hill country east of Bethel and pitched his tent, with Bethel to the west and Ai to the east.',
+            },
+          ],
+          openbible: 'https://www.openbible.info/geo/',
+        },
+        {
+          id: 'ai',
+          name: 'Ai',
+          modern: 'et-Tell (debated)',
+          lat: 31.92,
+          lon: 35.26,
+          confidence: 'disputed',
+          verses: [
+            {
+              ref: 'Genesis 12:8',
+              text: 'From there Abram moved on to the hill country east of Bethel and pitched his tent, with Bethel to the west and Ai to the east.',
+            },
+          ],
+          openbible: 'https://www.openbible.info/geo/',
+        },
+        {
+          id: 'negev',
+          name: 'the Negev',
+          modern: 'Northern Negev desert',
+          lat: 30.9,
+          lon: 34.9,
+          confidence: 'certain',
+          verses: [
+            {
+              ref: 'Genesis 12:9',
+              text: 'And Abram journeyed on toward the Negev.',
+            },
+          ],
+          openbible: 'https://www.openbible.info/geo/',
+        },
+        {
+          id: 'egypt',
+          name: 'Egypt',
+          modern: 'Nile delta region',
+          lat: 30.8,
+          lon: 31.4,
+          confidence: 'certain',
+          verses: [
+            {
+              ref: 'Genesis 12:10',
+              text: 'Now there was a famine in the land. So Abram went down to Egypt to live there for a while, because the famine was severe.',
+            },
+          ],
+          openbible: 'https://www.openbible.info/geo/',
+        },
+      ]
+
+      // Equirectangular with a cos(lat) correction, the projection the brief recommends for v1.
+      const BOX = { lonMin: 28.5, lonMax: 41.5, latMin: 28.5, latMax: 38.5 }
+      const W = 720,
+        H = 560
+      const latMid = ((BOX.latMin + BOX.latMax) / 2) * (Math.PI / 180)
+      function project(lat, lon) {
+        const x = ((lon - BOX.lonMin) / (BOX.lonMax - BOX.lonMin)) * W
+        const yNorm =
+          ((BOX.latMax - lat) / (BOX.latMax - BOX.latMin)) *
+          H *
+          ((BOX.latMax - BOX.latMin) / ((BOX.lonMax - BOX.lonMin) * Math.cos(latMid)) / (H / W))
+        return { x, y: yNorm }
+      }
+
+      const placeLayer = document.getElementById('placeLayer')
+      const journeyLayer = document.getElementById('journeyLayer')
+      const panel = document.getElementById('panel')
+      const NS = 'http://www.w3.org/2000/svg'
+
+      // journey path, in chapter order
+      const pts = PLACES.map((p) => project(p.lat, p.lon))
+      const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
+      for (const cls of ['journey-glow', 'journey']) {
+        const path = document.createElementNS(NS, 'path')
+        path.setAttribute('d', d)
+        path.setAttribute('class', cls)
+        journeyLayer.appendChild(path)
+      }
+
+      // label nudges so they don't collide
+      const NUDGE = {
+        haran: [10, -8],
+        shechem: [11, -7],
+        bethel: [-9, -9],
+        ai: [12, 11],
+        negev: [12, 8],
+        egypt: [-10, 14],
+      }
+
+      PLACES.forEach((p) => {
+        const { x, y } = project(p.lat, p.lon)
+        const g = document.createElementNS(NS, 'g')
+        g.setAttribute('class', `place ${p.confidence}`)
+        g.setAttribute('tabindex', '0')
+        g.dataset.id = p.id
+
+        const halo = document.createElementNS(NS, 'circle')
+        halo.setAttribute('class', 'halo')
+        halo.setAttribute('cx', x)
+        halo.setAttribute('cy', y)
+        halo.setAttribute('r', 13)
+
+        const dot = document.createElementNS(NS, 'circle')
+        dot.setAttribute('class', 'dot')
+        dot.setAttribute('cx', x)
+        dot.setAttribute('cy', y)
+        dot.setAttribute('r', 4.2)
+
+        const hit = document.createElementNS(NS, 'circle')
+        hit.setAttribute('class', 'hit')
+        hit.setAttribute('cx', x)
+        hit.setAttribute('cy', y)
+        hit.setAttribute('r', 18)
+
+        const [dx, dy] = NUDGE[p.id] || [10, -8]
+        const label = document.createElementNS(NS, 'text')
+        label.setAttribute('class', 'label')
+        label.setAttribute('x', x + dx)
+        label.setAttribute('y', y + dy)
+        if (dx < 0) label.setAttribute('text-anchor', 'end')
+        label.textContent = p.name
+
+        g.append(halo, dot, label, hit)
+        placeLayer.appendChild(g)
+
+        const open = () => select(p.id)
+        g.addEventListener('click', open)
+        g.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            open()
+          }
+        })
+      })
+
+      function select(id) {
+        const p = PLACES.find((x) => x.id === id)
+        document
+          .querySelectorAll('.place')
+          .forEach((el) => el.classList.toggle('active', el.dataset.id === id))
+
+        const confLabel =
+          p.confidence === 'certain'
+            ? 'Location agreed by scholars'
+            : 'Location debated — more than one site proposed'
+
+        panel.innerHTML = `
+          <h2>${p.name}</h2>
+          <p class="modern">${p.modern}</p>
+          <span class="confidence ${p.confidence}">${confLabel}</span>
+          ${p.verses
+            .map(
+              (v) => `<p class="verse"><span class="ref">${v.ref}</span>${v.text}</p>`
+            )
+            .join('')}
+          <p class="prov">
+            Coordinates and identification from OpenBible.info, which cites its sources and
+            publishes a confidence level for every place.
+            <a href="${p.openbible}" target="_blank" rel="noopener">See their entry</a>.
+          </p>
+        `
+      }
+
+      document.getElementById('door').addEventListener('click', () => {
+        document.querySelector('.map-card').scrollIntoView({ behavior: 'smooth', block: 'center' })
+        select('haran')
+      })
+    </script>
+  </body>
+</html>
