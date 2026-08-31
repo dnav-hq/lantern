@@ -79,6 +79,13 @@ export default function ProfilePage({
             Add to home screen
           </button>
         )}
+        {/* Said once, calmly, and BEFORE anyone needs it. Export only builds
+            trust if people know it exists — the durable anger in this category
+            is from readers who discovered their notes were trapped at the
+            moment they wanted to leave. See journal-retrieval.md section 4. */}
+        <p className="profile-page-note">
+          Your notes are yours. Export them any time, as plain files.
+        </p>
         {exportState === 'error' && (
           <p className="profile-page-error">Export failed. Check your connection and try again.</p>
         )}

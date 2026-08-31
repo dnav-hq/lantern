@@ -920,6 +920,7 @@ function ChapterView({
 
     const enriched: NoteWithPassageInfo = {
       ...saved,
+      book_number: passage.book_number,
       chapter_start: passage.chapter_start,
       chapter_end: passage.chapter_end,
       verse_start: passage.verse_start,

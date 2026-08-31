@@ -38,6 +38,7 @@ let settings: UserSettings = {}
 
 function passageInfo(p: Passage): Omit<NoteWithPassageInfo, keyof Note> {
   return {
+    book_number: p.book_number,
     chapter_start: p.chapter_start,
     chapter_end: p.chapter_end,
     verse_start: p.verse_start,

@@ -339,6 +339,7 @@ export class SupabaseBereanApi implements BereanApi {
       delete note.sessions
       return {
         ...(note as unknown as Note),
+        book_number: p.book_number as number,
         chapter_start: p.chapter_start as number,
         chapter_end: p.chapter_end as number,
         verse_start: p.verse_start as number,
