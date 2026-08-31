@@ -21,6 +21,7 @@ export const TRANSLATIONS: TranslationOption[] = [
   { id: 'BSB', label: 'Berean Standard Bible (BSB)', language: 'eng' },
   { id: 'KJV', label: 'King James Version (KJV)', language: 'eng' },
   { id: 'ESV', label: 'English Standard Version (ESV)', language: 'eng' },
+  { id: 'NET', label: 'New English Translation (NET)', language: 'eng' },
   { id: 'IRV', label: 'Indian Revised Version (IRV)', language: 'tam' },
   { id: 'TCV', label: 'Tamil Contemporary Version (TCV)', language: 'tam' }
 ]
@@ -108,12 +109,15 @@ export function currentTranslation(): TranslationId {
 }
 
 // ─── Guest reading ───────────────────────────────────────────────────────────
-// A signed-out visitor gets BSB/KJV only. ESV is deliberately excluded: it is a
-// key-proxied, quota-limited path shared across every Lantern user (see
+// A signed-out visitor gets the free, self-hostable English translations
+// (BSB/KJV/NET). ESV is deliberately excluded: it is a key-proxied,
+// quota-limited path shared across every Lantern user (see
 // docs/proposals/guest-preview-mode.md §8 and the esv-proxy rate limit), so it
-// stays signed-in-only. BSB/KJV are also the only public-domain, self-hostable
-// — i.e. offline-capable — shape, which is why the two decisions reinforce
-// rather than fight each other.
+// stays signed-in-only. The others are also the only public-domain or
+// free-licence, self-hostable — i.e. offline-capable — shape, which is why the
+// two decisions reinforce rather than fight each other. Expressed as a RULE
+// rather than a list, so adding a fourth free translation includes it for
+// guests automatically and adding a second metered one does not.
 // English-only as well as ESV-free: the language control lives in the signed-in
 // app's reading preferences, so a guest has no way to choose a language and
 // must never be handed a translation the guest picker doesn't offer.

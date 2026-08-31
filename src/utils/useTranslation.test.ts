@@ -12,8 +12,8 @@ import { BIBLE_LANGUAGES, HAS_MULTIPLE_LANGUAGES } from './useBibleLanguage'
 // offers, and where a reader lands when they change language.
 
 describe('translationsForLanguage', () => {
-  it('offers English readers exactly BSB, KJV and ESV — unchanged by Tamil existing', () => {
-    expect(translationsForLanguage('eng').map(t => t.id)).toEqual(['BSB', 'KJV', 'ESV'])
+  it('offers English readers exactly BSB, KJV, ESV and NET — unchanged by Tamil existing', () => {
+    expect(translationsForLanguage('eng').map(t => t.id)).toEqual(['BSB', 'KJV', 'ESV', 'NET'])
   })
 
   it('offers Tamil readers exactly IRV and TCV, IRV first (the primary)', () => {

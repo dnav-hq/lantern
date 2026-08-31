@@ -22,9 +22,11 @@ export class FallbackBibleProvider implements BibleProvider {
     } catch (primaryError) {
       try {
         const verses = await this.fallback.getChapter(bookNumber, chapter)
-        // Generic wording: the same class now backs two different fallbacks —
-        // the dev-only fixture (four seeded chapters) and the self-hosted
-        // complete-BSB bundle — so the message can't claim to be either one.
+        // Genuinely generic wording: this class now backs FOUR fallbacks — the
+        // dev-only fixture (four seeded chapters) and the self-hosted complete
+        // BSB, KJV and NET bundles — so the message can name none of them. It
+        // used to say "(real BSB)", which became wrong the moment KJV shipped
+        // and actively misleading once NET did.
         //
         // A CodedError's message is only its machine code (see src/errors.ts),
         // so the useful half is pulled out explicitly here. This is a console
@@ -32,7 +34,7 @@ export class FallbackBibleProvider implements BibleProvider {
         // place the detail is meant to surface.
         console.warn(
           `[lantern] scripture fetch failed for ${bookNumber}/${chapter} — serving ` +
-            'offline fallback text (real BSB).',
+            'offline fallback text.',
           primaryError,
           primaryError instanceof CodedError ? primaryError.detailForConsole() : ''
         )
