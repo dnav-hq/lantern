@@ -306,7 +306,7 @@ is perfect, and §9 keeps a reporting path open for the ones that get through.
 Run against the KJV's 6,959 helloao footnotes, **every single one falls into
 `other`** — 0% classified. The KJV's notes are a different apparatus in a
 different format: `"1.4 the light from…: Heb. between the light and between the
-darkness"` — a caller prefix, the lemma, a colon, then the gloss (4,148 are
+darkness"` — a caller prefix, the lemma, a colon, then the gloss (4,145 are
 `Heb.`, 29 are `Gr.`). It is a perfectly good rendering apparatus and it needs
 its own parser and its own audit. §8 keeps that out of rung one.
 
@@ -664,7 +664,7 @@ This is the one to be careful about, and there is a live finding.
   for annotated editions applies to the apparatus specifically, which matters
   more here than for the bare text.
 - helloao's `eng_kjv` carries **6,959 footnotes** (measured 2026-08-31) — the
-  translators' marginal readings, 4,148 marked `Heb.` and 29 `Gr.`. Genuinely
+  translators' marginal readings, 4,145 marked `Heb.` and 29 `Gr.`. Genuinely
   valuable and genuinely a different format (§3.6).
 - **Not in rung one**, on effort not licensing: a separate parser and a separate
   audit. See §9's backlog note.
