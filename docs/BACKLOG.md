@@ -502,6 +502,24 @@ belongs to and why that arc comes when it does.
 
 ## Done
 
+- **Journal retrieval, step 3 of 5: chapter note marks (DONE 2026-08-31).**
+  Turned out to be far smaller than the brief assumed, because most of it
+  already existed: `BookDetailPage` already computed `chaptersWithNotes`,
+  already rendered a neutral `chapter-note-dot` under chapters with notes, and
+  already showed "N with notes" in the header. What was missing was the colour.
+  Dennis's call (design/chapter-note-count.html then -v2.html): the pip now
+  carries the chapter's DOMINANT category, so the strip answers both "which
+  chapters have I written in" and "what kind of work was it" at the moment you
+  are choosing where to go. Deliberately ONE pip, not a stack — several would
+  turn a navigation control into a chart, noisy on Psalms. Deliberately NO
+  count in the strip: presence, not quantity. Logic in
+  `src/utils/chapterNoteMarks.ts`, 10 tests. Also fixed a real bug found on the
+  way: the strip read `chapter_start` directly, so a note with an
+  `anchor_chapter_override` marked the WRONG chapter and left the right one
+  unmarked. The header's "N with notes" stays — it is a book-level summary the
+  scrolling strip cannot show at a glance, so it complements the pips rather
+  than duplicating them. Remaining in the arc: step 5, saved filters.
+
 - **Journal retrieval, step 4 of 5: EXPORT rebuilt as a trust artifact (DONE
   2026-08-31).** Per `journal-retrieval.md` §4, which frames export as a trust
   PRECONDITION rather than a feature: the durable anger in this category is
