@@ -26,6 +26,8 @@ import { bookByNumber } from './bibleBooks'
  *  this module never imports the Journal's view types (or React). */
 export interface FilterableNote {
   category: string | null
+  /** True for a note with no body — see src/utils/noteKind.ts. */
+  highlight?: boolean
 }
 
 export interface FilterableEntry<N extends FilterableNote> {
@@ -37,15 +39,19 @@ export interface FilterableEntry<N extends FilterableNote> {
 export const ALL = 'all' as const
 export type Selection<T extends string> = T | typeof ALL
 
+/** Written notes, wordless marks, or both. */
+export type KindFilter = 'note' | 'highlight' | typeof ALL
+
 export interface JournalFilters {
   category: Selection<string>
   bookNumber: number | typeof ALL
+  kind: KindFilter
 }
 
-export const NO_FILTERS: JournalFilters = { category: ALL, bookNumber: ALL }
+export const NO_FILTERS: JournalFilters = { category: ALL, bookNumber: ALL, kind: ALL }
 
 export function hasActiveFilter(filters: JournalFilters): boolean {
-  return filters.category !== ALL || filters.bookNumber !== ALL
+  return filters.category !== ALL || filters.bookNumber !== ALL || filters.kind !== ALL
 }
 
 /**
@@ -115,11 +121,18 @@ export function applyJournalFilters<N extends FilterableNote, E extends Filterab
       ? entries
       : entries.filter(entry => entry.bookNumber === filters.bookNumber)
 
-  if (filters.category === ALL) return byBook
+  if (filters.category === ALL && filters.kind === ALL) return byBook
+
+  const matches = (n: N): boolean => {
+    if (filters.category !== ALL && n.category !== filters.category) return false
+    if (filters.kind === 'highlight' && !n.highlight) return false
+    if (filters.kind === 'note' && n.highlight) return false
+    return true
+  }
 
   const out: E[] = []
   for (const entry of byBook) {
-    const notes = entry.notes.filter(n => n.category === filters.category)
+    const notes = entry.notes.filter(matches)
     if (notes.length > 0) out.push({ ...entry, notes })
   }
   return out

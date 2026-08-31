@@ -30,6 +30,7 @@ import { zipSync, strToU8 } from 'fflate'
 import type { BereanApi } from '../api/types'
 import type { NoteWithPassageInfo } from '../types'
 import { bookByNumber } from '../utils/bibleBooks'
+import { isHighlight } from '../utils/noteKind'
 
 // Make a string safe for use as a filename on macOS, Windows, and Linux.
 export function safeFilename(s: string): string {
@@ -92,6 +93,12 @@ export function serializeBookMarkdown(bookName: string, notes: NoteWithPassageIn
       .filter(Boolean)
       .join(' · ')
     const indent = '  '.repeat(Math.max(0, note.indent_level))
+    if (isHighlight(note)) {
+      // A highlight has no words. Say so, rather than writing a bullet that
+      // trails off into nothing and reads as data loss.
+      lines.push(`${indent}- **${meta}** — *(marked)*`)
+      continue
+    }
     // A multi-line note keeps its shape by indenting continuation lines to sit
     // under the bullet, which is ordinary Markdown list continuation.
     const body = note.content.split('\n').join(`\n${indent}  `)

@@ -1270,6 +1270,21 @@ body.dark .search-backdrop {
   color: var(--text-faint);
 }
 
+/* A highlight in the Journal: a note the reader made with no words. Shown as
+   a quiet label rather than an empty row, and set in italics so it reads as the
+   app describing the mark rather than as something the reader wrote. */
+.journal-note-mark {
+  font-style: italic;
+  color: var(--text-faint);
+}
+
+/* The written-vs-marked toggle. Same segmented control as the Notes/Chapters
+   view switch, so it reads as a sibling rather than a new kind of thing. Only
+   rendered when the reader actually has both. */
+.journal-seg-kind button {
+  font-size: 11.5px;
+}
+
 .journal-empty-filter {
   margin: 28px 0 0;
   font-size: 13px;

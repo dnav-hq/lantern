@@ -1,8 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NoteCategory, NoteWithPassageInfo } from '../types'
 import { findBookByAlias } from '../utils/bibleBooks'
-import { ALL, applyJournalFilters, booksPresent, emptyResultMessage } from '../utils/journalFilters'
-import { parseNoteLine } from '../utils/noteParser'
+import { isHighlight, noteProse } from '../utils/noteKind'
+import {
+  ALL,
+  applyJournalFilters,
+  booksPresent,
+  emptyResultMessage,
+  type KindFilter
+} from '../utils/journalFilters'
 import { formatRelativeTime } from '../utils/relativeTime'
 import { useApi } from '../api/context'
 
@@ -63,23 +69,6 @@ function bookFromLabel(label: string): ReturnType<typeof findBookByAlias> {
   return findBookByAlias(match ? match[1] : trimmed)
 }
 
-// One line of note text as prose: tag tokens (@observation) are dropped because
-// the category is shown as colour, and a LEADING verse anchor (v4-5) is dropped
-// because the verse is shown in the rail beside the note.
-function lineText(line: string): string {
-  const { segments } = parseNoteLine(line)
-  return segments
-    .filter((seg, i) => seg.type !== 'tag' && !(i === 0 && seg.type === 'verse-anchor'))
-    .map(seg => (seg.type === 'text' ? seg.raw : seg.display))
-    .join('')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function noteText(content: string): string {
-  return content.split('\n').map(lineText).filter(Boolean).join(' ')
-}
-
 interface JournalNote {
   id: string
   // "15:4" or "15:4-5"; just the chapter for a note left on the whole passage.
@@ -88,6 +77,8 @@ interface JournalNote {
   sortVerse: number
   category: NoteCategory | null
   text: string
+  // A note with no body — the reader marked the verse without writing.
+  highlight: boolean
   indent: number
   at: string
 }
@@ -130,8 +121,13 @@ function buildEntries(notes: NoteWithPassageInfo[]): ChapterEntry[] {
       byChapter.set(key, entry)
     }
 
-    const text = noteText(note.content)
-    if (text) {
+    const text = noteProse(note.content)
+    // A HIGHLIGHT (a note with no body) is kept, not dropped. It is a real
+    // thing the reader did — the moment they noticed something and had no
+    // words for it yet — and dropping it here would make it invisible
+    // everywhere except the chapter it sits in. See src/utils/noteKind.ts.
+    const highlight = isHighlight(note)
+    if (text || highlight) {
       const start = note.anchor_start_verse
       const end = note.anchor_end_verse ?? start
       entry.notes.push({
@@ -145,6 +141,7 @@ function buildEntries(notes: NoteWithPassageInfo[]): ChapterEntry[] {
         sortVerse: start ?? 0,
         category: note.category,
         text,
+        highlight,
         indent: note.indent_level,
         at: note.created_at
       })
@@ -188,6 +185,7 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
   const [view, setView] = useState<ViewMode>('notes')
   const [filter, setFilter] = useState<CategoryFilter>('all')
   const [bookFilter, setBookFilter] = useState<number | typeof ALL>(ALL)
+  const [kindFilter, setKindFilter] = useState<KindFilter>(ALL)
   const [filterOpen, setFilterOpen] = useState(false)
   const [bookOpen, setBookOpen] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -239,8 +237,8 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
   // any chapter left with nothing drops out. Logic lives in journalFilters.ts
   // so the rules are unit-testable without rendering the page.
   const filters = useMemo(
-    () => ({ category: filter, bookNumber: bookFilter }),
-    [filter, bookFilter]
+    () => ({ category: filter, bookNumber: bookFilter, kind: kindFilter }),
+    [filter, bookFilter, kindFilter]
   )
   const visible = useMemo(() => applyJournalFilters(entries, filters), [entries, filters])
 
@@ -252,7 +250,24 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
   const clearFilters = useCallback(() => {
     setFilter('all')
     setBookFilter(ALL)
+    setKindFilter(ALL)
   }, [])
+
+  // Only offered once there is actually a mix to filter between: with only
+  // written notes (or only marks) the control would be a no-op that still
+  // costs a glance.
+  const hasBothKinds = useMemo(() => {
+    let notes = false
+    let marks = false
+    for (const entry of entries) {
+      for (const n of entry.notes) {
+        if (n.highlight) marks = true
+        else notes = true
+        if (notes && marks) return true
+      }
+    }
+    return false
+  }, [entries])
 
   const toggleExpanded = useCallback((key: string) => {
     setExpanded(prev => {
@@ -364,7 +379,22 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
       {/* A filter you forgot you set is worse than no filter: you conclude a
           note is gone. So the active state is always legible and always one tap
           from cleared. */}
-      {(filter !== 'all' || bookFilter !== ALL) && (
+      {hasBothKinds && (
+        <div className="journal-seg journal-seg-kind" role="group" aria-label="Filter by kind">
+          {(
+            [
+              [ALL, 'All'],
+              ['note', 'Notes'],
+              ['highlight', 'Marks']
+            ] as Array<[KindFilter, string]>
+          ).map(([id, label]) => (
+            <button key={id} aria-pressed={kindFilter === id} onClick={() => setKindFilter(id)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {(filter !== 'all' || bookFilter !== ALL || kindFilter !== ALL) && (
         <button className="journal-filter-clear" onClick={clearFilters}>
           Clear filters
         </button>
@@ -505,7 +535,13 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
                           }`}
                         >
                           <span className="journal-note-verse">{note.verse}</span>
-                          <span className="journal-note-text">{note.text}</span>
+                          {note.highlight ? (
+                            // No words to show, so say what it is rather than
+                            // rendering an empty row the reader cannot explain.
+                            <span className="journal-note-text journal-note-mark">Marked</span>
+                          ) : (
+                            <span className="journal-note-text">{note.text}</span>
+                          )}
                         </div>
                       ))}
                       {entry.notes.length > COLLAPSE_AT && (

@@ -502,6 +502,34 @@ belongs to and why that arc comes when it does.
 
 ## Done
 
+- **Highlights as bodiless notes (DONE 2026-08-31, mobile capture; desktop
+  gesture still open).** `note-object.md` §2: a highlight is a note with no
+  body — same anchor, same categories, same colour, same Journal, same export.
+  No new table, no `kind` column; emptiness is already the truth, so the kind
+  is DERIVED (`src/utils/noteKind.ts`) and a mark that later gains a body
+  simply stops being one. Adds the missing bottom rung for the moment you
+  notice something and have no words for it yet.
+  **The subtlety that nearly broke it:** a mark is NOT stored as an empty
+  string. `composeNoteContent` always writes the anchor and tag, so a mark on
+  verse 4 is `v4 @personal`. Testing `content === ''` classified every mark as
+  a written note whose text had gone missing. `isHighlight` now tests for
+  PROSE, reusing the parse the Journal already did (that duplicated logic is
+  now shared rather than copied).
+  Wired through every consumer so a mark is never silently dropped: the Journal
+  keeps it and shows a quiet italic "Marked" rather than an empty row; export
+  writes "*(marked)*" rather than a bullet trailing into nothing; and the
+  Journal gains a third filter axis (Notes / Marks), offered only when the
+  reader actually has both. Capture is the existing mobile composer with no new
+  button — picking a category without writing changes the Save label to "Mark",
+  so it is discoverable without competing with Save.
+  **Not done:** the desktop gesture. Desktop capture is free-form text with
+  inline `@category` tags, so "mark without writing" has no obvious equivalent
+  there and needs a design pass. **Not verified in-browser:** the end-to-end
+  mobile capture gesture — the pane stopped accepting synthetic pointer events
+  this session. The predicate is unit-tested against the real stored format (9
+  tests) and everything downstream is typechecked, but the create path itself
+  wants a real-device pass.
+
 - **Journal retrieval, step 3 of 5: chapter note marks (DONE 2026-08-31).**
   Turned out to be far smaller than the brief assumed, because most of it
   already existed: `BookDetailPage` already computed `chaptersWithNotes`,
