@@ -2926,13 +2926,32 @@ body.dark .search-backdrop {
   left: 0;
   z-index: 60;
 }
+/* Every verse block carries a transform, so each is its own stacking context
+   and z-index inside one cannot reach past it — an open picker was painted
+   UNDER the verses below it. Lift only the block that is currently composing,
+   and only while the picker is open. */
+.reading-verse-block:has(.composer-tag-menu) {
+  position: relative;
+  z-index: 5;
+}
 
 /* ─── Verse-range selection floating action bar ─────────────────────────────── */
 .verse-action-bar {
   position: fixed;
-  left: 50%;
+  /* Centred by auto margins on a full-width containing block, NOT by
+     `left: 50%` + `translateX(-50%)`. A fixed, shrink-to-fit box anchored at
+     `left: 50%` can only ever be as wide as HALF the viewport, so the bar
+     wrapped its buttons onto a second row below ~1000px however much room was
+     actually free beside it — the rearranging Dennis saw. Auto margins centre
+     it identically while letting max-width do the honest thing.
+     (Safe with motion.css's springIn, which animates the individual
+     `translate`/`scale` properties precisely so it never depends on this
+     element's `transform` shorthand.) */
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: fit-content;
   bottom: 24px;
-  transform: translateX(-50%);
   z-index: 40;
   display: flex;
   align-items: center;
@@ -6417,8 +6436,8 @@ body.dark .upd-popover-btn-ghost:hover {
   .verse-action-bar {
     left: 12px;
     right: 12px;
+    width: auto;
     max-width: none;
-    transform: none;
     bottom: calc(56px + env(safe-area-inset-bottom) + 12px);
     flex-wrap: wrap;
     padding: 12px 14px;

@@ -1187,7 +1187,14 @@ function ChapterView({
           <QuickEditCard
             category={editParsed.category ?? main.category}
             mode="edit"
-            reference={hasAnchor ? rangeLabel : undefined}
+            reference={
+              hasAnchor
+                ? verseRefLabel(
+                    main.anchor_start_verse!,
+                    main.anchor_end_verse ?? main.anchor_start_verse!
+                  )
+                : undefined
+            }
             onPickCategory={pickEditCategory}
             saveDisabled={!editText.trim()}
             onSave={() => void handleSaveEdit()}
