@@ -83,7 +83,14 @@ export interface BereanApi {
   // substring, v1). Returns each match with the passage context needed to jump
   // to it. Scripture-reference matching is done client-side (parseScriptureQuery)
   // and is NOT part of this method — this searches note text only.
-  searchNotes(query: string): Promise<NoteSearchResult[]>
+  /**
+   * Case-insensitive substring match over note bodies, newest first.
+   *
+   * `limit` is the caller's, so a caller that wants to say "showing the first
+   * N of many" can ask for N+1 and check whether it got them. Silently
+   * truncating is how a reader concludes a note is lost.
+   */
+  searchNotes(query: string, limit?: number): Promise<NoteSearchResult[]>
 
   // Scripture
   getBibleVerse(reference: string): Promise<BiblePassage | null>

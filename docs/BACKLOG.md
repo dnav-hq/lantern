@@ -502,6 +502,25 @@ belongs to and why that arc comes when it does.
 
 ## Done
 
+- **Journal retrieval, step 2 of 5: SEARCH lands you at the VERSE (DONE
+  2026-08-31).** `journal-retrieval.md` §3.2 called this "the single
+  highest-value line of the whole brief", because it turns search from "find a
+  note" into "get back to the place". A note result used to call
+  `onOpenStudy(passage_id)`, but under the note-centric model a passage is
+  invisible interim storage, so that was never an honest destination. Results
+  now resolve to book + chapter + the note's anchored verse (`noteLanding()`,
+  pure and tested — 8 cases including numbered and multi-word book names and
+  the chapter override), and land there highlighted and scrolled into view.
+  The brief said the verse-scroll hook was the real work; it turned out to
+  already exist (`initialHighlightVerses`), just never wired from App — the
+  comment claiming otherwise was stale and is fixed. Falls back to opening the
+  study when an anchor cannot be resolved, so a result is never a dead end.
+  ALSO: search no longer truncates silently. It asks for one more than it
+  shows, and when the extra arrives it says "Showing the first 50 matches" and
+  marks the count "50+". `searchNotes` now takes the caller's limit, in both
+  the real API and the memory stub. Remaining: surface the passage-centric
+  view, upgrade export, saved filters.
+
 - **ESV cache now persists across reloads (DONE 2026-08-31).** `esv-cache.ts`
   was in-memory only, a deliberate conservatism its own comment called
   "stricter than the letter of the license requires", which meant every reload

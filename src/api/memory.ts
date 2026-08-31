@@ -200,7 +200,7 @@ export function createMemoryApi(): BereanApi {
       return result
     },
 
-    async searchNotes(query) {
+    async searchNotes(query, limit = 50) {
       const q = query.trim().toLowerCase()
       if (!q) return []
       // session_id -> passage, resolved once so each match carries its context.
@@ -222,11 +222,15 @@ export function createMemoryApi(): BereanApi {
         })
       }
       // Newest first — most recently touched notes are the likeliest target.
-      return results.sort((a, b) =>
-        (b.note.updated_at ?? b.note.created_at).localeCompare(
-          a.note.updated_at ?? a.note.created_at
+      // Bounded like the real implementation, so a caller checking "did I get
+      // more than I asked to show" behaves the same against the stub.
+      return results
+        .sort((a, b) =>
+          (b.note.updated_at ?? b.note.created_at).localeCompare(
+            a.note.updated_at ?? a.note.created_at
+          )
         )
-      )
+        .slice(0, limit)
     },
 
     async getBibleVerse(reference) {

@@ -1261,6 +1261,15 @@ body.dark .search-backdrop {
   line-height: 1.5;
 }
 
+/* Search shows a bounded number of note matches; this says so rather than
+   letting the list end in silence. See GlobalSearch's NOTE_RESULT_LIMIT. */
+.search-truncated {
+  margin: 4px 12px 8px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
 .journal-empty-filter {
   margin: 28px 0 0;
   font-size: 13px;
