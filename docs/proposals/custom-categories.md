@@ -10,8 +10,8 @@ and that is a different problem wearing the same clothes.
 - **The four keys are not data. They are compiled in.** They are a closed TS
   union (`src/types/index.ts:2`, 47 uses across 10 files), a hardcoded regex in
   the note parser (`src/utils/noteParser.ts:4`), a second copy of that regex in
-  the workbench (`src/components/StudyWorkbench.tsx:26`), four literal lists in
-  three editor components, and **78 hardcoded CSS selectors** across 14 selector
+  the workbench (`src/components/StudyWorkbench.tsx:26`), five literal lists in
+  four editor components, and **75 hardcoded CSS selectors** across 14 selector
   families. A custom key today renders with no colour at all and breaks
   highlight detection.
 - **`NoteCategoryDef.color` is currently rendered nowhere.** The rename slice
@@ -28,7 +28,7 @@ and that is a different problem wearing the same clothes.
   entire text is `@typology`.
 - **Colour is slots, not hexes.** A curated palette of 10 light/dark pairs,
   assigned automatically on create. The CSS stops keying on the category and
-  starts keying on a custom property the component sets, which collapses 78
+  starts keying on a custom property the component sets, which collapses 75
   selectors to 14.
 - **Cap at 8 active, archived excluded.** The cap is only tolerable because
   retiring is free.
@@ -48,8 +48,8 @@ export type NoteCategory = 'observation' | 'historical' | 'application' | 'perso
 ```
 
 `NoteCategory` (not `NoteCategoryDef`) appears **47 times across 10 non-test
-files**: `types/index.ts`, `utils/noteParser.ts`, and the components
-`ReadingMode`, `MobileNoteComposer`, `NoteEditor`, `JournalPage`,
+files**: `types/index.ts`, `utils/noteParser.ts`, `utils/noteCategories.ts`, and
+the components `ReadingMode`, `MobileNoteComposer`, `NoteEditor`, `JournalPage`,
 `StudyWorkbench`, `QuickEditCard`, `BookDetailPage`. Most are harmless
 annotations. Three are not, and they are the ones to look at:
 
@@ -61,7 +61,7 @@ annotations. Three are not, and they are the ones to look at:
   `CategoryMenu` `onPick(key: string)` is forced back into the union. These are
   already lies; widening makes them honest.
 - `type CategoryFilter = NoteCategory | 'all'` at `JournalPage.tsx:23`, with a
-  matching `d.key as CategoryFilter` cast at `:31`.
+  matching `d.key as CategoryFilter` cast at `:29`.
 
 **Recommendation: `export type NoteCategory = string`, kept as a named alias.**
 One line changes, all 47 sites keep compiling, and the name keeps documenting
@@ -152,7 +152,7 @@ stylesheets:
   `.reading-subnote-meta`, `.rail-bracket`, `.verse-span-bracket`,
   `.quick-edit-card`, `.chapter-note-dot`, `.study-note`, `.study-editor`,
   `.study-chip`.
-- **11** more in `src/assets/dark.css:117-131`.
+- **8** more in `src/assets/dark.css:117-131`.
 - Four more each of `.pill-tag-<key>` and `.swatch-<key>` in `main.css`, driven
   by `richText.ts:112` and `NoteEditor.tsx:167`.
 - **8 declarations of `--cat-observation`** in `src/assets/tokens.css` — four
@@ -377,7 +377,7 @@ and should not be revisited here.
 
 The stated blocker was that a free hex picker lets someone choose a colour that
 reads in light and fails in dark. True, but §1.4 shows the deeper problem: **the
-stored hex is not rendered at all.** Colour is delivered by 78 CSS selectors
+stored hex is not rendered at all.** Colour is delivered by 75 CSS selectors
 keyed on the four literal keys, across 14 selector families and 8 theme blocks.
 A hex picker has nowhere to put its output.
 
@@ -402,7 +402,7 @@ and the component sets the triple once per element:
 //     '--cat-c-ink': 'var(--slot-indigo-ink)' }
 ```
 
-**78 selectors collapse to 14, and they stop caring how many categories exist.**
+**75 selectors collapse to 14, and they stop caring how many categories exist.**
 Because the slot tokens are still resolved per theme by the cascade, all four
 themes and both modes keep working with no per-category CSS anywhere. This
 refactor is the whole reason the feature is affordable, and it is worth doing
@@ -530,7 +530,7 @@ existing "User-owned categories" material:
   moves; adding a key does. The four keys are compiled in — a closed union in
   `src/types/index.ts:2` (47 uses), a fixed regex in `src/utils/noteParser.ts:4`
   with a second copy at `src/components/StudyWorkbench.tsx:26`, five hardcoded
-  tag lists in the editors, and 78 `.cat-<key>` CSS selectors across 14 selector
+  tag lists in the editors, and 75 `.cat-<key>` CSS selectors across 14 selector
   families and 8 theme blocks. `NoteCategoryDef.color` is stored but rendered
   nowhere: `CategoryMenu.tsx:87` paints from a CSS class, not the hex, so the
   "recolour" half of slice 1 never actually shipped.
