@@ -1413,6 +1413,16 @@ body.dark .search-backdrop {
   text-align: center;
 }
 
+/* The custody reassurance next to Export. Quiet on purpose — it is a standing
+   fact, not a call to action. */
+.profile-page-note {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-faint);
+  text-align: center;
+}
+
 /* ─── Main area ─────────────────────────────────────────────────────────────── */
 .main-area {
   flex: 1;

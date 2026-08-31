@@ -502,6 +502,29 @@ belongs to and why that arc comes when it does.
 
 ## Done
 
+- **Journal retrieval, step 4 of 5: EXPORT rebuilt as a trust artifact (DONE
+  2026-08-31).** Per `journal-retrieval.md` §4, which frames export as a trust
+  PRECONDITION rather than a feature: the durable anger in this category is
+  from people whose years of notes were trapped in a discontinued or
+  re-platformed product, and that anger is about custody. Three problems fixed
+  at once. (1) It was a backup of an obsolete model — one file per `passages`
+  row, so a reader opening the zip saw folders named after storage rows. Now
+  `notes/{Book}.md`, canon order, grouped by chapter. (2) It lost fidelity —
+  category (the axis people actually index on), timestamps and sub-note
+  nesting were all dropped. Markdown now carries reference, category and date,
+  nesting survives as list indentation, and a `notes.json` holds every field
+  verbatim so a future import never asks anyone to re-key years of work.
+  (3) It did 401 round trips for 400 passages; now ONE `getAllNotes()`.
+  Serialization is pure and unit-tested (18 tests, fidelity-focused).
+  `NoteWithPassageInfo` gained `book_number`, which the query already selected.
+  Also added the one calm line the brief asks for, in Profile next to the
+  action: "Your notes are yours. Export them any time, as plain files." — said
+  before anyone needs it, because export only builds trust if people know it
+  exists. NOT done, per the brief: import, scheduled export, cloud
+  destinations. Remaining in the arc: step 3 (surface the passage-centric view
+  — the reading-header note count is a TASTE call for Dennis) and step 5
+  (saved filters).
+
 - **Journal retrieval, step 2 of 5: SEARCH lands you at the VERSE (DONE
   2026-08-31).** `journal-retrieval.md` §3.2 called this "the single
   highest-value line of the whole brief", because it turns search from "find a

@@ -83,6 +83,10 @@ export interface ParsedNote {
 
 // Note enriched with its passage's chapter/verse span (returned by getNotesByBook)
 export interface NoteWithPassageInfo extends Note {
+  // USFM 1-66. Already selected by the query that builds this; surfaced because
+  // callers that group notes (the Journal, export) need the book without
+  // re-parsing reference_label, which is a display string, not data.
+  book_number: number
   chapter_start: number
   chapter_end: number
   verse_start: number
