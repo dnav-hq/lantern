@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { BiblePassage, NoteWithPassageInfo, NoteCategory, Passage } from '../types'
 import { BibleBook, readingShortBookName } from '../utils/bibleBooks'
 import { parseNoteLine } from '../utils/noteParser'
 import { useApi } from '../api/context'
 import { getBibleVerse } from '../bible/service'
+import { chapterNoteCategories } from '../utils/chapterNoteMarks'
 import type { TranslationId } from '../bible/provider'
 import { useReadingTranslation } from '../utils/useTranslation'
 import { useIsGuest } from '../utils/guestContext'
@@ -1777,7 +1778,12 @@ export default function BookDetailPage({
     api.getNotesByBook(bibleBook.number).then(setAllNotes)
   }, [api, bibleBook.number])
 
-  const chaptersWithNotes = new Set(allNotes.map(n => n.chapter_start))
+  // Chapter -> dominant category, for the pip under each chapter number.
+  // Honours each note's chapter override, which the old `n.chapter_start` read
+  // did not: a note moved to another chapter marked the wrong one and left the
+  // right one unmarked.
+  const chapterCategories = useMemo(() => chapterNoteCategories(allNotes), [allNotes])
+  const chaptersWithNotes = chapterCategories
 
   // Keep the active pill in view along the STRIP'S OWN axis, and only that axis.
   // This used to be scrollIntoView({ inline: 'nearest' }) — whose `block`
@@ -2080,15 +2086,24 @@ export default function BookDetailPage({
             <div className="chapter-selector" ref={chapterSelectorRef}>
               {Array.from({ length: bibleBook.chapters }, (_, i) => i + 1).map(ch => {
                 const hasNotes = chaptersWithNotes.has(ch)
+                const category = chapterCategories.get(ch) ?? null
                 const isActive = ch === selectedChapter
                 return (
                   <button
                     key={ch}
                     className={`chapter-pill${isActive ? ' active' : ''}${hasNotes ? ' has-notes' : ''}`}
                     onClick={() => onNavigateChapter(bibleBook.name, ch)}
+                    // Presence, not quantity: the pip says you have written
+                    // here and what kind of work it was. No count anywhere.
+                    title={hasNotes ? `${bibleBook.name} ${ch} — you have notes here` : undefined}
                   >
                     {ch}
-                    {hasNotes && !isActive && <span className="chapter-note-dot" />}
+                    {hasNotes && !isActive && (
+                      <span
+                        className={`chapter-note-dot${category ? ` cat-${category}` : ''}`}
+                        aria-hidden="true"
+                      />
+                    )}
                   </button>
                 )
               })}

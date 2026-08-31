@@ -3488,12 +3488,34 @@ body.dark .chapter-pill.active.has-notes {
   font-weight: 600;
 }
 
+/* The pip under a chapter number: "you have written here". Presence, not
+   quantity — there is deliberately no count anywhere in the strip, because a
+   number on a page of scripture is the first step toward a page that keeps
+   score. The COLOUR carries the dominant category, which answers "what kind of
+   work" for free. One pip, never a stack: several would turn a navigation
+   control into a chart, and would be noisy on a long book like Psalms.
+   See src/utils/chapterNoteMarks.ts and design/chapter-note-count-v2.html. */
 .chapter-note-dot {
   width: 4px;
   height: 4px;
   border-radius: 50%;
   background: var(--accent);
   flex-shrink: 0;
+  /* Kept below full strength so a heavily-annotated book reads as texture
+     rather than as decoration. */
+  opacity: 0.75;
+}
+.chapter-note-dot.cat-observation {
+  background: var(--cat-observation);
+}
+.chapter-note-dot.cat-historical {
+  background: var(--cat-historical);
+}
+.chapter-note-dot.cat-application {
+  background: var(--cat-application);
+}
+.chapter-note-dot.cat-personal {
+  background: var(--cat-personal);
 }
 
 /* Chapter content area */
