@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   getInstallCapability,
+  isMobileViewport,
   promptInstall,
   subscribeInstallCapability,
   type InstallCapability
@@ -61,6 +62,7 @@ export function useInstallPrompt(): InstallPromptState {
       if (timer !== null) return
       const allowed = shouldShowInstallNudge({
         capability: getInstallCapability(),
+        isMobile: isMobileViewport(),
         sessionCount,
         engaged: hasInstallEngagement(),
         shown: wasInstallNudgeShown(),
@@ -74,6 +76,7 @@ export function useInstallPrompt(): InstallPromptState {
         if (
           !shouldShowInstallNudge({
             capability: getInstallCapability(),
+            isMobile: isMobileViewport(),
             sessionCount,
             engaged: hasInstallEngagement(),
             shown: wasInstallNudgeShown(),
