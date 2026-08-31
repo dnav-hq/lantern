@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lantern — note or highlight</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f4f0e8;
+        --surface: #fbf9f4;
+        --surface-2: #ece6da;
+        --border: #e2dccf;
+        --border-strong: #d8d0c0;
+        --text: #201e1a;
+        --text-muted: #6a6353;
+        --text-faint: #938a77;
+        --accent: #6b62d6;
+        --accent-ink: #594fd1;
+        --accent-weak: rgba(107, 98, 214, 0.11);
+        --accent-soft: rgba(107, 98, 214, 0.18);
+        --on-accent: #fff;
+        --cat-observation: #6b62d6;
+        --cat-historical: #3f8f5b;
+        --cat-application: #b5732a;
+        --cat-personal: #c05070;
+        --mark-personal: rgba(192, 80, 112, 0.16);
+        --mark-observation: rgba(107, 98, 214, 0.15);
+        --mark-historical: rgba(63, 143, 91, 0.15);
+        --ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --scripture-font: 'Source Serif 4', Georgia, serif;
+        --elev-2: 0 2px 6px rgba(20, 16, 8, 0.06), 0 8px 20px -6px rgba(20, 16, 8, 0.1);
+        --elev-3: 0 6px 16px -4px rgba(20, 16, 8, 0.12), 0 20px 40px -12px rgba(20, 16, 8, 0.18);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--ui-font);
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 28px 20px 72px;
+      }
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 0 0 6px;
+      }
+      h1 {
+        font-family: var(--scripture-font);
+        font-size: 26px;
+        font-weight: 600;
+        margin: 0 0 8px;
+      }
+      .sub {
+        color: var(--text-muted);
+        font-size: 14px;
+        line-height: 1.65;
+        max-width: 66ch;
+        margin: 0 0 20px;
+      }
+      .concede {
+        margin: 0 0 30px;
+        padding: 13px 15px;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--cat-historical);
+        border-radius: 8px;
+        background: var(--surface);
+        font-size: 13.5px;
+        line-height: 1.65;
+        color: var(--text-muted);
+      }
+      .concede strong {
+        color: var(--text);
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+      @media (max-width: 860px) {
+        .steps {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      .step-label {
+        font-size: 12px;
+        color: var(--text-faint);
+        margin: 0 0 7px;
+      }
+      .step-label b {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .phone {
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: var(--surface);
+        box-shadow: var(--elev-2);
+        padding: 16px 14px 14px;
+        position: relative;
+        min-height: 250px;
+      }
+      .row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        border-radius: 5px;
+        padding: 3px 5px;
+        margin-left: -5px;
+        position: relative;
+      }
+      .vn {
+        font-family: var(--ui-font);
+        font-size: 10px;
+        color: var(--text-faint);
+        flex: none;
+        width: 13px;
+        text-align: right;
+        align-self: flex-start;
+        padding-top: 6px;
+      }
+      .vt {
+        font-family: var(--scripture-font);
+        font-size: 15px;
+        line-height: 1.68;
+      }
+      .row.sel {
+        background: var(--accent-soft);
+        box-shadow: inset 2px 0 0 var(--accent);
+      }
+      .row.mark-personal {
+        background: var(--mark-personal);
+      }
+      .row.mark-observation {
+        background: var(--mark-observation);
+      }
+
+      /* the two-choice bar */
+      .bar {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
+        display: flex;
+        gap: 8px;
+        background: var(--surface);
+        border: 1px solid var(--border-strong);
+        border-radius: 12px;
+        padding: 8px;
+        box-shadow: var(--elev-3);
+      }
+      .bar button {
+        flex: 1;
+        font: inherit;
+        font-size: 13px;
+        padding: 9px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--surface-2);
+        color: var(--text);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+      }
+      .bar button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--on-accent);
+      }
+      .pen {
+        width: 14px;
+        height: 3px;
+        border-radius: 2px;
+        background: currentColor;
+        opacity: 0.75;
+      }
+
+      /* colour choice */
+      .swatches {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
+        background: var(--surface);
+        border: 1px solid var(--border-strong);
+        border-radius: 12px;
+        padding: 11px;
+        box-shadow: var(--elev-3);
+      }
+      .swatches-title {
+        font-size: 11.5px;
+        color: var(--text-muted);
+        margin: 0 0 9px;
+      }
+      .swatch-row {
+        display: flex;
+        gap: 9px;
+      }
+      .swatch {
+        flex: 1;
+        height: 34px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        cursor: pointer;
+        display: grid;
+        place-items: end center;
+        padding-bottom: 3px;
+        font-size: 9px;
+        color: var(--text-muted);
+      }
+
+      .verdict {
+        margin-top: 10px;
+        font-size: 12.5px;
+        color: var(--text-faint);
+        line-height: 1.65;
+      }
+
+      .compare {
+        margin-top: 34px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface);
+        padding: 20px 24px 22px;
+        box-shadow: var(--elev-2);
+      }
+      .note {
+        margin: 4px 0 10px 24px;
+        padding-left: 11px;
+        border-left: 2px solid var(--cat-observation);
+        font-family: var(--scripture-font);
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--text-muted);
+      }
+
+      .closing {
+        margin-top: 34px;
+        border-top: 1px solid var(--border);
+        padding-top: 22px;
+      }
+      .closing h3 {
+        font-family: var(--scripture-font);
+        font-size: 17px;
+        margin: 0 0 10px;
+      }
+      .closing p,
+      .closing ul {
+        font-size: 13.5px;
+        line-height: 1.75;
+        color: var(--text-muted);
+        max-width: 68ch;
+      }
+      .closing ul {
+        padding-left: 18px;
+      }
+      .closing strong {
+        color: var(--text);
+      }
+      .q {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 13px 15px;
+        margin-top: 14px;
+        font-size: 13.5px;
+        line-height: 1.7;
+        color: var(--text-muted);
+        max-width: 68ch;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <p class="eyebrow">Design ideation · needs your call</p>
+      <h1>Note or highlight, as two visible choices</h1>
+      <p class="sub">
+        Tap a verse and the app asks which of the two things you are doing, instead of making you
+        discover it. Three steps, then the two results side by side.
+      </p>
+
+      <div class="concede">
+        <strong>Where I was wrong.</strong> I made the existing Save button quietly become "Mark"
+        when you had not typed anything. That is a hidden mode: it reads neatly in code and leaves
+        you guessing in use. Two actions should look like two actions.
+        <strong>It also rescues the tint.</strong> A highlighter look is confusing when the app
+        applies it on your behalf, and obvious when you pressed a button called Highlight — so
+        option B from the last round becomes the right answer, as long as it is told apart from the
+        two transient washes (see the open question at the end).
+      </div>
+
+      <div class="steps">
+        <div>
+          <p class="step-label"><b>1.</b> Tap a verse. Two choices, not one.</p>
+          <div class="phone">
+            <div class="row"><span class="vn">2</span><span class="vt">He makes me lie down in green pastures.</span></div>
+            <div class="row"><span class="vn">3</span><span class="vt">He restores my soul.</span></div>
+            <div class="row sel">
+              <span class="vn">4</span>
+              <span class="vt">Even though I walk through the valley of the shadow of death, I will fear no evil.</span>
+            </div>
+            <div class="bar">
+              <button class="primary">Write a note</button>
+              <button><span class="pen" style="background: var(--cat-personal)"></span> Highlight</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p class="step-label"><b>2.</b> Highlight asks only which colour.</p>
+          <div class="phone">
+            <div class="row"><span class="vn">2</span><span class="vt">He makes me lie down in green pastures.</span></div>
+            <div class="row"><span class="vn">3</span><span class="vt">He restores my soul.</span></div>
+            <div class="row sel">
+              <span class="vn">4</span>
+              <span class="vt">Even though I walk through the valley of the shadow of death, I will fear no evil.</span>
+            </div>
+            <div class="swatches">
+              <p class="swatches-title">Highlight as…</p>
+              <div class="swatch-row">
+                <span class="swatch" style="background: var(--mark-observation)">Observation</span>
+                <span class="swatch" style="background: var(--mark-historical)">Historical</span>
+                <span class="swatch" style="background: rgba(181,115,42,0.15)">Application</span>
+                <span class="swatch" style="background: var(--mark-personal)">Personal</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p class="step-label"><b>3.</b> Done. Two taps, no keyboard.</p>
+          <div class="phone">
+            <div class="row"><span class="vn">2</span><span class="vt">He makes me lie down in green pastures.</span></div>
+            <div class="row"><span class="vn">3</span><span class="vt">He restores my soul.</span></div>
+            <div class="row mark-personal">
+              <span class="vn">4</span>
+              <span class="vt">Even though I walk through the valley of the shadow of death, I will fear no evil.</span>
+            </div>
+          </div>
+          <p class="verdict">
+            The keyboard never appears. That is the whole point of a highlight: it is for the moment
+            you notice something and have no words for it yet.
+          </p>
+        </div>
+      </div>
+
+      <div class="compare">
+        <p class="step-label" style="margin-bottom: 12px">
+          <b>The two, together.</b> A note hangs below its verse and you read it. A highlight is on
+          the verse and there is nothing to read. Evidently different, as you said.
+        </p>
+        <div class="row mark-observation">
+          <span class="vn">1</span><span class="vt">The LORD is my shepherd; I shall not want.</span>
+        </div>
+        <div class="row">
+          <span class="vn">2</span><span class="vt">He makes me lie down in green pastures; He leads me beside quiet waters.</span>
+        </div>
+        <p class="note">Written to a people who knew exactly how much a shepherd was worth.</p>
+        <div class="row mark-personal">
+          <span class="vn">4</span>
+          <span class="vt">Even though I walk through the valley of the shadow of death, I will fear no evil, for You are with me.</span>
+        </div>
+      </div>
+
+      <div class="closing">
+        <h3>What this changes, and the one thing still open</h3>
+        <ul>
+          <li>
+            <strong>Two buttons, not a morphing one.</strong> "Write a note" opens the composer and
+            the keyboard, exactly as today. "Highlight" never opens either.
+          </li>
+          <li>
+            <strong>Highlight is two taps and no typing.</strong> Colour is category, so the four
+            you already have are the four swatches — and they carry your own names once renamed.
+          </li>
+          <li>
+            <strong>The tint is now the right answer.</strong> A highlighter look is confusing when
+            the app decides it for you and obvious when you asked for it by name.
+          </li>
+          <li>
+            <strong>The Journal still needs fixing.</strong> A mark should show as its reference
+            plus a short rule in the category colour — not a row containing the word "Marked".
+          </li>
+        </ul>
+
+        <div class="q">
+          <strong>The one open question: three washes.</strong> A tinted mark now shares the screen
+          with two other tints — the verse you have <em>selected</em> (accent wash plus a left rule)
+          and the verse a <em>search result</em> jumped you to. My proposal is that selection keeps
+          its left rule as the thing that distinguishes it, and the search-jump changes from a
+          resting wash to a brief pulse that fades — since it is telling you "here it is", not
+          "this is a state you are in". That would leave exactly one persistent tint on the page,
+          which is the mark. Worth your call, because it touches two things that already work.
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
