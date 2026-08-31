@@ -119,11 +119,16 @@ export default function MobileNoteComposer({
     else onCancel()
   }
 
+  // Text OR a category is enough to save. Empty text WITH a category is a
+  // HIGHLIGHT: a note with no body, for the moment you notice something and
+  // have no words for it yet (see src/utils/noteKind.ts). Empty text and no
+  // category is still nothing, and still the same as cancelling.
+  const canSave = text.trim().length > 0 || category !== null
+
   const handleSave = (): void => {
     if (saving) return
     const value = text.trim()
-    // Saving nothing is the same as cancelling — no empty note is ever created.
-    if (!value) {
+    if (!canSave) {
       onCancel()
       return
     }
@@ -264,7 +269,10 @@ export default function MobileNoteComposer({
             onClick={handleSave}
             disabled={saving}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {/* The label is the affordance: picking a category without writing
+                anything says "Mark", so marking is discoverable without a
+                second button competing with Save. */}
+            {saving ? 'Saving…' : text.trim() ? 'Save' : category ? 'Mark' : 'Save'}
           </button>
         )}
       </div>

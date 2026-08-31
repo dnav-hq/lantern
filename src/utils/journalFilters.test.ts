@@ -85,27 +85,31 @@ describe('applyJournalFilters', () => {
   })
 
   it('filters by book at the entry level', () => {
-    const out = applyJournalFilters(entries, { category: ALL, bookNumber: 45 })
+    const out = applyJournalFilters(entries, { category: ALL, bookNumber: 45, kind: ALL })
     expect(out.map(e => e.key)).toEqual(['rom-8'])
     expect(out[0].notes).toHaveLength(2)
   })
 
   it('filters by category at the note level and drops emptied entries', () => {
-    const out = applyJournalFilters(entries, { category: 'personal', bookNumber: ALL })
+    const out = applyJournalFilters(entries, { category: 'personal', bookNumber: ALL, kind: ALL })
     expect(out.map(e => e.key)).toEqual(['rom-8'])
     expect(out[0].notes.map(n => n.id)).toEqual(['b'])
   })
 
   it('composes both axes', () => {
     expect(
-      applyJournalFilters(entries, { category: 'observation', bookNumber: 1 }).map(e => e.key)
+      applyJournalFilters(entries, { category: 'observation', bookNumber: 1, kind: ALL }).map(
+        e => e.key
+      )
     ).toEqual(['gen-1'])
-    expect(applyJournalFilters(entries, { category: 'personal', bookNumber: 1 })).toEqual([])
+    expect(
+      applyJournalFilters(entries, { category: 'personal', bookNumber: 1, kind: ALL })
+    ).toEqual([])
   })
 
   it('does not clone entries the category filter leaves untouched', () => {
     // Book-only filtering must preserve identity so untouched rows don't re-render.
-    const out = applyJournalFilters(entries, { category: ALL, bookNumber: 45 })
+    const out = applyJournalFilters(entries, { category: ALL, bookNumber: 45, kind: ALL })
     expect(out[0]).toBe(entries[0])
   })
 })
@@ -113,18 +117,22 @@ describe('applyJournalFilters', () => {
 describe('hasActiveFilter', () => {
   it('is false only when nothing is set', () => {
     expect(hasActiveFilter(NO_FILTERS)).toBe(false)
-    expect(hasActiveFilter({ category: 'personal', bookNumber: ALL })).toBe(true)
-    expect(hasActiveFilter({ category: ALL, bookNumber: 1 })).toBe(true)
+    expect(hasActiveFilter({ category: 'personal', bookNumber: ALL, kind: ALL })).toBe(true)
+    expect(hasActiveFilter({ category: ALL, bookNumber: 1, kind: ALL })).toBe(true)
   })
 })
 
 describe('emptyResultMessage', () => {
   const cases: Array<[JournalFilters, { category?: string; book?: string }, string]> = [
     [NO_FILTERS, {}, 'No notes yet.'],
-    [{ category: 'personal', bookNumber: ALL }, { category: 'Personal' }, 'No personal notes yet.'],
-    [{ category: ALL, bookNumber: 45 }, { book: 'Romans' }, 'No notes in Romans yet.'],
     [
-      { category: 'personal', bookNumber: 45 },
+      { category: 'personal', bookNumber: ALL, kind: ALL },
+      { category: 'Personal' },
+      'No personal notes yet.'
+    ],
+    [{ category: ALL, bookNumber: 45, kind: ALL }, { book: 'Romans' }, 'No notes in Romans yet.'],
+    [
+      { category: 'personal', bookNumber: 45, kind: ALL },
       { category: 'Personal', book: 'Romans' },
       'No personal notes in Romans.'
     ]
@@ -138,5 +146,59 @@ describe('emptyResultMessage', () => {
     for (const [filters, labels] of cases) {
       expect(emptyResultMessage(filters, labels).length).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('kind filter (written notes vs wordless marks)', () => {
+  const mixed = [
+    {
+      key: 'rom-8',
+      bookNumber: 45,
+      notes: [
+        { id: 'written', category: 'observation', highlight: false },
+        { id: 'mark', category: 'observation', highlight: true }
+      ]
+    }
+  ]
+
+  it('shows both by default', () => {
+    expect(applyJournalFilters(mixed, NO_FILTERS)[0].notes.map(n => n.id)).toEqual([
+      'written',
+      'mark'
+    ])
+  })
+
+  it('narrows to written notes', () => {
+    const out = applyJournalFilters(mixed, { ...NO_FILTERS, kind: 'note' })
+    expect(out[0].notes.map(n => n.id)).toEqual(['written'])
+  })
+
+  it('narrows to marks', () => {
+    const out = applyJournalFilters(mixed, { ...NO_FILTERS, kind: 'highlight' })
+    expect(out[0].notes.map(n => n.id)).toEqual(['mark'])
+  })
+
+  it('composes with the category axis', () => {
+    const out = applyJournalFilters(mixed, {
+      ...NO_FILTERS,
+      kind: 'highlight',
+      category: 'observation'
+    })
+    expect(out[0].notes.map(n => n.id)).toEqual(['mark'])
+    expect(
+      applyJournalFilters(mixed, { ...NO_FILTERS, kind: 'highlight', category: 'personal' })
+    ).toEqual([])
+  })
+
+  it('treats a note with no highlight flag as a written note', () => {
+    // The flag is optional on the structural type, so absence must not read as
+    // "this is a mark".
+    const legacy = [{ key: 'k', bookNumber: 45, notes: [{ id: 'x', category: null }] }]
+    expect(applyJournalFilters(legacy, { ...NO_FILTERS, kind: 'note' })[0].notes).toHaveLength(1)
+    expect(applyJournalFilters(legacy, { ...NO_FILTERS, kind: 'highlight' })).toEqual([])
+  })
+
+  it('counts as an active filter, so it can be cleared', () => {
+    expect(hasActiveFilter({ ...NO_FILTERS, kind: 'highlight' })).toBe(true)
   })
 })
