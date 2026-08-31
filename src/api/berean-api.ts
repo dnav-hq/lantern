@@ -14,6 +14,7 @@ import type {
   DeleteNoteResult
 } from '../types'
 import { getBibleVerse } from '../bible/service'
+import { pageAll } from './paging'
 import { mirrorKey, readMirror, writeMirror } from '../offline/mirror'
 import {
   OfflineError,
@@ -78,6 +79,10 @@ export class SupabaseBereanApi implements BereanApi {
     return data
   }
 
+  // Unbounded collection reads page through `.range()` rather than relying on
+  // the server's row cap, which truncates silently. See src/api/paging.ts.
+  private pageAll = pageAll
+
   // ── Offline plumbing ────────────────────────────────────────────────────
   //
   // Every read funnels through `read()`: run the query, and on success mirror
@@ -121,23 +126,33 @@ export class SupabaseBereanApi implements BereanApi {
 
   async getPassages(): Promise<Passage[]> {
     return this.read('getPassages', undefined, async () => {
-      const { data, error } = await this.db
-        .from('passages')
-        .select(PASSAGE_COLS)
-        .eq('workspace_id', this.workspaceId)
-        .order('reference_label', { ascending: true })
-      return this.assert(data, error) as Passage[]
+      // Paged: one passage row exists per distinct anchor a note has ever been
+      // hung off, so this grows with use exactly like getAllNotes does, and
+      // getJournalEntries depends on it being complete.
+      const rows = await this.pageAll((from, to) =>
+        this.db
+          .from('passages')
+          .select(PASSAGE_COLS)
+          .eq('workspace_id', this.workspaceId)
+          .order('reference_label', { ascending: true })
+          .range(from, to)
+      )
+      return rows as Passage[]
     })
   }
 
   async getPassagesByBook(bookNumber: number): Promise<Passage[]> {
     return this.read('getPassagesByBook', bookNumber, async () => {
-      const { data, error } = await this.db
-        .from('passages')
-        .select(PASSAGE_COLS)
-        .eq('workspace_id', this.workspaceId)
-        .eq('book_number', bookNumber)
-      return this.assert(data, error) as Passage[]
+      // Paged for the same reason as getPassages, just scoped to one book.
+      const rows = await this.pageAll((from, to) =>
+        this.db
+          .from('passages')
+          .select(PASSAGE_COLS)
+          .eq('workspace_id', this.workspaceId)
+          .eq('book_number', bookNumber)
+          .range(from, to)
+      )
+      return rows as Passage[]
     })
   }
 
@@ -184,15 +199,21 @@ export class SupabaseBereanApi implements BereanApi {
       // Two queries: all passages, plus one join query pulling every note's
       // (content, created_at, passage_id) in the workspace; aggregate here.
       const passages = await this.getPassages()
-      const { data, error } = await this.db
-        .from('notes')
-        .select(
-          'content, created_at, sessions!inner ( passage_id, passages!inner ( workspace_id ) )'
-        )
-        .eq('sessions.passages.workspace_id', this.workspaceId)
-        .order('created_at', { ascending: true })
+      // Paged: the Journal is the surface where silent truncation would be
+      // least visible and most damaging, since a missing note just looks like
+      // a note you never wrote.
+      const paged = await this.pageAll((from, to) =>
+        this.db
+          .from('notes')
+          .select(
+            'content, created_at, sessions!inner ( passage_id, passages!inner ( workspace_id ) )'
+          )
+          .eq('sessions.passages.workspace_id', this.workspaceId)
+          .order('created_at', { ascending: true })
+          .range(from, to)
+      )
       const first = <T>(v: T | T[]): T => (Array.isArray(v) ? v[0] : v)
-      const rows = this.assert(data, error) as unknown as Array<{
+      const rows = paged as unknown as Array<{
         content: string
         created_at: string
         sessions: { passage_id: string } | { passage_id: string }[]
@@ -266,15 +287,20 @@ export class SupabaseBereanApi implements BereanApi {
   async getNotesByBook(bookNumber: number): Promise<NoteWithPassageInfo[]> {
     return this.read('getNotesByBook', bookNumber, async () => {
       // One join query: notes -> sessions -> passages filtered by book + workspace.
-      const { data, error } = await this.db
-        .from('notes')
-        .select(
-          `${NOTE_COLS}, sessions!inner ( passage_id, passages!inner ( workspace_id, book_number, chapter_start, chapter_end, verse_start, verse_end, reference_label, created_at ) )`
-        )
-        .eq('sessions.passages.workspace_id', this.workspaceId)
-        .eq('sessions.passages.book_number', bookNumber)
-        .order('created_at', { ascending: true })
-      return this.mapNotesWithPassageInfo(this.assert(data, error))
+      // Paged for the same reason as getAllNotes: a heavily-studied book
+      // (Psalms, John) can cross the row cap on its own.
+      const rows = await this.pageAll((from, to) =>
+        this.db
+          .from('notes')
+          .select(
+            `${NOTE_COLS}, sessions!inner ( passage_id, passages!inner ( workspace_id, book_number, chapter_start, chapter_end, verse_start, verse_end, reference_label, created_at ) )`
+          )
+          .eq('sessions.passages.workspace_id', this.workspaceId)
+          .eq('sessions.passages.book_number', bookNumber)
+          .order('created_at', { ascending: true })
+          .range(from, to)
+      )
+      return this.mapNotesWithPassageInfo(rows)
     })
   }
 
@@ -282,14 +308,19 @@ export class SupabaseBereanApi implements BereanApi {
   // join query, just without the book filter.
   async getAllNotes(): Promise<NoteWithPassageInfo[]> {
     return this.read('getAllNotes', undefined, async () => {
-      const { data, error } = await this.db
-        .from('notes')
-        .select(
-          `${NOTE_COLS}, sessions!inner ( passage_id, passages!inner ( workspace_id, book_number, chapter_start, chapter_end, verse_start, verse_end, reference_label, created_at ) )`
-        )
-        .eq('sessions.passages.workspace_id', this.workspaceId)
-        .order('created_at', { ascending: true })
-      return this.mapNotesWithPassageInfo(this.assert(data, error))
+      // Paged: this is the whole-workspace read, so it is the one most likely
+      // to cross the server row cap. See pageAll().
+      const rows = await this.pageAll((from, to) =>
+        this.db
+          .from('notes')
+          .select(
+            `${NOTE_COLS}, sessions!inner ( passage_id, passages!inner ( workspace_id, book_number, chapter_start, chapter_end, verse_start, verse_end, reference_label, created_at ) )`
+          )
+          .eq('sessions.passages.workspace_id', this.workspaceId)
+          .order('created_at', { ascending: true })
+          .range(from, to)
+      )
+      return this.mapNotesWithPassageInfo(rows)
     })
   }
 
