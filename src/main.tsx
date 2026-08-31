@@ -1,7 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import Root from './Root'
-import PwaUpdatePrompt from './components/PwaUpdatePrompt'
 import { initServiceWorker } from './offline/pwaUpdate'
 import { installGlobalErrorHandlers } from './telemetry/globalHandlers'
 // Scripture reading faces, self-hosted (see tokens.css --scripture-font per
@@ -23,9 +22,9 @@ import './assets/motion.css'
 // No-ops entirely when Supabase isn't configured.
 installGlobalErrorHandlers()
 
-// Service worker: precache the app shell and update via a PROMPT (a quiet
-// "new version ready" pill), not the old force-reload that flashed white a few
-// seconds into a session. See src/offline/pwaUpdate.ts. Supabase API traffic is
+// Service worker: precache the app shell and update SILENTLY — no visible
+// prompt, and not the old force-reload that flashed white a few seconds into a
+// session either. See src/offline/pwaUpdate.ts. Supabase API traffic is
 // excluded from the SW cache (NetworkOnly) so this never masks staleness for
 // reads/writes — only the shell (JS/CSS/HTML/icons) is cached.
 initServiceWorker()
@@ -65,6 +64,5 @@ if (navigator.platform.toLowerCase().includes('mac')) {
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <Root />
-    <PwaUpdatePrompt />
   </React.StrictMode>
 )
