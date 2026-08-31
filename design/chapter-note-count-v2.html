@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lantern — note presence, permutations</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f4f0e8;
+        --surface: #fbf9f4;
+        --surface-2: #ece6da;
+        --border: #e2dccf;
+        --border-strong: #d8d0c0;
+        --text: #201e1a;
+        --text-muted: #6a6353;
+        --text-faint: #938a77;
+        --accent: #6b62d6;
+        --accent-ink: #594fd1;
+        --accent-weak: rgba(107, 98, 214, 0.11);
+        --cat-observation: #6b62d6;
+        --cat-historical: #3f8f5b;
+        --cat-application: #b5732a;
+        --cat-personal: #c05070;
+        --ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --scripture-font: 'Source Serif 4', Georgia, serif;
+        --elev-2: 0 2px 6px rgba(20, 16, 8, 0.06), 0 8px 20px -6px rgba(20, 16, 8, 0.1);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--ui-font);
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 28px 20px 72px;
+      }
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 0 0 6px;
+      }
+      h1 {
+        font-family: var(--scripture-font);
+        font-size: 26px;
+        font-weight: 600;
+        margin: 0 0 8px;
+      }
+      .sub {
+        color: var(--text-muted);
+        font-size: 14px;
+        line-height: 1.65;
+        max-width: 66ch;
+        margin: 0 0 26px;
+      }
+      .concede {
+        margin: 0 0 32px;
+        padding: 13px 15px;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--cat-historical);
+        border-radius: 8px;
+        background: var(--surface);
+        font-size: 13.5px;
+        line-height: 1.65;
+        color: var(--text-muted);
+      }
+      .concede strong {
+        color: var(--text);
+      }
+
+      .opt {
+        margin: 0 0 40px;
+      }
+      .opt-head {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 4px;
+      }
+      .opt-num {
+        font-family: var(--scripture-font);
+        font-size: 19px;
+        font-weight: 600;
+      }
+      .opt-name {
+        font-size: 13px;
+        color: var(--text-faint);
+      }
+      .opt-note {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin: 0 0 14px;
+        max-width: 66ch;
+      }
+
+      .reader {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface);
+        box-shadow: var(--elev-2);
+        overflow: hidden;
+      }
+      .reader-head {
+        padding: 16px 22px 12px;
+        text-align: center;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+      }
+      .reader-title {
+        font-family: var(--scripture-font);
+        font-size: 22px;
+        font-weight: 600;
+      }
+      .reader-sub {
+        font-size: 11.5px;
+        color: var(--text-faint);
+        margin-top: 2px;
+      }
+      .chips {
+        display: flex;
+        gap: 5px;
+        padding: 10px 22px 12px;
+        border-bottom: 1px solid var(--border);
+        overflow: hidden;
+      }
+      .chipwrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        flex: none;
+      }
+      .chip {
+        width: 26px;
+        height: 24px;
+        border-radius: 6px;
+        display: grid;
+        place-items: center;
+        font-size: 11.5px;
+        color: var(--text-faint);
+      }
+      .chip.on {
+        background: var(--accent-weak);
+        color: var(--accent-ink);
+        font-weight: 600;
+      }
+      .pip {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--cat-observation);
+        opacity: 0.55;
+      }
+      .pip.blank {
+        background: transparent;
+      }
+      .body {
+        padding: 20px 26px 26px;
+      }
+      .v {
+        font-family: var(--scripture-font);
+        font-size: 17px;
+        line-height: 1.72;
+        margin: 0 0 9px;
+        display: flex;
+        gap: 10px;
+      }
+      .vn {
+        font-family: var(--ui-font);
+        font-size: 10.5px;
+        color: var(--text-faint);
+        padding-top: 6px;
+        flex: none;
+        width: 14px;
+        text-align: right;
+      }
+      .noted {
+        box-shadow: inset 2px 0 0 var(--cat-observation);
+        padding-left: 8px;
+        margin-left: -10px;
+      }
+
+      /* corner chip variants */
+      .corner {
+        position: absolute;
+        right: 18px;
+        top: 18px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11.5px;
+        color: var(--text-muted);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 4px 10px;
+        cursor: pointer;
+        font-family: var(--ui-font);
+      }
+      .corner:hover {
+        color: var(--text);
+        border-color: var(--border-strong);
+      }
+      .corner.bare {
+        background: none;
+        border-color: transparent;
+        padding: 4px 6px;
+      }
+      .corner.bare:hover {
+        background: var(--surface-2);
+        border-color: var(--border);
+      }
+      .dots {
+        display: inline-flex;
+        gap: 2px;
+      }
+      .dots i {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        display: block;
+      }
+      .count {
+        color: var(--text-faint);
+      }
+
+      .verdict {
+        margin-top: 10px;
+        font-size: 12.5px;
+        color: var(--text-faint);
+        line-height: 1.65;
+        max-width: 66ch;
+      }
+      .verdict b {
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+
+      .closing {
+        margin-top: 40px;
+        border-top: 1px solid var(--border);
+        padding-top: 22px;
+      }
+      .closing h3 {
+        font-family: var(--scripture-font);
+        font-size: 17px;
+        margin: 0 0 10px;
+      }
+      .closing p,
+      .closing ul {
+        font-size: 13.5px;
+        line-height: 1.75;
+        color: var(--text-muted);
+        max-width: 66ch;
+      }
+      .closing ul {
+        padding-left: 18px;
+      }
+      .closing strong {
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <p class="eyebrow">Design ideation · round two</p>
+      <h1>Permutations of the corner</h1>
+      <p class="sub">
+        Three variants of the option you liked, plus the one that might replace it entirely. All on
+        Romans 8, twelve notes.
+      </p>
+
+      <div class="concede">
+        <strong>Where I was wrong.</strong> I ranked prominence by usefulness. The correct inverse is
+        that because nobody really cares about the number, it should be
+        <strong>peripheral, not gently inline</strong> — and putting a line under the book title, in
+        the reading column, greets you before the scripture does. The corner keeps the reading column
+        clean, which is the stronger position. What I would still hold onto is much narrower: not the
+        corner, just <strong>the bare number leading</strong>. "12" reads as a tally. Dots first, with
+        the count second or absent, reads as "something of yours is here".
+      </div>
+
+      <!-- 2a -->
+      <section class="opt">
+        <div class="opt-head">
+          <span class="opt-num">2a</span><span class="opt-name">Dots only — no number at all</span>
+        </div>
+        <p class="opt-note">
+          The dots say what kinds of notes are in the chapter. Nothing is counted. This is the
+          version that cannot become a scoreboard, because there is no score.
+        </p>
+        <div class="reader">
+          <div class="reader-head">
+            <button class="corner bare" title="See your notes on Romans">
+              <span class="dots">
+                <i style="background: var(--cat-observation)"></i>
+                <i style="background: var(--cat-historical)"></i>
+                <i style="background: var(--cat-personal)"></i>
+              </span>
+            </button>
+            <div class="reader-title">Romans</div>
+            <div class="reader-sub">16 chapters</div>
+          </div>
+          <div class="chips">
+            <span class="chipwrap"><span class="chip">6</span><span class="pip blank"></span></span>
+            <span class="chipwrap"><span class="chip">7</span><span class="pip blank"></span></span>
+            <span class="chipwrap"><span class="chip on">8</span><span class="pip blank"></span></span>
+            <span class="chipwrap"><span class="chip">9</span><span class="pip blank"></span></span>
+            <span class="chipwrap"><span class="chip">10</span><span class="pip blank"></span></span>
+          </div>
+          <div class="body">
+            <p class="v noted">
+              <span class="vn">28</span> And we know that God works all things together for the good
+              of those who love Him, who are called according to His purpose.
+            </p>
+            <p class="v">
+              <span class="vn">29</span> For those God foreknew, He also predestined to be conformed
+              to the image of His Son.
+            </p>
+          </div>
+        </div>
+        <p class="verdict">
+          <b>For:</b> the quietest thing that still answers the question, and it carries real
+          information (what kind, not how much). <b>Against:</b> three small dots may be too subtle to
+          notice at all.
+        </p>
+      </section>
+
+      <!-- 2b -->
+      <section class="opt">
+        <div class="opt-head">
+          <span class="opt-num">2b</span><span class="opt-name">Dots, count second and faint</span>
+        </div>
+        <p class="opt-note">
+          Your original pick, with the reading order reversed so the qualitative signal leads and the
+          number is a detail rather than a headline.
+        </p>
+        <div class="reader">
+          <div class="reader-head">
+            <button class="corner">
+              <span class="dots">
+                <i style="background: var(--cat-observation)"></i>
+                <i style="background: var(--cat-historical)"></i>
+                <i style="background: var(--cat-personal)"></i>
+              </span>
+              <span class="count">12 notes</span>
+            </button>
+            <div class="reader-title">Romans</div>
+            <div class="reader-sub">16 chapters</div>
+          </div>
+          <div class="chips">
+            <span class="chipwrap"><span class="chip">6</span><span class="pip blank"></span></span>
+            <span class="chipwrap"><span class="chip">7</span><span class="pip blank"></span></span>
+            <span class="chipwrap"><span class="chip on">8</span><span class="pip blank"></span></span>
+            <span class="chipwrap"><span class="chip">9</span><span class="pip blank"></span></span>
+            <span class="chipwrap"><span class="chip">10</span><span class="pip blank"></span></span>
+          </div>
+          <div class="body">
+            <p class="v noted">
+              <span class="vn">28</span> And we know that God works all things together for the good
+              of those who love Him, who are called according to His purpose.
+            </p>
+            <p class="v">
+              <span class="vn">29</span> For those God foreknew, He also predestined to be conformed
+              to the image of His Son.
+            </p>
+          </div>
+        </div>
+        <p class="verdict">
+          <b>For:</b> unmistakable, still out of the reading column, and "12 notes" reads as a fact
+          where "12" reads as a score. <b>Against:</b> the most visually present of these three.
+        </p>
+      </section>
+
+      <!-- 2c -->
+      <section class="opt">
+        <div class="opt-head">
+          <span class="opt-num">2c</span
+          ><span class="opt-name">The chapter strip answers it instead</span>
+        </div>
+        <p class="opt-note">
+          This is the one I would actually argue for now, and it came out of your push. A pip under
+          the chapter numbers you have written in. It answers the question
+          <em>at the moment you are choosing where to go</em>, which is when it is genuinely useful —
+          rather than telling you about the chapter you are already in, which the notes beside the
+          verses already show you. Note chapters 8 and 10 are marked here.
+        </p>
+        <div class="reader">
+          <div class="reader-head">
+            <div class="reader-title">Romans</div>
+            <div class="reader-sub">16 chapters</div>
+          </div>
+          <div class="chips">
+            <span class="chipwrap"><span class="chip">6</span><span class="pip blank"></span></span>
+            <span class="chipwrap"><span class="chip">7</span><span class="pip blank"></span></span>
+            <span class="chipwrap"><span class="chip on">8</span><span class="pip"></span></span>
+            <span class="chipwrap"><span class="chip">9</span><span class="pip blank"></span></span>
+            <span class="chipwrap"><span class="chip">10</span><span class="pip"></span></span>
+            <span class="chipwrap"><span class="chip">11</span><span class="pip blank"></span></span>
+            <span class="chipwrap"><span class="chip">12</span><span class="pip blank"></span></span>
+          </div>
+          <div class="body">
+            <p class="v noted">
+              <span class="vn">28</span> And we know that God works all things together for the good
+              of those who love Him, who are called according to His purpose.
+            </p>
+            <p class="v">
+              <span class="vn">29</span> For those God foreknew, He also predestined to be conformed
+              to the image of His Son.
+            </p>
+          </div>
+        </div>
+        <p class="verdict">
+          <b>For:</b> nothing new is added to the page at all; an existing control gets slightly more
+          honest. No number anywhere. Answers "where have I been working" across the whole book at a
+          glance. <b>Against:</b> it does not give you a way to jump to the Journal, so it may need
+          2a alongside it.
+        </p>
+      </section>
+
+      <div class="closing">
+        <h3>Where I land now</h3>
+        <p>
+          <strong>2c, with 2a beside it if a jump-off is wanted.</strong> Your instinct that this may
+          not need to exist at all was the useful part: the reading page already shows notes beside
+          the verses, so a header count mostly restates what scrolling reveals. The genuinely
+          unanswered question is <em>which chapters have I written in</em>, and that belongs on the
+          chapter strip, where you ask it.
+        </p>
+        <ul>
+          <li>
+            <strong>No number anywhere in 2c.</strong> Presence, not quantity — which sidesteps the
+            scoreboard problem rather than styling around it.
+          </li>
+          <li>
+            <strong>It reuses a control that already exists</strong>, so the page gains no new
+            element. That is the cheapest possible answer to "does this break the calm".
+          </li>
+          <li>
+            <strong>Still one link, no new surface.</strong> Anything clickable here goes to the
+            Journal filtered to the book, which now exists.
+          </li>
+          <li>
+            <strong>Open question for you:</strong> should the pip be category-coloured, or always
+            neutral? Coloured is more informative and slightly busier on a long book like Psalms.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>
