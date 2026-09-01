@@ -76,7 +76,8 @@ const SIGLA_ALT = SIGLA.join('|')
 const VARIANT_LEAD = new RegExp(`(^|[;.]\\s+|\\)\\s+)(?!see|cited|compare)(${SIGLA_ALT})\\b`)
 const SIGLUM_ANYWHERE = new RegExp(`\\b(${SIGLA_ALT})\\b`)
 const OMISSION = /\b(does not include|do not include|does not contain|lacks?|omits?)\b/i
-const SUPPLIED_LEAD = /\b(Hebrew|Greek|Aramaic|Latin)\s+(does not include|lacks|does not contain)\b/i
+const SUPPLIED_LEAD =
+  /\b(Hebrew|Greek|Aramaic|Latin)\s+(does not include|lacks|does not contain)\b/i
 
 // "Cited in 2 Corinthians 4:6", "See Galatians 3:8", "Psalms 118:26". Book
 // names come from the existing table rather than a second hand-written list.
@@ -92,7 +93,9 @@ const REFERENCE_LEAD = new RegExp(`^(${BOOK_ALT})\\s+\\d+:\\d`)
 const RENDERING_LEAD =
   /^(Or\b|Literally\b|Hebrew |Greek |Aramaic |Possibly\b|Probably\b|Perhaps\b|Forms of the\b|The (Hebrew|Greek|Aramaic)\b)/
 const NAME = "[A-Z][\\w’'\\-]*"
-const GLOSS_LEAD = new RegExp(`^That is,|^${NAME} means\\b|^${NAME} (is|was) (a|an|the|probably|another)\\b`)
+const GLOSS_LEAD = new RegExp(
+  `^That is,|^${NAME} means\\b|^${NAME} (is|was) (a|an|the|probably|another)\\b`
+)
 
 /**
  * Which kind of note this is. Ordered tests, first match wins — and the ORDER

@@ -11,7 +11,12 @@ The one-line version: *a footnote is a translator saying "I had a choice here."
 That is the first honest reason a reader has to go deeper, and it is the only
 thing we ship in rung one.*
 
-Status: **design + data brief, not yet spec'd.** Written 2026-08-31. First rung
+Status: **design + data brief; the DATA half is now built.** Written
+2026-08-31. Slice 1 shipped 2026-09-01 — §3's classifier
+(`src/utils/footnotes.ts`) and §5.5's seam change (`helloao.ts` →
+`BibleVerseLine.notes`), with every figure below re-run against the shipped
+code (see §11's re-run note). Nothing renders yet: §5's reading surface and
+§10's open questions are still ahead. First rung
 of Arc 2 in `docs/ROADMAP.md`; companion to `docs/proposals/deep-dive-study.md`
 (which placed footnotes as the cheapest layer and split the layer in two) and
 `docs/proposals/word-door-guardrails.md` (which counted 2,185 word-anchored
@@ -146,7 +151,12 @@ density of the set we actually ship, which is much calmer.
 ### 2.5 Where the markers sit
 
 Of the 4,817 verse-anchored markers: **3,492 sit mid-verse** (there is more text
-after them) and **1,325 are verse-final**. A mid-verse marker is anchored to the
+after them) and **1,325 are verse-final**. *(Re-run 2026-09-01: confirmed, with
+one definitional nuance worth writing down — two of those 3,492 markers, Luke
+11:2 and Hebrews 2:7, are followed only by a `{ lineBreak }` item, which
+contributes no visible text. Counting "more VISIBLE text after the marker", which
+is what anchoring actually cares about, the split is 3,490 / 1,327. The
+distinction never reaches the ship set's 1,658/441.)* A mid-verse marker is anchored to the
 word or phrase immediately before it; a verse-final marker is anchored to the
 verse's last phrase, which in practice is often the whole clause. Both are
 usable; §7 uses the distinction to correct a claim in the roadmap.
@@ -229,6 +239,14 @@ wrong before it was:
   reads otherwise — a variant. There are 324 of the first and 84 of the second,
   and **the only discriminator is the punctuation**. Test 2 exists for exactly
   this and nothing else.
+- **The three SHIP-side leads above are sketches, not regexes**, and that shows
+  up in the counts. `CITATION_LEAD`, `RENDERING_LEAD` and `GLOSS_LEAD` are
+  written here as leading-word lists; the implementation
+  (`src/utils/footnotes.ts`, 2026-09-01) reproduces §3.1's `rendering` (2,099),
+  `variant` (880), `supplied` (13) and `measure` (350) EXACTLY, and lands
+  citation/gloss/other at 591/700/220 against this table's 592/666/253. All
+  three of those are hold classes, so the difference cannot reach a reader —
+  it is the same gloss-versus-other boundary noise §3.3 measured and dismissed.
 - **"see also LXX" is support, not a variant.** "Or *not a nation*; see also
   LXX." is a rendering note that cites a witness in its favour; 49 of the 1,336
   "Or …" notes do this. The negative lookahead in test 3 keeps them shippable
@@ -781,9 +799,38 @@ is reproducible in a few minutes:
 
 All figures fetched and computed 2026-08-31 against the live API.
 
+**Re-run 2026-09-01, against the shipped code rather than a scratch script.**
+`complete.json` was fetched live again and walked with the actual
+`classifyFootnote` + `flattenVerseContent` this repo now ships. Everything that
+matters reproduced to the note:
+
+| Figure | Brief | Re-run |
+|---|---|---|
+| Footnotes / chapters with / without | 4,853 · 1,091 · 98 | **same** |
+| Verse markers · superscription markers | 4,817 · 36 | **same** |
+| Dangling markers · orphan notes · reference mismatches | 0 · 0 · 0 | **same** |
+| Distinct marker verses (§2.4's whole table) | 4,284 | **same** |
+| `rendering` · `variant` · `supplied` · `measure` | 2,099 · 880 · 13 · 350 | **same** |
+| `citation` · `gloss` · `other` | 592 · 666 · 253 | 591 · 700 · 220 (§3.2) |
+| Ship set: notes · verses · chapters | 2,099 · 1,995 · 915 | **same** |
+| Ship set: mid-verse · verse-final | 1,658 · 441 | **same** |
+| Ship-set note length: median / p90 / max / ≤60 | 32 / 79 / 262 / 1,683 | **same** |
+| §5.3 density: median / p90 / p99 / max | 2 / 4 / 7 / 10 (Daniel 11) | **same** |
+| §7's four-prefix split | 2,185 = 1,986 + 149 + 39 + 11 | **same**, and the 149 split 91/29/28/1 across Hebrew/Literally/Or/Greek as stated |
+
+And the number §5.5 could not predict, because it depends on the offset code
+existing: across all 1,189 chapters, **every one of the 2,099 ship-set anchors
+resolved** — 0 notes dropped for an unlocatable anchor and 0 for a marker with
+no text before it.
+
 ---
 
 ## 12. Suggested backlog entry
+
+*(Superseded 2026-09-01: `docs/BACKLOG.md` now carries a "Footnotes door
+(deep-dive rung 1)" entry written from what slice 1 actually landed and what is
+left. The text below is kept as written, since it is the brief's own summary of
+the whole rung.)*
 
 Pasteable into `docs/BACKLOG.md` under **Deferred**, by a human, once this brief
 is accepted. **This brief does not edit that file** (out of scope for the task

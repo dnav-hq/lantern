@@ -24,7 +24,9 @@ describe('classifyFootnote — what a reader may see', () => {
         'Forms of the Hebrew cherem refer to the giving over of things or persons, either by destroying them or by giving them as an offering.'
       )
     ).toBe('rendering')
-    expect(classifyFootnote('The Greek word for you is plural; also in verse 12.')).toBe('rendering')
+    expect(classifyFootnote('The Greek word for you is plural; also in verse 12.')).toBe(
+      'rendering'
+    )
   })
 
   it('holds anything that mentions manuscripts, however it leads', () => {
@@ -208,11 +210,20 @@ const GENESIS_1 = {
     number: 1,
     content: [
       { type: 'verse', number: 5, content: GEN_1_5 },
-      { type: 'verse', number: 13, content: ['And there was evening, and there was morning—the third day.'] },
+      {
+        type: 'verse',
+        number: 13,
+        content: ['And there was evening, and there was morning—the third day.']
+      },
       { type: 'verse', number: 26, content: GEN_1_26 }
     ],
     footnotes: [
-      { noteId: 0, caller: '+', text: 'Cited in 2 Corinthians 4:6', reference: { chapter: 1, verse: 3 } },
+      {
+        noteId: 0,
+        caller: '+',
+        text: 'Cited in 2 Corinthians 4:6',
+        reference: { chapter: 1, verse: 3 }
+      },
       { noteId: 1, caller: '+', text: 'Literally day one', reference: { chapter: 1, verse: 5 } },
       {
         noteId: 3,
@@ -225,7 +236,9 @@ const GENESIS_1 = {
 }
 
 function stubChapter(payload: unknown) {
-  const fetchMock = vi.fn(async () => ({ ok: true, status: 200, statusText: 'OK', json: async () => payload }) as Response)
+  const fetchMock = vi.fn(
+    async () => ({ ok: true, status: 200, statusText: 'OK', json: async () => payload }) as Response
+  )
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }
@@ -293,7 +306,13 @@ describe('HelloaoBibleProvider — carrying the notes through the seam', () => {
     stubChapter({
       chapter: {
         number: 6,
-        content: [{ type: 'verse', number: 1, content: ['O LORD, do not rebuke me in Your anger', { noteId: 9 }] }],
+        content: [
+          {
+            type: 'verse',
+            number: 1,
+            content: ['O LORD, do not rebuke me in Your anger', { noteId: 9 }]
+          }
+        ],
         footnotes: [
           {
             noteId: 9,

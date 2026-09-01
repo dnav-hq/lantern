@@ -248,7 +248,9 @@ export class HelloaoBibleProvider implements BibleProvider {
       const notes = verseNotesFor(node.content, text, footnotes)
       // Absent rather than empty: a verse with no doors carries no `notes` key
       // at all, so nothing downstream can render "0 notes".
-      verses.push(notes.length > 0 ? { verse: node.number, text, notes } : { verse: node.number, text })
+      verses.push(
+        notes.length > 0 ? { verse: node.number, text, notes } : { verse: node.number, text }
+      )
     }
     return verses
   }
