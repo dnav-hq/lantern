@@ -90,6 +90,42 @@ belongs to and why that arc comes when it does.
   deep-dive layers and group sharing, and unlike them it depends on no
   translation licence.
 
+- **User-owned categories, slice 2: ADD AND REMOVE.**
+  `docs/proposals/custom-categories.md`. Rename shipped because the KEY never
+  moves; adding a key does. **Slice A (open the seams) is BUILT 2026-09-01** and
+  ships nothing a reader can see: `@tags` now parse GENERICALLY and are
+  validated at the render layer (brief §3 option C), which keeps `parseNoteLine`
+  pure and fixes a live bug where an unknown tag made a wordless mark
+  (`v4 @typology`) read as a written note whose entire text was the tag
+  (`src/utils/noteKind.ts`). The legacy `@obs/@hist/@app/@per` shorthand is
+  retained; prefix matching and the silent default to `observation` are gone.
+  `NoteCategory` is now an open `string` alias, so the check the closed union
+  gave for free is written out as `isValidCategoryKey` +
+  `RESERVED_CATEGORY_KEYS` in `src/utils/noteCategories.ts`, with the parser
+  building its @tag pattern from the same `CATEGORY_KEY_SOURCE` so the two
+  cannot drift. `all` is reserved because it is the Journal filter's sentinel.
+  The brief was corrected in place on three points: its §3 regex let
+  `paul@corinth.org` file a note under `corinth` (a tag must now START a word),
+  its three `CATEGORY_LABELS` maps were already deleted by the rename-drift fix,
+  and slice A was narrowed — see below.
+  **STILL TO DO, and all of it is slice B's opening move:** the three stale tag
+  regexes (`StudyWorkbench.tsx` `ANY_TAG`, `BookDetailPage.tsx` `LEADING_META`
+  and `CATEGORY_TOKEN`), the five hardcoded tag lists in the editors, and the
+  §5.1 CSS refactor that replaces 75 `.cat-<key>` selectors across 14 families
+  with one custom property the component sets. Those were deferred because none
+  of them can bite until a key outside the built-in four exists, and slice A
+  ships no way to make one — `resolveCategories` still drops any non-built-in
+  stored row.
+  Decided, unchanged: deleting a category with notes on it ARCHIVES rather than
+  removes (notes keep their key, label and colour, nothing is rewritten, restore
+  is offered on key reuse); zero-note categories hard-delete. Colour is a
+  curated palette of 10 light/dark SLOTS assigned automatically, never a hex
+  picker — each pair must hit 3:1 non-text on canvas and 4.5:1 ink on both tint
+  and canvas, in all four themes x both modes. Cap 8 ACTIVE, archived excluded.
+  Remaining slices in order: (B) create + palette + cap; (C) retire/restore;
+  (D) the filter field + export the label rather than the key
+  (`src/platform/export.ts:92`).
+
 - **Translations: the settled position + zero-cost next actions (2026-08-30;
   see the addendum in `docs/proposals/translations-esv-niv.md`).** Settled:
   **BSB + KJV + NET offline and permanent; ESV online-only while Lantern stays
