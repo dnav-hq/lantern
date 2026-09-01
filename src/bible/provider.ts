@@ -8,6 +8,28 @@
 export interface BibleVerseLine {
   verse: number
   text: string
+  // The translators' own alternate-rendering notes for this verse, anchored
+  // into `text` by character offset. ADDITIVE and OPTIONAL on purpose: `text`
+  // stays the flattened string every existing consumer already reads (the
+  // journal, search, note anchoring, the offline mirror, the self-hosted
+  // bundles), so only a surface that wants doors ever looks at `notes`.
+  // Absent — never empty-versus-present — when a provider carries none; see
+  // docs/proposals/footnotes-door.md §5.5.
+  notes?: VerseNote[]
+}
+
+// One footnote the reader may see, per docs/proposals/footnotes-door.md.
+// ONLY the alternate-rendering class reaches here; textual variants are
+// classified and withheld (brief §6), and withheld means genuinely absent —
+// no marker, no count, no placeholder.
+export interface VerseNote {
+  // Index into `text` where the anchored phrase ENDS. The phrase itself runs
+  // back from here; how far is the reading surface's decision, not the seam's.
+  // `offset === text.length` is the verse-final case (441 of the 2,099), which
+  // anchors a trailing clause rather than a word.
+  offset: number
+  // The translators' note, verbatim. Nothing is added to it, ever.
+  text: string
 }
 
 export interface BibleProvider {

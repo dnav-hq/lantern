@@ -2,7 +2,10 @@ import type { BibleProvider, BibleVerseLine } from './provider'
 import { CodedError } from '../errors'
 import { reportOccurrence } from '../telemetry/client'
 
-// Serves `primary`, dropping to `fallback` only when primary throws.
+// Serves `primary`, dropping to `fallback` only when primary throws. Whatever
+// the answering provider returns is passed through untouched, footnotes
+// included — so BSB via helloao carries its alternate-rendering notes and the
+// same chapter from the self-hosted bundle simply carries none.
 //
 // Composition order matters: this must wrap the CACHE, never sit inside it —
 // FallbackBibleProvider(CachedBibleProvider(network), fixture), not
