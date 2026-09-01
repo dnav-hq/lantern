@@ -14,6 +14,31 @@ belongs to and why that arc comes when it does.
 
 ## Deferred
 
+- **Desktop regression sweep: findings still open (2026-08-31).** The sweep is
+  `docs/audits/desktop-regression-2026-08-31.md`. Closed on 2026-09-01: the
+  category-rename drift in StudyWorkbench / BookDetailPage / ReadingMode
+  (finding 3), Profile unreachable on desktop (1), the dead "+ Study" tab below
+  1160px (2), and the highlight menu covering Quick note (4, which fell out of
+  the selection-bar centring fix as the audit predicted). STILL OPEN, none of
+  them urgent: the Bible library is not keyboard-reachable — 66 book rows are
+  bare divs with onClick, no role, no tabIndex (5, and it is the app's front
+  door); a failed export is silent from the desktop avatar menu where the
+  Profile page shows an error state (6); `.note-timestamp` is a hardcoded
+  `#c4c1ba` in light for 1.71:1 where dark already uses `--text-faint` (7); the
+  signed-out landing ignores dark mode because `body.dark` is set by a hook
+  inside `App` and the signed-out route renders `Landing` instead (8); and the
+  Journal counts marks as notes under the Marks filter (10). Finding 9 —
+  everything on `--text-faint` sitting at 3.01:1 — is a deliberate token
+  decision, recorded rather than queued.
+
+- **The audit's structural recommendation, partly done (2026-09-01).** The sweep
+  argues desktop drifted because mobile-first work lands on the mobile component
+  and stops, and the cheapest guard is making desktop consume the same shared
+  sources. The category half is done (`useCategoryLabels`). The other half is
+  not: the account actions are still written twice, once in `NavBar`'s avatar
+  menu and once in `ProfilePage`, and that duplication is what produced findings
+  1 and 6. One shared list rendered by both would close it.
+
 - **Journal retrieval, step 1 of 5: FILTERING (DONE 2026-08-31).** Composable
   book + category filters on the Journal, entirely client-side over the notes
   already fetched — no API method, no migration, per
