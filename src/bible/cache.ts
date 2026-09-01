@@ -11,9 +11,15 @@ const DB_VERSION = 1
 const STORE_NAME = 'chapters'
 const TRANSLATION = 'BSB' // the only translation phase 2 supports
 
+// Bump when the SHAPE of a cached record changes. Records written under an
+// older schema are still real scripture and still perfectly good to read — they
+// just lack whatever the newer shape carries.
+const SCHEMA = 2 // 2: verses may carry `notes` (docs/proposals/footnotes-door.md §5.5)
+
 interface CachedChapter {
   key: string
   verses: BibleVerseLine[]
+  schema?: number // absent on every record written before footnotes existed
 }
 
 function chapterKey(translation: string, bookNumber: number, chapter: number): string {
@@ -38,13 +44,13 @@ function openDb(): Promise<IDBDatabase> {
   return dbPromise
 }
 
-async function readCached(key: string): Promise<BibleVerseLine[] | null> {
+async function readCached(key: string): Promise<CachedChapter | null> {
   try {
     const db = await openDb()
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readonly')
       const req = tx.objectStore(STORE_NAME).get(key)
-      req.onsuccess = () => resolve((req.result as CachedChapter | undefined)?.verses ?? null)
+      req.onsuccess = () => resolve((req.result as CachedChapter | undefined) ?? null)
       req.onerror = () => reject(req.error)
     })
   } catch {
@@ -58,7 +64,7 @@ async function writeCached(key: string, verses: BibleVerseLine[]): Promise<void>
     const db = await openDb()
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite')
-      tx.objectStore(STORE_NAME).put({ key, verses } satisfies CachedChapter)
+      tx.objectStore(STORE_NAME).put({ key, verses, schema: SCHEMA } satisfies CachedChapter)
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)
     })
@@ -66,6 +72,10 @@ async function writeCached(key: string, verses: BibleVerseLine[]): Promise<void>
     // Best-effort cache; a write failure just means we re-fetch next time.
   }
 }
+
+// Keys currently being refreshed, so a reader who flicks back and forth across
+// a stale chapter starts one background fetch rather than one per read.
+const refreshing = new Set<string>()
 
 export class CachedBibleProvider implements BibleProvider {
   constructor(
@@ -76,10 +86,34 @@ export class CachedBibleProvider implements BibleProvider {
   async getChapter(bookNumber: number, chapter: number): Promise<BibleVerseLine[]> {
     const key = chapterKey(this.translation, bookNumber, chapter)
     const cached = await readCached(key)
-    if (cached) return cached
+    if (cached) {
+      // SERVE FIRST, then refresh. A record written before footnotes existed
+      // carries none, and this cache is cache-forever — so a chapter the reader
+      // had already read would never gain its doors. Re-fetching INSTEAD of
+      // serving would be worse than the missing notes: it would turn a warm
+      // cache into a network dependency, and take scripture away from an
+      // offline reader to add an underline. So the stale text is returned
+      // immediately and the fresh copy overwrites it in the background, for
+      // the next read.
+      if (cached.schema !== SCHEMA) void this.refresh(key, bookNumber, chapter)
+      return cached.verses
+    }
 
     const verses = await this.inner.getChapter(bookNumber, chapter)
     void writeCached(key, verses)
     return verses
+  }
+
+  private async refresh(key: string, bookNumber: number, chapter: number): Promise<void> {
+    if (refreshing.has(key)) return
+    refreshing.add(key)
+    try {
+      await writeCached(key, await this.inner.getChapter(bookNumber, chapter))
+    } catch {
+      // Offline, or the provider is down. The stale record was already served
+      // and stays exactly as it was; we try again on the next read.
+    } finally {
+      refreshing.delete(key)
+    }
   }
 }

@@ -79,6 +79,11 @@ export class SelfHostedBibleProvider implements BibleProvider {
         `no book ${bookNumber} chapter ${chapter}`
       )
     }
+    // NO FOOTNOTES, DELIBERATELY. The bundle stores [verse, text] pairs, so a
+    // chapter served during a helloao outage simply has no `notes` — no doors,
+    // no empty state, no error. That is the right degradation and it needs no
+    // code: rebuilding the bundles to carry notes is explicitly not rung one
+    // (docs/proposals/footnotes-door.md §5.5).
     return verses.map(([verse, text]) => ({ verse, text }))
   }
 }

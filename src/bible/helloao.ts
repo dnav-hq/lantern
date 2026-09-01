@@ -1,5 +1,6 @@
-import type { BibleProvider, BibleVerseLine } from './provider'
+import type { BibleProvider, BibleVerseLine, VerseNote } from './provider'
 import { CodedError } from '../errors'
+import { footnoteShips } from '../utils/footnotes'
 
 // Scripture via the free, keyless bible.helloao.org API, for any translation
 // helloao serves. Endpoint: GET
@@ -16,8 +17,9 @@ import { CodedError } from '../errors'
 //   { noteId: number }               -- footnote marker, no visible text
 //   { lineBreak: true }               -- poetic line break, becomes a space
 //   { text: string, poem?: number }   -- poetry line (Psalms etc.)
-// We flatten all of that down to a single plain-text string per verse — no
-// component needs footnote markers or poem-line structure today.
+// We flatten all of that down to a single plain-text string per verse. The
+// poem-line structure is still dropped; the footnote markers are NOT any more
+// — see verseNotesFor below and docs/proposals/footnotes-door.md §5.5.
 
 const BASE_URL = 'https://bible.helloao.org/api'
 
@@ -112,14 +114,39 @@ interface ChapterContentNode {
   number?: number
 }
 
+interface HelloaoFootnote {
+  noteId: number
+  text: string
+  reference?: { chapter: number; verse: number }
+}
+
 interface HelloaoChapterResponse {
   chapter: {
     number: number
     content: ChapterContentNode[]
+    footnotes?: HelloaoFootnote[]
   }
 }
 
-function flattenVerseContent(content: VerseContentItem[]): string {
+// WHICH TRANSLATIONS' FOOTNOTES WE MAY READ AT ALL. Structural, not a filter,
+// and deliberately a hard-coded allow-list rather than a deny-list:
+//
+//  - `eng_net`: the NET licence grants the TEXT ONLY — its ~60,000 translator
+//    notes are excluded and are not ours. helloao's eng_net nonetheless leaks
+//    39 of them (measured 2026-08-31; 19 begin "Translator's Note"), which is
+//    precisely the material we may not render. So the NET provider must never
+//    READ the array, rather than read it and filter (brief §8).
+//  - `eng_kjv` uses this file only for its USFM table; kjv.ts has its own
+//    flattener. Its apparatus is a different format entirely (brief §3.6).
+//  - `tam_irv` / `tam_tcv`: real notes, but the classifier keys on English
+//    leading phrases and would call every one of them `other`. Tamil footnotes
+//    need a Tamil reader to design for, not a regex.
+const FOOTNOTE_TRANSLATIONS = new Set(['BSB'])
+
+// Exported for the offset tests (src/utils/footnotes.test.ts), which assert the
+// anchored SUBSTRING against real fetched chapters — an offset assertion alone
+// is a test you can make pass by copying the current wrong answer.
+export function flattenVerseContent(content: VerseContentItem[]): string {
   const parts: string[] = []
   for (const item of content) {
     if (typeof item === 'string') {
@@ -135,6 +162,54 @@ function flattenVerseContent(content: VerseContentItem[]): string {
     .replace(/\s+([,.;:!?”’])/g, '$1') // no space before closing punctuation
     .replace(/\s{2,}/g, ' ')
     .trim()
+}
+
+// The anchors: turn each `{ noteId }` marker sitting in a verse's content into
+// a character offset into that verse's flattened text.
+//
+// THIS IS THE FIDDLIEST CORRECTNESS DETAIL IN THE FEATURE, and it fails
+// silently and beautifully — a wrong offset does not throw, does not fail a
+// type check, and shows up only as an underline under the wrong word, which
+// tells the reader that Lantern thinks the translators flagged a word they did
+// not. So it is computed rather than estimated, and then CHECKED:
+//
+//   offset = flattenVerseContent(everything before the marker).length
+//
+// which is exact because the flattener is deterministic and its joining rules
+// are local — it collapses runs of whitespace and eats the space before closing
+// punctuation, and both of those only ever shorten text at or after the
+// boundary, never inside the prefix. The guard is the second half: unless the
+// prefix flattens to a genuine prefix OF the verse text, we cannot say where
+// the phrase ends, so the note is DROPPED rather than anchored somewhere
+// plausible. Same for a marker with nothing before it. Dropping is safe in
+// exactly the way §6 requires — a dropped note leaves no marker, no count and
+// no placeholder, so the verse reads as one with nothing to say.
+// (Measured across all 1,189 BSB chapters on 2026-09-01: 2,099 ship-set notes,
+// 0 dropped for either reason.)
+function verseNotesFor(
+  content: VerseContentItem[],
+  text: string,
+  footnotes: Map<number, HelloaoFootnote>
+): VerseNote[] {
+  const notes: VerseNote[] = []
+  for (let i = 0; i < content.length; i++) {
+    const item = content[i]
+    if (typeof item !== 'object' || !('noteId' in item)) continue
+    const footnote = footnotes.get(item.noteId)
+    // A dangling marker (0 in the BSB, exhaustively checked) is not a reason to
+    // fail a chapter; it is a reason to have no door there.
+    if (!footnote) continue
+    // reference.verse === 0 is a psalm superscription (36 notes). The reading
+    // surface renders verse rows and has no superscription row, so they have
+    // nowhere to hang — brief §2.3.
+    if (footnote.reference?.verse === 0) continue
+    // §6: only the alternate-rendering class reaches a reader.
+    if (!footnoteShips(footnote.text)) continue
+    const anchored = flattenVerseContent(content.slice(0, i))
+    if (anchored.length === 0 || !text.startsWith(anchored)) continue
+    notes.push({ offset: anchored.length, text: footnote.text })
+  }
+  return notes
 }
 
 export class HelloaoBibleProvider implements BibleProvider {
@@ -157,10 +232,25 @@ export class HelloaoBibleProvider implements BibleProvider {
     }
     const data = (await res.json()) as HelloaoChapterResponse
 
+    // Only walk `footnotes` for a translation whose notes are both ours to show
+    // and shaped the way the classifier expects. An empty map means every
+    // marker resolves to nothing, so `notes` is simply absent from every verse.
+    const footnotes = new Map<number, HelloaoFootnote>(
+      FOOTNOTE_TRANSLATIONS.has(this.translation)
+        ? (data.chapter.footnotes ?? []).map(f => [f.noteId, f])
+        : []
+    )
+
     const verses: BibleVerseLine[] = []
     for (const node of data.chapter.content) {
       if (node.type !== 'verse' || node.number === undefined || !node.content) continue
-      verses.push({ verse: node.number, text: flattenVerseContent(node.content) })
+      const text = flattenVerseContent(node.content)
+      const notes = verseNotesFor(node.content, text, footnotes)
+      // Absent rather than empty: a verse with no doors carries no `notes` key
+      // at all, so nothing downstream can render "0 notes".
+      verses.push(
+        notes.length > 0 ? { verse: node.number, text, notes } : { verse: node.number, text }
+      )
     }
     return verses
   }

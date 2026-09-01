@@ -154,6 +154,27 @@ belongs to and why that arc comes when it does.
   The deep-dive entry surface will likely be redesigned from scratch on the
   doorways model rather than reusing the connections prototype.
 
+- **Footnotes door (deep-dive rung 1) — the DATA half is built, the reading
+  surface is not (2026-09-01).** Design + data brief in
+  `docs/proposals/footnotes-door.md`. Slice 1 landed the invisible half: the BSB
+  chapter JSON we already fetch carries 4,853 footnotes and inline `noteId`
+  markers, and `helloao.ts` no longer discards them — the 2,099
+  alternate-rendering notes now ride through the seam as
+  `BibleVerseLine.notes: { offset, text }[]`, anchored by character offset into
+  the flattened verse text, and the classifier (`src/utils/footnotes.ts`) holds
+  back the 880 textual variants, 591 citations, 700 glosses, 350 measures and 13
+  supplied-word notes. NOTHING RENDERS YET, on purpose. What is left, and each
+  needs Dennis before it is a ticket: the hairline dotted underline and its
+  weight/opacity across dark mode and the visual themes (§5.1, §10.1); the
+  popover, and whether it reuses `CrossRefPill`'s model or wants its own
+  presentation (§5.2, §10.2); mobile tap arbitration against verse selection,
+  which is the risky half and wants a real device (§5.4, §10.3); and whether a
+  display preference belongs in `ReadingControls` at all (§10.4). Also still
+  open from the brief: the one email to Berean.Bible asking whether the
+  public-domain dedication covers the apparatus as well as the text (§8), and
+  the KJV's 6,959 notes, which are a different apparatus needing their own
+  parser and audit (§3.6).
+
 - **Guest cleanup after the guest-is-the-App change (2026-08-27) — the two
   mechanical loose ends are DONE (2026-08-28, see Done); one optional item
   remains.** A subtle in-reader "preview" indicator so a guest mid-reading (not
