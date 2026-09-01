@@ -120,6 +120,31 @@
   --cat-personal-ink: #a73c5b; /* 4.52 on tint, 5.37 on canvas */
   --accent-ink: #594fd1; /* 4.53 on tint, 5.33 on canvas */
 
+  /* ── Category palette additions (approved 2026-09-01, see
+     design/category-palette.html) — six more slots for user-chosen note
+     categories. Unlike the four built-ins above, these get ONE light/dark
+     pair each rather than per-theme tuning: solved against all 20 theme
+     canvases (7 light, 13 dark incl. pure-black) at once, so a single pair
+     already clears its bar everywhere. Not yet consumed by any component. */
+  --cat-olive: #6f8934;
+  --cat-teal: #2c8c88;
+  --cat-blue: #3984c6;
+  --cat-slate: #72809d;
+  --cat-purple: #a964c4;
+  --cat-plum: #c059af;
+  --cat-olive-weak: rgba(111, 137, 52, 0.12);
+  --cat-teal-weak: rgba(44, 140, 136, 0.12);
+  --cat-blue-weak: rgba(57, 132, 198, 0.12);
+  --cat-slate-weak: rgba(114, 128, 157, 0.12);
+  --cat-purple-weak: rgba(169, 100, 196, 0.12);
+  --cat-plum-weak: rgba(192, 89, 175, 0.12);
+  --cat-olive-ink: #576b29; /* 4.57 on tint, 5.17 on canvas */
+  --cat-teal-ink: #226d6a; /* 4.63 on tint, 5.29 on canvas */
+  --cat-blue-ink: #2d679a; /* 4.57 on tint, 5.20 on canvas */
+  --cat-slate-ink: #58657e; /* 4.54 on tint, 5.12 on canvas */
+  --cat-purple-ink: #8f42ae; /* 4.51 on tint, 5.15 on canvas */
+  --cat-plum-ink: #9f3c8f; /* 4.55 on tint, 5.21 on canvas */
+
   /* ── Elevation (soft, layered — freshness lives in the chrome) ── */
   --elev-1: 0 1px 2px rgba(20, 16, 8, 0.05), 0 1px 1px rgba(20, 16, 8, 0.04);
   --elev-2: 0 2px 6px rgba(20, 16, 8, 0.06), 0 8px 20px -6px rgba(20, 16, 8, 0.1);
@@ -188,6 +213,28 @@ body.dark {
   --cat-application-ink: var(--cat-application);
   --cat-personal-ink: var(--cat-personal);
   --accent-ink: var(--accent);
+
+  /* Category palette additions (see :root above) — one dark pair per slot,
+     no per-theme override. */
+  --cat-olive: #90b143;
+  --cat-teal: #3bbab6;
+  --cat-blue: #79abd8;
+  --cat-slate: #9ca6ba;
+  --cat-purple: #c697d8;
+  --cat-plum: #d590c9;
+  --cat-olive-weak: rgba(144, 177, 67, 0.18);
+  --cat-teal-weak: rgba(59, 186, 182, 0.18);
+  --cat-blue-weak: rgba(121, 171, 216, 0.18);
+  --cat-slate-weak: rgba(156, 166, 186, 0.18);
+  --cat-purple-weak: rgba(198, 151, 216, 0.18);
+  --cat-plum-weak: rgba(213, 144, 201, 0.18);
+  /* Dark measured 6.52–6.77:1 — already clears AA, ink is the field colour. */
+  --cat-olive-ink: var(--cat-olive);
+  --cat-teal-ink: var(--cat-teal);
+  --cat-blue-ink: var(--cat-blue);
+  --cat-slate-ink: var(--cat-slate);
+  --cat-purple-ink: var(--cat-purple);
+  --cat-plum-ink: var(--cat-plum);
 
   --elev-1: 0 1px 2px rgba(0, 0, 0, 0.3);
   --elev-2: 0 2px 6px rgba(0, 0, 0, 0.32), 0 10px 22px -8px rgba(0, 0, 0, 0.42);
