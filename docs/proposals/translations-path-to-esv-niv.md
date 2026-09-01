@@ -26,6 +26,58 @@ demanding licensing fees", forcing projects to remove the NIV
 ([The Other Cheek, 2023-12-03](https://theothercheek.com.au/bible-publishers-stewards-or-gatekeepers/),
 checked 2026-08-30). A route that depends on nobody looking is not a route.
 
+## Derek Castelli replied (2026-09-01) — the entity-form hypothesis loses its evidence
+
+**Read this before Section 2, Section 3, or Route 4.** The email in §5c was sent
+and answered. It resolves what this brief called "the single most valuable
+unknown", and it resolves it toward the falsifier rather than the hypothesis.
+
+Derek's answer, in his words: ESV/Crossway "has been the hardest to crack";
+Harvous's setup "isn't something I'd hold up as a template; it's more informal
+than I'd like"; and — the load-bearing sentence — **"I haven't been through a
+real agreement with Crossway or Biblica, so I can't say whether a company would
+move the needle with them."** He suggested API.Bible and YouVersion as avenues
+and said revisiting it properly is on his list.
+
+### What this changes
+
+- **The entity-form hypothesis (Section 3, Route 4) has no supporting evidence
+  left.** This brief argued a one-person LLC shipping ESV beside a paid tier was
+  "strong circumstantial evidence that Crossway's bar is clearable by a solo
+  developer with a company". It named its own falsifier — "it may be running on
+  the free non-commercial tier, in which case Harvous proves nothing about the
+  licensed tier" — and told the reader to ask before concluding. We asked. The
+  falsifier is the case. **Do not register a Pty Ltd in the hope it unlocks
+  ESV.** Nothing now suggests it would, and the cost is real.
+- **Eleven translations is not proof of a path.** It was the most alarming fact
+  in the competitive picture and it turns out to carry no licensing information
+  at all. A competitor shipping something is evidence they shipped it, not
+  evidence they were permitted to.
+- **Route 2's automatic decline stands unchallenged.** The one data point that
+  might have argued against it has withdrawn itself.
+
+### What it does not change
+
+- **His two suggestions are already settled rejections here**, both checked
+  against primary sources: API.Bible does not carry ESV, because Crossway runs
+  its own API and licenses it nowhere else (§1 "Checked and closed", and
+  care.api.bible on NIV commercial use). The YouVersion Platform Biblica
+  fast-track was closed in the earlier brief. This is not Derek being wrong so
+  much as Derek being candid that he has not looked properly yet — he said as
+  much. Worth noting that Lantern's research is now ahead of the nearest
+  comparable product's understanding of its own stack.
+- **Route 1 remains the recommendation**, and is now the recommendation by
+  elimination rather than by patience.
+
+### The one thing worth carrying forward
+
+An "informal" arrangement is the state Lantern is deliberately not in. Crossway
+has revoked before (CrossWire/SWORD, 2019) and Biblica has reversed course on
+open-source apps and demanded fees. Being on the free tier, inside its terms,
+with the tripwire understood, is a **better** position than eleven translations
+held informally — not a worse one. That is the honest reading of this exchange.
+
+---
 ## Corrections after live verification (2026-08-31)
 
 Two of this brief's findings were checked against the live sites the day after

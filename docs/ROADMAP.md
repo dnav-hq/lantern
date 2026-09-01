@@ -134,8 +134,19 @@ and not in a grey area.
   (notes, retrieval, deep dive, map) costs nothing per read at any scale. So
   the honest framing is "one translation stops scaling", not "the app cannot
   stay free". Watch it before any growth push; see docs/BACKLOG.md.
-- **Revisit when:** Harvous replies, or a real paid feature exists and is worth
-  trading ESV for.
+- **Harvous replied (2026-09-01), and the answer closes the question rather than
+  opening it.** Derek Castelli confirmed he has **not** been through a real
+  agreement with Crossway or Biblica, called his own setup "more informal than
+  I'd like", and could not say whether having a company helps. So the eleven
+  translations are not a licensing path we failed to find, and **the entity-form
+  hypothesis — register a Pty Ltd and Crossway's bar becomes clearable — has no
+  evidence behind it any more.** Do not incorporate for this reason. See the
+  2026-09-01 section at the top of `translations-path-to-esv-niv.md`. His two
+  suggestions, API.Bible and YouVersion, were already checked and closed here.
+  Staying on the free tier inside its terms is a better position than eleven
+  translations held informally.
+- **Revisit when:** a real paid feature exists and is worth trading ESV for, or
+  a publisher's terms change. The peer-enquiry route is now spent.
 
 ---
 
