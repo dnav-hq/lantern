@@ -753,6 +753,63 @@ so** rather than degrading capture.
 
 ---
 
+## 10a. RESOLVED with Dennis, 2026-09-01
+
+The §10 pass happened. Mockup: `design/footnotes-door.html`, built on real BSB
+data fetched live rather than examples written for it. Dennis approved every
+recommendation. **These are decided; build against them, do not reopen.**
+
+### The finding that changed the question
+
+**The API marks a note's POSITION, not its SPAN.** A marker says a note ends
+here and never says where the phrase began. §5.5's type is honest about this
+(`offset` is documented as where the anchored phrase *ends*) but §5.1 then asks
+for an underline under "the anchored word or phrase", and that start does not
+exist in the data. It has to be inferred. Real John 1: the v14 marker falls
+after `made His dwelling among us.` and the v18 marker after `is at the
+Father's side,`.
+
+**Decision: span strategy B, degrading to A.** Underline back approximately as
+many words as the note's own alternative offers to replace — that is the honest
+claim, *this much could have been said differently*. Where the note is a gloss
+rather than a substitution and B cannot align, fall back to A (the last word
+alone). Rejected: A alone, because roughly a third of markers land on a function
+word and "*us*" is a meaningless door for a note about *tabernacled*; and C
+(back to the clause boundary), which is the prettiest and the most confidently
+wrong, since it underlines words the note has no opinion about.
+
+**B is the only part of this that needs a measured accuracy pass.** If it does
+not hold up, A ships and is never embarrassing. That is the fallback, not a
+reason to delay.
+
+### The rest
+
+1. **Underline weight: 1px dotted at 34% of the text colour**, 4px offset,
+   rising to ~62% on hover. Checked in both themes; 22% effectively vanishes in
+   dark and 50% starts competing with the text.
+2. **The popover carries an attribution line** — `TRANSLATORS' NOTE · BSB`, in
+   the existing small-caps meta treatment. Six words of chrome that put the
+   sentence in someone else's mouth. Without it an unlabelled "Or …" floating
+   over scripture can read as *Lantern's* opinion, which is the one thing the
+   philosophy line forbids. Interaction model is still CrossRefPill's, and still
+   click-to-open on desktop, never hover.
+3. **Mobile: when a selection is active the underline is REMOVED, not merely
+   inert.** Showing a door that has been disabled is worse than showing no door.
+   Otherwise §5.4's precedence stands unchanged.
+4. **No `ReadingControls` preference.** The measured density (median 2 per
+   chapter, 274 chapters with none) says it is not needed, and a setting mostly
+   advertises that the feature might annoy you. Add on request, not pre-emptively.
+5. **Textual variants stay held**, per §6. Confirmed rather than relaxed.
+   Relaxing later is easy; un-ringing it is not.
+6. **No "this note looks wrong" report path in rung one.** Dennis is the only
+   reader who will notice for now, and a report control on scripture is heavier
+   than it looks.
+
+**Still genuinely open, and a spec cannot close it:** whether the phrase is
+reliably tappable on a real device without stealing taps from verse selection.
+Needs a thumb on a phone before this ships.
+
+---
 ## 10. What still needs a pass with Dennis
 
 This brief decides the data, the classification and the rules. It deliberately
