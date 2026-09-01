@@ -37,6 +37,7 @@ import {
   usePrefersReducedMotion,
   type ChapterRef
 } from '../utils/useChapterNavigation'
+import FootnoteVerseText from './FootnoteDoor'
 import { markInstallEngagement } from '../utils/installNudge'
 import { formatRelativeTime } from '../utils/relativeTime'
 
@@ -704,6 +705,18 @@ function ChapterView({
       setSelFocus(end)
     }
   )
+
+  // A tap on a footnote door clears the same two gates a tap on the verse
+  // clears: a press that turned into a scroll (or a hold) is not a tap, and a
+  // drag that just ended already committed its range — neither may open a note
+  // (brief §5.4, precedence 3). Both are CONSUMED here because the door stops
+  // the click before the verse row ever sees it.
+  const canOpenFootnote = (): boolean => {
+    const press = tapRef.current
+    tapRef.current = null
+    if (press && (Date.now() - press.t > 500 || press.moved)) return false
+    return !suppressNextClick()
+  }
 
   // A plain click on empty scripture whitespace (not a verse row, note, or
   // control) clears every highlight/selection. A trailing click synthesised by a
@@ -1539,7 +1552,14 @@ function ChapterView({
                     />
                   )}
                   <span className="verse-number">{v.verse}</span>
-                  <span className="verse-text">{v.text}</span>
+                  {/* The doors are REMOVED while a selection is live, not left
+                      inert (§10a.3): capture owns the verse, and a door you
+                      have turned off is worse than no door. */}
+                  <FootnoteVerseText
+                    verse={v}
+                    doors={selRange === null}
+                    canOpen={canOpenFootnote}
+                  />
                   {/* The category NAME is what tells a mark apart from a
                       selection: both tint the row, only a mark says what it is.
                       Carries the reader's own naming. */}

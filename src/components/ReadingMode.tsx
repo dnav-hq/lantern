@@ -8,6 +8,7 @@ import InlineTagInput from './InlineTagInput'
 import RichEditInput from './RichEditInput'
 import InlineDeleteConfirm from './InlineDeleteConfirm'
 import CrossRefPill from './CrossRefPill'
+import FootnoteVerseText from './FootnoteDoor'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import ReadingControls from './ReadingControls'
@@ -290,6 +291,11 @@ export default function ReadingMode({
       setSelFocus(end)
     }
   )
+
+  // A tap on a footnote door has to clear the same gate a tap on the verse
+  // clears: a drag that just ended already committed its range, and must never
+  // also open a note (brief §5.4, precedence 3).
+  const canOpenFootnote = (): boolean => !suppressNextClick()
 
   // A plain click on empty scripture whitespace (not a verse row, note, or
   // control) clears every highlight/selection. A trailing click synthesised by a
@@ -787,7 +793,11 @@ export default function ReadingMode({
                         />
                       )}
                       <span className="verse-number">{v.verse}</span>
-                      <span className="verse-text">{v.text}</span>
+                      <FootnoteVerseText
+                        verse={v}
+                        doors={selRange === null}
+                        canOpen={canOpenFootnote}
+                      />
                       <span
                         className="verse-add-btn"
                         data-no-drag
