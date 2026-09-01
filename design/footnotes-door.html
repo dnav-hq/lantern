@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lantern — the footnotes door</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f4f0e8;
+        --surface: #fbf9f4;
+        --surface-2: #ece6da;
+        --border: #e2dccf;
+        --text: #201e1a;
+        --text-muted: #6a6353;
+        --text-faint: #938a77;
+        --accent: #6b62d6;
+        --accent-ink: #594fd1;
+        --cat-personal: #c05070;
+      }
+      body.dark {
+        --bg: #17140f;
+        --surface: #211d17;
+        --surface-2: #2a251d;
+        --border: #332c22;
+        --text: #ece4d6;
+        --text-muted: #a99f8e;
+        --text-faint: #7a7264;
+        --accent: #a49cf0;
+        --accent-ink: #a49cf0;
+        --cat-personal: #e58aab;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Source Serif 4', Georgia, serif;
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 24px 100px;
+      }
+      h1 {
+        font-size: 26px;
+        font-weight: 600;
+        margin: 0 0 6px;
+        letter-spacing: -0.01em;
+      }
+      .sub {
+        color: var(--text-muted);
+        font-size: 15px;
+        margin: 0 0 8px;
+        line-height: 1.55;
+        max-width: 70ch;
+      }
+      h2 {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 48px 0 14px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .note {
+        font-size: 14px;
+        color: var(--text-muted);
+        line-height: 1.62;
+        margin: 0 0 18px;
+        max-width: 68ch;
+      }
+      .toggle {
+        position: fixed;
+        top: 18px;
+        right: 18px;
+        z-index: 30;
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-family: inherit;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .page {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 26px 30px;
+        position: relative;
+      }
+      .v {
+        display: flex;
+        gap: 14px;
+        align-items: baseline;
+        padding: 5px 0;
+      }
+      .vn {
+        font-size: 11px;
+        color: var(--text-faint);
+        min-width: 15px;
+        font-variant-numeric: tabular-nums;
+      }
+      .vt {
+        font-size: 17.5px;
+        line-height: 1.68;
+      }
+      .gap {
+        color: var(--text-faint);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        padding: 10px 0 4px 29px;
+      }
+
+      /* ── the door, at rest ── */
+      .fn {
+        cursor: pointer;
+        text-decoration: underline;
+        text-decoration-style: dotted;
+        text-decoration-color: color-mix(in srgb, var(--text) 34%, transparent);
+        text-underline-offset: 4px;
+        text-decoration-thickness: 1px;
+      }
+      .fn:hover {
+        text-decoration-color: color-mix(in srgb, var(--text) 62%, transparent);
+      }
+      /* weight variants */
+      .w-a .fn { text-decoration-color: color-mix(in srgb, var(--text) 22%, transparent); }
+      .w-b .fn { text-decoration-color: color-mix(in srgb, var(--text) 34%, transparent); }
+      .w-c .fn { text-decoration-color: color-mix(in srgb, var(--text) 50%, transparent); }
+      .w-d .fn {
+        text-decoration-style: solid;
+        text-decoration-color: color-mix(in srgb, var(--text) 20%, transparent);
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 92px 1fr;
+        gap: 16px;
+        align-items: baseline;
+        padding: 13px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .row:last-child { border-bottom: 0; }
+      .lbl {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+      }
+      .lbl small { display: block; font-weight: 400; letter-spacing: 0; text-transform: none; margin-top: 3px; }
+
+      /* ── popover ── */
+      .pop {
+        position: absolute;
+        z-index: 20;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow:
+          0 6px 16px -4px rgba(20, 16, 8, 0.16),
+          0 20px 40px -12px rgba(20, 16, 8, 0.22);
+        padding: 12px 15px;
+        max-width: 330px;
+        font-size: 14.5px;
+        line-height: 1.55;
+      }
+      .pop .who {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin-bottom: 5px;
+      }
+      .pop em { font-style: italic; }
+      .pop.plain .who { display: none; }
+      .demo-pop { position: relative; min-height: 150px; }
+
+      .phone {
+        width: 330px;
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        background: var(--surface);
+        overflow: hidden;
+        position: relative;
+        height: 420px;
+      }
+      .sheet {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        border-radius: 14px 14px 0 0;
+        padding: 14px 18px 22px;
+        box-shadow: 0 -8px 24px -10px rgba(20, 16, 8, 0.3);
+      }
+      .grab {
+        width: 34px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--border);
+        margin: 0 auto 11px;
+      }
+      .selbar {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 8px 10px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        font-size: 12.5px;
+      }
+      .selbar b {
+        background: var(--accent);
+        color: #fff;
+        border-radius: 999px;
+        padding: 5px 11px;
+        font-weight: 500;
+      }
+      body.dark .selbar b { color: #17140f; }
+      .selverse { background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 6px; }
+      .two { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+      .q {
+        border-left: 3px solid var(--accent);
+        padding: 3px 0 3px 15px;
+        margin: 0 0 20px;
+        font-size: 14.5px;
+        line-height: 1.62;
+        color: var(--text);
+        max-width: 68ch;
+      }
+      .q b { font-weight: 600; }
+      .q .rec { color: var(--text-muted); font-size: 13.5px; display: block; margin-top: 6px; }
+      .warn { border-left-color: #b5732a; }
+      code {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 12.5px;
+        background: var(--surface-2);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      .held {
+        background: color-mix(in srgb, var(--cat-personal) 12%, transparent);
+        border-radius: 3px;
+        padding: 0 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <button class="toggle" onclick="document.body.classList.toggle('dark')">Light / dark</button>
+    <div class="wrap">
+      <h1>The footnotes door</h1>
+      <p class="sub">
+        Rung one of the deep dive: the translators&rsquo; own &ldquo;Or&hellip;&rdquo; and
+        &ldquo;Literally&hellip;&rdquo; notes. Every verse and every note on this page is
+        <strong>real BSB data</strong>, fetched from the live API, not written for the mockup.
+        <code>docs/proposals/footnotes-door.md</code> decided the data and the rules; this decides
+        what it looks like.
+      </p>
+
+      <h2>1. The thing the brief could not settle from the data</h2>
+      <p class="note">
+        The API marks a note&rsquo;s <em>position</em>, not its <em>span</em>. A marker says
+        &ldquo;a note ends here&rdquo; and never says where the phrase it refers to began. So the
+        brief&rsquo;s underline has no start, and one has to be inferred. Real John 1:
+      </p>
+      <div class="page" style="font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; line-height: 1.9">
+        v5 &nbsp;&ldquo;&hellip;the darkness has not overcome<b>&#9679;</b> it.&rdquo; &nbsp;&rarr;&nbsp; <em>Or comprehended</em><br />
+        v14 &ldquo;&hellip;made His dwelling among us.<b>&#9679;</b>&rdquo; &nbsp;&rarr;&nbsp; <em>Or and tabernacled among us</em><br />
+        v18 &ldquo;&hellip;is at the Father&rsquo;s side,<b>&#9679;</b>&rdquo; &nbsp;&rarr;&nbsp; <em>Greek in the Father&rsquo;s bosom</em>
+      </div>
+      <p class="note" style="margin-top: 16px">
+        Three ways to turn a point into a span. Same verses, same notes, all three rendered:
+      </p>
+
+      <div class="page">
+        <div class="row">
+          <div class="lbl">A · last word<small>always one word</small></div>
+          <div class="vt">
+            &hellip;the darkness has not <span class="fn">overcome</span> it. &nbsp;&middot;&nbsp;
+            &hellip;made His dwelling among <span class="fn">us</span>. &nbsp;&middot;&nbsp;
+            &hellip;is at the Father&rsquo;s <span class="fn">side</span>,
+          </div>
+        </div>
+        <div class="row">
+          <div class="lbl">B · match the note<small>span = the alternative&rsquo;s length</small></div>
+          <div class="vt">
+            &hellip;the darkness has not <span class="fn">overcome</span> it. &nbsp;&middot;&nbsp;
+            &hellip;<span class="fn">made His dwelling among us</span>. &nbsp;&middot;&nbsp;
+            &hellip;is <span class="fn">at the Father&rsquo;s side</span>,
+          </div>
+        </div>
+        <div class="row">
+          <div class="lbl">C · to the clause<small>back to the last comma or stop</small></div>
+          <div class="vt">
+            &hellip;<span class="fn">the darkness has not overcome</span> it. &nbsp;&middot;&nbsp;
+            &hellip;<span class="fn">made His dwelling among us</span>. &nbsp;&middot;&nbsp;
+            &hellip;<span class="fn">is at the Father&rsquo;s side</span>,
+          </div>
+        </div>
+      </div>
+      <p class="q">
+        <b>My recommendation is B, with A as the fallback.</b>
+        <span class="rec">
+          A is honest and never looks broken, but &ldquo;<em>us</em>&rdquo; is a meaningless door
+          for a note about <em>tabernacled</em>, and roughly a third of notes land on a function
+          word. C is the prettiest and the most confidently wrong &mdash; it underlines words the
+          note has no opinion about. B underlines about as much text as the note offers to replace,
+          which is the honest claim: <em>this much could have been said differently</em>. When B
+          cannot align (the note is a gloss, not a substitution) it degrades to A.
+          <strong>B is also the only one that needs a real accuracy pass</strong>, so if that
+          worries you, A ships and is never embarrassing.
+        </span>
+      </p>
+
+      <h2>2. How heavy the underline is</h2>
+      <p class="note">
+        The brief settled the <em>kind</em> of mark: a dotted hairline, no superscript numeral, no
+        dot, no colour, no icon. Colour is spoken for &mdash; it means &ldquo;<em>I</em> said
+        something&rdquo;, and the reader&rsquo;s own marks must win that. What is left is weight.
+        Toggle the theme; this is the decision that most often survives light and dies in dark.
+      </p>
+      <div class="page">
+        <div class="row w-a">
+          <div class="lbl">22%<small>barely there</small></div>
+          <div class="vt">The Word became flesh and <span class="fn">made His dwelling among us</span>. We have seen His glory.</div>
+        </div>
+        <div class="row w-b">
+          <div class="lbl">34%<small>recommended</small></div>
+          <div class="vt">The Word became flesh and <span class="fn">made His dwelling among us</span>. We have seen His glory.</div>
+        </div>
+        <div class="row w-c">
+          <div class="lbl">50%<small>assertive</small></div>
+          <div class="vt">The Word became flesh and <span class="fn">made His dwelling among us</span>. We have seen His glory.</div>
+        </div>
+        <div class="row w-d">
+          <div class="lbl">solid 20%<small>not dotted</small></div>
+          <div class="vt">The Word became flesh and <span class="fn">made His dwelling among us</span>. We have seen His glory.</div>
+        </div>
+      </div>
+
+      <h2>3. A whole chapter, so density is real rather than argued</h2>
+      <p class="note">
+        Real John 1. Four notes ship here; the median chapter in the Bible has two and the worst
+        has ten. Click any underline. Note what <em>is not</em> marked: v18 carries a manuscript
+        variant that the classifier holds back, so there is no door and no hint that anything was
+        withheld.
+      </p>
+      <div class="page demo-pop" id="chapter">
+        <div class="v"><span class="vn">1</span><span class="vt">In the beginning was the Word, and the Word was with God, and the Word was God.</span></div>
+        <div class="v"><span class="vn">2</span><span class="vt">He was with God in the beginning.</span></div>
+        <div class="v"><span class="vn">3</span><span class="vt">Through Him all things were made, and without Him nothing was made that has been made.</span></div>
+        <div class="v"><span class="vn">4</span><span class="vt">In Him was life, and that life was the light of men.</span></div>
+        <div class="v">
+          <span class="vn">5</span>
+          <span class="vt">The Light shines in the darkness, and the darkness has not <span class="fn" data-n="Or comprehended">overcome</span> it.</span>
+        </div>
+        <div class="gap">&middot; &middot; &middot;</div>
+        <div class="v">
+          <span class="vn">14</span>
+          <span class="vt">The Word became flesh and <span class="fn" data-n="Or and tabernacled among us">made His dwelling among us</span>. We have seen His glory, the glory of the <span class="fn" data-n="Or the Only Begotten or the Unique One">one and only</span> Son from the Father, full of grace and truth.</span>
+        </div>
+        <div class="gap">&middot; &middot; &middot;</div>
+        <div class="v">
+          <span class="vn">18</span>
+          <span class="vt">No one has ever seen God, but the one and only Son, who is Himself God and is <span class="fn" data-n="Greek in the Father&rsquo;s bosom">at the Father&rsquo;s side</span>, has made Him known.</span>
+        </div>
+      </div>
+
+      <h2>4. What the popover says, and in whose voice</h2>
+      <p class="note">
+        Left: the note bare. Right: the note with a quiet attribution line. The brief is silent on
+        this and it is the one place the feature could start sounding like it has an opinion.
+      </p>
+      <div class="two">
+        <div class="page demo-pop" style="min-height: 120px">
+          <div class="pop plain" style="position: static; max-width: none">
+            <div>Or <em>and tabernacled among us</em></div>
+          </div>
+          <p class="note" style="margin: 14px 0 0; font-size: 13px">
+            Nothing but the data. Shortest, and it never editorialises. But an unlabelled
+            &ldquo;Or&hellip;&rdquo; floating over scripture does not say <em>who</em> is
+            offering the alternative &mdash; and a reader could reasonably think it is Lantern.
+          </p>
+        </div>
+        <div class="page demo-pop" style="min-height: 120px">
+          <div class="pop" style="position: static; max-width: none">
+            <div class="who">Translators&rsquo; note &middot; BSB</div>
+            <div>Or <em>and tabernacled among us</em></div>
+          </div>
+          <p class="note" style="margin: 14px 0 0; font-size: 13px">
+            Six words of chrome that make the source explicit and put the sentence in someone
+            else&rsquo;s mouth. This is on-philosophy: mediated by method, and visibly not
+            Lantern&rsquo;s voice. <strong>My recommendation.</strong>
+          </p>
+        </div>
+      </div>
+
+      <h2>5. Mobile, where the tap is already spoken for</h2>
+      <p class="note">
+        On mobile a tap on a verse starts a selection. The brief&rsquo;s precedence: a live
+        selection wins and markers go inert; with no selection, a tap on the phrase opens the note
+        and a tap anywhere else selects; a drag never opens a note. Both states, side by side.
+      </p>
+      <div class="two">
+        <div>
+          <div class="phone">
+            <div style="padding: 18px 18px 0">
+              <div class="v"><span class="vn">14</span><span class="vt" style="font-size: 16px">The Word became flesh and <span class="fn">made His dwelling among us</span>. We have seen His glory.</span></div>
+            </div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="who" style="font-size: 10px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 5px">Translators&rsquo; note &middot; BSB</div>
+              <div style="font-size: 15px; line-height: 1.55">Or <em>and tabernacled among us</em></div>
+            </div>
+          </div>
+          <p class="note" style="margin-top: 12px; font-size: 13px">
+            No selection &rarr; the tap opens the note. Bottom sheet, not a floating popover:
+            390px has no room beside anything. No keyboard, no scroll jump.
+          </p>
+        </div>
+        <div>
+          <div class="phone">
+            <div style="padding: 18px 18px 0">
+              <div class="v"><span class="vn">14</span><span class="vt selverse" style="font-size: 16px">The Word became flesh and made His dwelling among us. We have seen His glory.</span></div>
+            </div>
+            <div class="selbar">
+              <span style="color: var(--text-muted)">John 1:14</span><b>Note</b>
+              <span>Highlight</span>
+            </div>
+          </div>
+          <p class="note" style="margin-top: 12px; font-size: 13px">
+            Selection active &rarr; the underline is <strong>gone entirely</strong>, not merely
+            inert. Capture owns the screen. Showing a door you have disabled is worse than showing
+            no door.
+          </p>
+        </div>
+      </div>
+      <p class="q warn">
+        <b>This is the one thing a mockup cannot settle.</b>
+        <span class="rec">
+          Whether the phrase is reliably tappable without stealing taps from verse selection needs
+          a thumb on a real device. The brief says so too. Worth doing before this ships, not
+          after.
+        </span>
+      </p>
+
+      <h2>6. Three questions the mockup cannot answer</h2>
+      <p class="q">
+        <b>Should textual variants ever ship?</b>
+        <span class="rec">
+          The brief holds them back entirely &mdash; no marker, no count, genuinely silent &mdash;
+          and that is more conservative than the earlier deep-dive plan. On this page, John 1:18
+          is the live example: it carries <span class="held">&ldquo;BYZ and TR but the only
+          begotten Son&rdquo;</span> and shows nothing at all.
+          <strong>I would hold.</strong> A reader with no way to weigh a variant is not informed by
+          it, only unsettled. Relaxing this later is easy; un-ringing it is not.
+        </span>
+      </p>
+      <p class="q">
+        <b>Does the reader need an off switch?</b>
+        <span class="rec">
+          The measured density says no: median two per chapter, 274 chapters get none.
+          <strong>I would ship without one</strong> and add it if somebody asks, rather than
+          pre-emptively adding a setting that mostly advertises that the feature might annoy you.
+        </span>
+      </p>
+      <p class="q">
+        <b>A way to report a note that reads wrong?</b>
+        <span class="rec">
+          The ship set&rsquo;s variant rate is under 2.5% but not zero, so some will slip through.
+          <strong>I would skip it in rung one.</strong> You are the only reader who will notice for
+          now, and a report button on scripture is a heavier thing to put on a page than it looks.
+        </span>
+      </p>
+    </div>
+
+    <script>
+      var open = null
+      function close() {
+        if (open) { open.remove(); open = null }
+      }
+      document.getElementById('chapter').addEventListener('click', function (e) {
+        var t = e.target.closest('.fn')
+        close()
+        if (!t) return
+        e.stopPropagation()
+        var host = document.getElementById('chapter')
+        var p = document.createElement('div')
+        p.className = 'pop'
+        p.innerHTML =
+          '<div class="who">Translators&rsquo; note &middot; BSB</div><div>' +
+          t.dataset.n.replace(/^(Or|Literally|Greek|Hebrew|Aramaic)\s+/, '$1 <em>') + '</em></div>'
+        host.appendChild(p)
+        var r = t.getBoundingClientRect(), h = host.getBoundingClientRect()
+        p.style.left = Math.min(r.left - h.left, h.width - 340) + 'px'
+        p.style.top = r.bottom - h.top + 8 + 'px'
+        open = p
+      })
+      document.addEventListener('click', close)
+    </script>
+  </body>
+</html>
