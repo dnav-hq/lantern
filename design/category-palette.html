@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lantern — the category palette: ten slots, not a hex field</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f4f0e8;
+        --surface: #fbf9f4;
+        --surface-2: #ece6da;
+        --border: #e2dccf;
+        --text: #201e1a;
+        --text-muted: #6a6353;
+        --text-faint: #938a77;
+        --radius: 10px;
+      }
+      body.dark {
+        --bg: #17140f;
+        --surface: #211d17;
+        --surface-2: #2a251d;
+        --border: #332c22;
+        --text: #ece4d6;
+        --text-muted: #a99f8e;
+        --text-faint: #7a7264;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Source Serif 4', Georgia, serif;
+        transition:
+          background 0.25s,
+          color 0.25s;
+      }
+      .wrap {
+        max-width: 940px;
+        margin: 0 auto;
+        padding: 40px 24px 80px;
+      }
+      h1 {
+        font-size: 26px;
+        font-weight: 600;
+        margin: 0 0 6px;
+        letter-spacing: -0.01em;
+      }
+      .sub {
+        color: var(--text-muted);
+        font-size: 15px;
+        margin: 0 0 8px;
+        line-height: 1.55;
+        max-width: 70ch;
+      }
+      h2 {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 44px 0 14px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .note {
+        font-size: 14px;
+        color: var(--text-muted);
+        line-height: 1.6;
+        margin: 0 0 18px;
+        max-width: 68ch;
+      }
+      .toggle {
+        position: fixed;
+        top: 18px;
+        right: 18px;
+        z-index: 10;
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-family: inherit;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
+      }
+      .slot {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px 12px 10px;
+        text-align: left;
+        font-family: inherit;
+        cursor: pointer;
+      }
+      .slot.sel {
+        border-color: var(--c);
+        box-shadow: 0 0 0 2px var(--c);
+      }
+      .dot {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background: var(--c);
+        display: block;
+        margin-bottom: 9px;
+      }
+      .nm {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .used {
+        font-size: 11px;
+        color: var(--text-faint);
+        margin-top: 2px;
+      }
+      .ratios {
+        font-size: 10.5px;
+        color: var(--text-faint);
+        margin-top: 7px;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.45;
+      }
+
+      .demo {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 22px 24px;
+      }
+      .verse {
+        display: flex;
+        gap: 13px;
+        padding: 9px 12px;
+        border-radius: 8px;
+        margin: 0 -12px;
+        align-items: baseline;
+      }
+      .verse.marked {
+        background: var(--weak);
+        box-shadow: inset 3px 0 0 var(--c);
+      }
+      .vn {
+        font-size: 11px;
+        color: var(--text-faint);
+        min-width: 14px;
+        font-variant-numeric: tabular-nums;
+      }
+      .vt {
+        font-size: 17px;
+        line-height: 1.62;
+      }
+      .marklabel {
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--ink);
+        margin-left: 8px;
+        white-space: nowrap;
+      }
+      .card {
+        border-left: 3px solid var(--c);
+        background: var(--weak);
+        border-radius: 0 8px 8px 0;
+        padding: 10px 13px;
+        margin-top: 14px;
+      }
+      .cardcat {
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--ink);
+      }
+      .cardbody {
+        font-size: 14.5px;
+        line-height: 1.55;
+        margin-top: 4px;
+        color: var(--text);
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 18px;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12.5px;
+        font-weight: 500;
+        padding: 5px 11px;
+        border-radius: 999px;
+      }
+      .chip .d {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      .warn {
+        border-left: 3px solid #b5732a;
+        padding: 2px 0 2px 14px;
+        font-size: 14px;
+        color: var(--text-muted);
+        line-height: 1.6;
+        max-width: 68ch;
+      }
+      code {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 12.5px;
+        background: var(--surface-2);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <button class="toggle" onclick="document.body.classList.toggle('dark');paint()">
+      Light / dark
+    </button>
+    <div class="wrap">
+      <h1>The category palette</h1>
+      <p class="sub">
+        Ten slots with a tuned light and dark value each, so a colour cannot read in one theme and
+        fail in the other. Every value below is solved, not chosen &mdash; the numbers on each
+        swatch are measured against all twenty theme canvases Lantern ships.
+      </p>
+
+      <h2>The ten slots</h2>
+      <p class="note">
+        Click one to try it. The four naming a category underneath are today&rsquo;s built-ins, at
+        <em>exactly</em> their current hexes &mdash; nothing about the existing look changes. The
+        other six are new.
+      </p>
+      <div class="grid" id="grid"></div>
+
+      <h2>How it looks where it actually appears</h2>
+      <p class="note">
+        The same slot on a highlighted verse, on a note card, and in the picker. This is the whole
+        reason for a curated set: the tint, the rail and the small uppercase label all have to hold
+        at once, in both themes.
+      </p>
+      <div class="demo" id="demo">
+        <div class="verse marked">
+          <span class="vn">5</span>
+          <span class="vt"
+            >The Light shines in the darkness, and the darkness has not overcome it.<span
+              class="marklabel"
+              id="ml"
+              >OBSERVATION</span
+            ></span
+          >
+        </div>
+        <div class="verse">
+          <span class="vn">6</span
+          ><span class="vt">There came a man who was sent from God. His name was John.</span>
+        </div>
+        <div class="card">
+          <div class="cardcat" id="cc">OBSERVATION</div>
+          <div class="cardbody">
+            Light and darkness are not balanced opposites here &mdash; only one of them is doing
+            anything.
+          </div>
+        </div>
+        <div class="chips" id="chips"></div>
+      </div>
+
+      <h2>The rule each pair has to satisfy</h2>
+      <p class="note">
+        Stated so this is repeatable rather than a matter of taste, and so a future slot can be
+        added without re-litigating it. Measured against every <code>--bg</code> and
+        <code>--surface</code> in <code>tokens.css</code>, which is 7 light canvases and 13 dark
+        ones including the pure-black variants.
+      </p>
+      <p class="note">
+        <strong>Field</strong> (fills, dots, rail, left-border) &ge; 3:1 on every canvas &mdash;
+        WCAG 1.4.11 non-text contrast. <strong>Ink</strong> (the 12px/500 label) &ge; 4.5:1 on the
+        canvas <em>and</em> on the category&rsquo;s own 12% tint, since the tint is what it actually
+        sits on. <strong>Dark</strong> doubles as both, because ink aliases to the field in dark
+        mode, so it carries the stricter 4.5:1 bar. No two slots within 25&deg; of hue.
+      </p>
+      <p class="warn">
+        <strong>One deliberate exception.</strong> Slate sits 12&deg; from blue, well inside the hue
+        rule. It is kept because it is separated by <em>saturation</em> instead (18% against 55%),
+        and a quiet grey-blue is the one thing ten saturated hues cannot offer. It is the only slot
+        that breaks the rule and it should stay the only one.
+      </p>
+
+      <h2>Why there is no hex field</h2>
+      <p class="note">
+        A colour picker cannot express the constraint. Every value here needed three solved numbers
+        and twenty measurements; a person with a colour wheel picks one. The failure is silent and
+        one-sided &mdash; you choose a colour in light mode, it looks right, and your labels quietly
+        become unreadable for everyone reading in dark. Storing a slot id (<code>"teal"</code>)
+        rather than a hex is also what lets a pair be retuned later if a theme changes.
+      </p>
+    </div>
+
+    <script>
+      // Solved against every theme canvas in tokens.css. The first four are the
+      // SHIPPED built-ins at their exact current values, deliberately unchanged.
+      // m = [light field, light ink on canvas, light ink on tint, dark]
+      const SLOTS = [
+        { id: 'indigo', name: 'Indigo', used: 'Observation', light: '#6b62d6', ink: '#594fd1', dark: '#a49cf0', m: [4.22, 5.29, 4.57, 6.55] },
+        { id: 'green', name: 'Green', used: 'Historical', light: '#3f8f5b', ink: '#316f47', dark: '#5fbf92', m: [3.46, 5.24, 4.59, 7.13] },
+        { id: 'amber', name: 'Amber', used: 'Application', light: '#b5732a', ink: '#8a5820', dark: '#d79a55', m: [3.36, 5.24, 4.61, 6.59] },
+        { id: 'rose', name: 'Rose', used: 'Personal', light: '#c05070', ink: '#a73c5b', dark: '#e58aab', m: [3.96, 5.32, 4.6, 6.52] },
+        { id: 'olive', name: 'Olive', used: '', light: '#6f8934', ink: '#576b29', dark: '#90b143', m: [3.45, 5.17, 4.57, 6.52] },
+        { id: 'teal', name: 'Teal', used: '', light: '#2c8c88', ink: '#226d6a', dark: '#3bbab6', m: [3.51, 5.29, 4.63, 6.77] },
+        { id: 'blue', name: 'Blue', used: '', light: '#3984c6', ink: '#2d679a', dark: '#79abd8', m: [3.46, 5.2, 4.57, 6.58] },
+        { id: 'slate', name: 'Slate', used: '', light: '#72809d', ink: '#58657e', dark: '#9ca6ba', m: [3.46, 5.12, 4.54, 6.54] },
+        { id: 'purple', name: 'Purple', used: '', light: '#a964c4', ink: '#8f42ae', dark: '#c697d8', m: [3.45, 5.15, 4.51, 6.72] },
+        { id: 'plum', name: 'Plum', used: '', light: '#c059af', ink: '#9f3c8f', dark: '#d590c9', m: [3.46, 5.21, 4.55, 6.6] }
+      ]
+      let picked = 0
+      const isDark = () => document.body.classList.contains('dark')
+      const field = s => (isDark() ? s.dark : s.light)
+      const ink = s => (isDark() ? s.dark : s.ink)
+      const weak = s => {
+        const h = field(s)
+        const a = isDark() ? 0.18 : 0.12
+        const r = parseInt(h.slice(1, 3), 16)
+        const g = parseInt(h.slice(3, 5), 16)
+        const b = parseInt(h.slice(5, 7), 16)
+        return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + a + ')'
+      }
+      function paint() {
+        document.getElementById('grid').innerHTML = SLOTS.map(function (s, i) {
+          return (
+            '<button class="slot ' + (i === picked ? 'sel' : '') + '" style="--c:' + field(s) + ';--ink:' + ink(s) + '" onclick="picked=' + i + ';paint()">' +
+            '<span class="dot"></span><span class="nm">' + s.name + '</span>' +
+            '<div class="used">' + (s.used ? s.used + ' today' : '&nbsp;') + '</div>' +
+            '<div class="ratios">field ' + s.m[0].toFixed(2) + ' &middot; ink ' + s.m[2].toFixed(2) + '<br>dark ' + s.m[3].toFixed(2) + '</div></button>'
+          )
+        }).join('')
+        const s = SLOTS[picked]
+        const d = document.getElementById('demo')
+        d.style.setProperty('--c', field(s))
+        d.style.setProperty('--ink', ink(s))
+        d.style.setProperty('--weak', weak(s))
+        const nm = (s.used || s.name).toUpperCase()
+        document.getElementById('ml').textContent = nm
+        document.getElementById('cc').textContent = nm
+        document.getElementById('chips').innerHTML = SLOTS.slice(0, 5)
+          .map(function (c) {
+            return (
+              '<span class="chip" style="background:' + weak(c) + ';color:' + ink(c) + '">' +
+              '<span class="d" style="background:' + field(c) + '"></span>' + (c.used || c.name) + '</span>'
+            )
+          })
+          .join('')
+      }
+      paint()
+    </script>
+  </body>
+</html>
