@@ -7,10 +7,14 @@ import type { NoteCategory, NoteCategoryDef } from '../types'
    Journal stops discriminating exactly when it starts mattering. See
    docs/proposals/note-object.md §3.
 
-   THIS SLICE: rename and recolour. The four KEYS stay fixed, which is why this
-   needs no schema backfill, no change to the NoteCategory union, and no change
-   to the note parser (whose @tag regex is built from those keys). Adding a
-   reader's own key is the next slice and is where the parser coupling lands.
+   SLICE A (2026-09-01) opened the seams: `NoteCategory` is now an open string
+   and the parser reads any @tag generically, so a key this build has never seen
+   no longer falls through as prose. NOTHING A READER SEES CHANGED — the four
+   below are still the only categories that exist, and `resolveCategories` still
+   refuses to surface anything else. Creating a key is slice B; see
+   docs/proposals/custom-categories.md §7.
+
+   The four KEYS stay fixed, which is why rename needed no schema backfill.
 
    ABSENCE MEANS DEFAULTS. A workspace with no stored definitions uses the four
    below, which is exactly what every workspace does today. Rows exist only once
@@ -25,10 +29,45 @@ export const BUILT_IN_CATEGORIES: readonly NoteCategoryDef[] = [
   { key: 'personal', label: 'Personal', color: '#c05070', sort_order: 3 }
 ] as const
 
-/** The keys a note may carry in this slice. Widens when custom keys land. */
-export const BUILT_IN_KEYS: readonly NoteCategory[] = BUILT_IN_CATEGORIES.map(
-  c => c.key as NoteCategory
-)
+/** The four keys every workspace starts with. Custom keys are appended in slice B. */
+export const BUILT_IN_KEYS: readonly NoteCategory[] = BUILT_IN_CATEGORIES.map(c => c.key)
+
+/* ─── What a category key may be ──────────────────────────────────────────────
+   THE SOURCE OF TRUTH FOR THE KEY GRAMMAR, and deliberately one string rather
+   than two regexes. src/utils/noteParser.ts builds its @tag pattern from
+   CATEGORY_KEY_SOURCE, so "what the parser will recognise as a tag" and "what
+   this module will accept as a key" cannot drift apart. They drifting apart is
+   precisely the failure this slice exists to prevent — the parser used to have
+   the four keys baked into a literal regex of its own.
+
+   This is also what replaces the compiler. `NoteCategory` was a closed union
+   until slice A; widening it to `string` means a bad key now compiles fine and
+   fails silently somewhere downstream, so the check has to be written out.
+   See src/types/index.ts.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/** Lowercase letter, then letters/digits/hyphens, 24 chars max — matching the
+ *  `maxLength={24}` the rename field already enforces. */
+export const CATEGORY_KEY_SOURCE = '[a-z][a-z0-9-]{0,23}'
+
+const CATEGORY_KEY_RE = new RegExp(`^${CATEGORY_KEY_SOURCE}$`)
+
+/**
+ * Keys a category may never take, because some other layer already means
+ * something by them.
+ *
+ * `all` is the Journal filter's "no category filter" sentinel
+ * (`ALL` in src/utils/journalFilters.ts). A category keyed `all` would be
+ * indistinguishable from "show everything", so its notes would silently vanish
+ * from the filtered view. While NoteCategory was a closed union that was
+ * impossible by construction; now it is only impossible if someone checks.
+ */
+export const RESERVED_CATEGORY_KEYS: readonly string[] = ['all']
+
+/** True when `key` is a key a category could legitimately be stored under. */
+export function isValidCategoryKey(key: string): boolean {
+  return CATEGORY_KEY_RE.test(key) && !RESERVED_CATEGORY_KEYS.includes(key)
+}
 
 /**
  * The categories to actually show, given whatever is stored.
@@ -37,8 +76,14 @@ export const BUILT_IN_KEYS: readonly NoteCategory[] = BUILT_IN_CATEGORIES.map(
  * set, so a partially-customised workspace (one renamed category, three
  * untouched) still shows four. A stored row for an unknown key is ignored here
  * rather than shown, since this slice cannot render a category the composer
- * and parser do not know about — dropping it is safer than offering a category
+ * and pickers do not offer — dropping it is safer than offering a category
  * that cannot be applied.
+ *
+ * STILL TRUE AFTER SLICE A, on purpose. The parser now reads any @tag, but no
+ * surface can yet CREATE a key, so surfacing a stored custom row would offer a
+ * category with no colour and no way to manage it. Slice B rewrites this to
+ * carry non-built-in keys; until then this function is what guarantees slice A
+ * changes nothing a reader sees.
  */
 export function resolveCategories(stored: NoteCategoryDef[]): NoteCategoryDef[] {
   const overrides = new Map(stored.map(d => [d.key, d]))
