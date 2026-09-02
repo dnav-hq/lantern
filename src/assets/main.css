@@ -2066,9 +2066,16 @@ body.dark .search-backdrop {
   }
 }
 
-/* "TRANSLATORS' NOTE · BSB", in the existing small-caps meta treatment. Six
-   words of chrome that put the sentence in someone else's mouth: without it an
-   unlabelled "Or…" over scripture can read as Lantern's opinion. */
+/* "TRANSLATORS' NOTE", in the existing small-caps meta treatment. It puts the
+   sentence in someone else's mouth: without it an unlabelled "Or…" over
+   scripture can read as Lantern's opinion.
+   It deliberately does NOT name the translation. It used to read "· BSB", and
+   that misled the first reader who met it (2026-09-02): naming a version while
+   you are READING that version implies the note is version-scoped, and invites
+   "so what does it say in the others?" — a question this note is not answering.
+   The note is about the ORIGINAL language admitting more than one English
+   rendering; the BSB's translators are merely who wrote it down. Every door in
+   the app is a BSB note, so the attribution is unambiguous without the label. */
 .footnote-note-who {
   display: block;
   margin-bottom: 5px;

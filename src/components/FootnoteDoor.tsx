@@ -47,7 +47,7 @@ function NoteBody({ text }: { text: string }): React.ReactElement {
 function NoteCard({ text }: { text: string }): React.ReactElement {
   return (
     <>
-      <span className="footnote-note-who">Translators’ note · BSB</span>
+      <span className="footnote-note-who">Translators’ note</span>
       <span className="footnote-note-text">
         <NoteBody text={text} />
       </span>
@@ -85,11 +85,24 @@ function Door({
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') setOpen(false)
     }
+    // Scrolling away is how a reader dismisses a sheet without thinking about
+    // it — the note has been read, the thumb moves on. The scrim deliberately
+    // swallows that gesture (see above), so the page would not move and nothing
+    // would happen, which reads as the app being stuck. Closing ON the gesture
+    // gives the sheet back to the scroll: the note goes, and the next swipe
+    // scrolls normally.
+    const onGesture = (): void => setOpen(false)
     document.addEventListener('pointerdown', onDown)
     document.addEventListener('keydown', onKey)
+    window.addEventListener('touchmove', onGesture, { passive: true })
+    window.addEventListener('wheel', onGesture, { passive: true })
+    window.addEventListener('scroll', onGesture, { passive: true })
     return () => {
       document.removeEventListener('pointerdown', onDown)
       document.removeEventListener('keydown', onKey)
+      window.removeEventListener('touchmove', onGesture)
+      window.removeEventListener('wheel', onGesture)
+      window.removeEventListener('scroll', onGesture)
     }
   }, [open, sheet])
 
