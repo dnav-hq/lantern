@@ -1,9 +1,24 @@
 # Custom categories — adding and removing your own
 
-Status: **proposal, not started.** Written 2026-08-31, after the rename slice
-shipped (`docs/BACKLOG.md`, "User-owned categories, slice 1: RENAME"). Rename
-was free because the KEY never moves. Everything left is about keys that move,
-and that is a different problem wearing the same clothes.
+Status: **slice A built 2026-09-01; B, C and D not started.** Written
+2026-08-31, after the rename slice shipped (`docs/BACKLOG.md`, "User-owned
+categories, slice 1: RENAME"). Rename was free because the KEY never moves.
+Everything left is about keys that move, and that is a different problem
+wearing the same clothes.
+
+> **Corrections made while building slice A (2026-09-01)** — each is also
+> marked inline where it applies:
+> 1. §1.1's three `Record<NoteCategory, string>` label maps **no longer
+>    exist.** They were deleted on 2026-09-01 by the desktop-regression sweep's
+>    finding 3 (category-rename drift), which moved all three onto
+>    `useCategoryLabels()`. That part of slice A was already done.
+> 2. §3's regex is **not sufficient as written**: `[a-z]` plus a trailing `\b`
+>    does not leave email addresses alone, so `paul@corinth.org` would have
+>    filed the note under `corinth`. The pattern gained a leading
+>    `(^|[^A-Za-z0-9_])` — a tag must START a word.
+> 3. §7's slice A was **narrowed** to the parser and the type. The CSS
+>    custom-property refactor (§5.1) and the five hardcoded tag lists moved to
+>    slice B; see the note at the end of §7 for why that is safe.
 
 ## tl;dr
 
@@ -53,10 +68,17 @@ the components `ReadingMode`, `MobileNoteComposer`, `NoteEditor`, `JournalPage`,
 `StudyWorkbench`, `QuickEditCard`, `BookDetailPage`. Most are harmless
 annotations. Three are not, and they are the ones to look at:
 
-- `Record<NoteCategory, string>` label maps at `ReadingMode.tsx:43`,
+- ~~`Record<NoteCategory, string>` label maps at `ReadingMode.tsx:43`,
   `StudyWorkbench.tsx:35` and `BookDetailPage.tsx:45`. These are **exhaustive by
   type**. Widen the union and they compile fine and return `undefined` for every
-  custom key — a silent blank label, not a type error.
+  custom key — a silent blank label, not a type error.~~
+  **CORRECTED 2026-09-01: these three maps no longer exist.** The
+  desktop-regression sweep's finding 3 (category-rename drift) deleted all
+  three and moved the call sites onto `useCategoryLabels()`
+  (`src/utils/useNoteCategories.ts`), for the same reason this brief gives —
+  they were a stale second copy that never noticed a rename. So slice A's
+  "delete the three maps" was already done before slice A started, and the
+  most-dangerous silent failure §1.1 warned about is gone.
 - `key as NoteCategory` casts at `BookDetailPage.tsx:1617` and `:1654`, where a
   `CategoryMenu` `onPick(key: string)` is forced back into the union. These are
   already lies; widening makes them honest.
@@ -72,6 +94,23 @@ rather than widening them — labels already come from `useNoteCategories()`
 **Risk: medium, and it is a silent-failure risk.** The compiler stops helping
 the moment the union opens. The three label maps are the specific places where
 "it compiles" and "it works" come apart.
+
+**SHIPPED 2026-09-01 as `export type NoteCategory = string`,** kept as a named
+alias exactly as recommended. All 47 sites compiled unchanged; the `as
+NoteCategory` casts became honest no-ops. Because the compiler stops helping,
+the check it used to give for free was written out instead:
+`isValidCategoryKey` in `src/utils/noteCategories.ts` holds the key grammar
+(`CATEGORY_KEY_SOURCE`) and a `RESERVED_CATEGORY_KEYS` list, and
+`src/utils/noteParser.ts` builds its @tag pattern from the **same source
+string**, so "what the parser will read back" and "what may be stored as a key"
+cannot drift apart.
+
+`RESERVED_CATEGORY_KEYS` is a hazard this brief did not spot. `CategoryFilter`
+(§1.1, third bullet) is `NoteCategory | 'all'`, and `journalFilters.ts`'s `ALL`
+sentinel is the string `'all'`. While the union was closed, a category keyed
+`all` was impossible by construction; open the union and it becomes a category
+whose own notes vanish under its own filter. Slice B's create flow must call
+`isValidCategoryKey`.
 
 ### 1.2 The parser builds a fixed regex from the four literals
 
@@ -304,6 +343,32 @@ The shape:
 const TAG_PATTERN = /@([a-z][a-z0-9-]{0,23})\b/gi   // was: four literals
 ```
 
+**CORRECTED 2026-09-01 — that pattern is not safe.** The claim two paragraphs
+below, that "the `[a-z]` first-character rule and the `\b` boundary cover most
+of it", is wrong about the case that matters: an email address. `@` is preceded
+by a letter in `paul@corinth.org`, so the pattern above matches `@corinth` and
+files the whole note under a category called `corinth`. A tag has to START a
+word. What shipped:
+
+```ts
+const TAG_PATTERN = new RegExp(`(^|[^A-Za-z0-9_])@(${CATEGORY_KEY_SOURCE})\\b`, 'gi')
+```
+
+The leading group is consumed only to prove the boundary; it is stripped back
+off the token's index and length, so segment offsets are unchanged.
+`CATEGORY_KEY_SOURCE` is `[a-z][a-z0-9-]{0,23}` and lives in
+`noteCategories.ts` (§1.1) rather than being written out here, so the parser and
+the key validator are one string.
+
+Two behaviours worth pinning, both now tested:
+
+- **An over-long `@word` stays prose.** The trailing `\b` refuses to land
+  mid-word, so a 25-character word does not match a truncated 24-character key.
+  Truncating would have filed a note under a key nobody chose.
+- **`@Typology` normalises to `typology`.** Keys are lowercase; the display
+  string is the normalised key, which is the existing behaviour that already
+  showed `@obs` as `@observation`.
+
 `normalizeCategory` loses the prefix table and becomes a lowercase, with a small
 **legacy alias map** retained for `obs|hist|app|per` so content someone already
 typed by hand keeps resolving. `ParsedNote.category` becomes `string | null`.
@@ -316,16 +381,27 @@ Two consequences worth naming:
   prefix matching, which is right: `@pro` cannot mean both `prophecy` and
   `promises`. Completion moves entirely to the `@` dropdown
   (`RichEditInput.tsx:62-68`), which already inserts the full key.
-- **`@` now matches more text than it used to.** A note containing an email
+- **`@` now matches more text than it used to.** ~~A note containing an email
   address or a handle would previously have been left alone and will now produce
   a tag segment. The `[a-z]` first-character rule and the `\b` boundary cover
-  most of it; the residual case is a bare `@word` in prose, which now renders as
-  a neutral pill. Acceptable — it is stripped from prose the same way, so
-  nothing is lost — but it is the one behaviour change a reader could notice,
-  and it belongs in `noteParser.test.ts` as an explicit case.
+  most of it;~~ **(corrected above — they do not; email addresses needed the
+  leading word-boundary guard.)** With that guard in place the residual case is
+  a bare `@word` in prose, which now renders as a neutral pill. Acceptable — it
+  is stripped from prose the same way, so nothing is lost — but it is the one
+  behaviour change a reader could notice, and it is pinned in
+  `noteParser.test.ts` as an explicit case.
 
-`StudyWorkbench.tsx:26`'s `ANY_TAG` widens to the same pattern in the same
-commit.
+~~`StudyWorkbench.tsx:26`'s `ANY_TAG` widens to the same pattern in the same
+commit.~~ **DEFERRED to slice B (2026-09-01)** — with the reasoning, because
+this looked like a correctness requirement and is not. `ANY_TAG` (and the two
+further copies in `BookDetailPage.tsx`: `LEADING_META` at `:75` and
+`CATEGORY_TOKEN` at `:772`, which this brief missed) only diverge from the
+parser for a key outside the four. Nothing can create such a key until slice B,
+and for a stray `@word` typed in prose those copies behave **exactly as they did
+before slice A** — they never matched it either. So the divergence is
+pre-existing and unchanged, not introduced here. It must close in slice B, in
+the same commit as the create affordance, or setting a category on a note that
+already carries a custom one will append rather than replace.
 
 ---
 
@@ -494,6 +570,37 @@ three `CATEGORY_LABELS` maps, the five hardcoded tag lists moved onto
 `useNoteCategories()`, and the CSS custom-property refactor (§5.1). The app
 looks and behaves identically when this lands.
 
+**BUILT 2026-09-01, narrower than the paragraph above.** What actually landed:
+
+| Slice-A item | Status |
+|---|---|
+| Generic `@tag` parsing + legacy alias map (`noteParser.ts`) | **done** |
+| `NoteCategory = string` (`types/index.ts`) | **done** |
+| Runtime replacement for the closed union (`isValidCategoryKey`, `RESERVED_CATEGORY_KEYS`, shared `CATEGORY_KEY_SOURCE`) | **done** — not in the original list; see §1.1 |
+| The three `CATEGORY_LABELS` maps | **already gone** — deleted 2026-09-01 by the rename-drift fix |
+| `StudyWorkbench.tsx:26` `ANY_TAG` (+ two more copies in `BookDetailPage.tsx`) | **moved to B** — see the note at the end of §3 |
+| The five hardcoded tag lists in the editors | **moved to B** |
+| The CSS custom-property refactor (§5.1) | **moved to B** |
+
+Why the last three moved, and why that is safe: each of them only matters once a
+key outside the built-in four can exist, and **slice A ships no way to make
+one** — `resolveCategories` still drops any non-built-in stored row, so the four
+built-ins remain the only categories the app offers. Doing them here would have
+meant editing seven components and 75 CSS selectors for no change in behaviour,
+which is the opposite of "a regression has exactly one candidate cause". They
+are **hard prerequisites for slice B** and belong in the same commit as the
+create affordance, not after it.
+
+The rest of the paragraph holds exactly as written: this slice carries the risk
+and the risk is silent, so the coverage went in with it —
+`noteParser.test.ts` gained the unknown-key, legacy-alias, email-address,
+prose-collision, over-long-key, `Object.prototype`-key and
+written-under-the-old-parser cases, including an `isHighlight` assertion that a
+wordless mark tagged with a key the app has never seen is still a **mark**.
+`noteKind.test.ts` and `chapterNoteMarks.test.ts` were left alone (out of the
+task's scope fence); the highlight case they would have covered is asserted from
+`noteParser.test.ts` instead, against the real `noteKind` functions.
+
 **This slice carries all the risk.** It touches the parser every note-rendering
 surface depends on, and its failure modes are silent: a mark stops being a mark
 (§1.3), a tag stops rendering as a pill, a label goes blank. It should ship
@@ -505,6 +612,15 @@ with a key the app has never seen must still be a highlight.
 **Slice B — create.** The palette tokens (§5.2), `resolveCategories` rewritten to
 carry non-built-in keys, the `+ Create` row, key derivation, automatic slot
 assignment, the cap. This is the feature. It is small once A has landed.
+
+**Carried over from A (2026-09-01), and each is a hard prerequisite:** the three
+stale tag regexes (`StudyWorkbench.tsx` `ANY_TAG`, `BookDetailPage.tsx`
+`LEADING_META` and `CATEGORY_TOKEN`) must widen to the parser's pattern, the
+five hardcoded tag lists must move onto `useNoteCategories()`, and §5.1's CSS
+custom-property refactor must land — otherwise a created category renders
+colourless and cannot be replaced on a note that already carries it. Key
+derivation must run its result through `isValidCategoryKey` (§1.1), which is
+what stops a category keyed `all`.
 
 **Slice C — retire and restore.** `archived_at`, the `⋯` submenu, the two-form
 delete confirm, the Retired divider, key-collision-offers-restore. Separable
@@ -521,8 +637,8 @@ top of a parser that cannot see it.
 
 ## 8. Backlog entry (pasteable)
 
-Editing `docs/BACKLOG.md` is out of scope for this brief. Paste this under the
-existing "User-owned categories" material:
+~~Editing `docs/BACKLOG.md` is out of scope for this brief.~~ **Pasted
+2026-09-01** with slice A marked built. Kept here for the record:
 
 ```markdown
 - **User-owned categories, slice 2: ADD AND REMOVE.**
@@ -567,9 +683,14 @@ existing "User-owned categories" material:
    scope here because `note_categories` is already keyed on `workspace_id`
    (migration `0010`), but it decides whether the palette is per-workspace or
    per-person.
-4. **Does the `@`-matches-more-text change (§3) bother anyone in practice?** It
-   is the one user-visible behaviour change in slice A and the cheapest thing to
-   revert if it does.
+4. **Does the `@`-matches-more-text change (§3) bother anyone in practice?**
+   It is the one user-visible behaviour change in slice A and the cheapest thing
+   to revert if it does. **Shipped 2026-09-01 in its narrowed form** — the
+   leading word-boundary guard removed the email-address case, so what remains
+   is a bare `@word` in prose rendering as a neutral pill. Pinned by a named
+   test in `noteParser.test.ts` ("DOES treat a bare @word in prose as a tag —
+   the one visible change"), which is the line to delete if the answer turns out
+   to be yes.
 
 ## Files read for this brief
 

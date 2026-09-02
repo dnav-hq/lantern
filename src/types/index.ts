@@ -1,5 +1,22 @@
 import type { TranslationId } from '../bible/provider'
-export type NoteCategory = 'observation' | 'historical' | 'application' | 'personal'
+/**
+ * The key a note carries. An OPEN string, not a closed union of the four
+ * built-ins — a reader will be able to add their own
+ * (docs/proposals/custom-categories.md §1.1).
+ *
+ * KEPT AS A NAMED ALIAS ON PURPOSE. It documents what the string is for at ~47
+ * call sites that would otherwise read `string`, and it is the one place to
+ * look when asking what a category key may be.
+ *
+ * WHAT THIS COSTS. The compiler no longer checks category keys for you: a typo,
+ * a stale literal or a key the workspace does not own all compile. That check
+ * has moved to runtime and to tests — `isValidCategoryKey` in
+ * src/utils/noteCategories.ts is the grammar (and the reserved-key list), and
+ * src/utils/noteParser.ts builds its @tag regex from the same source so the
+ * parser and the validator cannot drift. If you are about to rely on a category
+ * being one of exactly four things, write the check.
+ */
+export type NoteCategory = string
 
 /**
  * How one category is presented in a workspace: its label and colour.

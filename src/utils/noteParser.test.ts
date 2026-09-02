@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parseNoteLine, parseReferenceLabel, parseScriptureQuery } from './noteParser'
+import { isHighlight, noteProse } from './noteKind'
 
 // Regression coverage for the tag-parsing layer. The workstream-4 keydown changes
 // must NOT touch this behavior — these tests pin it so a regression fails loudly.
@@ -22,6 +23,128 @@ describe('parseNoteLine — @ category tags', () => {
 
   it('keeps the first tag when several appear', () => {
     expect(parseNoteLine('@application then @personal').category).toBe('application')
+  })
+})
+
+/* ─── Generic @tag parsing (custom-categories slice A) ────────────────────────
+   The tag regex was built from the four built-in keys until 2026-09-01. It now
+   matches any key-shaped word, which is the change every other surface depends
+   on and the one with silent failure modes: a mark that stops being a mark, a
+   tag that stops being a pill, a note filed under the wrong key. These pin all
+   three. See docs/proposals/custom-categories.md §3.
+   ──────────────────────────────────────────────────────────────────────────── */
+describe('parseNoteLine — tags the app has never seen', () => {
+  it('parses an unknown key as that key, not as observation', () => {
+    // The old parser defaulted every unrecognised tag to 'observation', which
+    // could only ever mis-file a note.
+    const p = parseNoteLine('v9 @typology the bronze serpent')
+    expect(p.category).toBe('typology')
+    const tag = p.segments.find(s => s.type === 'tag')
+    expect(tag?.raw).toBe('@typology')
+    expect(tag?.display).toBe('@typology')
+  })
+
+  it('accepts digits and hyphens inside a key', () => {
+    expect(parseNoteLine('@christ-in-the-ot fulfilment').category).toBe('christ-in-the-ot')
+    expect(parseNoteLine('@psalm119 acrostic').category).toBe('psalm119')
+  })
+
+  it('lowercases what the reader typed', () => {
+    expect(parseNoteLine('@Typology x').category).toBe('typology')
+    expect(parseNoteLine('@OBS x').category).toBe('observation')
+  })
+
+  it('does not resolve a key off Object.prototype', () => {
+    // A plain-object alias table would hand back Object.prototype.constructor.
+    expect(parseNoteLine('@constructor x').category).toBe('constructor')
+    expect(parseNoteLine('@tostring x').category).toBe('tostring')
+  })
+
+  it('leaves an over-long @word as prose rather than truncating it to a wrong key', () => {
+    // 24 is the key-length cap. A longer word does NOT match a truncated key —
+    // the trailing \b refuses to land mid-word — so it stays text. Truncating
+    // would file the note under a key nobody chose.
+    expect(parseNoteLine(`@${'a'.repeat(24)} x`).category).toBe('a'.repeat(24))
+    expect(parseNoteLine(`@${'a'.repeat(25)} x`).category).toBeNull()
+    expect(parseNoteLine('@abcdefghijklmnopqrstuvwxyz rest').category).toBeNull()
+  })
+
+  it('keeps a wordless mark tagged with an unknown key a MARK', () => {
+    // The live bug this change fixes: 'v4 @typology' used to parse as text, so
+    // noteProse returned "@typology" and the mark rendered as a written note
+    // whose entire body was the tag (src/utils/noteKind.ts).
+    expect(noteProse('v4 @typology')).toBe('')
+    expect(isHighlight({ content: 'v4 @typology' })).toBe(true)
+    // and the built-in case it always handled is unchanged.
+    expect(isHighlight({ content: 'v4 @personal' })).toBe(true)
+    expect(isHighlight({ content: 'v4 @typology worth chasing' })).toBe(false)
+  })
+})
+
+describe('parseNoteLine — tags versus ordinary prose', () => {
+  it('leaves an email address alone', () => {
+    // A tag has to START a word, or 'paul@corinth.org' files the note under
+    // 'corinth'. This corrects docs/proposals/custom-categories.md §3, which
+    // claimed the \b boundary covered this.
+    const p = parseNoteLine('v2 ask paul@corinth.org about this')
+    expect(p.category).toBeNull()
+    expect(p.segments.some(s => s.type === 'tag')).toBe(false)
+    expect(noteProse('v2 ask paul@corinth.org about this')).toBe('ask paul@corinth.org about this')
+  })
+
+  it('ignores an @ that is not followed by a key-shaped word', () => {
+    // A key must start with a letter, so none of these is a tag.
+    for (const line of ['cost @ 5 denarii', 'v1 @2nd temple', 'ping @-x', 'a @ b']) {
+      expect(parseNoteLine(line).segments.some(s => s.type === 'tag')).toBe(false)
+      expect(parseNoteLine(line).category).toBeNull()
+    }
+  })
+
+  it('DOES treat a bare @word in prose as a tag — the one visible change', () => {
+    // Documented in the brief as the single behaviour a reader could notice.
+    // It renders as a neutral pill and is stripped from prose exactly like a
+    // known tag, so no text is lost; open question §9.4 is whether to keep it.
+    const p = parseNoteLine('v3 @dennis said this is key')
+    expect(p.category).toBe('dennis')
+    expect(noteProse('v3 @dennis said this is key')).toBe('said this is key')
+  })
+
+  it('does not swallow the word after a tag', () => {
+    const p = parseNoteLine('@personal a hard week')
+    expect(p.category).toBe('personal')
+    const text = p.segments
+      .filter(s => s.type === 'text')
+      .map(s => s.raw)
+      .join('')
+    expect(text).toBe(' a hard week')
+  })
+})
+
+describe('parseNoteLine — content written under the OLD parser', () => {
+  // Every note stores its category as an @tag inside its own content, so a
+  // parser regression silently re-files real data. These are the exact shapes
+  // composeNoteContent has been writing.
+  const legacy: Array<[string, string | null, number | null]> = [
+    ['v4 @personal', 'personal', 4],
+    ['v1 @historical context here', 'historical', 1],
+    ['v3-5 @observation a cluster', 'observation', 3],
+    ['v12 @application do this', 'application', 12],
+    ['@obs shorthand someone typed', 'observation', null],
+    ['v7 @hist the exile', 'historical', 7],
+    ['v8 @app and @per together', 'application', 8],
+    ['plain prose with no metadata at all', null, null]
+  ]
+
+  it.each(legacy)('parses %j exactly as it always did', (content, category, anchor) => {
+    const p = parseNoteLine(content)
+    expect(p.category).toBe(category)
+    expect(p.anchorStart).toBe(anchor)
+  })
+
+  it('keeps displaying legacy shorthand under its full name', () => {
+    const tag = parseNoteLine('v7 @hist the exile').segments.find(s => s.type === 'tag')
+    expect(tag?.raw).toBe('@hist')
+    expect(tag?.display).toBe('@historical')
   })
 })
 

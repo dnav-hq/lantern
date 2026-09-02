@@ -1,17 +1,66 @@
 import { NoteSegment, NoteSegmentType, NoteCategory, ParsedNote } from '../types'
 import { BibleBook, BIBLE_BOOKS, buildCrossRefRegex, findBookByAlias } from './bibleBooks'
+import { CATEGORY_KEY_SOURCE } from './noteCategories'
 
-const TAG_PATTERN = /@(obs(?:ervation)?|hist(?:orical)?|app(?:lication)?|per(?:sonal)?)\b/gi
+/* ─── @tags are parsed GENERICALLY ────────────────────────────────────────────
+   This regex used to be built from the four built-in keys, which made the
+   parser the hard blocker on user-owned categories: every note stores its
+   category as an @tag inside its own content (`v4 @personal`), so a key the
+   regex did not know did not exist as far as any surface was concerned.
+
+   It now matches ANY key-shaped word and reports what it saw; whether that key
+   is one the workspace owns is decided at the render and filter layer, which
+   already has the definitions (useNoteCategories). That keeps parseNoteLine
+   PURE — no key list threaded through every caller, no module-level registry to
+   seed — and it is the only option that is also more CORRECT today, because it
+   fixes a live bug: an unrecognised tag used to fall through as prose, so the
+   wordless mark `v4 @typology` read as a written note whose entire text was
+   "@typology". See src/utils/noteKind.ts and
+   docs/proposals/custom-categories.md §3 (option C).
+
+   THE LEADING (^|[^A-Za-z0-9_]) IS A CORRECTION TO THAT BRIEF, which claimed
+   the `[a-z]` first character and the trailing `\b` were enough to leave email
+   addresses alone. They are not: `paul@corinth.org` would have parsed
+   `@corinth` as the note's category. A tag has to START a word. This also keeps
+   the one behaviour change slice A does make — a bare `@word` in prose now
+   renders as a neutral pill instead of plain text — down to the case the brief
+   actually argued for.
+
+   The key grammar itself lives in noteCategories.ts, so the pattern here and
+   the validator there cannot drift.
+   ──────────────────────────────────────────────────────────────────────────── */
+const TAG_PATTERN = new RegExp(`(^|[^A-Za-z0-9_])@(${CATEGORY_KEY_SOURCE})\\b`, 'gi')
 
 const VERSE_ANCHOR_PATTERN = /\bv(\d+)(?:-(\d+))?\b/g
 
+/* Shorthand a reader may have typed by hand under the old parser, which
+   accepted `@obs`/`@hist`/`@app`/`@per` as prefixes of the four keys. Retained
+   so that content keeps resolving to the same category it always did.
+
+   A Map, not an object literal, on purpose: an object lookup would resolve
+   `@constructor` and `@toString` off Object.prototype and hand back a function.
+
+   PREFIX MATCHING IS GONE and does not come back. `@pro` cannot mean both
+   `prophecy` and `promises` once keys are the reader's; completion is the `@`
+   dropdown's job, and it already inserts the full key. */
+const LEGACY_ALIASES = new Map<string, string>([
+  ['obs', 'observation'],
+  ['hist', 'historical'],
+  ['app', 'application'],
+  ['per', 'personal']
+])
+
+/**
+ * The key an @tag refers to. Lowercased, with the legacy shorthand resolved.
+ *
+ * There is deliberately NO default any more. The old version returned
+ * 'observation' for anything it did not recognise, which could only ever
+ * mis-file a note; an unknown tag is now that unknown key, and the render layer
+ * decides what to do with it.
+ */
 function normalizeCategory(raw: string): NoteCategory {
   const lower = raw.toLowerCase()
-  if (lower.startsWith('obs')) return 'observation'
-  if (lower.startsWith('hist')) return 'historical'
-  if (lower.startsWith('app')) return 'application'
-  if (lower.startsWith('per')) return 'personal'
-  return 'observation'
+  return LEGACY_ALIASES.get(lower) ?? lower
 }
 
 interface TokenMatch {
@@ -42,15 +91,18 @@ export function parseNoteLine(text: string): ParsedNote {
     })
   }
 
-  // Find all tags
+  // Find all tags. m[1] is the character before the '@' (empty at the start of
+  // the line), consumed only to prove the tag starts a word — it is not part of
+  // the token, so index and length step past it.
   const tagRe = new RegExp(TAG_PATTERN.source, 'gi')
   while ((m = tagRe.exec(text)) !== null) {
-    const category = normalizeCategory(m[1])
+    const category = normalizeCategory(m[2])
+    const index = m.index + m[1].length
     tokens.push({
       type: 'tag',
-      index: m.index,
-      length: m[0].length,
-      raw: m[0],
+      index,
+      length: m[0].length - m[1].length,
+      raw: text.slice(index, index + m[0].length - m[1].length),
       display: `@${category}`,
       data: { category }
     })
