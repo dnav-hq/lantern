@@ -810,6 +810,60 @@ reliably tappable on a real device without stealing taps from verse selection.
 Needs a thumb on a phone before this ships.
 
 ---
+
+## 10b. The span strategy, MEASURED (2026-09-01, slice 2)
+
+§10a chose B "degrading to A" and said B is the one part that needs a measured
+accuracy pass rather than an argument. This is that pass, run with the code that
+shipped (`src/utils/footnoteSpan.ts`) over `complete.json` fetched live — all
+1,189 chapters, all 2,099 ship-set notes.
+
+| | |
+|---|---|
+| Notes given a door | **2,099 of 2,099** — 0 dropped |
+| **Strategy B** (span = the note's own alternative) | **1,832 · 87.3%** |
+| **Strategy A** (last word alone) | **267 · 12.7%** |
+| Span length in words | median 2 · p90 6 · p99 8 · max 9 |
+| Spans containing a sentence stop | 31 · 1.5% |
+| Spans containing a comma | 83 · 4.0% |
+
+**B holds up, so B ships.** The A fallback fires where the brief predicted it
+would: "Forms of the Hebrew *chesed*…" and "The Greek word for *you* is
+plural…" (87 notes) offer no substitution to measure at all, and 180 more offer
+a re-punctuated sentence rather than a phrase ("Or *If it were not so, I would
+have told you. I am going there…*"), where the last nine words of the verse
+would be an arbitrary place to draw a line. Both take the last word, which is
+never wrong, only modest.
+
+Three rules were added to B during the measurement, each because the corpus
+showed the plain version underlining words the note has no opinion about:
+
+1. **The gate is the whole alternative; the length is the phrase before its
+   first comma.** A note commonly offers one word and then explains it —
+   "Greek *Amōs*, a variant spelling of *Amon*" — and counting the explanation
+   underlined five words of genealogy. Ezekiel 40:8 moves from eight words to
+   the six the note actually offers.
+2. **More than eight words is not a phrase**, it is a sentence about the verse;
+   B declines and A takes it.
+3. **A span never opens on a dangling "and"/"or"/"but"/"nor"** (48 spans, 2.3%).
+   John 1:14's second note offers three words and would otherwise underline
+   "*and only Son*", which reads as a bug; one word wider is "one and only Son",
+   which is what the mockup drew by hand.
+
+**Hand-checked, n = 32**, drawn by seeded shuffle (LCG `s = (s*1103515245 +
+12345) mod 2^31`, seed `777`) so the sample is reproducible. Every span landed
+on words the note concerns; none was wrong in the way C would be wrong. About
+six were *modest* rather than ideal — Ezekiel 38:3's "Or *Gog, the prince of
+Rosh, Meshech, and Tubal*" underlines "Tubal" alone, and Isaiah 40:9's whole-
+verse re-ordering falls to A on "up". No embarrassing span was found, which is
+the bar §10a set for shipping B.
+
+The four John 1 doors §10a names all resolve as the mockup drew them, and the
+chapter carries a **fifth** the mockup's excerpt never showed: v26's "Or *in*"
+under "with" in "I baptize with water". Nothing renders on v18's held BYZ/TR
+variant.
+
+---
 ## 10. What still needs a pass with Dennis
 
 This brief decides the data, the classification and the rules. It deliberately

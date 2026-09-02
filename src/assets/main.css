@@ -1964,6 +1964,133 @@ body.dark .search-backdrop {
   font-size: 11px;
 }
 
+/* ─── The footnotes door ──────────────────────────────────────────────────────
+   The translators' own alternate reading, under the words they flagged.
+   docs/proposals/footnotes-door.md §5.1 and §10a decide every value here, and
+   they are decided rather than taste:
+
+   - 1px DOTTED, at 34% of the text colour, 4px below the baseline. 22% vanishes
+     in dark; 50% starts competing with the verse. It must sit under the visual
+     weight of both the scripture and the reader's own highlights.
+   - No superscript numeral, no dot, no icon, NO COLOUR. Colour on this page
+     means "*I* said something" (the four note categories), and the reader's own
+     marks must win that competition.
+   - currentColor, not var(--text), so the mark is correct in dark mode and in
+     every visual look without a single per-theme override. */
+.footnote-door {
+  position: relative;
+  cursor: pointer;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-color: color-mix(in srgb, currentColor 34%, transparent);
+}
+/* Hover only where hover is real — on touch it would stick after a tap. */
+@media (hover: hover) {
+  .footnote-door:hover {
+    text-decoration-color: color-mix(in srgb, currentColor 62%, transparent);
+  }
+}
+.footnote-door.is-open {
+  text-decoration-color: color-mix(in srgb, currentColor 62%, transparent);
+}
+.footnote-door:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* The open state: the note verbatim, one attribution line, nothing else.
+   Absolutely positioned on purpose — an out-of-flow box does not inherit the
+   door's underline, so the card is never struck through by its own trigger. */
+.footnote-note {
+  position: absolute;
+  z-index: 100;
+  top: calc(100% + 7px);
+  left: 0;
+  display: block;
+  width: max-content;
+  max-width: min(330px, calc(100vw - 28px));
+  padding: 11px 14px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  box-shadow:
+    0 6px 16px -4px rgba(20, 16, 8, 0.16),
+    0 18px 36px -12px rgba(20, 16, 8, 0.2);
+  /* Relative to the verse, so it tracks the reader's text size. */
+  font-size: 0.84em;
+  line-height: 1.55;
+  color: var(--text);
+  cursor: default;
+  white-space: normal;
+}
+
+/* Mobile: a bottom sheet, because 390px has no room beside anything. Portalled
+   to <body>, so the scrim can swallow the dismissing tap before it reaches a
+   verse row and starts a selection. */
+.footnote-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 960;
+  background: transparent;
+}
+.footnote-sheet {
+  position: fixed;
+  z-index: 970;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 14px 18px calc(20px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 0.5px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 24px -10px rgba(20, 16, 8, 0.3);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.footnote-sheet::before {
+  content: '';
+  display: block;
+  width: 34px;
+  height: 4px;
+  margin: 0 auto 11px;
+  border-radius: 2px;
+  background: var(--border);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .footnote-sheet {
+    animation: sheetUp var(--dur-3) var(--ease-out);
+  }
+}
+
+/* "TRANSLATORS' NOTE · BSB", in the existing small-caps meta treatment. Six
+   words of chrome that put the sentence in someone else's mouth: without it an
+   unlabelled "Or…" over scripture can read as Lantern's opinion. */
+.footnote-note-who {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.footnote-note-text {
+  display: block;
+}
+.footnote-note-text em {
+  font-style: italic;
+}
+
+body.dark .footnote-note,
+body.dark .footnote-sheet {
+  background: var(--surface-2);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+}
+
 /* Study actions */
 .study-actions {
   padding: 14px 32px;
