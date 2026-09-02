@@ -9,7 +9,17 @@
          to this cream on light. The value here is just the light-mode/initial
          paint default; the boot script below overwrites it synchronously
          before first paint if the stored/OS preference is dark. -->
-    <meta name="theme-color" content="#f4f0e8" />
+    <!-- A PAIR, media-scoped, so the correct colour is present at PARSE time
+         with no JavaScript. This matters specifically for the installed Android
+         PWA: the web app manifest's `theme_color` cannot carry a dark variant
+         (there is no media query in a manifest), so ours is the light cream,
+         and in standalone mode that was painting a white system bar over a dark
+         app. Reported from a real phone 2026-09-02. The boot script below
+         collapses these two into one authoritative tag once it knows whether
+         the reader has an explicit stored preference; these are what the OS
+         sees before that runs, and the fallback if scripting is blocked. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f0e8" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#17140f" />
     <!-- Synchronous boot-theme read: must run before first paint so the
          loading splash (#app-fallback below) shows the right background
          instantly, with no white flash while React — and useDarkMode.ts /
@@ -46,7 +56,20 @@
           rootStyle.setProperty('--boot-ink', INK[i])
           rootStyle.setProperty('--boot-muted', MUTED[i])
           rootStyle.setProperty('--boot-accent', ACCENT[i])
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', bg)
+          // Collapse the media-scoped pair above into ONE authoritative tag.
+          // We now know the real answer (stored preference, else OS), and two
+          // tags that disagree with it would let the browser pick the wrong
+          // one — a reader who has chosen dark on a light-mode phone must get
+          // the dark bar, not the one their OS votes for.
+          var metas = document.querySelectorAll('meta[name="theme-color"]')
+          for (var m = 0; m < metas.length; m++) {
+            if (m === 0) {
+              metas[m].removeAttribute('media')
+              metas[m].setAttribute('content', bg)
+            } else {
+              metas[m].parentNode.removeChild(metas[m])
+            }
+          }
         } catch (e) {}
       })()
     </script>
