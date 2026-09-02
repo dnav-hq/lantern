@@ -14,6 +14,31 @@ belongs to and why that arc comes when it does.
 
 ## Deferred
 
+- **Note capture: one editor for create and edit (queued 2026-09-02).** Writing a
+  new note uses `InlineTagInput`, a form control, and editing one uses
+  `RichEditInput`, a contenteditable. That split is why `v2-5` renders as plain
+  text while you type a NEW note but as a pill in an existing one, and why the
+  create field is single-line and scrolls sideways instead of wrapping. Both are
+  Dennis's own observations. Unifying onto the rich editor fixes both, and also
+  reaches the elevated mobile-note-typing capture. The risk is the caret
+  contract (RichEditInput seeds once and owns its DOM) and the mobile
+  keyboard-aware behaviour; the task is written to STOP and report rather than
+  ship a regression in either.
+
+- **DONE 2026-09-02: the @tag dropdown reads the shared category store.** It held
+  a fifth private copy of the four built-ins — the same private-map bug the
+  desktop sweep found in three other components (finding 3), in the one place
+  nobody looked. It would have silently ignored user-created categories the
+  moment those can exist. The row still shows the `@key`, since renaming a
+  category deliberately does not rewrite saved notes; the reader's own label
+  shows beside it only when the two differ.
+
+- **DONE 2026-09-02: the Profile version line carries the commit sha.** The
+  version has read `2.0.0-dev` for every deploy, so it could not answer "has the
+  fix reached my phone yet?" — a question an installed PWA makes hard, since it
+  holds its old shell until a full relaunch. The sha was already in the bundle
+  for telemetry. Absent in dev, where it would be a lie rather than a blank.
+
 - **The installed Android PWA's system bar (2026-09-02) — RESOLVED by declaring
   nothing, pending confirmation on a real device.** Reported from Dennis's own
   phone: in dark mode the status bar icons went white but the bar stayed cream.
