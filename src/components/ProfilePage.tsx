@@ -1,6 +1,5 @@
-import React, { useCallback, useState } from 'react'
-import { useApi } from '../api/context'
-import { exportAllNotesAsZip } from '../platform/export'
+import React from 'react'
+import { useNotesExport } from '../utils/useNotesExport'
 
 interface ProfilePageProps {
   displayName: string | null
@@ -27,19 +26,7 @@ export default function ProfilePage({
   canInstall = false,
   onInstall
 }: ProfilePageProps): React.ReactElement {
-  const api = useApi()
-  const [exportState, setExportState] = useState<'idle' | 'exporting' | 'error'>('idle')
-
-  const handleExport = useCallback(async () => {
-    setExportState('exporting')
-    try {
-      await exportAllNotesAsZip(api)
-      setExportState('idle')
-    } catch (err) {
-      console.error('[export] failed:', err)
-      setExportState('error')
-    }
-  }, [api])
+  const { state: exportState, run: runExport } = useNotesExport()
 
   const initial = (displayName || '?').trim().charAt(0).toUpperCase() || '?'
 
@@ -70,7 +57,7 @@ export default function ProfilePage({
         <button
           className="profile-page-btn"
           disabled={exportState === 'exporting'}
-          onClick={() => void handleExport()}
+          onClick={runExport}
         >
           {exportState === 'exporting' ? 'Exporting…' : 'Export notes'}
         </button>

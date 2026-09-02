@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Wordmark from './Wordmark'
-import { useApi } from '../api/context'
-import { exportAllNotesAsZip } from '../platform/export'
+import { useNotesExport } from '../utils/useNotesExport'
 
 export type Destination = 'bible' | 'journal' | 'study' | 'profile'
 
@@ -77,10 +76,10 @@ export default function NavBar({
   onInstall,
   canStudy
 }: NavBarProps): React.ReactElement {
-  const api = useApi()
+  const { state: exportState, run: runExport } = useNotesExport()
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const [exportState, setExportState] = useState<'idle' | 'exporting' | 'error'>('idle')
+
   const workspaceRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
   // Desktop tab indicator: a measured sliding pill, matching the mobile
@@ -114,21 +113,6 @@ export default function NavBar({
     useCallback(() => setProfileOpen(false), []),
     profileOpen
   )
-
-  const handleExport = useCallback(async () => {
-    setExportState('exporting')
-    try {
-      await exportAllNotesAsZip(api)
-      setExportState('idle')
-    } catch (err) {
-      // A failure used to log to the console and set the label straight back to
-      // "Export notes", so a desktop reader saw a flicker and reasonably assumed
-      // it had worked. ProfilePage has always shown an error state for the same
-      // call; this is the desktop half of that mirror, which had cracked.
-      console.error('[export] failed:', err)
-      setExportState('error')
-    }
-  }, [api])
 
   const initial = (displayName || '?').trim().charAt(0).toUpperCase() || '?'
 
@@ -404,7 +388,7 @@ export default function NavBar({
                     className="nav-menu-item"
                     role="menuitem"
                     disabled={exportState === 'exporting'}
-                    onClick={() => void handleExport()}
+                    onClick={runExport}
                   >
                     {exportState === 'exporting'
                       ? 'Exporting…'
