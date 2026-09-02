@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { VerseNote } from '../bible/provider'
 import type { BibleVerse } from '../types'
 import { footnoteSpans } from '../utils/footnoteSpan'
 import { isMobileViewport } from '../platform/install'
@@ -25,18 +24,6 @@ import { isMobileViewport } from '../platform/install'
 //   - On mobile a tap already means "select this verse". So while a selection is
 //     live the doors are REMOVED, not disabled: showing a door you have turned
 //     off is worse than showing none.
-
-// The notes the seam anchored to this verse.
-//
-// `BibleVerseLine` (src/bible/provider.ts) carries `notes`; `BiblePassage`'s
-// `BibleVerse` (src/types) does not declare them yet, and service.ts passes the
-// provider's own objects straight through, so they are there at runtime on
-// every read. Widening the shared type is a one-line change in a file this
-// slice does not own — until then this is the ONE place that knows it, rather
-// than a cast sprinkled through two reading surfaces.
-function verseNotes(verse: BibleVerse): VerseNote[] | undefined {
-  return (verse as BibleVerse & { notes?: VerseNote[] }).notes
-}
 
 // The mockup's own rule (design/footnotes-door.html): the lead word stays
 // upright and the alternative it introduces is italic, the way the BSB prints
@@ -208,7 +195,7 @@ export default function FootnoteVerseText({
   canOpen?: () => boolean
 }): React.ReactElement {
   const text = verse.text
-  const notes = verseNotes(verse)
+  const notes = verse.notes
   const spans = useMemo(() => (notes?.length ? footnoteSpans(text, notes) : []), [text, notes])
 
   if (!doors || spans.length === 0) return <span className="verse-text">{text}</span>

@@ -1,4 +1,4 @@
-import type { TranslationId } from '../bible/provider'
+import type { TranslationId, VerseNote } from '../bible/provider'
 /**
  * The key a note carries. An OPEN string, not a closed union of the four
  * built-ins — a reader will be able to add their own
@@ -74,6 +74,14 @@ export interface Note {
 export interface BibleVerse {
   verse: number
   text: string
+  /**
+   * Translators' footnotes anchored into `text`, when the provider carried any.
+   * Optional because most callers neither set nor read it: the journal, search,
+   * note anchoring and the offline mirror all treat a verse as `{ verse, text }`
+   * and are untouched by this. Only the reading surface reads it, and a chapter
+   * from the self-hosted fallback simply has none.
+   */
+  notes?: VerseNote[]
 }
 
 export interface BiblePassage {

@@ -793,8 +793,12 @@ reason to delay.
    over scripture can read as *Lantern's* opinion, which is the one thing the
    philosophy line forbids. Interaction model is still CrossRefPill's, and still
    click-to-open on desktop, never hover.
-3. **Mobile: when a selection is active the underline is REMOVED, not merely
-   inert.** Showing a door that has been disabled is worse than showing no door.
+3. **When a verse selection is active the underline is REMOVED, not merely
+   inert — on BOTH surfaces.** This was written as a mobile rule because the
+   tap collision is loudest there, but clicking a verse extends a selection on
+   desktop too, so the collision and the reasoning are identical. Confirmed
+   2026-09-01 against the shipped slice 2, which had already generalised it.
+   Showing a door that has been disabled is worse than showing no door.
    Otherwise §5.4's precedence stands unchanged.
 4. **No `ReadingControls` preference.** The measured density (median 2 per
    chapter, 274 chapters with none) says it is not needed, and a setting mostly
