@@ -86,7 +86,7 @@ least one content word:
 | **every** content word also appears in the same verse | **624 · 30.1%** | **920 · 44.3%** |
 | at least one content word does | 1,184 · 57.1% | 1,407 · 67.8% |
 
-(Content word = not in a 60-item stop list; matching is stem-relaxed, so
+(Content word = not in a 49-item stop list; matching is stem-relaxed, so
 "comprehend"/"comprehended" counts.)
 
 **For roughly seven doors in ten, the KJV simply does not contain the words the
