@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lantern — the word door</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f4f0e8;
+        --surface: #fbf9f4;
+        --surface-2: #ece6da;
+        --border: #e2dccf;
+        --text: #201e1a;
+        --text-muted: #6a6353;
+        --text-faint: #938a77;
+        --accent: #6b62d6;
+        --accent-ink: #594fd1;
+        --accent-weak: rgba(107, 98, 214, 0.11);
+      }
+      body.dark {
+        --bg: #17140f;
+        --surface: #211d17;
+        --surface-2: #2a251d;
+        --border: #332c22;
+        --text: #ece4d6;
+        --text-muted: #a99f8e;
+        --text-faint: #7a7264;
+        --accent: #a49cf0;
+        --accent-ink: #a49cf0;
+        --accent-weak: rgba(164, 156, 240, 0.16);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Source Serif 4', Georgia, serif;
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 24px 100px;
+      }
+      h1 {
+        font-size: 26px;
+        font-weight: 600;
+        margin: 0 0 6px;
+        letter-spacing: -0.01em;
+      }
+      .sub {
+        color: var(--text-muted);
+        font-size: 15px;
+        margin: 0 0 8px;
+        line-height: 1.55;
+        max-width: 70ch;
+      }
+      h2 {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 48px 0 14px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .note {
+        font-size: 14px;
+        color: var(--text-muted);
+        line-height: 1.62;
+        margin: 0 0 18px;
+        max-width: 68ch;
+      }
+      .toggle {
+        position: fixed;
+        top: 18px;
+        right: 18px;
+        z-index: 30;
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-family: inherit;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 24px 26px;
+      }
+
+      /* ── the door ── */
+      .door-verse {
+        font-size: 19px;
+        line-height: 1.7;
+        margin: 0 0 4px;
+      }
+      .door-ref {
+        font-size: 12px;
+        color: var(--text-faint);
+        letter-spacing: 0.04em;
+        margin-bottom: 16px;
+      }
+      .w {
+        background: var(--accent-weak);
+        border-radius: 3px;
+        padding: 1px 4px;
+        box-shadow: inset 0 -2px 0 var(--accent);
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        align-items: baseline;
+        flex-wrap: wrap;
+        padding: 14px 0;
+        border-top: 1px solid var(--border);
+      }
+      .k {
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        min-width: 138px;
+      }
+      .v {
+        font-size: 15px;
+        line-height: 1.55;
+        flex: 1;
+        min-width: 240px;
+      }
+      .heb {
+        font-size: 21px;
+        letter-spacing: 0.02em;
+      }
+      .translit {
+        font-style: italic;
+        color: var(--text-muted);
+      }
+
+      /* renderings */
+      .rend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 2px;
+      }
+      .rend span {
+        font-size: 14px;
+        padding: 4px 11px;
+        border-radius: 999px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+      }
+      .rend span.here {
+        border-color: var(--accent);
+        background: var(--accent-weak);
+        color: var(--accent-ink);
+      }
+      .cnt {
+        color: var(--text-faint);
+        font-size: 12px;
+        margin-left: 5px;
+      }
+
+      /* occurrences */
+      .occ {
+        padding: 11px 0;
+        border-top: 1px solid var(--border);
+        font-size: 15px;
+        line-height: 1.6;
+      }
+      .occ:first-of-type {
+        border-top: 0;
+      }
+      .occ .oref {
+        font-size: 11px;
+        color: var(--text-faint);
+        letter-spacing: 0.04em;
+        display: block;
+        margin-bottom: 2px;
+      }
+      .occ em {
+        font-style: normal;
+        background: var(--accent-weak);
+        border-radius: 3px;
+        padding: 0 3px;
+      }
+      .occ.pinned {
+        background: var(--accent-weak);
+        margin: 0 -14px;
+        padding: 11px 14px;
+        border-radius: 8px;
+      }
+      .more {
+        margin-top: 14px;
+        font-family: inherit;
+        font-size: 13.5px;
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 7px 15px;
+        color: var(--text-muted);
+        cursor: pointer;
+      }
+      .limits {
+        margin-top: 18px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+        font-size: 13px;
+        line-height: 1.62;
+        color: var(--text-muted);
+      }
+      .prov {
+        font-size: 11.5px;
+        color: var(--text-faint);
+        margin-top: 9px;
+      }
+      .q {
+        border-left: 3px solid var(--accent);
+        padding: 3px 0 3px 15px;
+        margin: 0 0 20px;
+        font-size: 14.5px;
+        line-height: 1.62;
+        max-width: 68ch;
+      }
+      .q b {
+        font-weight: 600;
+      }
+      .q .rec {
+        color: var(--text-muted);
+        font-size: 13.5px;
+        display: block;
+        margin-top: 6px;
+      }
+      .warn {
+        border-left-color: #b5732a;
+      }
+      .bad {
+        border-left-color: #c05070;
+      }
+      code {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 12.5px;
+        background: var(--surface-2);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      .mark-demo {
+        font-size: 18px;
+        line-height: 1.75;
+        padding: 10px 0;
+      }
+      .m-none {
+      }
+      .m-dot {
+        text-decoration: underline dotted;
+        text-underline-offset: 4px;
+        text-decoration-color: color-mix(in srgb, var(--text) 34%, transparent);
+      }
+      .m-tint {
+        background: var(--accent-weak);
+        border-radius: 3px;
+        padding: 1px 4px;
+      }
+      .m-rule {
+        box-shadow: inset 0 -2px 0 var(--accent);
+      }
+      .lbl {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        min-width: 120px;
+        display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <button class="toggle" onclick="document.body.classList.toggle('dark')">Light / dark</button>
+    <div class="wrap">
+      <h1>The word door</h1>
+      <p class="sub">
+        Rung two of the deep dive, and the one that can do harm. Every verse below is
+        <strong>real BSB text</strong>, fetched live. The word is <em>hebel</em> (H1892), the
+        brief&rsquo;s own worked example, and it was chosen because it makes the whole argument
+        by itself.
+      </p>
+      <p class="q warn">
+        <b>Why this word proves the rule.</b>
+        <span class="rec">
+          The BSB renders <em>hebel</em> as <strong>futility</strong>, <strong>futile</strong>,
+          <strong>a breath</strong>, <strong>a vapor</strong> and <strong>fleeting</strong> —
+          all below, all real. The lexicon&rsquo;s single gloss is
+          &ldquo;<strong>vanity</strong>&rdquo;, a word the BSB does not use in any of them.
+          Hand a reader &ldquo;vanity&rdquo; as the meaning and you have taught them to misread
+          every verse on this page. Show them the verses and the range is obvious without anyone
+          asserting anything. <strong>That is the entire feature.</strong>
+        </span>
+      </p>
+
+      <h2>1. The door</h2>
+      <p class="note">
+        Reading order is the argument. The verse first, then how it is rendered here, then the
+        neighbourhood, then the occurrences. The gloss is near the BOTTOM with its provenance
+        attached, which is the opposite of every lexicon tool.
+      </p>
+      <div class="card">
+        <div class="door-ref">ECCLESIASTES 1:2</div>
+        <p class="door-verse">
+          &ldquo;<span class="w">Futility</span> of futilities,&rdquo; says the Teacher,
+          &ldquo;futility of futilities! Everything is futile!&rdquo;
+        </p>
+
+        <div class="row">
+          <div class="k">The word</div>
+          <div class="v">
+            <span class="heb">הֶבֶל</span> &nbsp;<span class="translit">hebel</span>
+            <span class="cnt">H1892 · 73 times in the Old Testament</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="k">Its grammar here</div>
+          <div class="v">
+            Masculine singular noun
+            <span class="cnt">construct — &ldquo;futility <em>of</em>&hellip;&rdquo;</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="k">How the BSB<br />renders it</div>
+          <div class="v">
+            <div class="rend">
+              <span class="here">futile <span class="cnt">20</span></span>
+              <span>a breath <span class="cnt">14</span></span>
+              <span>futility <span class="cnt">11</span></span>
+              <span>a vapor <span class="cnt">9</span></span>
+              <span>worthless <span class="cnt">7</span></span>
+              <span>fleeting <span class="cnt">4</span></span>
+              <span>meaningless <span class="cnt">3</span></span>
+              <span class="cnt" style="align-self: center">+5 more</span>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="k">The translators&rsquo;<br />own note</div>
+          <div class="v" style="color: var(--text-muted)">
+            Literally <em>vapor</em> or <em>breath</em>; the Hebrew words translated in
+            Ecclesiastes as forms of <em>futile</em> or <em>fleeting</em> can also be translated
+            as <em>vanity</em> or <em>meaningless</em>.
+          </div>
+        </div>
+        <div class="row">
+          <div class="k">A lexicon gloss</div>
+          <div class="v" style="color: var(--text-muted)">
+            vanity
+            <div class="prov">
+              Brief entry, TBESH. One editor&rsquo;s one-word summary &mdash; not a definition,
+              and not what the BSB chose in any verse on this page.
+            </div>
+          </div>
+        </div>
+
+        <div class="limits">
+          <strong>What this can and cannot tell you.</strong> You are looking at where a word is
+          used and how it has been put into English. That is evidence about the word&rsquo;s
+          range, not a definition of it, and a word does not carry all of its uses into any one
+          verse. What it means here is settled by this sentence, not by this list.
+        </div>
+      </div>
+
+      <h2>2. The occurrences, which are the point</h2>
+      <p class="note">
+        Rule R1: occurrences appear in their sentences, never as a gloss list. The verse you came
+        from is pinned at the top so you do not lose your place. All real BSB text.
+      </p>
+      <div class="card">
+        <div class="occ pinned">
+          <span class="oref">ECCLESIASTES 1:2 &middot; where you are</span>
+          &ldquo;<em>Futility</em> of futilities,&rdquo; says the Teacher, &ldquo;futility of
+          futilities! Everything is futile!&rdquo;
+        </div>
+        <div class="occ">
+          <span class="oref">PSALM 39:5</span> You, indeed, have made my days as handbreadths,
+          and my lifetime as nothing before You. Truly each man at his best exists as but
+          <em>a breath</em>.
+        </div>
+        <div class="occ">
+          <span class="oref">PSALM 62:9</span> Lowborn men are but <em>a vapor</em>; the exalted
+          are but a lie. Weighed on the scale, they go up; together they are but a vapor.
+        </div>
+        <div class="occ">
+          <span class="oref">JOB 7:16</span> I loathe my life! I would not live forever. Leave me
+          alone, for my days are but <em>a breath</em>.
+        </div>
+        <div class="occ">
+          <span class="oref">PROVERBS 31:30</span> Charm is deceptive and beauty is
+          <em>fleeting</em>, but a woman who fears the LORD is to be praised.
+        </div>
+        <div class="occ">
+          <span class="oref">ISAIAH 57:13</span> When you cry out, let your companies of idols
+          deliver you! Yet the wind will carry off all of them, <em>a breath</em> will take them
+          away.
+        </div>
+        <button class="more">Show more &mdash; 67 of 73 remaining</button>
+      </div>
+      <p class="q">
+        <b>Paging: flat and chronological, not grouped by rendering.</b>
+        <span class="rec">
+          Grouping occurrences under their English renderings would quietly rebuild the ranked
+          sense list that R2 forbids &mdash; it would read as &ldquo;here are the meanings, with
+          examples&rdquo;. Canonical order keeps them as evidence rather than as a taxonomy.
+          Twenty at a time.
+        </span>
+      </p>
+
+      <h2>3. The thing that changed since the brief was written</h2>
+      <p class="q bad">
+        <b>The footnotes door already owns the dotted underline.</b>
+        <span class="rec">
+          It shipped on 2026-09-01. If a salient word is also marked with a dotted underline, the
+          reader meets two different doors wearing one costume &mdash; and they lead somewhere
+          genuinely different (a translator&rsquo;s alternative versus a word&rsquo;s
+          neighbourhood). The brief predates this and does not account for it. Options, on the
+          real verse:
+        </span>
+      </p>
+      <div class="card">
+        <div class="mark-demo">
+          <span class="lbl">A · nothing</span> &ldquo;Futility of futilities,&rdquo; says the
+          Teacher
+        </div>
+        <div class="mark-demo">
+          <span class="lbl">B · dotted</span> &ldquo;<span class="m-dot">Futility</span> of
+          futilities,&rdquo; says the Teacher
+          <span class="cnt">&mdash; collides with footnotes</span>
+        </div>
+        <div class="mark-demo">
+          <span class="lbl">C · tint</span> &ldquo;<span class="m-tint">Futility</span> of
+          futilities,&rdquo; says the Teacher
+          <span class="cnt">&mdash; collides with the reader&rsquo;s own highlights</span>
+        </div>
+        <div class="mark-demo">
+          <span class="lbl">D · baseline rule</span> &ldquo;<span class="m-rule">Futility</span>
+          of futilities,&rdquo; says the Teacher
+        </div>
+      </div>
+      <p class="q">
+        <b>My recommendation: A, with D held in reserve.</b>
+        <span class="rec">
+          <strong>A means the word door is not marked in the verse at all</strong> &mdash; it is
+          reached from the Study side, or by tapping a word deliberately, and the reading page
+          gains no new furniture. That protects the thing the whole product is built to protect:
+          a chapter that still reads like scripture. It also sidesteps the collision entirely
+          rather than negotiating it.
+          <br /><br />
+          D is the fallback if A proves undiscoverable: a solid 2px baseline rule reads as a
+          different object from a 1px dotted line, and colour stays out of it. B is out. C is
+          out &mdash; tint means &ldquo;<em>I</em> marked this&rdquo; and the reader&rsquo;s own
+          marks must win.
+        </span>
+      </p>
+
+      <h2>4. Two questions I cannot answer for you</h2>
+      <p class="q warn">
+        <b>Is &ldquo;how the BSB renders it, with counts&rdquo; allowed?</b>
+        <span class="rec">
+          It is the most useful row on the page and it is the one that could smuggle the ban back
+          in. R2 forbids ranking SENSES. Counting how one translation team put a word into
+          English is a fact about the BSB, not a claim about Hebrew &mdash; and it is the honest
+          antidote to the lexicon&rsquo;s &ldquo;vanity&rdquo;. But a reader may still read the
+          biggest number as the real meaning. <strong>I think it stays, labelled exactly as it
+          is</strong> (&ldquo;How the BSB renders it&rdquo;, never &ldquo;meanings&rdquo;), but
+          you should decide that knowingly rather than inherit it from me.
+        </span>
+      </p>
+      <p class="q">
+        <b>How much grammar does a non-specialist want?</b>
+        <span class="rec">
+          The door above says &ldquo;Masculine singular noun&rdquo;. The data can say
+          &ldquo;Qal perfect third person masculine singular&rdquo; for verbs, which is accurate
+          and opaque. <strong>My recommendation: plain words, and only what changes the
+          reading</strong> &mdash; tense, number, whether it is a command. The full parse can sit
+          behind the provenance line for anyone who wants it. Lantern is for someone who reads
+          carefully, not someone who has had a year of Hebrew.
+        </span>
+      </p>
+    </div>
+  </body>
+</html>
