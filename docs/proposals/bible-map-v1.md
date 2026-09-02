@@ -845,6 +845,31 @@ alone (§4.4); the build-effort bands in §7.
 
 ---
 
+## 9a. RESOLVED with Dennis, 2026-09-02
+
+1. **Extent: the wider "Bible world" frame** (10→60 / 20→45, 98.6% coverage)
+   with edge indicators, as §4.3 recommends. The tighter Levant crop is more
+   beautiful and drops Rome, Babylon and Ur off the canvas — Acts and the exile
+   stop making sense without them.
+2. **Terrain raster IS in v1, as a view option** — a change from §4.2's
+   recommendation, made deliberately. The vector map always ships and stays the
+   default; terrain is an opt-in layer, lazily fetched only when switched on, so
+   it cannot bloat the ~170 KB base payload for readers who never use it.
+   **§4.2 records the raster size as `unverified`, so the build MEASURES it
+   first and reports the number.** Natural Earth's raster series is public
+   domain on the same terms as the vectors, so there is no licence question.
+3. **The GPL email to `aourednik` is dropped.** It could only unblock era
+   polygons for evaluation, and §6.1's accuracy finding — the 700 BC Levant
+   geometry being byte-identical to the 1000 BC file — kills the timeline
+   regardless. Nothing to buy with the effort.
+4. **The interim place-filtering slider (§6.4 option 3) is dropped.** It is a
+   different feature wearing the timeline's clothes, and shipping a lookalike
+   for a thing we decided not to build is worse than the absence.
+
+Everything else in this brief stands: SVG with pre-projected paths, no map
+library, confidence as a required feature, and the timeline out on evidence.
+
+---
 ## 9. Open questions for a human
 
 1. **Extent.** §4.3 recommends "Bible world" (10→60 / 20→45, 98.6% coverage)

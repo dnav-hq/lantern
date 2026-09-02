@@ -558,6 +558,69 @@ be decided with the reading page in front of you, not here. See §9.
 
 ---
 
+## 9a. RESOLVED with Dennis, 2026-09-02
+
+The §9 pass happened. Mockup: `design/word-door.html`, built on this brief's own
+worked example and on real measurements from the BSB Translation Tables.
+**These are decided; build against them.**
+
+### The finding that came out of measuring rather than designing
+
+The first mockup showed seven tidy rendering chips. The real figure, measured
+from the 754,647-row table on 2026-09-02: H1892 occurs **73 times in 35 distinct
+English forms** — 24 once grouped by head word, top form 24 of 73. Many are
+phrases carrying their surroundings ("is futile", "with their worthless idols").
+So the chip row has a long tail, and **the headline stat is stronger than the
+chips**: "put into English 35 different ways" makes the anti-single-meaning
+argument without ranking anything, which is the cleanest possible reading of R2.
+
+### Decisions
+
+1. **The BSB rendering counts SHIP**, resolving the R2 tension deliberately
+   rather than by omission. Counting how one translation team put a word into
+   English is a fact about the BSB, not a claim about Hebrew. Labelled "How the
+   BSB renders it" and NEVER "meanings". The distinct-forms headline leads; the
+   chips support it. Head-word grouping is an editorial transformation and must
+   be labelled as grouping, not presented as fact.
+2. **Reading order is the argument**: the verse, then how it is rendered here,
+   then the neighbourhood, then the occurrences — with the gloss near the BOTTOM
+   carrying its provenance. Deliberately inverted from every lexicon tool.
+3. **Nothing marks the salient word in the reading page.** The footnotes door
+   shipped 2026-09-01 and already owns the dotted underline; a second door in the
+   same costume leading somewhere different is worse than no marker. The word
+   door is reached from the Study side or a deliberate word tap. A solid 2px
+   baseline rule is the reserve option if it proves undiscoverable. Tint is out —
+   tint means "*I* marked this" and the reader's own marks must win.
+4. **Occurrences page flat and canonical, twenty at a time**, with the verse you
+   came from pinned. NOT grouped by rendering: grouping would quietly rebuild the
+   ranked sense list R2 forbids, reading as "here are the meanings, with examples".
+5. **Morphology uses the expanded column, and this answered itself in the data.**
+   The table already ships both `Prep-b | N-mpc | 3mp` and `Preposition-b | Noun -
+   masculine plural construct | third person masculine plural`. Show the expanded
+   form; the terse one can sit with the provenance.
+6. **The Hebrew/Greek asymmetry (§4.2) stays invisible**, as the brief proposed.
+
+### The translation question, answered 2026-09-02
+
+**The word door is structurally BSB-ONLY, and this is not a v1 limitation.** What
+makes it possible at all is the BSB Translation Tables' per-word Strong's
+alignment. Without an equivalent table, there is no way to know which English
+word corresponds to which lemma, so no door can be placed.
+
+- **ESV: impossible, not merely hard.** Crossway licenses text only; no tagged
+  edition exists or is obtainable, and the 500-verse cache cap would bite even if
+  one did. Same reason ESV footnotes are off.
+- **NET: same position** — text-only grant.
+- **KJV: the only realistic candidate**, being public domain with Strong's-tagged
+  editions in circulation. It needs its own source and its own verification pass,
+  exactly as its footnote apparatus did. Not v1.
+
+**The strategic consequence, worth stating plainly:** the deep dive only exists
+on translations Lantern can hold openly. BSB is therefore not the licensing
+fallback, it is where the product's differentiator can live at all. Switching to
+ESV degrades the same way the footnotes door does — the doors quietly disappear.
+
+---
 ## 9. What still needs a design pass with Dennis
 
 This brief decides data, rules and triggers, and deliberately makes no visual
