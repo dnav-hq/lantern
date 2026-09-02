@@ -1,3 +1,138 @@
+/* ─── Category colour ─────────────────────────────────────────────────────────
+   CSS DOES NOT KNOW HOW MANY CATEGORIES THERE ARE, and that is the point. Every
+   rule that paints a category paints from four inherited custom properties:
+
+     --cat-c        the field: dots, rails, left-borders, brackets, fills
+     --cat-c-ink    the 12px/500 uppercase label, which sits on its own tint
+     --cat-c-weak   the 12%/18% tint behind a pill
+     --cat-c-tint   the slightly stronger wash behind a marked verse row
+
+   Before this, 79 selectors named one of the four keys across 14 selector
+   families, and a fifth category would have rendered colourless in all of them
+   (docs/proposals/custom-categories.md §5.1). The ONLY thing below that names a
+   key is the binding block — the built-in defaults — plus whatever
+   noteCategories.ts writes into <style id="lantern-category-palette"> for a
+   category someone has actually recoloured.
+
+   ── The ten slots ───────────────────────────────────────────────────────────
+   Copied verbatim from design/category-palette.html, approved 2026-09-01. DO
+   NOT re-derive or nudge these: each pair is solved against all twenty theme
+   canvases tokens.css ships, and the ratios are recorded beside each. They are
+   deliberately NOT re-tuned per theme — that is what "measured against every
+   canvas" buys, and it is why a slot can be stored as an id rather than a hex.
+   Ink aliases back to the field in dark, exactly as tokens.css does. */
+:root {
+  --slot-indigo: #6b62d6;
+  --slot-indigo-ink: #594fd1; /* 4.22 field · 4.57 ink on tint · 6.55 dark */
+  --slot-green: #3f8f5b;
+  --slot-green-ink: #316f47; /* 3.46 field · 4.59 ink on tint · 7.13 dark */
+  --slot-amber: #b5732a;
+  --slot-amber-ink: #8a5820; /* 3.36 field · 4.61 ink on tint · 6.59 dark */
+  --slot-rose: #c05070;
+  --slot-rose-ink: #a73c5b; /* 3.96 field · 4.60 ink on tint · 6.52 dark */
+  --slot-olive: #6f8934;
+  --slot-olive-ink: #576b29; /* 3.45 field · 4.57 ink on tint · 6.52 dark */
+  --slot-teal: #2c8c88;
+  --slot-teal-ink: #226d6a; /* 3.51 field · 4.63 ink on tint · 6.77 dark */
+  --slot-blue: #3984c6;
+  --slot-blue-ink: #2d679a; /* 3.46 field · 4.57 ink on tint · 6.58 dark */
+  --slot-slate: #72809d;
+  --slot-slate-ink: #58657e; /* 3.46 field · 4.54 ink on tint · 6.54 dark */
+  --slot-purple: #a964c4;
+  --slot-purple-ink: #8f42ae; /* 3.45 field · 4.51 ink on tint · 6.72 dark */
+  --slot-plum: #c059af;
+  --slot-plum-ink: #9f3c8f; /* 3.46 field · 4.55 ink on tint · 6.60 dark */
+
+  /* Tint strengths, as percentages so color-mix can take them from a variable.
+     Dark needs more alpha to read the same against a near-black canvas. */
+  --cat-weak-pct: 12%;
+  --cat-tint-pct: 15%;
+}
+
+body.dark {
+  --slot-indigo: #a49cf0;
+  --slot-indigo-ink: var(--slot-indigo);
+  --slot-green: #5fbf92;
+  --slot-green-ink: var(--slot-green);
+  --slot-amber: #d79a55;
+  --slot-amber-ink: var(--slot-amber);
+  --slot-rose: #e58aab;
+  --slot-rose-ink: var(--slot-rose);
+  --slot-olive: #90b143;
+  --slot-olive-ink: var(--slot-olive);
+  --slot-teal: #3bbab6;
+  --slot-teal-ink: var(--slot-teal);
+  --slot-blue: #79abd8;
+  --slot-blue-ink: var(--slot-blue);
+  --slot-slate: #9ca6ba;
+  --slot-slate-ink: var(--slot-slate);
+  --slot-purple: #c697d8;
+  --slot-purple-ink: var(--slot-purple);
+  --slot-plum: #d590c9;
+  --slot-plum-ink: var(--slot-plum);
+
+  --cat-weak-pct: 18%;
+  --cat-tint-pct: 20%;
+}
+
+/* ── The binding: keys to colour, the one place a key is written ─────────────
+   Four rules, and the only reason they exist is that the built-ins keep their
+   PER-THEME tuning (tokens.css gives `historical` a different green in
+   `scholarly`), which a theme-independent slot cannot express. A recoloured
+   category is overridden from the injected stylesheet and stops using these.
+
+   Four surfaces spell the same key differently — `cat-<key>` on most elements,
+   `pill-tag-<key>` on an @tag pill, `swatch-<key>` in the @ dropdown, and
+   `data-cat` on the composer — so each rule carries all four.
+
+   --cat-alt-* PRESERVES A PRE-EXISTING QUIRK, and only observation has one:
+   seven rules painted it from --accent rather than --cat-observation. Those two
+   are the same value in every look but `paper` (whose accent is amber) and
+   `modern`, so unifying them would have quietly changed two shipped looks. The
+   families that had it read `var(--cat-alt, var(--cat-c))`; everything else
+   reads --cat-c directly, and a recolour clears --cat-alt-*. Delete this the
+   day someone decides paper's observation rail should be indigo. */
+.cat-observation,
+.pill-tag-observation,
+.swatch-observation,
+[data-cat='observation'] {
+  --cat-c: var(--cat-observation);
+  --cat-c-ink: var(--cat-observation-ink);
+  --cat-c-weak: var(--cat-observation-weak);
+  --cat-c-tint: rgba(107, 98, 214, 0.15);
+  --cat-alt: var(--accent);
+  --cat-alt-ink: var(--accent-ink);
+  --cat-alt-weak: var(--accent-weak);
+  --cat-alt-strong: var(--accent-hover);
+}
+.cat-historical,
+.pill-tag-historical,
+.swatch-historical,
+[data-cat='historical'] {
+  --cat-c: var(--cat-historical);
+  --cat-c-ink: var(--cat-historical-ink);
+  --cat-c-weak: var(--cat-historical-weak);
+  --cat-c-tint: rgba(63, 143, 91, 0.15);
+}
+.cat-application,
+.pill-tag-application,
+.swatch-application,
+[data-cat='application'] {
+  --cat-c: var(--cat-application);
+  --cat-c-ink: var(--cat-application-ink);
+  --cat-c-weak: var(--cat-application-weak);
+  --cat-c-tint: rgba(181, 115, 42, 0.15);
+}
+.cat-personal,
+.pill-tag-personal,
+.swatch-personal,
+[data-cat='personal'] {
+  --cat-c: var(--cat-personal);
+  --cat-c-ink: var(--cat-personal-ink);
+  --cat-c-weak: var(--cat-personal-weak);
+  --cat-c-tint: rgba(192, 80, 112, 0.16);
+}
+
 /* ─── Reset & Base ─────────────────────────────────────────────────────────── */
 *,
 *::before,
@@ -1055,20 +1190,7 @@ body.dark .search-backdrop {
   height: 9px;
   flex: none;
   border-radius: 50%;
-  background: var(--border-strong);
-}
-
-.journal-dot.cat-observation {
-  background: var(--cat-observation);
-}
-.journal-dot.cat-historical {
-  background: var(--cat-historical);
-}
-.journal-dot.cat-application {
-  background: var(--cat-application);
-}
-.journal-dot.cat-personal {
-  background: var(--cat-personal);
+  background: var(--cat-c, var(--border-strong));
 }
 
 .journal-dot-all {
@@ -1182,20 +1304,7 @@ body.dark .search-backdrop {
   grid-template-columns: auto 1fr;
   gap: 10px;
   padding: 7px 0 7px 11px;
-  border-left: 2px solid var(--border-strong);
-}
-
-.journal-note.cat-observation {
-  border-left-color: var(--cat-observation);
-}
-.journal-note.cat-historical {
-  border-left-color: var(--cat-historical);
-}
-.journal-note.cat-application {
-  border-left-color: var(--cat-application);
-}
-.journal-note.cat-personal {
-  border-left-color: var(--cat-personal);
+  border-left: 2px solid var(--cat-c, var(--border-strong));
 }
 
 /* Sub-notes (indent_level > 0) sit under their parent, same as in the reader. */
@@ -1207,22 +1316,9 @@ body.dark .search-backdrop {
   padding-top: 4px;
   font-size: 11px;
   font-weight: 700;
-  color: var(--text-faint);
+  color: var(--cat-c-ink, var(--text-faint));
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-}
-
-.journal-note.cat-observation .journal-note-verse {
-  color: var(--cat-observation-ink);
-}
-.journal-note.cat-historical .journal-note-verse {
-  color: var(--cat-historical-ink);
-}
-.journal-note.cat-application .journal-note-verse {
-  color: var(--cat-application-ink);
-}
-.journal-note.cat-personal .journal-note-verse {
-  color: var(--cat-personal-ink);
 }
 
 .journal-note-text {
@@ -1281,19 +1377,10 @@ body.dark .search-backdrop {
   border-radius: 2px;
   /* Falls back to the row's own left-border colour when the note carries no
      category, rather than vanishing into the background. */
-  background: var(--cat-observation);
+  background: var(--cat-c, var(--cat-observation));
   opacity: 0.8;
   align-self: center;
   margin-top: 7px;
-}
-.journal-note.cat-historical .journal-note-mark {
-  background: var(--cat-historical);
-}
-.journal-note.cat-application .journal-note-mark {
-  background: var(--cat-application);
-}
-.journal-note.cat-personal .journal-note-mark {
-  background: var(--cat-personal);
 }
 
 /* The written-vs-marked toggle. Same segmented control as the Notes/Chapters
@@ -1352,23 +1439,11 @@ body.dark .search-backdrop {
   height: 10px;
   border-radius: 50%;
   flex: none;
-  background: var(--accent);
+  background: var(--cat-c, var(--accent));
 }
 .cat-menu-dot-none {
   background: transparent;
   border: 1px solid var(--border-strong);
-}
-.cat-menu-dot.cat-observation {
-  background: var(--cat-observation);
-}
-.cat-menu-dot.cat-historical {
-  background: var(--cat-historical);
-}
-.cat-menu-dot.cat-application {
-  background: var(--cat-application);
-}
-.cat-menu-dot.cat-personal {
-  background: var(--cat-personal);
 }
 .cat-menu-label {
   flex: 1;
@@ -1412,6 +1487,44 @@ body.dark .search-backdrop {
 .cat-menu-input:focus {
   outline: none;
 }
+
+/* ── Recolouring a category ─────────────────────────────────────────────────
+   Ten swatches on ONE line, which is what caps the palette at ten: a second
+   line turns a quiet affordance into a settings panel. Each swatch paints the
+   slot's FIELD value for the theme currently in force, so the row is a preview
+   rather than a legend. There is no hex field — see CategoryMenu.tsx. */
+.cat-menu-row.is-picking {
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+.cat-menu-colors {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.cat-swatch {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  /* The ring sits outside the circle so the colour itself is never dimmed by
+     the thing marking it. */
+  box-shadow: 0 0 0 1px var(--surface);
+}
+.cat-swatch.is-current {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--text-muted);
+}
+.cat-swatch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
 .cat-menu-foot {
   border-top: 1px solid var(--border);
   margin-top: 5px;
@@ -1430,23 +1543,7 @@ body.dark .search-backdrop {
    you tap away. The label deliberately reuses .reading-note-meta's treatment so
    marks and notes read as the same family. */
 .reading-verse-row.marked {
-  background: var(--mark-tint, var(--accent-weak));
-}
-.reading-verse-row.marked.cat-observation {
-  --mark-tint: rgba(107, 98, 214, 0.15);
-  --mark-ink: var(--cat-observation-ink);
-}
-.reading-verse-row.marked.cat-historical {
-  --mark-tint: rgba(63, 143, 91, 0.15);
-  --mark-ink: var(--cat-historical-ink);
-}
-.reading-verse-row.marked.cat-application {
-  --mark-tint: rgba(181, 115, 42, 0.15);
-  --mark-ink: var(--cat-application-ink);
-}
-.reading-verse-row.marked.cat-personal {
-  --mark-tint: rgba(192, 80, 112, 0.16);
-  --mark-ink: var(--cat-personal-ink);
+  background: var(--cat-c-tint, var(--accent-weak));
 }
 /* Selection must still win: it is transient and the reader is acting on it. */
 .reading-verse-row.marked.selected {
@@ -1459,7 +1556,7 @@ body.dark .search-backdrop {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
-  color: var(--mark-ink, var(--text-muted));
+  color: var(--cat-c-ink, var(--text-muted));
   align-self: flex-start;
   margin-left: auto;
   padding-left: 12px;
@@ -1893,42 +1990,11 @@ body.dark .search-backdrop {
   background: rgba(29, 158, 117, 0.18);
 }
 
-.pill-tag-observation {
-  background: var(--accent-weak);
-  color: var(--accent-ink);
-  border-radius: 4px;
-  padding: 1px 6px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 18px;
-  display: inline-flex;
-  align-items: center;
-}
-.pill-tag-historical {
-  background: var(--cat-historical-weak);
-  color: var(--cat-historical-ink);
-  border-radius: 4px;
-  padding: 1px 6px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 18px;
-  display: inline-flex;
-  align-items: center;
-}
-.pill-tag-application {
-  background: var(--cat-application-weak);
-  color: var(--cat-application-ink);
-  border-radius: 4px;
-  padding: 1px 6px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 18px;
-  display: inline-flex;
-  align-items: center;
-}
-.pill-tag-personal {
-  background: var(--cat-personal-weak);
-  color: var(--cat-personal-ink);
+/* One rule for every @tag pill, whatever it is tagged with. richText.ts emits
+   `pill-tag-<key>` as the element's only class, so the prefix match is exact. */
+[class^='pill-tag-'] {
+  background: var(--cat-alt-weak, var(--cat-c-weak, var(--accent-weak)));
+  color: var(--cat-alt-ink, var(--cat-c-ink, var(--accent-ink)));
   border-radius: 4px;
   padding: 1px 6px;
   font-size: 12px;
@@ -2428,7 +2494,7 @@ body.dark .footnote-sheet {
   color: var(--text);
   cursor: pointer;
   transition: background 0.12s;
-  border-left: 2px solid transparent;
+  border-left: 2px solid var(--cat-alt, var(--cat-c, transparent));
   background: transparent;
 }
 
@@ -2437,19 +2503,6 @@ body.dark .footnote-sheet {
 }
 .reading-note-card.highlighted {
   background: var(--accent-weak);
-}
-
-.reading-note-card.cat-observation {
-  border-left-color: var(--accent);
-}
-.reading-note-card.cat-historical {
-  border-left-color: var(--cat-historical);
-}
-.reading-note-card.cat-application {
-  border-left-color: var(--cat-application);
-}
-.reading-note-card.cat-personal {
-  border-left-color: var(--cat-personal);
 }
 
 .reading-note-metarow {
@@ -2465,6 +2518,7 @@ body.dark .footnote-sheet {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   margin-bottom: 3px;
+  color: var(--cat-alt-ink, var(--cat-c-ink, var(--text-faint)));
 }
 
 .reading-note-metarow .reading-note-meta {
@@ -2487,19 +2541,9 @@ body.dark .footnote-sheet {
   user-select: none;
 }
 
-.reading-note-meta.cat-observation {
-  color: var(--accent-ink);
-}
-.reading-note-meta.cat-historical {
-  color: var(--cat-historical-ink);
-}
-.reading-note-meta.cat-application {
-  color: var(--cat-application-ink);
-}
-.reading-note-meta.cat-personal {
-  color: var(--cat-personal-ink);
-}
-.reading-note-meta.cat-none {
+/* No category: the meta line is reference text, not a colour. */
+.reading-note-meta.cat-none,
+.reading-subnote-meta.cat-none {
   color: var(--text-faint);
 }
 
@@ -2509,18 +2553,7 @@ body.dark .footnote-sheet {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   margin-bottom: 2px;
-}
-.reading-subnote-meta.cat-observation {
-  color: var(--accent-ink);
-}
-.reading-subnote-meta.cat-historical {
-  color: var(--cat-historical-ink);
-}
-.reading-subnote-meta.cat-application {
-  color: var(--cat-application-ink);
-}
-.reading-subnote-meta.cat-personal {
-  color: var(--cat-personal-ink);
+  color: var(--cat-alt-ink, var(--cat-c-ink, var(--text-faint)));
 }
 
 /* Sub-notes nested inside a note card */
@@ -2651,21 +2684,9 @@ body.dark .footnote-sheet {
   flex-shrink: 0;
   width: 3px;
   border-radius: 2px;
-  background: #d8d5f2;
+  background: var(--cat-alt, var(--cat-c, #d8d5f2));
   transition: background 0.12s;
   align-self: stretch;
-}
-.rail-bracket.cat-observation {
-  background: var(--accent);
-}
-.rail-bracket.cat-historical {
-  background: var(--cat-historical);
-}
-.rail-bracket.cat-application {
-  background: var(--cat-application);
-}
-.rail-bracket.cat-personal {
-  background: var(--cat-personal);
 }
 
 .rail-note.highlighted .rail-bracket,
@@ -2713,20 +2734,19 @@ body.dark .footnote-sheet {
   bottom: 2px;
   width: 3px;
   border-radius: 2px;
-  background: #d8d5f2;
+  background: var(--cat-alt, var(--cat-c, #d8d5f2));
   cursor: pointer;
 }
-.verse-span-bracket.cat-observation {
-  background: var(--accent);
-}
-.verse-span-bracket.cat-historical {
-  background: var(--cat-historical);
-}
-.verse-span-bracket.cat-application {
-  background: var(--cat-application);
-}
-.verse-span-bracket.cat-personal {
-  background: var(--cat-personal);
+
+/* dark.css:117-131 still carries four per-category overrides for these two,
+   written before colour moved onto --cat-c, and dark.css is outside this
+   task's scope fence. It is imported after this file, so the generic rule is
+   restated here one specificity notch higher (the leading `html` + `[class]`)
+   rather than left to lose. Delete BOTH halves together when dark.css can be
+   edited — this is the only place in the sheet that fights another sheet. */
+html body.dark .rail-bracket[class],
+html body.dark .verse-span-bracket[class] {
+  background: var(--cat-alt-strong, var(--cat-c, #3a3654));
 }
 
 .note-range-chip {
@@ -2866,26 +2886,10 @@ body.dark .footnote-sheet {
 .composer,
 .mobile-composer {
   position: relative;
-  border-left: 2.5px solid var(--rail, var(--accent));
+  border-left: 2.5px solid var(--cat-c, var(--accent));
   border-radius: 0 12px 12px 0;
   background: var(--accent-weaker);
   padding: 11px 12px 12px 13px;
-}
-.composer[data-cat='observation'],
-.mobile-composer[data-cat='observation'] {
-  --rail: var(--cat-observation);
-}
-.composer[data-cat='historical'],
-.mobile-composer[data-cat='historical'] {
-  --rail: var(--cat-historical);
-}
-.composer[data-cat='application'],
-.mobile-composer[data-cat='application'] {
-  --rail: var(--cat-application);
-}
-.composer[data-cat='personal'],
-.mobile-composer[data-cat='personal'] {
-  --rail: var(--cat-personal);
 }
 .composer-head,
 .mobile-composer-head {
@@ -2994,23 +2998,7 @@ body.dark .footnote-sheet {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--dot, var(--border-strong));
-}
-[data-cat='observation'] > .composer-dot,
-[data-cat='observation'] > .mobile-composer-dot {
-  --dot: var(--cat-observation);
-}
-[data-cat='historical'] > .composer-dot,
-[data-cat='historical'] > .mobile-composer-dot {
-  --dot: var(--cat-historical);
-}
-[data-cat='application'] > .composer-dot,
-[data-cat='application'] > .mobile-composer-dot {
-  --dot: var(--cat-application);
-}
-[data-cat='personal'] > .composer-dot,
-[data-cat='personal'] > .mobile-composer-dot {
-  --dot: var(--cat-personal);
+  background: var(--cat-c, var(--border-strong));
 }
 .composer-chev,
 .mobile-composer-chev {
@@ -3667,19 +3655,7 @@ body.dark .footnote-sheet {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-}
-
-.swatch-observation {
-  background: var(--accent);
-}
-.swatch-historical {
-  background: var(--cat-historical);
-}
-.swatch-application {
-  background: var(--cat-application);
-}
-.swatch-personal {
-  background: var(--cat-personal);
+  background: var(--cat-alt, var(--cat-c, var(--border-strong)));
 }
 
 .tag-dropdown-label {
@@ -4108,23 +4084,11 @@ body.dark .chapter-pill.active.has-notes {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--cat-c, var(--accent));
   flex-shrink: 0;
   /* Kept below full strength so a heavily-annotated book reads as texture
      rather than as decoration. */
   opacity: 0.75;
-}
-.chapter-note-dot.cat-observation {
-  background: var(--cat-observation);
-}
-.chapter-note-dot.cat-historical {
-  background: var(--cat-historical);
-}
-.chapter-note-dot.cat-application {
-  background: var(--cat-application);
-}
-.chapter-note-dot.cat-personal {
-  background: var(--cat-personal);
 }
 
 /* Chapter content area */
@@ -7662,23 +7626,11 @@ body.dark .mobile-menu-btn:active {
   .mobile-inote {
     margin: 9px 0 13px 3px;
     padding: 2px 0 2px 13px;
-    border-left: 2.5px solid var(--rail, var(--border-strong));
+    border-left: 2.5px solid var(--cat-c, var(--border-strong));
     cursor: pointer;
   }
   .mobile-inote.is-sub {
     margin-left: 15px;
-  }
-  .mobile-inote.cat-observation {
-    --rail: var(--cat-observation);
-  }
-  .mobile-inote.cat-historical {
-    --rail: var(--cat-historical);
-  }
-  .mobile-inote.cat-application {
-    --rail: var(--cat-application);
-  }
-  .mobile-inote.cat-personal {
-    --rail: var(--cat-personal);
   }
   .mobile-inote-meta {
     display: flex;
@@ -7844,21 +7796,9 @@ body.dark .mobile-menu-btn:active {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
-.study-note.cat-observation {
-  --nrail: var(--cat-observation);
-  --nink: var(--cat-observation-ink);
-}
-.study-note.cat-historical {
-  --nrail: var(--cat-historical);
-  --nink: var(--cat-historical-ink);
-}
-.study-note.cat-application {
-  --nrail: var(--cat-application);
-  --nink: var(--cat-application-ink);
-}
-.study-note.cat-personal {
-  --nrail: var(--cat-personal);
-  --nink: var(--cat-personal-ink);
+.study-note {
+  --nrail: var(--cat-c);
+  --nink: var(--cat-c-ink);
 }
 .study-note-card:hover .study-note {
   background: color-mix(in srgb, var(--nrail, var(--border)) 8%, transparent);
@@ -7940,21 +7880,11 @@ body.dark .mobile-menu-btn:active {
   box-shadow: var(--elev-2);
   padding: 11px 12px 10px;
 }
-.study-editor.cat-observation .study-editor-inner {
-  --erail: var(--cat-observation);
-  background: color-mix(in srgb, var(--cat-observation) 5%, var(--surface));
-}
-.study-editor.cat-historical .study-editor-inner {
-  --erail: var(--cat-historical);
-  background: color-mix(in srgb, var(--cat-historical) 5%, var(--surface));
-}
-.study-editor.cat-application .study-editor-inner {
-  --erail: var(--cat-application);
-  background: color-mix(in srgb, var(--cat-application) 5%, var(--surface));
-}
-.study-editor.cat-personal .study-editor-inner {
-  --erail: var(--cat-personal);
-  background: color-mix(in srgb, var(--cat-personal) 5%, var(--surface));
+/* No category (`cat-none`) leaves --cat-c unset, and mixing the surface into
+   itself is the identity — so this one rule also covers the uncategorised box. */
+.study-editor .study-editor-inner {
+  --erail: var(--cat-c);
+  background: color-mix(in srgb, var(--cat-c, var(--surface)) 5%, var(--surface));
 }
 /* Cancelling a draft is two phases, so the box fully fades before the space it
    held eases closed and the notes below glide up — never a jump-cut. */
@@ -8013,17 +7943,8 @@ body.dark .mobile-menu-btn:active {
   border-radius: 50%;
   background: var(--dc, var(--border));
 }
-.study-chip.cat-observation {
-  --dc: var(--cat-observation);
-}
-.study-chip.cat-historical {
-  --dc: var(--cat-historical);
-}
-.study-chip.cat-application {
-  --dc: var(--cat-application);
-}
-.study-chip.cat-personal {
-  --dc: var(--cat-personal);
+.study-chip {
+  --dc: var(--cat-c);
 }
 .study-chip[aria-pressed='true'] {
   color: var(--text);

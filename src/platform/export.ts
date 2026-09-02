@@ -28,8 +28,9 @@
 
 import { zipSync, strToU8 } from 'fflate'
 import type { BereanApi } from '../api/types'
-import type { NoteWithPassageInfo } from '../types'
+import type { NoteCategoryDef, NoteWithPassageInfo } from '../types'
 import { bookByNumber } from '../utils/bibleBooks'
+import { paletteHex, resolveCategories } from '../utils/noteCategories'
 import { isHighlight } from '../utils/noteKind'
 
 // Make a string safe for use as a filename on macOS, Windows, and Linux.
@@ -135,18 +136,34 @@ export function groupByBook(
 }
 
 /** The whole export, as a map of path -> file contents. Pure, so it is testable. */
-export function buildExportFiles(notes: NoteWithPassageInfo[]): Record<string, string> {
+export function buildExportFiles(
+  notes: NoteWithPassageInfo[],
+  categories: NoteCategoryDef[] = []
+): Record<string, string> {
   const files: Record<string, string> = {}
   for (const { bookName, notes: bookNotes } of groupByBook(notes)) {
     files[`notes/${safeFilename(bookName)}.md`] = serializeBookMarkdown(bookName, bookNotes)
   }
   // Every field verbatim, sorted the same way, so the JSON and the Markdown
   // describe the same thing in the same order.
+  //
+  // Categories ride along because a note stores its category as a KEY, and a
+  // reader who renamed one would otherwise open the export and find their notes
+  // filed under a word they had replaced. COLOUR IS RESOLVED TO A HEX here on
+  // purpose: internally it is a palette slot id ("teal") that means one value in
+  // light and another in dark, and an exported file has no themes to resolve
+  // against — so the light field value, which is what they saw when they picked
+  // it, is written out instead.
   files['notes.json'] = JSON.stringify(
     {
       exported_at: new Date().toISOString(),
       format: 'lantern-notes-v1',
       note_count: notes.length,
+      categories: categories.map(c => ({
+        key: c.key,
+        label: c.label,
+        color: paletteHex(c.color) ?? c.color
+      })),
       notes: [...notes].sort(compareNotes)
     },
     null,
@@ -164,7 +181,15 @@ export function buildExportFiles(notes: NoteWithPassageInfo[]): Record<string, s
  */
 export async function exportAllNotesAsZip(api: BereanApi): Promise<ExportResult> {
   const notes = await api.getAllNotes()
-  const contents = buildExportFiles(notes)
+  // A failed definitions read is not worth failing an export over: the notes
+  // are the thing being rescued, and the keys in them are still readable.
+  let categories: NoteCategoryDef[] = []
+  try {
+    categories = resolveCategories(await api.getNoteCategories())
+  } catch {
+    // Fall through with none.
+  }
+  const contents = buildExportFiles(notes, categories)
 
   const files: Record<string, Uint8Array> = {}
   for (const [path, text] of Object.entries(contents)) files[path] = strToU8(text)
