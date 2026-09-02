@@ -82,10 +82,18 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/',
         scope: '/',
-        // Matches index.html's <meta name="theme-color"> light-mode default —
-        // the OS splash is static (can't read the boot script's theme choice
-        // or animate), so this just has to agree with our own light default
-        // rather than flash a different near-white.
+        // theme_color CANNOT BE THEME-AWARE — there is no media query in a
+        // manifest — and on an INSTALLED Android PWA it, not our
+        // <meta name="theme-color">, paints the system bar background.
+        // Confirmed from a real phone on 2026-09-02: the bar stays this cream
+        // in BOTH light and dark, while the meta still drives the ICON tint, so
+        // dark mode gives white icons on a cream bar.
+        //
+        // It cannot simply be omitted either: vite-plugin-pwa then injects its
+        // own default (#42b883, a green belonging to no part of this app).
+        //
+        // So this value is a TRADE and not a correct answer. Left on light
+        // pending Dennis's call — see docs/BACKLOG.md.
         theme_color: '#f4f0e8',
         background_color: '#f4f0e8',
         icons: [

@@ -14,6 +14,25 @@ belongs to and why that arc comes when it does.
 
 ## Deferred
 
+- **The installed Android PWA's system bar cannot follow dark mode, and the
+  remaining choice is a trade (2026-09-02).** Reported from Dennis's own phone:
+  in dark mode the status bar icons go white but the bar itself stays cream, so
+  the icons are close to unreadable. Diagnosed from his own observation that the
+  bar looks identical in light AND dark: on an installed Android PWA the
+  MANIFEST's `theme_color` paints the bar, while our `<meta name="theme-color">`
+  only tints the icons. A manifest has no media query, so it cannot be
+  theme-aware, and it cannot be omitted either — vite-plugin-pwa then injects
+  its own `#42b883`. Already fixed and NOT the issue: the meta layer is now a
+  media-scoped pair collapsed by the boot script, and `syncBrowserChrome` no
+  longer hardcodes berean's dark canvas for all four visual themes.
+  **The options, all trades:** (a) keep light — dark readers get white icons on
+  a cream bar, a legibility failure; (b) go dark — light readers get a dark bar
+  above a cream app, a visual seam but not a legibility bug; (c) swap the
+  `<link rel="manifest">` at boot to a light or dark manifest file, which is a
+  known technique but fragile, since Chrome re-reads an installed app's manifest
+  asynchronously and the value would follow whoever launched last. Needs
+  Dennis's call; browser tabs are unaffected either way.
+
 - **Desktop regression sweep: findings still open (2026-08-31).** The sweep is
   `docs/audits/desktop-regression-2026-08-31.md`. Closed on 2026-09-01: the
   category-rename drift in StudyWorkbench / BookDetailPage / ReadingMode
