@@ -2472,11 +2472,16 @@ body.dark .footnote-sheet {
 }
 
 /* Extremely subtle note timestamp: muted, small, pushed to the trailing edge.
-   Reference metadata only — never competes with the note content. */
+   Reference metadata only — never competes with the note content.
+   The colour was a hardcoded #c4c1ba, which measured 1.71:1 on the search
+   result surface at 10px — effectively invisible in light. dark.css had already
+   been given --text-faint; light never got the same treatment, and the search
+   box is a DESKTOP-only surface, so it was the least-looked-at place it could
+   have hidden. Use the token in both. */
 .note-timestamp {
   margin-left: auto;
   font-size: 10px;
-  color: #c4c1ba;
+  color: var(--text-faint);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   user-select: none;
@@ -3514,6 +3519,16 @@ body.dark .footnote-sheet {
 }
 
 .bible-book-row {
+  /* A <button> now (see BibleLibrary.tsx), so its UA chrome is reset back to
+     the plain row this has always looked like. Everything below the reset is
+     the original rule, unchanged. */
+  appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3521,6 +3536,23 @@ body.dark .footnote-sheet {
   border-radius: 5px;
   cursor: pointer;
   transition: background 0.1s;
+}
+.bible-book-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Visible to a screen reader, never on screen. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .bible-book-row:hover {

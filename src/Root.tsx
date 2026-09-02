@@ -8,6 +8,7 @@ import { supabase, isSupabaseConfigured } from './api/supabase'
 import { SupabaseBereanApi } from './api/berean-api'
 import { getProfile, getSession, onAuthStateChange, signOut, type Profile } from './api/auth'
 import { enterGuestMode, exitGuestMode, isGuestMode } from './components/guestMode'
+import { applyStoredDarkMode } from './utils/useDarkMode'
 import type { BereanApi, UserSettings } from './api/types'
 import { parseDeepLink, type DeepLinkTarget } from './utils/deepLink'
 
@@ -121,6 +122,13 @@ function SupabaseRoot(): React.ReactElement {
       unsub()
     }
   }, [enter])
+
+  // The signed-out route renders Landing INSTEAD of App, so App's useDarkMode
+  // never runs and body.dark is never set — landing.css's dark rules were dead
+  // for every signed-out visitor. Apply the same stored preference here.
+  useEffect(() => {
+    if (phase === 'signedOut' || phase === 'loading') applyStoredDarkMode()
+  }, [phase])
 
   const handleSignOut = async (): Promise<void> => {
     await signOut()

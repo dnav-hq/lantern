@@ -19,17 +19,17 @@ belongs to and why that arc comes when it does.
   category-rename drift in StudyWorkbench / BookDetailPage / ReadingMode
   (finding 3), Profile unreachable on desktop (1), the dead "+ Study" tab below
   1160px (2), and the highlight menu covering Quick note (4, which fell out of
-  the selection-bar centring fix as the audit predicted). STILL OPEN, none of
-  them urgent: the Bible library is not keyboard-reachable — 66 book rows are
-  bare divs with onClick, no role, no tabIndex (5, and it is the app's front
-  door); a failed export is silent from the desktop avatar menu where the
-  Profile page shows an error state (6); `.note-timestamp` is a hardcoded
-  `#c4c1ba` in light for 1.71:1 where dark already uses `--text-faint` (7); the
-  signed-out landing ignores dark mode because `body.dark` is set by a hook
-  inside `App` and the signed-out route renders `Landing` instead (8); and the
-  Journal counts marks as notes under the Marks filter (10). Finding 9 —
-  everything on `--text-faint` sitting at 3.01:1 — is a deliberate token
-  decision, recorded rather than queued.
+  the selection-bar centring fix as the audit predicted).
+  ALL REMAINING FINDINGS CLOSED 2026-09-02: the Bible library is keyboard-
+  reachable (66 divs became real buttons with a focus ring and a screen-reader
+  note count, finding 5); a failed export now says so in the desktop avatar
+  menu instead of flickering back to "Export notes" (6); `.note-timestamp` uses
+  `--text-faint` in light instead of a hardcoded #c4c1ba at 1.71:1 (7); the
+  signed-out landing gets `body.dark` via a hook-free applier called from Root,
+  since it renders Landing instead of App (8); and the Journal counts marks
+  separately from notes rather than folding them into one total (10).
+  Finding 9 — everything on `--text-faint` sitting at 3.01:1 — remains a
+  deliberate token decision, recorded rather than fixed.
 
 - **The audit's structural recommendation, partly done (2026-09-01).** The sweep
   argues desktop drifted because mobile-first work lands on the mobile component

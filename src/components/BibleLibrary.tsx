@@ -59,14 +59,26 @@ function TestamentSection({
 
           return (
             <div key={book.id} className="bible-book-item">
-              <div
+              {/* A real <button>, not a div with an onClick. These 66 rows are
+                  the app's front door, and as divs they were not in the tab
+                  order at all — there was no way to open a book without a
+                  pointer, and a screen reader met 66 unlabelled divs. A button
+                  brings keyboard focus, Enter/Space and the right role for
+                  free, which is why it is worth the CSS reset below. */}
+              <button
+                type="button"
                 className={`bible-book-row${studied ? ' studied' : ''}`}
                 onClick={() => onSelectBook(book.name)}
               >
                 <span className={`bible-book-dot${studied ? ' visible' : ''}`} />
                 <span className="bible-book-name">{book.name}</span>
-                {studied && <span className="bible-book-count">{passageCount}</span>}
-              </div>
+                {studied && (
+                  <span className="bible-book-count">
+                    {passageCount}
+                    <span className="sr-only">{passageCount === 1 ? ' note' : ' notes'}</span>
+                  </span>
+                )}
+              </button>
             </div>
           )
         })}

@@ -12,6 +12,7 @@ import {
 } from '../utils/journalFilters'
 import { formatRelativeTime } from '../utils/relativeTime'
 import { useApi } from '../api/context'
+import { chapterCountLabel } from '../utils/journalCounts'
 
 interface JournalPageProps {
   // Open the reading view for a chapter. Wired in App.tsx to the same
@@ -522,7 +523,13 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
                       </span>
                     )}
                     <span className="journal-chapter-count">
-                      {entry.notes.length} note{entry.notes.length === 1 ? '' : 's'}
+                      {/* Marks are counted SEPARATELY, never folded into "n
+                          notes". A mark is deliberately not a note everywhere
+                          else in the product — it is a property of the verse —
+                          and with the kind filter set to Marks a chapter with
+                          one highlight and no writing read "1 note", which is
+                          the one place the app contradicted its own model. */}
+                      {chapterCountLabel(entry.notes)}
                     </span>
                     <span className="journal-chapter-when">
                       {formatRelativeTime(entry.lastAt, now.getTime())}

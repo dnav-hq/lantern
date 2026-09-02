@@ -52,16 +52,33 @@ export function syncBrowserChrome(): void {
     ?.setAttribute('content', isDark ? 'black' : 'default')
 }
 
+/** The reader's dark preference: their explicit choice, else the OS. */
+export function prefersDark(): boolean {
+  const stored = localStorage.getItem(STORAGE_KEY)
+  if (stored !== null) return stored === 'dark'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+/**
+ * Apply that preference to `body` WITHOUT the hook.
+ *
+ * `useDarkMode` lives inside `App`, and the signed-out route renders `Landing`
+ * INSTEAD of `App` — so `body.dark` was never set there, and landing.css's own
+ * `body.dark` rules (whose header claims dark mode "comes for free") never
+ * applied. A dark-mode visitor got a dark boot splash and then a fully light
+ * landing page. Root calls this on that route; it reads the same storage key
+ * the hook does, so the two cannot disagree when App later mounts.
+ */
+export function applyStoredDarkMode(): void {
+  document.body.classList.toggle('dark', prefersDark())
+  syncBrowserChrome()
+}
+
 // Third element is a direct setter (bypassing toggle), used only by the
 // account-settings sync in App.tsx to hydrate from an account value on
 // sign-in — every other caller keeps using the toggle.
 export function useDarkMode(): [boolean, () => void, (value: boolean) => void] {
-  const [isDark, setIsDark] = useState<boolean>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored !== null) return stored === 'dark'
-    // Default: follow the OS preference
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-  })
+  const [isDark, setIsDark] = useState<boolean>(prefersDark)
 
   useEffect(() => {
     document.body.classList.toggle('dark', isDark)

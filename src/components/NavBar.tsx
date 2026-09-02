@@ -80,7 +80,7 @@ export default function NavBar({
   const api = useApi()
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const [exportState, setExportState] = useState<'idle' | 'exporting'>('idle')
+  const [exportState, setExportState] = useState<'idle' | 'exporting' | 'error'>('idle')
   const workspaceRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
   // Desktop tab indicator: a measured sliding pill, matching the mobile
@@ -119,10 +119,15 @@ export default function NavBar({
     setExportState('exporting')
     try {
       await exportAllNotesAsZip(api)
+      setExportState('idle')
     } catch (err) {
+      // A failure used to log to the console and set the label straight back to
+      // "Export notes", so a desktop reader saw a flicker and reasonably assumed
+      // it had worked. ProfilePage has always shown an error state for the same
+      // call; this is the desktop half of that mirror, which had cracked.
       console.error('[export] failed:', err)
+      setExportState('error')
     }
-    setExportState('idle')
   }, [api])
 
   const initial = (displayName || '?').trim().charAt(0).toUpperCase() || '?'
@@ -401,7 +406,11 @@ export default function NavBar({
                     disabled={exportState === 'exporting'}
                     onClick={() => void handleExport()}
                   >
-                    {exportState === 'exporting' ? 'Exporting…' : 'Export notes'}
+                    {exportState === 'exporting'
+                      ? 'Exporting…'
+                      : exportState === 'error'
+                        ? 'Export failed — try again'
+                        : 'Export notes'}
                   </button>
                   {canInstall && onInstall && (
                     <button
