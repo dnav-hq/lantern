@@ -87,8 +87,21 @@ export default function ProfilePage({
       </div>
 
       {/* A quiet build marker — so a user (or Dennis, on his phone) can tell at a
-          glance which version they are on. Deliberately faint and unobtrusive. */}
-      <div className="profile-page-version">Lantern v{import.meta.env.VITE_APP_VERSION}</div>
+          glance which version they are on. Deliberately faint and unobtrusive.
+
+          The COMMIT is what actually identifies a build: the version has read
+          2.0.0-dev for every deploy, so on its own it cannot answer "has the fix
+          reached my phone yet?" — a question an installed PWA makes genuinely
+          hard, since it holds its old shell until a full relaunch. That cost two
+          rounds of guessing on 2026-09-02. The sha is already in the bundle for
+          telemetry; this just stops hiding it. Absent in dev, where it would be
+          a lie rather than a blank. */}
+      <div className="profile-page-version">
+        Lantern v{import.meta.env.VITE_APP_VERSION}
+        {import.meta.env.VITE_COMMIT_SHA ? (
+          <> · {import.meta.env.VITE_COMMIT_SHA.slice(0, 7)}</>
+        ) : null}
+      </div>
     </div>
   )
 }

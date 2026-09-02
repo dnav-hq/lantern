@@ -11,21 +11,17 @@ import React, {
   forwardRef,
   useImperativeHandle
 } from 'react'
+import type { NoteCategoryDef } from '../types'
+import { useNoteCategories } from '../utils/useNoteCategories'
 
-interface TagOption {
-  name: string
-  colorClass: string
-}
-
-const TAG_OPTIONS: TagOption[] = [
-  { name: 'observation', colorClass: 'observation' },
-  { name: 'historical', colorClass: 'historical' },
-  { name: 'application', colorClass: 'application' },
-  { name: 'personal', colorClass: 'personal' }
-]
-
-function filterTags(q: string): TagOption[] {
-  return TAG_OPTIONS.filter(t => t.name.startsWith(q.toLowerCase()))
+// The @tag dropdown reads the SHARED category store, like every other picker.
+// It used to hold its own hardcoded copy of the four built-ins — the same
+// private-map bug the desktop sweep found in StudyWorkbench, BookDetailPage and
+// ReadingMode (finding 3), surviving in the one place nobody looked. It meant a
+// renamed category still offered its old name here, and it would have silently
+// ignored a reader's own categories the moment those can be created.
+function filterTags(cats: NoteCategoryDef[], q: string): NoteCategoryDef[] {
+  return cats.filter(c => c.key.startsWith(q.toLowerCase()))
 }
 
 export interface InlineTagInputHandle {
@@ -48,6 +44,7 @@ const InlineTagInput = forwardRef<InlineTagInputHandle, InlineTagInputProps>(
     { value, onChange, onEnter, onEscape, className, placeholder, autoFocus, multiline },
     ref
   ) {
+    const categories = useNoteCategories()
     const inputRef = useRef<HTMLInputElement>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const [dropdown, setDropdown] = useState<{
@@ -57,7 +54,7 @@ const InlineTagInput = forwardRef<InlineTagInputHandle, InlineTagInputProps>(
       activeIdx: number
     } | null>(null)
 
-    const filteredTags = dropdown ? filterTags(dropdown.query) : []
+    const filteredTags = dropdown ? filterTags(categories, dropdown.query) : []
     const isOpen = filteredTags.length > 0
 
     useImperativeHandle(ref, () => ({
@@ -80,11 +77,11 @@ const InlineTagInput = forwardRef<InlineTagInputHandle, InlineTagInputProps>(
     )
 
     const selectTag = useCallback(
-      (tag: TagOption): void => {
+      (tag: NoteCategoryDef): void => {
         if (!dropdown) return
         const before = value.slice(0, dropdown.anchorIndex)
         const after = value.slice(dropdown.cursorPos)
-        const insertion = `@${tag.name} `
+        const insertion = `@${tag.key} `
         onChange(before + insertion + after)
         setDropdown(null)
         setTimeout(() => {
@@ -177,7 +174,7 @@ const InlineTagInput = forwardRef<InlineTagInputHandle, InlineTagInputProps>(
       <div className="tag-dropdown" style={{ left: 0 }}>
         {filteredTags.map((tag, i) => (
           <div
-            key={tag.name}
+            key={tag.key}
             className={`tag-dropdown-item${i === dropdown?.activeIdx ? ' active' : ''}`}
             onMouseDown={e => {
               e.preventDefault()
@@ -185,8 +182,15 @@ const InlineTagInput = forwardRef<InlineTagInputHandle, InlineTagInputProps>(
             }}
             onMouseEnter={() => setDropdown(d => (d ? { ...d, activeIdx: i } : d))}
           >
-            <span className={`tag-dropdown-swatch swatch-${tag.colorClass}`} />
-            <span className="tag-dropdown-label">@{tag.name}</span>
+            <span className={`tag-dropdown-swatch swatch-${tag.key}`} />
+            {/* The KEY is what gets typed into the note, so it is what the row
+                shows. The reader's own label rides alongside it, so a renamed
+                category is recognisable here without pretending the tag itself
+                changed — renaming a category does not rewrite saved notes. */}
+            <span className="tag-dropdown-label">@{tag.key}</span>
+            {tag.label.toLowerCase() !== tag.key && (
+              <span className="tag-dropdown-name">{tag.label}</span>
+            )}
           </div>
         ))}
       </div>

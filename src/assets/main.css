@@ -3686,6 +3686,16 @@ body.dark .footnote-sheet {
   font-weight: 500;
 }
 
+/* The reader's own name for a renamed category, beside the @key they actually
+   type. Only rendered when the two differ, so an uncustomised workspace sees
+   exactly what it saw before. */
+.tag-dropdown-name {
+  margin-left: auto;
+  padding-left: 12px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
 /* ─── Reference input error ──────────────────────────────────────────────────── */
 .reference-input--error {
   color: var(--cat-personal-ink);
