@@ -14,24 +14,28 @@ belongs to and why that arc comes when it does.
 
 ## Deferred
 
-- **The installed Android PWA's system bar cannot follow dark mode, and the
-  remaining choice is a trade (2026-09-02).** Reported from Dennis's own phone:
-  in dark mode the status bar icons go white but the bar itself stays cream, so
-  the icons are close to unreadable. Diagnosed from his own observation that the
-  bar looks identical in light AND dark: on an installed Android PWA the
-  MANIFEST's `theme_color` paints the bar, while our `<meta name="theme-color">`
-  only tints the icons. A manifest has no media query, so it cannot be
-  theme-aware, and it cannot be omitted either — vite-plugin-pwa then injects
-  its own `#42b883`. Already fixed and NOT the issue: the meta layer is now a
-  media-scoped pair collapsed by the boot script, and `syncBrowserChrome` no
-  longer hardcodes berean's dark canvas for all four visual themes.
-  **The options, all trades:** (a) keep light — dark readers get white icons on
-  a cream bar, a legibility failure; (b) go dark — light readers get a dark bar
-  above a cream app, a visual seam but not a legibility bug; (c) swap the
-  `<link rel="manifest">` at boot to a light or dark manifest file, which is a
-  known technique but fragile, since Chrome re-reads an installed app's manifest
-  asynchronously and the value would follow whoever launched last. Needs
-  Dennis's call; browser tabs are unaffected either way.
+- **The installed Android PWA's system bar (2026-09-02) — RESOLVED by declaring
+  nothing, pending confirmation on a real device.** Reported from Dennis's own
+  phone: in dark mode the status bar icons went white but the bar stayed cream.
+  Diagnosed from his own observation that the bar looks identical in light AND
+  dark: on an installed Android PWA the MANIFEST's `theme_color` paints the bar,
+  while the icons follow the SYSTEM theme. A manifest has no media query, so it
+  cannot be theme-aware.
+  **Setting it dark was rejected** even though it was the first choice: since the
+  icons follow the system rather than us, a permanently dark bar gives dark icons
+  on dark in light mode — the same legibility failure mirrored. Instead
+  `theme_color` is now declared as `undefined`, which the plugin needs (it
+  Object.assigns over its own `#42b883` default) and which leaves the key out of
+  the manifest entirely, letting the system pick a bar that matches the icons it
+  is already picking.
+  **The one risk**, and it is judged small: vite-plugin-pwa warns that a missing
+  `theme_color` blocks installability. Chrome's actual criteria are name, icons
+  at 192 and 512, start_url and display — `theme_color` is not among them. If a
+  fresh install ever fails, this is a one-line revert.
+  Already fixed separately and NOT the cause: the meta layer is a media-scoped
+  pair collapsed by the boot script, and `syncBrowserChrome` no longer hardcodes
+  berean's dark canvas for all four visual themes. Browser tabs were never
+  affected.
 
 - **Desktop regression sweep: findings still open (2026-08-31).** The sweep is
   `docs/audits/desktop-regression-2026-08-31.md`. Closed on 2026-09-01: the

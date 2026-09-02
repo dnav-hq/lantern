@@ -82,19 +82,27 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/',
         scope: '/',
-        // theme_color CANNOT BE THEME-AWARE — there is no media query in a
-        // manifest — and on an INSTALLED Android PWA it, not our
-        // <meta name="theme-color">, paints the system bar background.
-        // Confirmed from a real phone on 2026-09-02: the bar stays this cream
-        // in BOTH light and dark, while the meta still drives the ICON tint, so
-        // dark mode gives white icons on a cream bar.
+        // NO theme_color, deliberately — and `undefined` rather than omitted,
+        // because vite-plugin-pwa Object.assigns over its own default and would
+        // otherwise inject #42b883, a green belonging to no part of this app.
         //
-        // It cannot simply be omitted either: vite-plugin-pwa then injects its
-        // own default (#42b883, a green belonging to no part of this app).
+        // A manifest's theme_color cannot be theme-aware (there is no media
+        // query in a manifest), and on an INSTALLED Android PWA it — not our
+        // <meta name="theme-color"> — paints the system bar. With it set to our
+        // light cream, a reader in dark mode got a cream bar (2026-09-02).
         //
-        // So this value is a TRADE and not a correct answer. Left on light
-        // pending Dennis's call — see docs/BACKLOG.md.
-        theme_color: '#f4f0e8',
+        // Setting it DARK instead only mirrors the bug. The evidence is that the
+        // bar's ICONS flip with the system theme while theme_color stayed
+        // constant cream — so the icons follow the SYSTEM, not us. A permanently
+        // dark bar would therefore get dark icons on dark in light mode, which
+        // is the same legibility failure pointing the other way.
+        //
+        // Declaring nothing lets the system choose the bar, and the system is
+        // already choosing the icons correctly. theme_color is NOT part of
+        // Chrome's installability criteria (name, icons 192+512, start_url,
+        // display) — the plugin's warning to the contrary is overcautious. If
+        // that ever proves wrong, this is a one-line revert.
+        theme_color: undefined,
         background_color: '#f4f0e8',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
