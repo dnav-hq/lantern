@@ -62,7 +62,13 @@ export default defineConfig({
         // (only when helloao is down). Wildcarded rather than listed one by
         // one, so adding a fourth translation cannot silently opt into
         // precaching. See src/bible/self-hosted.ts.
-        globIgnores: ['**/bible/*.json.gz'],
+        //
+        // `**/bible/**` rather than `**/bible/*`: the word index
+        // (public/bible/words/, built by scripts/build-word-index.mjs) lives one
+        // level deeper, and the single-star form would have walked straight past
+        // it — several MB of lexicon data precached for every reader to answer a
+        // question about one word. Same rule, same reason.
+        globIgnores: ['**/bible/**/*.json.gz'],
         navigateFallback: '/index.html',
         runtimeCaching: [
           {
