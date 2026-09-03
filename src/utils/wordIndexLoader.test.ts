@@ -36,7 +36,9 @@ function loaderWithSpy(): {
   fetcher: ReturnType<typeof vi.fn>
 } {
   const fetcher = vi.fn(async (url: string) => {
-    if (!(url in shards)) throw new Error(`WORD_INDEX_FETCH_FAILED 404 ${url}`)
+    // Not interpolated, matching the loader itself — see src/errors.ts and the
+    // no-restricted-syntax rule that enforces it.
+    if (!(url in shards)) throw new Error('WORD_INDEX_FETCH_FAILED')
     return shards[url]
   })
   return { loader: createWordIndexLoader(fetcher), fetcher }
@@ -124,6 +126,12 @@ describe('salientWords', () => {
 
   it('keeps a word with no parse rather than guessing it is grammar', () => {
     expect(words(salientWords([['Selah', 'H5542', 'se·lāh', 7]], []))).toEqual(['Selah'])
+  })
+
+  it('ignores a word the BSB left untranslated, which has no English to point at', () => {
+    const parsing: ParsingEntry[] = [['Noun - feminine singular', 'N-fs']]
+    expect(salientWords([['-', 'H8027', 'mə·šul·le·šeṯ', 0]], parsing)).toEqual([])
+    expect(salientWords([['. . .', 'H8027', 'mə·šul·le·šeṯ', 0]], parsing)).toEqual([])
   })
 
   it('ignores rows with no Strong’s number, which have no door to open', () => {

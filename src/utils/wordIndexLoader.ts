@@ -159,6 +159,11 @@ export function salientWords(words: VerseWord[], parsing: ParsingEntry[]): Salie
   const out: SalientWord[] = []
   words.forEach(([english, strongs, translit, parsingId], position) => {
     if (!strongs || seen.has(strongs)) return
+    // The tables print an untranslated word as "-" or ". . ." (Genesis 15:9's
+    // mᵉšullešeṯ, say). There is no English here for a reader to point at, so
+    // there is nothing to offer them a door ON — and a door labelled "-" is
+    // furniture, not an offer.
+    if (!/\p{L}/u.test(english)) return
     const expanded = parsing[parsingId]?.[0] ?? ''
     // No parse at all is not evidence of a function word — keep it, and let the
     // door itself be honest about having no grammar to show.
