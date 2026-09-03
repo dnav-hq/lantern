@@ -8172,8 +8172,8 @@ body.dark .study-note-act .is-yes {
 }
 
 /* ── Confidence, as geometry ──
-   settled  solid disc                  high      solid disc, smaller
-   moderate hollow ring                 low       hollow ring, dashed
+   A four-step ladder, readable in greyscale: settled = a full disc, high = a
+   half-filled disc, moderate = an outline, low = a dashed outline.
    Contested places additionally draw every rival candidate as a small open
    mark tied back to the best one (section 3.3 rule 2). */
 .map-place .map-place-dot {
@@ -8183,7 +8183,9 @@ body.dark .study-note-act .is-yes {
 }
 .map-place.is-high .map-place-dot {
   fill: var(--map-mark);
-  opacity: 0.85;
+  fill-opacity: 0.4;
+  stroke: var(--map-mark);
+  stroke-width: 0.9;
 }
 .map-place.is-moderate .map-place-dot {
   fill: none;
