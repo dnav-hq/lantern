@@ -37,6 +37,7 @@ import {
   type ChapterRef
 } from '../utils/useChapterNavigation'
 import FootnoteVerseText from './FootnoteDoor'
+import WordDoorEntrance from './WordDoor'
 import { markInstallEngagement } from '../utils/installNudge'
 import { formatRelativeTime } from '../utils/relativeTime'
 
@@ -1578,6 +1579,28 @@ function ChapterView({
                   )}
                 </div>
 
+                {/* The word door's ONLY entrance on the Read path (brief
+                    §9a.3): nothing marks the word in the verse, and this line
+                    exists only under the ONE verse the reader has deliberately
+                    chosen. It is downstream of the selection rather than in
+                    competition with it, which is how it coexists with a mobile
+                    tap already meaning "select this verse" — and it goes when
+                    the selection goes. Not while the composer is open: that
+                    tap was about writing, not about a word. */}
+                {selRange !== null &&
+                  selRange[0] === v.verse &&
+                  selRange[1] === v.verse &&
+                  composerVerse === null &&
+                  !showInline && (
+                    <WordDoorEntrance
+                      book={bookNumber}
+                      chapter={chapter}
+                      verse={v.verse}
+                      reference={`${bookName} ${chapter}:${v.verse}`}
+                      verseText={v.text}
+                    />
+                  )}
+
                 {/* Single-verse notes render inline beneath their verse row. */}
                 {inlineHere && inlineHere.length > 0 && (
                   <div className="reading-notes-group inline-verse-notes">
@@ -1769,6 +1792,22 @@ function ChapterView({
           onDraftChange={persistDraft}
           onDraftClear={clearDraftNow}
           recoverDraft={workbenchRecover}
+          wordDoor={verse => {
+            // The Study-side entrance (brief §9a.3). A render prop so the
+            // workbench never has to know the word door exists — it only knows
+            // which verse the draft is aimed at.
+            const line = verses.find(v => v.verse === verse)
+            if (!line) return null
+            return (
+              <WordDoorEntrance
+                book={bookNumber}
+                chapter={chapter}
+                verse={verse}
+                reference={`${bookName} ${chapter}:${verse}`}
+                verseText={line.text}
+              />
+            )
+          }}
         />
       )}
     </div>

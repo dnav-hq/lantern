@@ -163,6 +163,11 @@ interface StudyWorkbenchProps {
   // A draft handed back by the host's "recover" affordance: seeds the composer
   // once so an accidental reload can resume the in-progress note.
   recoverDraft?: { content: string; noteId: string | null } | null
+  // The Study-side entrance to the word door (docs/proposals/word-door-guardrails.md
+  // §9a.3), for whichever single verse the draft is aimed at. A render prop on
+  // purpose: the workbench knows which verse is in play and nothing else — it
+  // does not know what a word door is, and does not grow a dependency on one.
+  wordDoor?: (verse: number) => React.ReactNode
 }
 
 export default function StudyWorkbench({
@@ -175,7 +180,8 @@ export default function StudyWorkbench({
   onDelete,
   onDraftChange,
   onDraftClear,
-  recoverDraft
+  recoverDraft,
+  wordDoor
 }: StudyWorkbenchProps): React.ReactElement {
   // null = the blank composer at the top of the panel; otherwise the note being
   // edited in place (its card is replaced by the editor).
@@ -354,6 +360,11 @@ export default function StudyWorkbench({
             </>
           )}
         </div>
+        {/* Reached from the Study side, never from a mark in the scripture
+            beside it. One verse only: a door is about a word in a sentence. */}
+        {wordDoor && activeRange && activeRange.start === activeRange.end && (
+          <div className="study-editor-words">{wordDoor(activeRange.start)}</div>
+        )}
         <div className="study-editor-foot">
           {!confirming && (
             <div className="study-chips">

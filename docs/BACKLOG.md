@@ -264,8 +264,8 @@ belongs to and why that arc comes when it does.
   notes, a different apparatus needing their own parser and audit (§3.6).
 
 
-- **Word door (deep-dive rung 2) — slice 1, the DATA, is built (2026-09-02);
-  nothing renders yet.** Design + data brief in
+- **Word door (deep-dive rung 2) — slice 1 (DATA, 2026-09-02) and slice 2 (THE
+  READING SURFACE, 2026-09-03) are built.** Design + data brief in
   `docs/proposals/word-door-guardrails.md` (decisions in §9a, as-built format in
   §5.4); mockup in `design/word-door.html`. `npm run build:word-index` joins the
   BSB Translation Tables (754,647 word rows, public domain, not committed) to the
@@ -278,11 +278,23 @@ belongs to and why that arc comes when it does.
   expanded morphology. Licence split is load-bearing: Greek ships gloss + sense,
   Hebrew ships the Tyndale gloss ONLY (TBESH's Meaning column is Abridged BDB
   © Online Bible and needs a permission we do not hold), OpenScriptures is out
-  entirely. STILL OPEN: the door itself — no UI, no route, no marker on the
-  reading page (§9a decision 3 rules out a second dotted underline); and the
-  542 gloss-less lemmas are BDB sub-lemma splits that could be folded onto the
-  bare Strong's number for ~100% coverage at the cost of merging senses BDB
-  separates — a decision, deliberately not taken (§5.4).
+  entirely. Slice 2 put it on screen: `src/components/WordDoor.tsx` (the door)
+  and `src/utils/wordIndexLoader.ts` (the lazy, per-shard fetch — a reader who
+  never opens a door downloads none of the 8.17 MB, and opening one costs the
+  book's verse shard, the parsing table and ONE lemma shard). Nothing marks the
+  word in the scripture (§9a decision 3); the entrance is a single line under a
+  verse the reader has already chosen, plus the same line in the desktop Study
+  workbench. See §5.5 of the brief for what slice 2 decided and what it did not.
+  STILL OPEN: the SALIENCE model of §8.2 — the door offers a verse's content
+  words in verse order, so nothing yet ranks which word a verse is *about*
+  (footnote-anchored, thematically dense, unusually rendered, marked
+  morphology), and the footnote trigger (R6) stays with the footnotes door; the
+  deep-dive doorway list §8.3 assumes does not exist yet; discoverability of the
+  entrance is unmeasured (§9a.3 reserves a solid 2px baseline rule if it proves
+  invisible, and only that); and the 542 gloss-less lemmas are BDB sub-lemma
+  splits that could be folded onto the bare Strong's number for ~100% coverage
+  at the cost of merging senses BDB separates — a decision, deliberately not
+  taken (§5.4).
 
 - **Guest cleanup after the guest-is-the-App change (2026-08-27) — the two
   mechanical loose ends are DONE (2026-08-28, see Done); one optional item

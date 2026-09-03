@@ -8,6 +8,7 @@ import RichEditInput from './RichEditInput'
 import InlineDeleteConfirm from './InlineDeleteConfirm'
 import CrossRefPill from './CrossRefPill'
 import FootnoteVerseText from './FootnoteDoor'
+import WordDoorEntrance from './WordDoor'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import ReadingControls from './ReadingControls'
@@ -816,6 +817,23 @@ export default function ReadingMode({
                         +
                       </span>
                     </div>
+
+                    {/* The word door's entrance, under the ONE verse the reader
+                        deliberately chose — nothing marks the word in the text
+                        itself (docs/proposals/word-door-guardrails.md §9a.3),
+                        and this line leaves with the selection. */}
+                    {selRange !== null &&
+                      selRange[0] === v.verse &&
+                      selRange[1] === v.verse &&
+                      !showInline && (
+                        <WordDoorEntrance
+                          book={passage.book_number}
+                          chapter={passage.chapter_start}
+                          verse={v.verse}
+                          reference={`${bookAndChapter}:${v.verse}`}
+                          verseText={v.text}
+                        />
+                      )}
 
                     {/* Single-verse notes render inline beneath their verse row. */}
                     {inlineHere && inlineHere.length > 0 && (
