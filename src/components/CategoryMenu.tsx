@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useApi } from '../api/context'
 import type { StoredCategoryDef } from '../utils/noteCategories'
 import {
@@ -66,7 +66,9 @@ export default function CategoryMenu({
   const api = useApi()
   const categories = useNoteCategories()
   const retired = archivedCategories()
-  const all = [...categories, ...retired]
+  // Active + retired. Memoised on the two lists it is built from so the
+  // callbacks below keep a stable identity across renders.
+  const all = useMemo(() => [...categories, ...retired], [categories, retired])
 
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [editingKey, setEditingKey] = useState<string | null>(null)
