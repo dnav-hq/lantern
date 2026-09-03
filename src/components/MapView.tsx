@@ -126,14 +126,16 @@ function PlaceGlyph({ marker }: { marker: PlaceMarker }): React.ReactElement {
       <title>{describeMarker(marker)}</title>
       {alternatives.map((alt, i) => (
         <React.Fragment key={i}>
-          <line
-            className="map-place-link"
-            x1={point.x}
-            y1={point.y}
-            x2={alt.x}
-            y2={alt.y}
-            vectorEffect="non-scaling-stroke"
-          />
+          {alt.linked && (
+            <line
+              className="map-place-link"
+              x1={point.x}
+              y1={point.y}
+              x2={alt.x}
+              y2={alt.y}
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
           <circle className="map-place-alt" cx={alt.x} cy={alt.y} r={1.6} />
         </React.Fragment>
       ))}

@@ -67,7 +67,7 @@ function writeFocusReading(value: boolean): void {
 // tap leaves it — nothing in the reading path, the nav or the router knows the
 // map exists. DELETE THIS BLOCK, its one `useState` below and the two lines in
 // `doNavigate`/`renderMain` that reference `mapOpen` when the real entry lands.
-export function isMapReviewRequested(loc: { search: string; hash: string }): boolean {
+function isMapReviewRequested(loc: { search: string; hash: string }): boolean {
   return new URLSearchParams(loc.search).has('map') || loc.hash.replace('#', '') === 'map'
 }
 // ──────────────────────────────────────────────────────────────────────────

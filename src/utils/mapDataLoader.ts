@@ -24,6 +24,14 @@ export interface MarkerPoint {
   score: number
   /** The modern location's name, where the dataset gives one. */
   modern?: string
+  /**
+   * Whether a hairline should tie this rival back to the best candidate. False
+   * for a rival on the other side of the map — a few places (Tarshish, Ophir)
+   * have candidates a continent apart, and drawing those ties turns the map
+   * into a starburst that reads like trade routes. The rival is still DRAWN
+   * either way; only the tether is dropped.
+   */
+  linked?: boolean
 }
 
 /** A place as the map draws it: a best point, its rivals, and its honesty band. */
@@ -61,11 +69,22 @@ export interface MapViewModel {
 }
 
 /**
+ * How far apart, in view-box units, two candidates can be and still be tied
+ * together by a hairline. The view box is 1,000 units across 50° of longitude,
+ * so 60 is roughly 3° — the scale at which a disagreement is about WHICH TELL,
+ * which is the disagreement worth drawing as one.
+ */
+export const MAX_LINK_DISTANCE = 60
+
+/**
  * Project every place in the bundle once. The projection is `projectToView`
  * from mapData.ts — the SAME function the build script ran over the Natural
  * Earth artwork, which is the only reason the markers land on their coastlines.
  */
-export function buildViewModel(bundle: Pick<MapPlaceBundle, 'p'>): MapViewModel {
+export function buildViewModel(
+  bundle: Pick<MapPlaceBundle, 'p'>,
+  maxLinkDistance = MAX_LINK_DISTANCE
+): MapViewModel {
   const markers: PlaceMarker[] = []
   const unlocated: UnlocatedPlace[] = []
   const counts: Record<ConfidenceBand, number> = {
@@ -84,14 +103,19 @@ export function buildViewModel(bundle: Pick<MapPlaceBundle, 'p'>): MapViewModel 
       unlocated.push({ index, name: place.n, type: place.t })
       return
     }
+    const point = toPoint(best.ll, best.s, best.m)
     markers.push({
       index,
       name: place.n,
       type: place.t,
       band,
       contested: isContested(place),
-      point: toPoint(best.ll, best.s, best.m),
-      alternatives: place.c.slice(1).map(c => toPoint(c.ll, c.s, c.m)),
+      point,
+      alternatives: place.c.slice(1).map(c => {
+        const alt = toPoint(c.ll, c.s, c.m)
+        alt.linked = Math.hypot(alt.x - point.x, alt.y - point.y) <= maxLinkDistance
+        return alt
+      }),
       score: best.s
     })
   })

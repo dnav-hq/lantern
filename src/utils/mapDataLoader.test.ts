@@ -99,11 +99,7 @@ describe('selectLabels', () => {
   })
 
   it('honours the cap, keeping the most confident labels', () => {
-    const many = [
-      marker('One', 0, 0, 10),
-      marker('Two', 0, 100, 900),
-      marker('Three', 0, 200, 500)
-    ]
+    const many = [marker('One', 0, 0, 10), marker('Two', 0, 100, 900), marker('Three', 0, 200, 500)]
     expect(selectLabels(many, { limit: 2 }).map(l => l.name)).toEqual(['Two', 'Three'])
   })
 
@@ -127,5 +123,24 @@ describe('describeMarker', () => {
     expect(describeMarker(markers[1])).toBe(
       'Ai 1 — Moderate confidence (522/1000); identified as Et Tell; 2 competing locations also proposed'
     )
+  })
+})
+
+describe('rival tethers', () => {
+  it('ties a nearby rival to the winner and leaves a far one untethered', () => {
+    const far: MapPlace = {
+      n: 'Tarshish 2',
+      t: 'region',
+      sl: 'a/tarshish-2',
+      c: [
+        { ll: [35.0, 32.0], s: 300 },
+        { ll: [35.2, 32.1], s: 200 },
+        { ll: [-5.9, 36.1], s: 100 }
+      ]
+    }
+    const { markers } = buildViewModel({ p: [far] })
+    expect(markers[0].alternatives.map(a => a.linked)).toEqual([true, false])
+    // Both rivals are still DRAWN — only the tether is dropped.
+    expect(markers[0].alternatives).toHaveLength(2)
   })
 })
