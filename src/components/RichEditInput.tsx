@@ -1,23 +1,23 @@
 /**
- * Contenteditable note editor for inline editing in reading view.
- * Renders pills (verse anchors, tags, cross-refs) exactly like study mode,
- * with the same @tag autocomplete dropdown.
- * Cmd/Ctrl+Enter → save, Escape → cancel.
+ * THE note editor. One contenteditable surface for both writing a new note and
+ * editing an existing one — the create flow used to be a form control
+ * (InlineTagInput), which could render no pills and could not wrap, so "v2-5"
+ * and "@personal" read as plain text while you typed and a long note scrolled
+ * sideways. There is one editor now; the create/edit distinction is only the
+ * copy on the card around it.
+ *
+ * Renders pills (verse anchors, tags, cross-refs) exactly like study mode, with
+ * the same @tag autocomplete dropdown. Enter → save, Escape → cancel.
+ *
+ * IT SEEDS ITSELF FROM `initialValue` ONCE and then owns its own DOM, because
+ * it manages a caret. An EXTERNAL text change (a category chip rewriting the
+ * tag, a verse click re-aiming the anchor) is applied by re-seeding it through
+ * a fresh `key` — never by pushing a new `initialValue` at a mounted editor.
  */
 import React, { useRef, useEffect, useState, useCallback } from 'react'
+import type { NoteCategoryDef } from '../types'
+import { useNoteCategories } from '../utils/useNoteCategories'
 import { getRawText, getRawCursorPos, setRawCursorPos, renderRich } from '../utils/richText'
-
-interface TagOption {
-  name: string
-  colorClass: string
-}
-
-const TAG_OPTIONS: TagOption[] = [
-  { name: 'observation', colorClass: 'observation' },
-  { name: 'historical', colorClass: 'historical' },
-  { name: 'application', colorClass: 'application' },
-  { name: 'personal', colorClass: 'personal' }
-]
 
 interface DropdownState {
   query: string
@@ -32,6 +32,10 @@ interface RichEditInputProps {
   onSave: () => void
   onCancel: () => void
   className?: string
+  /** Shown while the editor is empty (a contenteditable has no native one). */
+  placeholder?: string
+  /** Accessible name, since a contenteditable is not a labelled form control. */
+  ariaLabel?: string
 }
 
 export default function RichEditInput({
@@ -39,13 +43,27 @@ export default function RichEditInput({
   onChange,
   onSave,
   onCancel,
-  className
+  className,
+  placeholder,
+  ariaLabel
 }: RichEditInputProps): React.ReactElement {
   const elRef = useRef<HTMLDivElement>(null)
   const [dropdown, setDropdown] = useState<DropdownState | null>(null)
+  // Drives the CSS placeholder only. A contenteditable is not reliably `:empty`
+  // once it has been typed into and cleared (browsers leave a <br> behind), so
+  // emptiness is tracked here rather than asserted in a selector.
+  const [empty, setEmpty] = useState(initialValue.length === 0)
 
-  const filteredTags = dropdown
-    ? TAG_OPTIONS.filter(t => t.name.startsWith(dropdown.query.toLowerCase()))
+  // The @tag dropdown reads the SHARED category store, like every other picker.
+  // It used to hold its own hardcoded copy of the four built-ins — the same
+  // private-map bug the desktop sweep found in StudyWorkbench, BookDetailPage
+  // and ReadingMode, and the one removed from InlineTagInput on 2026-09-02.
+  // A private list means a renamed category still offers its old name and a
+  // reader's own categories are silently missing.
+  const categories = useNoteCategories()
+
+  const filteredTags: NoteCategoryDef[] = dropdown
+    ? categories.filter(c => c.key.startsWith(dropdown.query.toLowerCase()))
     : []
   const isOpen = filteredTags.length > 0
 
@@ -59,17 +77,18 @@ export default function RichEditInput({
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectTag = useCallback(
-    (tag: TagOption): void => {
+    (tag: NoteCategoryDef): void => {
       const el = elRef.current
       if (!el || !dropdown) return
       const text = getRawText(el)
       const before = text.slice(0, dropdown.anchorIndex)
       const after = text.slice(dropdown.cursorPos)
-      const insertion = `@${tag.name} `
+      const insertion = `@${tag.key} `
       const newText = before + insertion + after
       onChange(newText)
       renderRich(el, newText)
       setRawCursorPos(el, before.length + insertion.length)
+      setEmpty(newText.length === 0)
       setDropdown(null)
       el.focus()
     },
@@ -82,6 +101,7 @@ export default function RichEditInput({
     const cursorPos = getRawCursorPos(el)
     const text = getRawText(el)
     onChange(text)
+    setEmpty(text.length === 0)
     renderRich(el, text, cursorPos)
     setRawCursorPos(el, cursorPos)
 
@@ -147,7 +167,11 @@ export default function RichEditInput({
         ref={elRef}
         contentEditable
         suppressContentEditableWarning
-        className={className}
+        role="textbox"
+        aria-multiline="true"
+        aria-label={ariaLabel}
+        className={`rich-edit${empty && placeholder ? ' is-empty' : ''}${className ? ` ${className}` : ''}`}
+        data-placeholder={placeholder}
         onInput={handleInput}
         onKeyDown={handleKeyDown}
         style={{
@@ -162,7 +186,7 @@ export default function RichEditInput({
         <div className="tag-dropdown" style={{ left: 0 }}>
           {filteredTags.map((tag, i) => (
             <div
-              key={tag.name}
+              key={tag.key}
               className={`tag-dropdown-item${i === dropdown?.activeIdx ? ' active' : ''}`}
               onMouseDown={e => {
                 e.preventDefault()
@@ -170,8 +194,13 @@ export default function RichEditInput({
               }}
               onMouseEnter={() => setDropdown(d => (d ? { ...d, activeIdx: i } : d))}
             >
-              <span className={`tag-dropdown-swatch swatch-${tag.colorClass}`} />
-              <span className="tag-dropdown-label">@{tag.name}</span>
+              <span className={`tag-dropdown-swatch swatch-${tag.key}`} />
+              {/* The KEY is what gets typed into the note, so it is what the row
+                  shows; the reader's own label rides alongside it. */}
+              <span className="tag-dropdown-label">@{tag.key}</span>
+              {tag.label.toLowerCase() !== tag.key && (
+                <span className="tag-dropdown-name">{tag.label}</span>
+              )}
             </div>
           ))}
         </div>

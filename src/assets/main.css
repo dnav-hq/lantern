@@ -2781,6 +2781,10 @@ html body.dark .verse-span-bracket[class] {
   margin: 4px 0 14px;
 }
 
+/* The create field. It is the SAME contenteditable the edit flow uses
+   (RichEditInput) — `width: 100%` plus the component's own `pre-wrap` is what
+   makes a long note wrap and the field grow, where the old single-line form
+   control scrolled sideways. */
 .inline-note-input {
   flex: 1;
   width: 100%;
@@ -2792,6 +2796,16 @@ html body.dark .verse-span-bracket[class] {
   outline: none;
   padding: 0;
   color: var(--text);
+}
+
+/* A contenteditable has no native placeholder. `.is-empty` is set by the
+   component rather than matched with `:empty`, because a browser leaves a <br>
+   behind once you have typed into one and cleared it. */
+.rich-edit.is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-faint);
+  font-style: italic;
+  pointer-events: none;
 }
 
 /* ─── Quick-edit card ─────────────────────────────────────────────────────────
@@ -3017,18 +3031,14 @@ html body.dark .verse-span-bracket[class] {
 .composer-body {
   min-height: 1.6em;
 }
-/* Whichever input the caller passed (InlineTagInput / RichEditInput) wears the
-   composer's writing surface — scripture face, no border of its own. */
+/* The editor the caller passed (RichEditInput, for both writing and editing)
+   wears the composer's writing surface — scripture face, no border of its own. */
 .composer-body .inline-note-input,
 .composer-body .note-edit-textarea {
   font-family: var(--scripture-font);
   font-size: 15px;
   line-height: 1.6;
   color: var(--text);
-}
-.composer-body .inline-note-input::placeholder {
-  color: var(--text-faint);
-  font-style: italic;
 }
 .composer-hint {
   font-size: 11px;

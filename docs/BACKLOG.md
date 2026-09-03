@@ -14,17 +14,6 @@ belongs to and why that arc comes when it does.
 
 ## Deferred
 
-- **Note capture: one editor for create and edit (queued 2026-09-02).** Writing a
-  new note uses `InlineTagInput`, a form control, and editing one uses
-  `RichEditInput`, a contenteditable. That split is why `v2-5` renders as plain
-  text while you type a NEW note but as a pill in an existing one, and why the
-  create field is single-line and scrolls sideways instead of wrapping. Both are
-  Dennis's own observations. Unifying onto the rich editor fixes both, and also
-  reaches the elevated mobile-note-typing capture. The risk is the caret
-  contract (RichEditInput seeds once and owns its DOM) and the mobile
-  keyboard-aware behaviour; the task is written to STOP and report rather than
-  ship a regression in either.
-
 - **DONE 2026-09-02: the @tag dropdown reads the shared category store.** It held
   a fifth private copy of the four built-ins — the same private-map bug the
   desktop sweep found in three other components (finding 3), in the one place
@@ -300,14 +289,15 @@ belongs to and why that arc comes when it does.
   remains.** A subtle in-reader "preview" indicator so a guest mid-reading (not
   just on the Profile tab) knows nothing is saved. Optional polish, not started.
 
-- **Note-capture editor: tag selector + verse pills + type-@-to-select
-  (taste — prototype with Dennis).** The desktop quick-note (`QuickEditCard` +
-  `InlineTagInput`) shows the verse tag as plain text (`v2-5`) while the edit
-  path (`RichEditInput` + `renderRich`) renders styled pills — inconsistent.
-  Dennis's direction (2026-08-27): give the quick-note a **tag SELECTOR** like
-  the mobile composer / study workbench, render **verse pills** while typing,
-  AND let the reader **type `@category`** so it applies to the selector and
-  removes itself from the text. Touches both signed-in and guest desktop (shared
+- **Note-capture editor: `@category` should remove itself from the text
+  (taste — prototype with Dennis).** The two mechanical halves of this item are
+  DONE: the quick-note has the tag SELECTOR (`QuickEditCard`, 2026-08-27) and it
+  now renders **verse and tag pills while typing**, because create and edit are
+  one editor (`RichEditInput`, 2026-09-03 — see Done). What is left is the taste
+  half of Dennis's 2026-08-27 direction: typing `@category` should apply to the
+  selector and REMOVE ITSELF from the text, rather than staying in the note's
+  content as the token every surface parses back out. That is a change to the
+  note's storage model, not a rendering change, which is why it stayed behind. Touches both signed-in and guest desktop (shared
   component). Taste-heavy: prototype the interaction with Dennis before speccing;
   a blind build would be redone. (HQ capture 56d4cfcb.) Note: a standalone
   "`@`-dropdown click doesn't select" bug was reported but could not be
@@ -667,6 +657,26 @@ belongs to and why that arc comes when it does.
   experience so it never feels crippled.
 
 ## Done
+
+- **Note capture: ONE editor for writing a note and editing it (DONE
+  2026-09-03).** Writing a new note used `InlineTagInput`, a form control, while
+  editing one used `RichEditInput`, a contenteditable. That split was why `v2-5`
+  and `@personal` rendered as plain text while you typed a NEW note but as pills
+  in an existing one, and why the create field was single-line and scrolled
+  sideways instead of wrapping — both Dennis's own observations. The create call
+  sites (`BookDetailPage`, `ReadingMode`) now pass `RichEditInput` too and
+  `InlineTagInput` is deleted; `QuickEditCard`'s `mode` prop is copy only, never
+  a different writing surface. `RichEditInput` gained an optional placeholder (a
+  contenteditable has no native one, and `:empty` is unreliable once a browser
+  has left a `<br>` behind, so the component tracks emptiness itself) and it now
+  reads the SHARED category store instead of the fifth private copy of the four
+  built-ins it was still holding. The caret contract is preserved exactly:
+  the editor still seeds from `initialValue` once and owns its DOM, so the
+  create flow re-seeds through a remount key (`inlineEpoch`) the same way the
+  edit flow already did with `editEpoch` — only the category picker and an
+  external re-aim bump it, never typing. `MobileNoteComposer` is UNTOUCHED: it
+  is a plain body-plus-category textarea that never used either editor, so the
+  keyboard-aware `useKeyboardCompose` behaviour has nothing to regress.
 
 - **Highlighting reworked as its own action (DONE 2026-08-31).** Replaces the
   first attempt, where the composer's Save button silently became "Mark" when
