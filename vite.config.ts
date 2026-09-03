@@ -68,7 +68,16 @@ export default defineConfig({
         // level deeper, and the single-star form would have walked straight past
         // it — several MB of lexicon data precached for every reader to answer a
         // question about one word. Same rule, same reason.
-        globIgnores: ['**/bible/**/*.json.gz'],
+        //
+        // `**/map/**` covers the Bible map's bundles (public/map/, built by
+        // scripts/build-map-data.mjs) with NO extension filter, deliberately:
+        // the opt-in terrain layer is a .png, which globPatterns above DOES
+        // match. Without this line every reader would precache a 656 KB relief
+        // raster for a layer most of them never switch on — the exact failure
+        // the .gz rule was written to prevent, arriving through a different
+        // extension. The places/artwork bundles are lazily fetched on first map
+        // open (src/utils/mapData.ts).
+        globIgnores: ['**/bible/**/*.json.gz', '**/map/**'],
         navigateFallback: '/index.html',
         runtimeCaching: [
           {

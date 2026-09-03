@@ -10,7 +10,8 @@
     "lint": "eslint . --ext .ts,.tsx",
     "test": "vitest run",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
-    "build:word-index": "tsx scripts/build-word-index.mjs"
+    "build:word-index": "tsx scripts/build-word-index.mjs",
+    "build:map-data": "tsx scripts/build-map-data.mjs"
   },
   "dependencies": {
     "@fontsource/newsreader": "^5.2.10",
