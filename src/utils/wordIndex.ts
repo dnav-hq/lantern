@@ -213,7 +213,9 @@ export function groupRenderings(renderings: RenderingCount[]): RenderingCount[] 
 // the shipped data by the build script, so it must not depend on the locale of
 // whichever machine ran the build.
 function sortCounts(counts: Map<string, number>): RenderingCount[] {
-  return [...counts.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+  return [...counts.entries()].sort(
+    (a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
+  )
 }
 
 /** Restore one occurrence's strings from the entry's own tables. */
