@@ -274,6 +274,27 @@ belongs to and why that arc comes when it does.
   dedication covers the apparatus as well as the text (§8), and the KJV's 6,959
   notes, a different apparatus needing their own parser and audit (§3.6).
 
+
+- **Word door (deep-dive rung 2) — slice 1, the DATA, is built (2026-09-02);
+  nothing renders yet.** Design + data brief in
+  `docs/proposals/word-door-guardrails.md` (decisions in §9a, as-built format in
+  §5.4); mockup in `design/word-door.html`. `npm run build:word-index` joins the
+  BSB Translation Tables (754,647 word rows, public domain, not committed) to the
+  STEPBible TBESG/TBESH lexicons and emits `public/bible/words/**`: 66 per-book
+  verse shards, 58 lemma shards keyed by Strong's number, a parsing table and a
+  manifest — 8.17 MB gzipped, lazily loadable, kept out of the PWA precache.
+  Per lemma it carries the lemma, transliteration, morph class, gloss, Greek
+  sense text, total count, the distinct BSB renderings BOTH raw (35 for H1892)
+  and head-word grouped (24), and every occurrence with its verse, English and
+  expanded morphology. Licence split is load-bearing: Greek ships gloss + sense,
+  Hebrew ships the Tyndale gloss ONLY (TBESH's Meaning column is Abridged BDB
+  © Online Bible and needs a permission we do not hold), OpenScriptures is out
+  entirely. STILL OPEN: the door itself — no UI, no route, no marker on the
+  reading page (§9a decision 3 rules out a second dotted underline); and the
+  542 gloss-less lemmas are BDB sub-lemma splits that could be folded onto the
+  bare Strong's number for ~100% coverage at the cost of merging senses BDB
+  separates — a decision, deliberately not taken (§5.4).
+
 - **Guest cleanup after the guest-is-the-App change (2026-08-27) — the two
   mechanical loose ends are DONE (2026-08-28, see Done); one optional item
   remains.** A subtle in-reader "preview" indicator so a guest mid-reading (not

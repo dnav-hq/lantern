@@ -363,6 +363,84 @@ loading additional shards on demand; a full-Bible answer for a common word is
 the one case that pays the full 4 MB, and it should be paged rather than
 eagerly loaded.
 
+
+### 5.4 AS BUILT, 2026-09-02 — where slice 1 departs from 5.2, and why
+
+Slice 1 (`scripts/build-word-index.mjs`, `npm run build:word-index`) is built and
+its output is committed. Every headline figure in sections 4 and 11 reproduced
+exactly on the real files: 754,647 word rows, 66 books, 13,876 distinct Strong's
+numbers, TBESH 11,682 rows / 9,345 lemmas, TBESG 11,035 / 10,847, coverage
+13,334 of 13,876 (96.1%), and H1892 at 73 occurrences / 35 raw forms / 24 grouped
+/ top group 24. The build asserts all of them and fails rather than shipping
+drift.
+
+Three things are different from 5.2, and one figure did not reproduce.
+
+**1. The occurrence index SHIPS, sharded by Strong's number.** 5.3 rejected it as
+"most of a second megabyte to answer a question the per-book shards already
+contain" and said to derive it in memory. That objection is against a MONOLITHIC
+index; it is not against the data. Sharded the same way 5.3 shards the word rows,
+a door tap fetches one bucket of 250 Strong's numbers — median 69 KB, worst
+155 KB — rather than a megabyte, and it answers "where else does this word stand"
+across the whole Bible instead of only across the books a reader happens to have
+opened. Deriving it in memory cannot produce the distinct-rendering headline at
+all, which is the stat section 9a made the argument's opening move.
+
+So the artefacts are:
+
+```
+public/bible/words/verses/<bookNumber>.json.gz   66 shards, 3,984,283 B total
+  { "<chapter>": { "<verse>": [ [english, strongsKey, translit, parsingId], … ] } }
+  median 31 KB · largest Psalms 223 KB · smallest 2 John 2.4 KB
+
+public/bible/words/lemmas/<shard>.json.gz        58 shards, 4,552,530 B total
+  { "<strongsKey>": { l, t, m, g[], s[], n, r[], rg[], w[], o[] } }
+  median 69 KB · largest 155 KB · shard = letter + floor(number / 250)
+
+public/bible/words/parsing.json.gz               33,793 B — 3,806 [expanded, terse] pairs
+public/bible/words/manifest.json.gz              counts, shard list, provenance
+```
+
+Gzipped total **8,571,261 B (8.17 MB)**, against the ~5.5 MB 5.3 implies if the
+lexicon and word rows shipped and the occurrence index did not. Nothing is
+eagerly loaded and nothing enters the service-worker precache — `vite.config.ts`
+now ignores `**/bible/**/*.json.gz`, because the old single-star form would have
+walked straight past a subdirectory.
+
+**2. The lexicon is folded into the lemma shards rather than kept whole.** 5.3
+keeps it whole "because it is cross-cutting", which is true of a word-row-sharded
+world and false here: a door needs one lemma, and that lemma's gloss, senses,
+counts and occurrences now arrive in one fetch instead of two. Greek sense text
+rides in the Greek shards; it is the reason G shards are the larger ones.
+
+**3. Occurrences store an index into the entry's own table of distinct
+renderings**, not the string. Pure redundancy removal; `decodeOccurrence` in
+`src/utils/wordIndex.ts` restores it.
+
+**The figure that did not reproduce: the parsing table has 3,806 entries, not
+3,819.** The difference is a definition, not drift. The terse and expanded
+parsing columns are NOT in one-to-one correspondence — four terse codes carry two
+different expansions (`Adv` is both "Adverb" and "Adverb - Superlative"; three
+more pair a real expansion with a blank one). The table is therefore keyed on the
+(terse, expanded) PAIR, expanded first, so nothing has to guess which expansion a
+code meant. Counting distinct terse codes alone gives 3,820.
+
+**One finding worth a decision, recorded rather than taken.** The 542 uncovered
+Strong's numbers are not random gaps: they are almost entirely BDB sub-lemma
+splits. STEPBible follows BDB in splitting some numbers — there is no `H0122`,
+only `H0122a` ("red") and `H0122b` ("red stuff") — while the BSB tables carry the
+bare number, so the join simply misses. Folding the variants onto the bare number
+would close the gap to ~100% and hand each of those doors a merged gloss list.
+This build does NOT do that: merging two senses BDB deliberately separated is the
+exact conflation section 2.3 indicts Strong's for, and section 4.3 already called
+the gloss-less door "arguably a purer one". It is a one-line change in
+`readLexicon` if Dennis wants the coverage instead.
+
+The TBESH **Meaning** column is never collected, let alone written: `readLexicon`
+takes a `keepMeaning` flag that is `false` for Hebrew. Greek sense text is
+flattened out of STEPBible's `<BR />` / `<ref='…'>` markup into plain lines at
+build time, so no HTML from a third-party file can reach a renderer.
+
 ---
 
 ## 6. The presentation rules
