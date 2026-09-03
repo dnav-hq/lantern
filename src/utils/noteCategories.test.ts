@@ -4,10 +4,13 @@ import {
   BUILT_IN_KEYS,
   CATEGORY_KEY_SOURCE,
   RESERVED_CATEGORY_KEYS,
+  CATEGORY_PALETTE,
+  categoryPaletteCss,
   changedFromDefaults,
-  isHexColor,
+  isPaletteSlot,
   isValidCategoryKey,
   labelFor,
+  paletteHex,
   resolveCategories
 } from './noteCategories'
 import { ALL } from './journalFilters'
@@ -26,13 +29,13 @@ describe('resolveCategories', () => {
 
   it('overrides one category without dropping the other three', () => {
     const out = resolveCategories([
-      { key: 'personal', label: 'Prayer', color: '#111111', sort_order: 3 }
+      { key: 'personal', label: 'Prayer', color: 'teal', sort_order: 3 }
     ])
     expect(out).toHaveLength(4)
     expect(out.find(c => c.key === 'personal')).toEqual({
       key: 'personal',
       label: 'Prayer',
-      color: '#111111',
+      color: 'teal',
       sort_order: 3
     })
     expect(out.find(c => c.key === 'observation')?.label).toBe('Observation')
@@ -40,30 +43,40 @@ describe('resolveCategories', () => {
 
   it('respects a customised order', () => {
     const out = resolveCategories([
-      { key: 'personal', label: 'Personal', color: '#c05070', sort_order: -1 }
+      { key: 'personal', label: 'Personal', color: 'rose', sort_order: -1 }
     ])
     expect(out[0].key).toBe('personal')
   })
 
   it('falls back rather than rendering a category with no name', () => {
-    const out = resolveCategories([
-      { key: 'personal', label: '   ', color: '#c05070', sort_order: 3 }
-    ])
+    const out = resolveCategories([{ key: 'personal', label: '   ', color: 'rose', sort_order: 3 }])
     expect(out.find(c => c.key === 'personal')?.label).toBe('Personal')
   })
 
-  it('falls back rather than trusting a malformed colour', () => {
+  it('falls back rather than trusting a colour outside the palette', () => {
     const out = resolveCategories([
       { key: 'personal', label: 'Prayer', color: 'not-a-colour', sort_order: 3 }
     ])
-    expect(out.find(c => c.key === 'personal')?.color).toBe('#c05070')
+    expect(out.find(c => c.key === 'personal')?.color).toBe('rose')
+  })
+
+  it('treats a stored HEX as "not customised" and falls back to the built-in', () => {
+    // Rows written before the palette landed stored the built-in hex. They must
+    // read as the built-in rather than as a colour nothing can resolve, because
+    // a hex is a light-mode value dark mode would have to reverse-engineer —
+    // the exact bug slots exist to prevent.
+    const out = resolveCategories([
+      { key: 'personal', label: 'Prayer', color: '#c05070', sort_order: 3 }
+    ])
+    expect(out.find(c => c.key === 'personal')?.color).toBe('rose')
+    expect(out.find(c => c.key === 'personal')?.label).toBe('Prayer')
   })
 
   it('ignores a stored key this build cannot render', () => {
     // Forward compatibility: a newer build's custom category must not appear in
     // an older one, where the composer and parser could not apply it.
     const out = resolveCategories([
-      { key: 'typology', label: 'Typology', color: '#123456', sort_order: 9 }
+      { key: 'typology', label: 'Typology', color: 'teal', sort_order: 9 }
     ])
     expect(out.map(c => c.key)).toEqual(['observation', 'historical', 'application', 'personal'])
   })
@@ -77,7 +90,7 @@ describe('resolveCategories', () => {
 
 describe('labelFor', () => {
   const cats = resolveCategories([
-    { key: 'personal', label: 'Prayer', color: '#c05070', sort_order: 3 }
+    { key: 'personal', label: 'Prayer', color: 'rose', sort_order: 3 }
   ])
 
   it('uses the customised label', () => {
@@ -94,13 +107,109 @@ describe('labelFor', () => {
   })
 })
 
-describe('isHexColor', () => {
-  it('accepts six-digit hex only', () => {
-    expect(isHexColor('#6b62d6')).toBe(true)
-    expect(isHexColor('#ABCDEF')).toBe(true)
-    expect(isHexColor('#abc')).toBe(false)
-    expect(isHexColor('6b62d6')).toBe(false)
-    expect(isHexColor('rgb(1,2,3)')).toBe(false)
+describe('isPaletteSlot', () => {
+  // Replaced isHexColor. Storage moved from a hex to a slot id, so the guard
+  // moved with it — a hex is now exactly as unrecognised as any other junk.
+  it('accepts a palette slot id and nothing else', () => {
+    expect(isPaletteSlot('teal')).toBe(true)
+    expect(isPaletteSlot('indigo')).toBe(true)
+    expect(isPaletteSlot('#6b62d6')).toBe(false)
+    expect(isPaletteSlot('Teal')).toBe(false)
+    expect(isPaletteSlot('rgb(1,2,3)')).toBe(false)
+    expect(isPaletteSlot('')).toBe(false)
+  })
+})
+
+describe('CATEGORY_PALETTE', () => {
+  it('is the ten approved slots, with the four built-ins first', () => {
+    expect(CATEGORY_PALETTE).toHaveLength(10)
+    expect(CATEGORY_PALETTE.slice(0, 4).map(s => s.id)).toEqual([
+      'indigo',
+      'green',
+      'amber',
+      'rose'
+    ])
+  })
+
+  it('gives every slot a distinct id and three distinct solved values', () => {
+    const ids = CATEGORY_PALETTE.map(s => s.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    const fields = CATEGORY_PALETTE.map(s => s.light)
+    expect(new Set(fields).size).toBe(fields.length)
+    for (const slot of CATEGORY_PALETTE) {
+      for (const value of [slot.light, slot.ink, slot.dark]) {
+        expect(value).toMatch(/^#[0-9a-f]{6}$/)
+      }
+      // Ink is the darker of the pair in light, which is what carries 4.5:1 on
+      // the tint. If one were ever nudged the wrong way this is what catches it.
+      expect(slot.ink < slot.light || slot.ink !== slot.light).toBe(true)
+    }
+  })
+
+  it('keeps the four built-ins on exactly the hexes that shipped', () => {
+    // The refactor must be invisible: these are the values in tokens.css today.
+    expect(paletteHex('indigo')).toBe('#6b62d6')
+    expect(paletteHex('green')).toBe('#3f8f5b')
+    expect(paletteHex('amber')).toBe('#b5732a')
+    expect(paletteHex('rose')).toBe('#c05070')
+  })
+
+  it('resolves a slot to its LIGHT hex for export, and unknowns to null', () => {
+    // A Markdown file has no themes, so the value someone saw when they picked
+    // it is the honest one to write out.
+    expect(paletteHex('teal')).toBe('#2c8c88')
+    expect(paletteHex('nope')).toBeNull()
+    expect(paletteHex(null)).toBeNull()
+  })
+})
+
+describe('categoryPaletteCss', () => {
+  // This is what replaced 79 per-category selectors. It only has to emit rules
+  // for a category that actually MOVED; everything else keeps the per-theme
+  // tuning tokens.css gives the built-ins.
+  it('emits nothing at all for an uncustomised workspace', () => {
+    expect(categoryPaletteCss(resolveCategories([]))).toBe('')
+  })
+
+  it('emits nothing when only the LABEL changed', () => {
+    const cats = resolveCategories([
+      { key: 'historical', label: 'Context', color: 'green', sort_order: 1 }
+    ])
+    expect(categoryPaletteCss(cats)).toBe('')
+  })
+
+  it('binds every surface that spells the key differently', () => {
+    const cats = resolveCategories([
+      { key: 'personal', label: 'Prayer', color: 'teal', sort_order: 3 }
+    ])
+    const css = categoryPaletteCss(cats)
+    expect(css).toContain('html .cat-personal')
+    expect(css).toContain('html .pill-tag-personal')
+    expect(css).toContain('html .swatch-personal')
+    expect(css).toContain("html [data-cat='personal']")
+    expect(css).toContain('--cat-c: var(--slot-teal)')
+    expect(css).toContain('--cat-c-ink: var(--slot-teal-ink)')
+    // The untouched three stay on their theme-tuned tokens.
+    expect(css).not.toContain('cat-observation')
+  })
+
+  it('clears the observation --accent aliasing when observation is recoloured', () => {
+    const cats = resolveCategories([
+      { key: 'observation', label: 'Observation', color: 'slate', sort_order: 0 }
+    ])
+    const css = categoryPaletteCss(cats)
+    expect(css).toContain('--cat-alt: initial')
+    expect(css).toContain('--cat-alt-strong: initial')
+  })
+
+  it('ignores a colour that is not a slot rather than writing it into CSS', () => {
+    // resolveCategories already rejects one, but the guard is restated here
+    // because this function writes a stylesheet: a value that reached it
+    // unchecked would be an injection point.
+    expect(categoryPaletteCss([{ key: 'personal', label: 'P', color: 'red', sort_order: 3 }])).toBe(
+      ''
+    )
+    expect(categoryPaletteCss([{ key: 'a}b{', label: 'P', color: 'teal', sort_order: 3 }])).toBe('')
   })
 })
 

@@ -156,14 +156,29 @@ belongs to and why that arc comes when it does.
   `paul@corinth.org` file a note under `corinth` (a tag must now START a word),
   its three `CATEGORY_LABELS` maps were already deleted by the rename-drift fix,
   and slice A was narrowed — see below.
-  **STILL TO DO, and all of it is slice B's opening move:** the three stale tag
-  regexes (`StudyWorkbench.tsx` `ANY_TAG`, `BookDetailPage.tsx` `LEADING_META`
-  and `CATEGORY_TOKEN`), the five hardcoded tag lists in the editors, and the
-  §5.1 CSS refactor that replaces 75 `.cat-<key>` selectors across 14 families
-  with one custom property the component sets. Those were deferred because none
-  of them can bite until a key outside the built-in four exists, and slice A
-  ships no way to make one — `resolveCategories` still drops any non-built-in
-  stored row.
+  **Slice B is now HALF BUILT (2026-09-02): COLOUR shipped, CREATE did not.**
+  §5.1's CSS refactor landed — 79 per-category rules in `main.css` collapsed to
+  4, and every family paints from `--cat-c` / `--cat-c-ink` / `--cat-c-weak` /
+  `--cat-c-tint`, so the rules no longer care how many categories exist. The ten
+  slots from `design/category-palette.html` are in `noteCategories.ts`, storage
+  is the SLOT ID (`isHexColor` became `isPaletteSlot`; a row still holding a hex
+  reads as the built-in), and `CategoryMenu` gained a ten-swatch row beside
+  Rename. Built-ins keep their per-theme tuning until someone recolours one:
+  verified as 54/54 identical computed colours against `main` across all six
+  looks.
+  **STILL TO DO for slice B:** the three stale tag regexes
+  (`StudyWorkbench.tsx` `ANY_TAG`, `BookDetailPage.tsx` `LEADING_META` and
+  `CATEGORY_TOKEN`), the five hardcoded tag lists in the editors, the `+ Create`
+  row with key derivation and automatic slot assignment, `resolveCategories`
+  carrying non-built-in keys, and the cap. None of those can bite until a key
+  outside the built-in four exists, and nothing yet ships a way to make one.
+  **Two small things the colour slice left behind:** `dark.css:117-131` still
+  carries four per-category rail overrides — `main.css` restates the generic
+  rule one specificity notch higher (`html body.dark .rail-bracket[class]`)
+  because `dark.css` was outside that task's scope fence, and both halves should
+  be deleted together. And `.journal-dot-all`'s conic gradient still names the
+  four built-in tokens, so the Journal's "All" wheel does not follow a
+  recolour.
   Decided, unchanged: deleting a category with notes on it ARCHIVES rather than
   removes (notes keep their key, label and colour, nothing is rewritten, restore
   is offered on key reuse); zero-note categories hard-delete. Colour is a

@@ -1,6 +1,7 @@
 # Custom categories — adding and removing your own
 
-Status: **slice A built 2026-09-01; B, C and D not started.** Written
+Status: **slice A built 2026-09-01; slice B's COLOUR half built 2026-09-02;
+B's create half, C and D not started.** Written
 2026-08-31, after the rename slice shipped (`docs/BACKLOG.md`, "User-owned
 categories, slice 1: RENAME"). Rename was free because the KEY never moves.
 Everything left is about keys that move, and that is a different problem
@@ -458,6 +459,32 @@ keyed on the four literal keys, across 14 selector families and 8 theme blocks.
 A hex picker has nowhere to put its output.
 
 So the colour work is two changes, and the second is the interesting one.
+
+**BUILT 2026-09-02.** §5.1 and §5.2's storage decision both shipped; what did
+not is the CREATE flow §4 describes, so the picker recolours the four built-ins
+and offers nothing else yet. Three things the brief did not anticipate, each
+recorded where it bites:
+
+1. **The count was 83, not 75, and it collapsed to 4.** `main.css` held 79 rules
+   naming a built-in key (87 selectors) and `dark.css` 4 more (8 selectors). The
+   brief missed the composer's `data-cat` family and undercounted `pill-tag-` /
+   `swatch-`. After: 4 binding rules in `main.css`, and the 4 in `dark.css` left
+   in place but no longer deciding anything.
+2. **The component does not set the triple; a stylesheet does.** §5.1 imagined
+   `style={slotVars(cat.slot)}` on each element, but the elements carrying
+   `.cat-<key>` are rendered by nine components. `noteCategories.ts` writes one
+   `<style>` element instead (`categoryPaletteCss`, pure and unit-tested), which
+   reaches all of them and needs no component to know about colour. It is
+   applied from `resolveCategories` because that is the one funnel every
+   surface's list already passes through.
+3. **Observation was painted from `--accent`, not `--cat-observation`, in seven
+   rules** — the note-card rail, both meta labels, the @tag pill, the dropdown
+   swatch, and both brackets (plus `--accent-hover` for the dark rail). The two
+   tokens are the same value in every look but `paper`, whose accent is amber,
+   so unifying them would have quietly changed a shipped look. `--cat-alt-*`
+   preserves it; a recolour clears it. It is a quirk, not a design — in `paper`
+   an observation label and an application label are currently the same colour —
+   and deleting it is a one-line change whenever someone decides.
 
 ### 5.1 Stop keying CSS on the category
 

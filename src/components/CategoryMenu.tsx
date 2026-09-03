@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useApi } from '../api/context'
 import type { NoteCategoryDef } from '../types'
-import { changedFromDefaults } from '../utils/noteCategories'
+import { CATEGORY_PALETTE, changedFromDefaults } from '../utils/noteCategories'
 import { publishNoteCategories, useNoteCategories } from '../utils/useNoteCategories'
 
 /**
@@ -12,6 +12,13 @@ import { publishNoteCategories, useNoteCategories } from '../utils/useNoteCatego
  * that NOTHING IS VISIBLE UNTIL YOU ENGAGE: the menu looks like a plain picker,
  * and the rename affordance appears only on hover (or long-press on touch). A
  * reader who never wants to rename anything never meets the control.
+ *
+ * COLOUR works the same way and sits beside Rename: hidden at rest, revealed on
+ * hover or keyboard focus, and opening it swaps the row for a single line of ten
+ * swatches. There is no hex field and there will not be one — the contrast rule
+ * (docs/proposals/custom-categories.md §5.2) cannot be satisfied with a colour
+ * wheel, and a picker that silently produces unreadable text in dark is worse
+ * than no picker. What is stored is the SLOT ID, never a colour.
  *
  * Keyboard: Enter commits, Escape cancels. Committing writes through to the
  * shared store so every other surface updates at once.
@@ -38,6 +45,7 @@ export default function CategoryMenu({
   const api = useApi()
   const categories = useNoteCategories()
   const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [coloringKey, setColoringKey] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -46,9 +54,37 @@ export default function CategoryMenu({
   }, [editingKey])
 
   const beginRename = useCallback((cat: NoteCategoryDef) => {
+    setColoringKey(null)
     setEditingKey(cat.key)
     setDraft(cat.label)
   }, [])
+
+  /**
+   * Save one category's changes. Same path the rename already uses and for the
+   * same reason: publish FIRST so every surface repaints at once with no
+   * reload, then write through, and leave the local value in place on failure —
+   * the next read reconciles, and a toast here would interrupt a capture.
+   */
+  const save = useCallback(
+    async (next: NoteCategoryDef[]) => {
+      const stored = changedFromDefaults(next)
+      publishNoteCategories(stored)
+      try {
+        await api.saveNoteCategories(stored)
+      } catch {
+        // Left in place; see above.
+      }
+    },
+    [api]
+  )
+
+  const pickColor = useCallback(
+    (key: string, slotId: string) => {
+      setColoringKey(null)
+      void save(categories.map(c => (c.key === key ? { ...c, color: slotId } : c)))
+    },
+    [categories, save]
+  )
 
   const commit = useCallback(async () => {
     if (!editingKey) return
@@ -56,21 +92,21 @@ export default function CategoryMenu({
     setEditingKey(null)
     // An empty name is a cancel, not a way to erase a category's name.
     if (!label) return
-    const next = categories.map(c => (c.key === editingKey ? { ...c, label } : c))
-    const stored = changedFromDefaults(next)
-    // Publish first so the rename lands instantly everywhere; a failed write is
-    // corrected on the next load rather than by making the reader wait.
-    publishNoteCategories(stored)
-    try {
-      await api.saveNoteCategories(stored)
-    } catch {
-      // Left in place: the name is still correct locally, and the next read
-      // will reconcile. Surfacing a toast here would interrupt a capture.
-    }
-  }, [api, categories, draft, editingKey])
+    await save(categories.map(c => (c.key === editingKey ? { ...c, label } : c)))
+  }, [categories, draft, editingKey, save])
 
   return (
-    <div className="cat-menu" role="menu">
+    <div
+      className="cat-menu"
+      role="menu"
+      onKeyDown={e => {
+        if (e.key === 'Escape' && coloringKey) {
+          e.preventDefault()
+          e.stopPropagation()
+          setColoringKey(null)
+        }
+      }}
+    >
       {title && <div className="cat-menu-title">{title}</div>}
 
       {noneLabel && onPickNone && (
@@ -82,7 +118,34 @@ export default function CategoryMenu({
       )}
 
       {categories.map(cat =>
-        editingKey === cat.key ? (
+        coloringKey === cat.key ? (
+          <div className="cat-menu-row is-picking" key={cat.key}>
+            <div
+              className="cat-menu-colors"
+              role="radiogroup"
+              aria-label={`Colour for ${cat.label}`}
+            >
+              {CATEGORY_PALETTE.map(slot => (
+                <button
+                  key={slot.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={cat.color === slot.id}
+                  aria-label={slot.label}
+                  title={slot.label}
+                  className={`cat-swatch${cat.color === slot.id ? ' is-current' : ''}`}
+                  // The swatch shows the slot's FIELD value for the theme in
+                  // force, so what you see in the row is what you will get.
+                  style={{ background: `var(--slot-${slot.id})` }}
+                  onClick={e => {
+                    e.stopPropagation()
+                    pickColor(cat.key, slot.id)
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        ) : editingKey === cat.key ? (
           <div className="cat-menu-row is-editing" key={cat.key}>
             <span className={`cat-menu-dot cat-${cat.key}`} aria-hidden="true" />
             <input
@@ -135,11 +198,33 @@ export default function CategoryMenu({
             >
               Rename
             </span>
+            <span
+              className="cat-menu-rename"
+              role="button"
+              tabIndex={0}
+              aria-label={`Colour ${cat.label}`}
+              onClick={e => {
+                e.stopPropagation()
+                setEditingKey(null)
+                setColoringKey(cat.key)
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setEditingKey(null)
+                  setColoringKey(cat.key)
+                }
+              }}
+            >
+              Colour
+            </span>
           </button>
         )
       )}
 
       {editingKey && <div className="cat-menu-foot">Enter to save · Esc to cancel</div>}
+      {coloringKey && <div className="cat-menu-foot">Pick a colour · Esc to cancel</div>}
     </div>
   )
 }
