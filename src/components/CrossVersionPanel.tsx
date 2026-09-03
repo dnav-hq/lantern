@@ -39,7 +39,12 @@ const NET_NOTICE = (
   </p>
 )
 
-function VerseColumn({
+// Exported for CrossVersionPanel.test.tsx only: the outer panel renders via
+// createPortal (needs a real document, so it can't run through
+// react-dom/server), but VerseColumn itself is a plain, effect-free function —
+// exactly the piece N2 needs to check, and it renders fine with
+// renderToStaticMarkup with no new test dependency.
+export function VerseColumn({
   label,
   text,
   alternative,

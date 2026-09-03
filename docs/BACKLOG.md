@@ -17,15 +17,18 @@ belongs to and why that arc comes when it does.
 - **PARKED 2026-09-03: cross-version renderings — panel built, not yet reachable.**
   `docs/proposals/cross-version-renderings.md`. `CrossVersionPanel.tsx`,
   `verbatimMatch.ts` and the `FootnoteDoor.tsx` trigger are built, typechecked,
-  and unit-tested (verbatim-match logic only). Two things block finishing:
-  (1) `FootnoteVerseText` needs a `chapterReference` prop threaded from its
-  callers (`ReadingMode.tsx`, `BookDetailPage.tsx`) to build the KJV/NET
-  fetch reference — neither caller is in the task's `files_in_scope`, so the
-  door exists in code but is not opened from either reading surface yet;
-  (2) `CrossVersionPanel.test.tsx` (a React component test, needed for the N2
-  "no note markup" assertion) has no test infrastructure to run on — the repo
-  has no `jsdom`/`@testing-library/react`, and every existing test is a pure
-  `src/utils/` unit test. See the escalation on this task for options.
+  and unit-tested. `CrossVersionPanel.test.tsx` now covers the N2 "no note
+  markup" assertion too — it renders the exported, effect-free `VerseColumn`
+  with `react-dom/server`'s `renderToStaticMarkup` (already available via the
+  existing `react-dom` dependency) rather than adding `jsdom`/
+  `@testing-library/react`, so no new test infrastructure was needed after
+  all. One thing still blocks finishing: `FootnoteVerseText` needs a
+  `chapterReference` prop threaded from its callers (`ReadingMode.tsx`,
+  `BookDetailPage.tsx`) to build the KJV/NET fetch reference — both already
+  compute that exact string locally (`bookAndChapter` in `ReadingMode.tsx`,
+  `` `${bookName} ${chapter}` `` in `BookDetailPage.tsx`), but neither file is
+  in this task's `files_in_scope`, so the door exists in code but is not
+  opened from either reading surface yet. See the escalation on this task.
 
 - **DONE 2026-09-02: the @tag dropdown reads the shared category store.** It held
   a fifth private copy of the four built-ins — the same private-map bug the
