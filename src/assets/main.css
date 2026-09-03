@@ -1398,6 +1398,7 @@ body.dark .search-backdrop {
    reader who never wants it never meets it. */
 .cat-menu {
   min-width: 210px;
+  max-width: 268px;
   padding: 6px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
@@ -1456,22 +1457,123 @@ body.dark .search-backdrop {
   color: var(--text-faint);
   font-size: 12px;
 }
-/* Invisible until the row is engaged — the whole point of the pattern. */
-.cat-menu-rename {
-  font-size: 11px;
+/* Invisible until the row is engaged — the whole point of the pattern. ONE
+   button, not three words: rename, colour and retire live behind it, and a row
+   carrying three visible verbs is a toolbar rather than a quiet affordance. */
+.cat-menu-more {
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.04em;
   color: var(--text-faint);
   opacity: 0;
   flex: none;
+  padding: 2px 4px;
+  border-radius: 5px;
 }
-.cat-menu-row:hover .cat-menu-rename,
-.cat-menu-row:focus-within .cat-menu-rename,
-.cat-menu-rename:focus-visible {
+.cat-menu-row:hover .cat-menu-more,
+.cat-menu-row:focus-within .cat-menu-more,
+.cat-menu-more:focus-visible,
+.cat-menu-more.is-open {
   opacity: 1;
 }
-.cat-menu-rename:hover {
+.cat-menu-more:hover,
+.cat-menu-more.is-open {
   color: var(--text);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  background: var(--surface-3, var(--surface-2));
+}
+
+/* The submenu is a row of quiet verbs under the row it belongs to, rather than
+   a floating panel — a popover inside a popover is a positioning problem and
+   this menu is already small enough to read whole. */
+.cat-menu-sub {
+  display: flex;
+  gap: 4px;
+  padding: 2px 9px 6px 28px;
+}
+.cat-menu-sub-action {
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+.cat-menu-sub-action:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.cat-menu-sub-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cat-menu-sub-action.is-strong {
+  color: var(--text);
+  font-weight: 550;
+}
+
+/* ── Retired, and creating ──────────────────────────────────────────────────
+   The divider only exists when something is in it, so a workspace that has
+   never retired anything sees exactly what it saw before. A retired category
+   is still painted its own colour: notes filed under it still render, which is
+   the entire reason retiring is not deleting. */
+.cat-menu-divider {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border-top: 1px solid var(--border);
+  margin-top: 5px;
+  padding: 8px 9px 4px;
+}
+.cat-menu-row.is-retired {
+  cursor: default;
+  color: var(--text-muted);
+}
+.cat-menu-row.is-retired .cat-menu-dot {
+  opacity: 0.55;
+}
+.cat-menu-create {
+  color: var(--text-muted);
+}
+.cat-menu-create:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+.cat-menu-create:disabled:hover {
+  background: none;
+}
+.cat-menu-plus {
+  width: 10px;
+  flex: none;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-faint);
+}
+.cat-menu-dot-new {
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+}
+
+/* Says what it will do and what it costs, in the menu rather than in a modal —
+   the decision is small and the sentence is the whole interface. */
+.cat-menu-confirm {
+  border-top: 1px solid var(--border);
+  margin-top: 5px;
+  padding: 8px 9px 4px;
+}
+.cat-menu-confirm p {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.cat-menu-confirm-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: -6px;
 }
 .cat-menu-input {
   flex: 1;
