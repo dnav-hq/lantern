@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { BibleVerse } from '../types'
 import { footnoteSpans } from '../utils/footnoteSpan'
 import { isMobileViewport } from '../platform/install'
+import CrossVersionPanel from './CrossVersionPanel'
 
 // The footnotes door: the translators' own "Or…" under the words they flagged.
 //
@@ -58,16 +59,28 @@ function NoteCard({ text }: { text: string }): React.ReactElement {
 function Door({
   phrase,
   note,
-  canOpen
+  canOpen,
+  verseReference,
+  bsbVerseText
 }: {
   phrase: string
   note: string
   canOpen?: () => boolean
+  // Present only when the caller threads a chapter reference through (see
+  // FootnoteVerseText's `chapterReference` prop) — the cross-version panel's
+  // second door renders only then, since without it there is no reference to
+  // fetch KJV/NET by.
+  verseReference?: string
+  bsbVerseText?: string
 }): React.ReactElement {
   const [open, setOpen] = useState(false)
   // Read at OPEN time rather than subscribed to: the sheet-vs-popover choice
   // only matters for a popover that is about to exist.
   const [sheet, setSheet] = useState(false)
+  // A second, independent door (docs/proposals/cross-version-renderings.md
+  // §7.1) — NOT a third state of `open`/`sheet` above, which belong to rung 1
+  // and stay exactly as they shipped.
+  const [compareOpen, setCompareOpen] = useState(false)
   const doorRef = useRef<HTMLSpanElement>(null)
   const cardRef = useRef<HTMLElement | null>(null)
 
@@ -157,6 +170,7 @@ function Door({
           }}
         >
           <NoteCard text={note} />
+          {verseReference && <CompareTrigger onOpen={() => setCompareOpen(true)} />}
         </span>
       )}
       {open &&
@@ -178,11 +192,40 @@ function Door({
               onClick={e => e.stopPropagation()}
             >
               <NoteCard text={note} />
+              {verseReference && <CompareTrigger onOpen={() => setCompareOpen(true)} />}
             </div>
           </>,
           document.body
         )}
+      {compareOpen && verseReference && (
+        <CrossVersionPanel
+          reference={verseReference}
+          bsbText={bsbVerseText ?? phrase}
+          note={note}
+          onClose={() => setCompareOpen(false)}
+        />
+      )}
     </span>
+  )
+}
+
+// The second door itself — a plain button, deliberately distinct from the
+// dotted-underline mark rung 1 owns (N1/N2:
+// docs/proposals/cross-version-renderings.md §5.2). It only ever appears
+// inside rung 1's ALREADY-OPEN popover/sheet (§5.1's placement decision), never
+// on the resting verse.
+function CompareTrigger({ onOpen }: { onOpen: () => void }): React.ReactElement {
+  return (
+    <button
+      type="button"
+      className="footnote-compare-btn"
+      onClick={e => {
+        e.stopPropagation()
+        onOpen()
+      }}
+    >
+      This verse in three translations
+    </button>
   )
 }
 
@@ -197,15 +240,22 @@ function Door({
  * @param doors false while a verse selection is live. The underline is REMOVED
  *              for the duration, not left inert (§10a.3).
  * @param canOpen the page's tap guard, so a drag never opens a note.
+ * @param chapterReference the chapter's reference (e.g. "John 1"), so a door
+ *              can build this verse's full reference for the cross-version
+ *              panel (docs/proposals/cross-version-renderings.md). Optional:
+ *              a caller that doesn't pass it simply gets no second door — the
+ *              underline and note are unaffected either way.
  */
 export default function FootnoteVerseText({
   verse,
   doors = true,
-  canOpen
+  canOpen,
+  chapterReference
 }: {
   verse: BibleVerse
   doors?: boolean
   canOpen?: () => boolean
+  chapterReference?: string
 }): React.ReactElement {
   const text = verse.text
   const notes = verse.notes
@@ -213,6 +263,7 @@ export default function FootnoteVerseText({
 
   if (!doors || spans.length === 0) return <span className="verse-text">{text}</span>
 
+  const verseReference = chapterReference ? `${chapterReference}:${verse.verse}` : undefined
   const parts: React.ReactNode[] = []
   let at = 0
   for (const span of spans) {
@@ -223,6 +274,8 @@ export default function FootnoteVerseText({
         phrase={text.slice(span.start, span.end)}
         note={span.note.text}
         canOpen={canOpen}
+        verseReference={verseReference}
+        bsbVerseText={text}
       />
     )
     at = span.end

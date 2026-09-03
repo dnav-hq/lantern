@@ -2164,6 +2164,144 @@ body.dark .footnote-sheet {
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
 }
 
+/* The second door: opens only from rung 1's already-open note (see
+   CompareTrigger in FootnoteDoor.tsx). A plain text button, deliberately
+   distinct from the dotted underline rung 1 owns — this is a new
+   affordance, not a repaint of the mark that already means "translators'
+   note". */
+.footnote-compare-btn {
+  display: block;
+  margin-top: 9px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 0.84em;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
+}
+.footnote-compare-btn:hover {
+  text-decoration: underline;
+}
+
+/* ─── The cross-version panel ─────────────────────────────────────────────────
+   docs/proposals/cross-version-renderings.md §5. The whole verse, in BSB, KJV
+   and NET, plain text, nothing said comparing them. Always a portalled sheet
+   (not a popover) at every width — the brief's §9.1 leaves that call open,
+   and a sheet is the one shape that is already proven safe on 390px
+   (footnote-sheet above) and dismisses the same way. */
+.cross-version-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 980;
+  background: rgba(20, 16, 8, 0.28);
+}
+.cross-version-sheet {
+  position: fixed;
+  z-index: 990;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 420px;
+  max-height: min(560px, 84vh);
+  overflow-y: auto;
+  padding: 16px 20px calc(22px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 24px -10px rgba(20, 16, 8, 0.3);
+  color: var(--text);
+}
+@media (min-width: 560px) {
+  .cross-version-sheet {
+    top: 50%;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+    max-height: min(560px, 80vh);
+    border-radius: 16px;
+    box-shadow:
+      0 6px 16px -4px rgba(20, 16, 8, 0.16),
+      0 18px 36px -12px rgba(20, 16, 8, 0.2);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cross-version-sheet {
+    animation: sheetUp var(--dur-3) var(--ease-out);
+  }
+}
+.cross-version-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.cross-version-sub {
+  margin: 0 0 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+.cross-version-column {
+  padding: 12px 0;
+  border-top: 0.5px solid var(--border);
+}
+.cross-version-column:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.cross-version-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.cross-version-verse {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+}
+/* The one honest extra (§5.1.3) — a fact the reader can check, never a
+   computed correspondence. Deliberately quiet: a background tint, not a
+   colour that would compete with the reader's own four note categories. */
+.cross-version-match {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: inherit;
+  border-radius: 3px;
+}
+.cross-version-match-caption {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-faint);
+}
+.cross-version-fine {
+  margin: 6px 0 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+.cross-version-close {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px;
+  border: 0.5px solid var(--border);
+  border-radius: 9px;
+  background: none;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+body.dark .cross-version-sheet {
+  background: var(--surface-2);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+}
+
 /* Study actions */
 .study-actions {
   padding: 14px 32px;

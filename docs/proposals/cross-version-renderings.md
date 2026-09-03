@@ -25,6 +25,17 @@ footnotes door (`docs/proposals/footnotes-door.md`, slice 1 + 2 shipped
 on real data — the committed bundles and the live helloao API, on 2026-09-02.
 §10 says how to re-run each one. Anything not measured is labelled **unverified**.
 
+**Build status, 2026-09-03: `CrossVersionPanel.tsx`, `verbatimMatch.ts` and the
+`FootnoteDoor.tsx` trigger are built** (verse-level, N1-N8 respected as
+specified, the §5.1.3 verbatim mark included). Two things are parked rather than
+finished — see `docs/BACKLOG.md`'s entry and this task's escalation for the full
+findings: (1) the door needs a chapter reference threaded from `ReadingMode.tsx`/
+`BookDetailPage.tsx`, neither in the building task's scope, so it is not yet
+opened from either reading surface; (2) the panel is shipped as its own portalled
+sheet at every width (a real answer to §9.1, not yet reviewed by Dennis), because
+building both a popover AND a sheet variant without being able to visually verify
+either was not a good use of the same constrained pass.
+
 ---
 
 ## 1. The stance
