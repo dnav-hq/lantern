@@ -20,23 +20,50 @@ import {
   type MapPlace
 } from './mapData'
 
-// A real record from the bundle this repo ships — `Ai 1`, the worked example the
-// brief (sections 2.2, 3.3) reasons from. Four competing identifications scoring
-// 522 / 75 / 28 / 9, with confidence in Et Tell FALLING and confidence in
-// Khirbet el Maqatir RISING. It is here so the "we do not know" path is tested
-// against a place that really is disputed, not a fixture invented to pass.
+// The `Ai 1` record VERBATIM out of public/map/places.json.gz as this branch
+// builds it — the worked example the brief (sections 2.2, 3.3) reasons from. Five
+// competing locations scoring 522 / 75 / 28 / 9 / 9, with confidence in Et Tell
+// FALLING (-4.08) and confidence in Khirbet el Maqatir RISING (+1.85). It is
+// pasted rather than invented so the "we do not know" path is tested against a
+// place that really is disputed. (The brief's illustration shows four candidates
+// and precision 250 m; the data has five and 50 m — corrected in the brief.)
 const AI: MapPlace = {
   n: 'Ai 1',
   t: 'settlement',
   sl: 'a7e13e1/ai-1',
   c: [
-    { ll: [35.2611, 31.9169], s: 522, m: 'Et Tell', p: 250, tr: -4.08 },
-    { ll: [35.2496, 31.9148], s: 75, m: 'Khirbet el Maqatir', p: 250, tr: 1.85 },
-    { ll: [35.2286, 31.8975], s: 28, m: 'Khirbet Nisieh', p: 250 },
-    { ll: [35.2704, 31.9052], s: 9, m: 'Khirbet Haiyan', p: 250 }
+    { ll: [35.2611, 31.9169], s: 522, m: 'Et Tell', p: 50, tr: -4.08, cs: ['wikidata', 'Q403166'] },
+    {
+      ll: [35.2496, 31.9148],
+      s: 75,
+      m: 'Khirbet el Maqatir',
+      p: 50,
+      tr: 1.85,
+      cs: ['daahl', '353106715']
+    },
+    { ll: [35.2286, 31.8975], s: 28, m: 'Khirbet Nisieh', p: 50, tr: -0.7, cs: ['iaa', '9372'] },
+    { ll: [35.2704, 31.9052], s: 9, m: 'Khirbet Haiyan', p: 50, tr: 0.24, cs: ['iaa', '9417'] },
+    {
+      ll: [35.2464, 31.9125],
+      s: 9,
+      m: 'Khirbet Ibn Baraq',
+      p: 150,
+      tr: 0.24,
+      cs: ['daahl', '353103287']
+    }
   ],
   vc: 42,
-  tg: { confidence_yes: 5, confidence_likely: 10, confidence_possible: 9 }
+  tg: {
+    authority_traditional: 1,
+    authority_usually: 12,
+    confidence_likely: 10,
+    confidence_mostlikely: 1,
+    confidence_possible: 9,
+    confidence_unlikely: 2,
+    confidence_yes: 5,
+    identified_been: 1,
+    unknown: 2
+  }
 }
 
 describe('index keys', () => {
@@ -237,8 +264,10 @@ describe('lazy loading', () => {
   it('does not memoize a failure', async () => {
     resetMapBundles()
     const fetchImpl = vi.fn(async () => new Response('nope', { status: 500 }))
+    // The code IS the message (src/errors.ts) — the URL and status stay on the
+    // device in the private detail, where telemetry cannot reach them.
     await expect(loadMapPlaces(fetchImpl as unknown as typeof fetch)).rejects.toThrow(
-      /map bundle fetch failed: 500/
+      'MAP_BUNDLE_FETCH_FAILED'
     )
     await expect(loadMapPlaces(fetchImpl as unknown as typeof fetch)).rejects.toThrow()
     expect(fetchImpl).toHaveBeenCalledTimes(2)

@@ -214,6 +214,20 @@ nothing real).
 }
 ```
 
+**Corrections from the build, 2026-09-03** (the ETL in `scripts/build-map-data.mjs`
+is the as-built truth; this section was written from a reading pass, not a build):
+
+- `lonlat` is a **string**, `"36.305000,33.513542"`, not an array. The ETL splits it.
+- the vote tally lives at `identifications[].votes.tags`, not flat on `votes`.
+- `precision.meters` is present on **1,441 of 1,596** modern records, so `p` is
+  optional in the output rather than always there.
+- the `Ai 1` record above is real but abridged: it has **five** candidate
+  locations (a fifth, `Khirbet Ibn Baraq`, also scoring 9) and its precision is
+  **50 m**, not 250 m. The scores 522 / 75 / 28 / 9 are exact.
+- two fields were ADDED to each candidate on the strength of §3.3 and §3.4,
+  which ask for both: `tr` (`score.time_slope`, the confidence trend) and `cs`
+  (`coordinates_source` as `[type, id]`, the coordinate's own citation).
+
 `s` is OpenBible's `score.time_total`: an integer out of 1000 representing
 current scholarly confidence (§3.1). `p` is `precision.meters` from
 `modern.jsonl` — OpenBible's own estimate of how close the point is to the real
@@ -232,6 +246,12 @@ Built for real and gzipped at level 9 (script in §10.2, run 2026-08-30):
 | Minimal — top candidate only + chapter index | 136.7 KB | **35.0 KB** |
 | Full — all candidates + vote tallies + chapter index | 415.3 KB | **83.9 KB** |
 | **Full + verse-level index (recommended)** | 521.8 KB | **109.8 KB** |
+
+**As built, 2026-09-03:** the shipped `public/map/places.json.gz` is
+**142.0 KB gzipped** (645.8 KB raw). The gap to the 109.8 KB above is the two
+added candidate fields: dropping `cs` gives 126.3 KB and dropping both `cs` and
+`tr` gives 116.5 KB, i.e. the confidence trend and the per-coordinate citation
+cost **25.5 KB** between them. Both are load-bearing for §3, so both stay.
 
 **Ship the full variant with the verse index: 110 KB gzipped.** For scale, the
 already-shipped `public/bible/bsb.json.gz` is **1,273,758 bytes (1.21 MB)**
@@ -324,13 +344,18 @@ This is the number that decides whether confidence is a feature or a footnote:
 
 | Measure | Places | Share |
 |---|---:|---:|
-| **Best identification scores 1000** (no dispute at all) | 417 | 31% |
-| Best identification scores 750–999 | 176 | 13% |
+| **Best identification scores 1000** (no dispute at all) | 426 | 32% |
+| Best identification scores 750–999 | 167 | 12% |
 | Best identification scores 500–749 | 268 | 20% |
-| **Best identification scores below 500** — below OpenBible's own high-confidence bar | **470** | **35%** |
+| **Best identification scores below 500** — below OpenBible's own high-confidence bar | **474** | **35%** |
 | Places with **more than one** candidate location on record | **774** | **58%** |
 | Places with ≥2 candidates *each* scoring ≥250 (genuinely contested) | 237 | 18% |
 | Places with no candidate at all | 7 | 0.5% |
+
+(Bucket counts corrected 2026-09-03 from the build itself, which scores a place
+by the best identification that actually yields a coordinate; the original pass
+counted every identification. The totals move by single digits and every share is
+unchanged. 774 / 237 / 7 all reproduce exactly.)
 
 **More than half the places in the Bible have more than one proposed location,
 and a third have no confident identification at all.** A map that renders every
@@ -362,6 +387,12 @@ Four rules, all derivable from the data above:
 **The readme documents a `sources` array inside each identification's `votes`
 object: "an array containing all the books that contributed to this place's
 score."** It is empty in every published record.
+
+**Re-verified 2026-09-03 by the build, and it still holds** — in fact `sources`
+is not merely empty but absent: the only key any `votes` object carries is
+`tags`. The ETL counts non-empty `votes.sources` on every run and prints a loud
+line if that day ever comes, so the bundle can start citing books only when the
+data can back it.
 
 Measured, 2026-08-30 (script in §10.3): of **3,259 identifications**, 2,842
 carry a `votes` object, and **0 have a non-empty `votes.sources`**. The
@@ -466,22 +497,51 @@ clipped to the recommended extent, projected, Douglas-Peucker simplified,
 
 A finer coastline (Douglas-Peucker ε 0.00015 rather than 0.0004) yields 8,496
 vertices and **45.9 KB gzipped** — still small. **Ship the finer coastline and
-the coarser inland layers: ≈60 KB gzipped of base artwork.** The coastline is
+the coarser inland layers: ≈60 KB gzipped of base artwork.**
+
+**As built, 2026-09-03** (`scripts/build-map-data.mjs`, ε expressed in view-box
+units — 0.18 for the coastline, 0.48 inland — over the same Natural Earth files,
+pinned at `ca96624`):
+
+| Layer | Paths out | Vertices in → out | Gzipped |
+|---|---:|---:|---:|
+| Coastline | 216 | 410,957 → 8,531 | 44.7 KB |
+| Lakes | 44 | 162,852 → 772 | 4.2 KB |
+| Rivers | 120 | 256,386 → 1,696 | 9.8 KB |
+| **`public/map/base.json.gz`** (all three plus the view box + metadata) | **380** | | **59.0 KB** |
+
+Path counts reproduce the brief exactly and the total lands on the ≈60 KB target. The coastline is
 the silhouette people recognise; rivers and lakes are context.
 
 **Total v1 payload: ≈60 KB artwork + 110 KB data = ~170 KB gzipped**, lazily
 loaded on first map open, cacheable forever (the data is a pinned upstream
 commit; the artwork is derived from a fixed Natural Earth release).
 
-**Topography.** Natural Earth also publishes public-domain shaded-relief and
-bathymetry *rasters* (`NE1`/`NE2`/`SR` series, same terms of use). These would
-add real terrain feeling — the "looks like a Bible-study map" requirement — but
-a raster clipped to the extent is a PNG/WebP of unknown size (`unverified` —
-not measured in this brief) and it does not scale on zoom the way vectors do.
-**Recommendation: v1 ships vectors only.** Terrain is the natural first
-enhancement once the vector map exists, and it is additive — a single image
-layer behind the paths, no architectural change. Deciding it now would be
-guessing; deciding it after the map exists costs nothing.
+**Topography — MEASURED 2026-09-03, no longer `unverified`.** Natural Earth also
+publishes public-domain shaded-relief and bathymetry *rasters* (`NE1`/`NE2`/`SR`
+series, same terms of use). §9a decision 2 put terrain into v1 as an opt-in layer
+and required the size to be measured first. It has been. Both candidates were
+clipped to the extent, warped into the same Lambert Conformal Conic frame as the
+vectors (an equirectangular crop would NOT line up with a conic projection) and
+encoded as PNG at deflate level 9:
+
+| Source | 1200 px | 1600 px | 2000 px | 2400 px |
+|---|---:|---:|---:|---:|
+| `SR_50M` — grayscale shaded relief | 384 KB | **685 KB** | 922 KB | 1,169 KB |
+| `NE1_50M_SR_W` — full-colour relief | 1,497 KB | 2,551 KB | 3,196 KB | 3,691 KB |
+
+**Shipped: `SR_50M` grayscale at 1600×916, 685 KB** (`public/map/terrain.png`).
+Grayscale is not merely 4× smaller than colour, it is the right layer: colour
+belongs to the app's own themes, and a grey hillshade sits under hand-drawn ink
+without fighting it. The build refuses to write anything over 1.5 MB and falls
+back to vectors only, so the size cannot quietly grow past the budget on a later
+rebuild. It is a separate file, fetched only when the layer is switched on, and
+excluded from the service-worker precache — the default payload is unchanged at
+places + artwork.
+
+The 10 m raster series (`NE1_HR_LC_SR_W`, a 323 MB download) was not built: the
+50 m series is 30 px/degree, which at this extent already exceeds the display
+density the vectors are simplified for.
 
 **Honest limitation, and it must be stated in-product.** Natural Earth is
 *modern* geography. The Dead Sea's modern outline is not its Iron Age outline;
@@ -505,6 +565,9 @@ all 4,806 candidate points (measured, §10.5):
 | Levant + Sinai + S. Syria | 31 → 39, 27.5 → 36.5 | 4,365 (**90.8%**) |
 | Near East, Nile → Tigris | 28 → 50, 25 → 42 | 4,646 (**96.7%**) |
 | **Bible world, Rome → Persia** | **10 → 60, 20 → 45** | **4,741 (98.6%)** |
+
+**Re-measured 2026-09-03 by the build: 4,741 of 4,806 coordinates (98.6%) fall
+inside 10→60 / 20→45 — the table above reproduces exactly.**
 
 Full data bounds are lon −6.94 → 102.00, lat −20.16 → 44.94 — the western
 extreme is `Tarshish 2` (Spain), the eastern is `Uphaz`. **Recommendation: one
@@ -868,6 +931,23 @@ alone (§4.4); the build-effort bands in §7.
 
 Everything else in this brief stands: SVG with pre-projected paths, no map
 library, confidence as a required feature, and the timeline out on evidence.
+
+### Slice 1, as built (2026-09-03) — data and artwork, nothing renders
+
+- `scripts/build-map-data.mjs` (`npm run build:map-data`) is the ETL, pinned to
+  OpenBible `7eb18a5` and natural-earth-vector `ca96624`. Source data is not
+  committed; the derived bundles are. It re-measures every number this brief
+  claims on each run and prints them.
+- `src/utils/mapData.ts` holds the projection, the simplifier, the index keys,
+  the confidence bands and the lazy gzip-sniffing loader. The build script
+  imports it through tsx, so the artwork is projected by the SAME code that will
+  project the place points in the client — those two cannot drift.
+- `public/map/places.json.gz` (142.0 KB), `public/map/base.json.gz` (59.0 KB),
+  `public/map/terrain.png` (685 KB, opt-in). All three are excluded from the
+  service-worker precache by `**/map/**` in `vite.config.ts` — the terrain layer
+  is a `.png`, which the precache glob otherwise matches.
+- No new dependency. No UI, no route, no component, no timeline slider and no
+  place-filtering slider.
 
 ---
 ## 9. Open questions for a human

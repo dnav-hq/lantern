@@ -13,6 +13,7 @@
 //
 // Nothing below may import a Node API — this file lives under src/ and obeys the
 // pure-web rule in CLAUDE.md.
+import { CodedError } from '../errors'
 
 /** `BBCCC` — zero-padded book (1–66) and chapter. OpenBible's own `sort[:5]`. */
 export type ChapterKey = string
@@ -313,7 +314,9 @@ const BASE_URL = '/map/base.json.gz'
 // dev and broken in production.
 async function fetchGzJson<T>(url: string, fetchImpl: typeof fetch): Promise<T> {
   const res = await fetchImpl(url)
-  if (!res.ok) throw new Error(`map bundle fetch failed: ${res.status} ${res.statusText}`)
+  if (!res.ok) {
+    throw new CodedError('MAP_BUNDLE_FETCH_FAILED', `${url} ${res.status} ${res.statusText}`)
+  }
   const bytes = new Uint8Array(await res.arrayBuffer())
   const isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b
   const json = isGzip
