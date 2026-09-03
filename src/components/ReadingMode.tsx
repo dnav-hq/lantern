@@ -4,7 +4,6 @@ import { parseNoteLine } from '../utils/noteParser'
 import { useApi } from '../api/context'
 import { getBibleVerse } from '../bible/service'
 import { useReadingTranslation } from '../utils/useTranslation'
-import InlineTagInput from './InlineTagInput'
 import RichEditInput from './RichEditInput'
 import InlineDeleteConfirm from './InlineDeleteConfirm'
 import CrossRefPill from './CrossRefPill'
@@ -153,6 +152,11 @@ export default function ReadingMode({
   const [highlightedNoteIds, setHighlightedNoteIds] = useState<Set<string>>(new Set())
   const [highlightedVerses, setHighlightedVerses] = useState<Set<number>>(new Set())
   const [inlineVerse, setInlineVerse] = useState<number | null>(null)
+  // Remount key for the create editor — see BookDetailPage's `inlineEpoch`.
+  // RichEditInput seeds from `initialValue` once and then owns its caret, so an
+  // external re-aim of the anchor is applied by re-seeding it, never by pushing
+  // a new value at a mounted editor.
+  const [inlineEpoch, setInlineEpoch] = useState(0)
   const [inlineText, setInlineText] = useState('')
   const [savingInline, setSavingInline] = useState(false)
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
@@ -336,6 +340,7 @@ export default function ReadingMode({
     if (selRange === null) return
     setInlineVerse(selRange[0])
     setInlineText(selVerseTag)
+    setInlineEpoch(e => e + 1)
     clearSelection()
   }
 
@@ -351,6 +356,7 @@ export default function ReadingMode({
   const handleAddInline = (verseNum: number): void => {
     setInlineVerse(verseNum)
     setInlineText(`v${verseNum} `)
+    setInlineEpoch(e => e + 1)
     setEditingNoteId(null)
   }
 
@@ -841,17 +847,18 @@ export default function ReadingMode({
                             setInlineText('')
                           }}
                         >
-                          <InlineTagInput
-                            value={inlineText}
+                          <RichEditInput
+                            key={`inline-${v.verse}-${inlineEpoch}`}
+                            initialValue={inlineText}
                             onChange={setInlineText}
-                            onEnter={handleInlineSave}
-                            onEscape={() => {
+                            onSave={() => void handleInlineSave()}
+                            onCancel={() => {
                               setInlineVerse(null)
                               setInlineText('')
                             }}
                             className="inline-note-input"
                             placeholder={`v${v.verse} type a note…`}
-                            autoFocus
+                            ariaLabel={`Note on verse ${v.verse}`}
                           />
                         </QuickEditCard>
                       </div>

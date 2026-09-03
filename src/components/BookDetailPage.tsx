@@ -9,7 +9,6 @@ import { chapterNoteCategories } from '../utils/chapterNoteMarks'
 import type { TranslationId } from '../bible/provider'
 import { useReadingTranslation } from '../utils/useTranslation'
 import { useIsGuest } from '../utils/guestContext'
-import InlineTagInput from './InlineTagInput'
 import RichEditInput from './RichEditInput'
 import InlineDeleteConfirm from './InlineDeleteConfirm'
 import CrossRefPill from './CrossRefPill'
@@ -293,6 +292,12 @@ function ChapterView({
   const [highlightedVerses, setHighlightedVerses] = useState<Set<number>>(new Set())
   const [inlineVerse, setInlineVerse] = useState<number | null>(null)
   const [inlineText, setInlineText] = useState('')
+  // Remount key for the create editor, exactly as `editEpoch` is for the edit
+  // one: RichEditInput seeds itself from `initialValue` once and then owns its
+  // DOM (it manages a caret), so an EXTERNAL rewrite of the text — the category
+  // pill writing an "@tag" token — is applied by re-seeding it. Typing never
+  // bumps this, so the caret only ever moves on an action the reader just took.
+  const [inlineEpoch, setInlineEpoch] = useState(0)
   const [savingInline, setSavingInline] = useState(false)
   // Desktop highlight picker open state. Mobile's lives in MobileSelectionBar.
   const [highlightPicking, setHighlightPicking] = useState(false)
@@ -750,6 +755,9 @@ function ChapterView({
     if (selRange === null) return
     setInlineVerse(selRange[0])
     setInlineText(selVerseTag)
+    // Re-seed, in case the composer is already open on this same verse — the
+    // editor owns its DOM, so a fresh anchor only lands through a new key.
+    setInlineEpoch(e => e + 1)
     clearSelection()
   }
 
@@ -1608,7 +1616,10 @@ function ChapterView({
                         inlineParsed.anchorEnd ?? inlineParsed.anchorStart ?? v.verse
                       )}
                       category={inlineParsed.category}
-                      onPickCategory={key => setInlineText(t => withCategoryToken(t, key))}
+                      onPickCategory={key => {
+                        setInlineText(t => withCategoryToken(t, key))
+                        setInlineEpoch(e => e + 1)
+                      }}
                       saveDisabled={!inlineText.trim() || savingInline}
                       onSave={() => void handleInlineSave()}
                       onCancel={() => {
@@ -1616,17 +1627,18 @@ function ChapterView({
                         setInlineText('')
                       }}
                     >
-                      <InlineTagInput
-                        value={inlineText}
+                      <RichEditInput
+                        key={`inline-${v.verse}-${inlineEpoch}`}
+                        initialValue={inlineText}
                         onChange={setInlineText}
-                        onEnter={handleInlineSave}
-                        onEscape={() => {
+                        onSave={() => void handleInlineSave()}
+                        onCancel={() => {
                           setInlineVerse(null)
                           setInlineText('')
                         }}
                         className="inline-note-input"
                         placeholder={`v${v.verse} type a note…`}
-                        autoFocus
+                        ariaLabel={`Note on verse ${v.verse}`}
                       />
                     </QuickEditCard>
                   </div>

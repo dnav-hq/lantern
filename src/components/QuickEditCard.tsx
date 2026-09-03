@@ -42,9 +42,13 @@ interface QuickEditCardProps {
 //
 // What stays desktop is deliberately desktop: this card is INLINE in the
 // reading column (never a keyboard-aware sheet — no useKeyboardCompose here),
-// the writing model is free-form (whichever input the caller passes —
-// InlineTagInput for create, RichEditInput for edit — with "@category" and
-// "v4" parsed out of the prose by noteParser), and Escape still cancels.
+// the writing model is free-form ("@category" and "v4" parsed out of the prose
+// by noteParser), and Escape still cancels.
+//
+// Both modes now pass the SAME editor as `children` — RichEditInput. Create
+// used to pass a form control (InlineTagInput), which is why "v2-5" stayed
+// plain text while you typed it and a long note scrolled sideways instead of
+// wrapping. The mode prop is copy, not a different writing surface.
 export default function QuickEditCard({
   reference,
   category,
