@@ -4,10 +4,11 @@ import {
   compareNotes,
   groupByBook,
   noteReference,
+  resolveExportCategories,
   safeFilename,
   serializeBookMarkdown
 } from './export'
-import type { NoteWithPassageInfo } from '../types'
+import type { NoteCategoryDef, NoteWithPassageInfo } from '../types'
 
 // Export is a trust precondition, not a feature: the durable anger in this
 // category is about custody, not functionality. So these tests are mostly about
@@ -149,6 +150,64 @@ describe('serializeBookMarkdown', () => {
     expect(md).toContain('first line')
     expect(md).toContain('second line')
   })
+
+  it('exports under the current label, not the internal key', () => {
+    const md = serializeBookMarkdown(
+      'Romans',
+      [note({ category: 'observation', content: 'x' })],
+      [{ key: 'observation', label: 'Christ in the OT', color: 'indigo', sort_order: 0 }]
+    )
+    expect(md).toContain('Christ in the OT')
+    expect(md).not.toContain('observation')
+  })
+
+  it('exports a custom category under its own label', () => {
+    const md = serializeBookMarkdown(
+      'Romans',
+      [note({ category: 'typology', content: 'x' })],
+      [{ key: 'typology', label: 'Typology', color: 'teal', sort_order: 4 }]
+    )
+    expect(md).toContain('Typology')
+  })
+
+  it('falls back to the raw key for a category with no definition at all', () => {
+    const md = serializeBookMarkdown('Romans', [note({ category: 'ghost', content: 'x' })], [])
+    expect(md).toContain('ghost')
+  })
+})
+
+describe('resolveExportCategories', () => {
+  it('resolves a renamed built-in to its new label', () => {
+    const resolved = resolveExportCategories([
+      { key: 'observation', label: 'Christ in the OT', color: 'indigo', sort_order: 0 }
+    ])
+    expect(resolved.find(c => c.key === 'observation')?.label).toBe('Christ in the OT')
+  })
+
+  it('keeps the other three built-ins at their defaults', () => {
+    const resolved = resolveExportCategories([
+      { key: 'observation', label: 'Renamed', color: 'indigo', sort_order: 0 }
+    ])
+    expect(resolved.map(c => c.key).sort()).toEqual([
+      'application',
+      'historical',
+      'observation',
+      'personal'
+    ])
+  })
+
+  it('carries a custom category through, unlike resolveCategories', () => {
+    const stored: NoteCategoryDef[] = [
+      { key: 'typology', label: 'Typology', color: 'teal', sort_order: 4 }
+    ]
+    const resolved = resolveExportCategories(stored)
+    expect(resolved.find(c => c.key === 'typology')).toEqual({
+      key: 'typology',
+      label: 'Typology',
+      color: 'teal',
+      sort_order: 4
+    })
+  })
 })
 
 describe('buildExportFiles', () => {
@@ -192,5 +251,13 @@ describe('buildExportFiles', () => {
     const files = buildExportFiles([])
     expect(Object.keys(files)).toEqual(['notes.json'])
     expect(JSON.parse(files['notes.json']).note_count).toBe(0)
+  })
+
+  it('resolves a category colour to its light hex, not the slot id — a file has no themes', () => {
+    const files = buildExportFiles(notes, [
+      { key: 'observation', label: 'Observation', color: 'indigo', sort_order: 0 }
+    ])
+    const json = JSON.parse(files['notes.json'])
+    expect(json.categories[0].color).toBe('#6b62d6')
   })
 })

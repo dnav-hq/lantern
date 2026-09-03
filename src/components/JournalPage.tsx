@@ -7,6 +7,7 @@ import {
   ALL,
   applyJournalFilters,
   booksPresent,
+  categoriesPresent,
   emptyResultMessage,
   type KindFilter
 } from '../utils/journalFilters'
@@ -23,11 +24,21 @@ interface JournalPageProps {
 type ViewMode = 'notes' | 'chapters'
 type CategoryFilter = NoteCategory | 'all'
 
-// Labels come from the reader's own naming; only "All notes" is ours.
-function categoryOptions(defs: NoteCategoryDef[]): Array<{ id: CategoryFilter; label: string }> {
+// Labels come from the reader's own naming; only "All notes" is ours. `keys`
+// is DERIVED from the notes actually present (categoriesPresent), not from the
+// active definitions list, so a category that has since been archived or
+// deleted entirely still offers itself as a filter for the notes that still
+// carry it. `defs` supplies the current label for a key it still knows about;
+// a key it no longer recognises falls back to itself, the same honest
+// fallback the rest of the app uses (see noteCategories.ts `labelFor`).
+function categoryOptions(
+  keys: string[],
+  defs: NoteCategoryDef[]
+): Array<{ id: CategoryFilter; label: string }> {
+  const labelByKey = new Map(defs.map(d => [d.key, d.label]))
   return [
     { id: 'all' as CategoryFilter, label: 'All notes' },
-    ...defs.map(d => ({ id: d.key as CategoryFilter, label: d.label }))
+    ...keys.map(key => ({ id: key as CategoryFilter, label: labelByKey.get(key) ?? key }))
   ]
 }
 
@@ -188,9 +199,10 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
   const [filter, setFilter] = useState<CategoryFilter>('all')
   const [bookFilter, setBookFilter] = useState<number | typeof ALL>(ALL)
   const [kindFilter, setKindFilter] = useState<KindFilter>(ALL)
-  // The reader's own names for the four kinds (Settings > Note categories).
+  // The reader's own names for whatever categories are active (Settings >
+  // Note categories) — the filter itself is derived from notes below, since a
+  // category that is archived or gone entirely must still be offered here.
   const categoryDefs = useNoteCategories()
-  const CATEGORY_OPTIONS = useMemo(() => categoryOptions(categoryDefs), [categoryDefs])
   const [filterOpen, setFilterOpen] = useState(false)
   const [bookOpen, setBookOpen] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -237,6 +249,23 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
   }, [filterOpen, bookOpen])
 
   const entries = useMemo(() => buildEntries(notes), [notes])
+
+  // DERIVED from the notes actually present, not hardcoded and not just the
+  // active definitions list — the built-ins already worked this way; this
+  // extends it to a reader's own categories and to one that has since been
+  // archived or deleted, so its notes are still reachable through the filter
+  // that names them.
+  const CATEGORY_OPTIONS = useMemo(
+    () =>
+      categoryOptions(
+        categoriesPresent(
+          entries,
+          categoryDefs.map(d => d.key)
+        ),
+        categoryDefs
+      ),
+    [entries, categoryDefs]
+  )
 
   // Filters compose: book at the entry level, category at the note level, then
   // any chapter left with nothing drops out. Logic lives in journalFilters.ts

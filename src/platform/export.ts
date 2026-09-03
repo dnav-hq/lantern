@@ -30,8 +30,36 @@ import { zipSync, strToU8 } from 'fflate'
 import type { BereanApi } from '../api/types'
 import type { NoteCategoryDef, NoteWithPassageInfo } from '../types'
 import { bookByNumber } from '../utils/bibleBooks'
-import { paletteHex, resolveCategories } from '../utils/noteCategories'
+import { BUILT_IN_CATEGORIES, isPaletteSlot, paletteHex } from '../utils/noteCategories'
 import { isHighlight } from '../utils/noteKind'
+
+/**
+ * Every category a note might carry, resolved to its current label and slot
+ * id — including a reader's own categories, which `resolveCategories`
+ * (still scoped to slice A's four built-ins until slice B ships) drops.
+ * Export is the one surface that must already survive a key outside the
+ * built-in four, so it resolves overrides itself rather than waiting on that
+ * rewrite. A stored row with no label at all is skipped, matching
+ * `resolveCategories`' own refusal to render an unnameable category.
+ */
+export function resolveExportCategories(stored: NoteCategoryDef[]): NoteCategoryDef[] {
+  const overrides = new Map(stored.map(d => [d.key, d]))
+  const builtIns = BUILT_IN_CATEGORIES.map(builtIn => {
+    const override = overrides.get(builtIn.key)
+    if (!override) return builtIn
+    return {
+      key: builtIn.key,
+      label: override.label.trim() || builtIn.label,
+      color: isPaletteSlot(override.color) ? override.color : builtIn.color,
+      sort_order: override.sort_order
+    }
+  })
+  const builtInKeys = new Set(BUILT_IN_CATEGORIES.map(b => b.key))
+  const custom = stored.filter(d => !builtInKeys.has(d.key) && d.label.trim())
+  return [...builtIns, ...custom].sort(
+    (a, b) => a.sort_order - b.sort_order || a.key.localeCompare(b.key)
+  )
+}
 
 // Make a string safe for use as a filename on macOS, Windows, and Linux.
 export function safeFilename(s: string): string {
@@ -76,9 +104,18 @@ export function compareNotes(a: NoteWithPassageInfo, b: NoteWithPassageInfo): nu
  * ten years from now and understand it without documentation. Sub-notes keep
  * their nesting as list indentation, since that nesting is meaning.
  */
-export function serializeBookMarkdown(bookName: string, notes: NoteWithPassageInfo[]): string {
+export function serializeBookMarkdown(
+  bookName: string,
+  notes: NoteWithPassageInfo[],
+  categories: NoteCategoryDef[] = []
+): string {
   const ordered = [...notes].sort(compareNotes)
   const lines: string[] = [`# ${bookName}`, '']
+  // Resolved LABEL, not the internal key — a renamed or custom category must
+  // export under the name the reader sees today, not the word it happens to
+  // be stored as. A key with no definition at all (deleted outright) falls
+  // back to itself rather than being dropped.
+  const labelByKey = new Map(categories.map(c => [c.key, c.label]))
 
   let lastChapter: number | null = null
   for (const note of ordered) {
@@ -90,7 +127,8 @@ export function serializeBookMarkdown(bookName: string, notes: NoteWithPassageIn
     // Metadata a reader would actually want back: where it was anchored, which
     // category it was filed under (the axis people index on), and when it was
     // written. Category is omitted rather than shown as "null" when unset.
-    const meta = [noteReference(note), note.category, note.created_at.slice(0, 10)]
+    const categoryLabel = note.category ? (labelByKey.get(note.category) ?? note.category) : null
+    const meta = [noteReference(note), categoryLabel, note.created_at.slice(0, 10)]
       .filter(Boolean)
       .join(' · ')
     const indent = '  '.repeat(Math.max(0, note.indent_level))
@@ -142,7 +180,11 @@ export function buildExportFiles(
 ): Record<string, string> {
   const files: Record<string, string> = {}
   for (const { bookName, notes: bookNotes } of groupByBook(notes)) {
-    files[`notes/${safeFilename(bookName)}.md`] = serializeBookMarkdown(bookName, bookNotes)
+    files[`notes/${safeFilename(bookName)}.md`] = serializeBookMarkdown(
+      bookName,
+      bookNotes,
+      categories
+    )
   }
   // Every field verbatim, sorted the same way, so the JSON and the Markdown
   // describe the same thing in the same order.
@@ -185,7 +227,7 @@ export async function exportAllNotesAsZip(api: BereanApi): Promise<ExportResult>
   // are the thing being rescued, and the keys in them are still readable.
   let categories: NoteCategoryDef[] = []
   try {
-    categories = resolveCategories(await api.getNoteCategories())
+    categories = resolveExportCategories(await api.getNoteCategories())
   } catch {
     // Fall through with none.
   }
