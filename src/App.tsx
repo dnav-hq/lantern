@@ -7,6 +7,7 @@ import BookDetailPage from './components/BookDetailPage'
 import JournalPage from './components/JournalPage'
 import ProfilePage from './components/ProfilePage'
 import SettingsModal from './components/SettingsModal'
+import MapView from './components/MapView'
 import OfflineIndicator from './components/OfflineIndicator'
 import InstallNudge from './components/InstallNudge'
 import { Passage } from './types'
@@ -58,6 +59,18 @@ function writeFocusReading(value: boolean): void {
     /* ignore */
   }
 }
+
+// ─── TEMPORARY MAP ENTRY — slice 2 of docs/proposals/bible-map-v1.md ───────
+// The map has no designed entry point yet (how a verse or a passage opens it is
+// the taste pass, explicitly NOT this slice), so it is reachable only by asking
+// for it in the URL: `?map` or `#map`. It is read once, at mount, and any nav
+// tap leaves it — nothing in the reading path, the nav or the router knows the
+// map exists. DELETE THIS BLOCK, its one `useState` below and the two lines in
+// `doNavigate`/`renderMain` that reference `mapOpen` when the real entry lands.
+export function isMapReviewRequested(loc: { search: string; hash: string }): boolean {
+  return new URLSearchParams(loc.search).has('map') || loc.hash.replace('#', '') === 'map'
+}
+// ──────────────────────────────────────────────────────────────────────────
 
 // The width the reading column and the study workbench BOTH need. Mirrors the
 // `min-width` guard on `.study-toggle` in main.css — below it the toggle is not
@@ -237,6 +250,8 @@ export default function App({
       selectedVerse: null
     }
   })
+  // TEMPORARY: see isMapReviewRequested above. Read once; any nav tap clears it.
+  const [mapOpen, setMapOpen] = useState(() => isMapReviewRequested(window.location))
   // Mobile-only: the dedicated search surface (an overlay). Desktop search is
   // the always-present top-bar input, so this stays false there.
   const [searchOpen, setSearchOpen] = useState(false)
@@ -263,6 +278,7 @@ export default function App({
   }, [refresh])
 
   const doNavigate = (dest: Destination): void => {
+    setMapOpen(false) // TEMPORARY map entry — see isMapReviewRequested.
     setStudyOpen(false)
     setState(prev => ({
       ...prev,
@@ -448,6 +464,10 @@ export default function App({
     .join(' ')
 
   function renderMain(): React.ReactElement {
+    // TEMPORARY map entry — see isMapReviewRequested. First, so it can't be
+    // reached by any ordinary navigation.
+    if (mapOpen) return <MapView />
+
     if (destination === 'journal') {
       // The Journal is a history of NOTES now, not of saved study containers,
       // so an entry is a chapter — opening one is the same jump-to-chapter the

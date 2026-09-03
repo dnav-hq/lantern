@@ -242,6 +242,27 @@ belongs to and why that arc comes when it does.
   The deep-dive entry surface will likely be redesigned from scratch on the
   doorways model rather than reusing the connections prototype.
 
+- **Bible map (deep-dive rung 3) — slice 2, the RENDER, is built (2026-09-03);
+  what is left is the interaction design.** Brief in
+  `docs/proposals/bible-map-v1.md`. Slice 1 landed the data and artwork
+  (`scripts/build-map-data.mjs`, `src/utils/mapData.ts`, the three bundles under
+  `public/map/`). Slice 2 draws them: `src/components/MapView.tsx` renders the
+  coastline, lakes and rivers as inline SVG on the bundle's own viewBox, plots
+  all 1,335 locatable places with the same projection the artwork was built
+  with, shows confidence as geometry (solid disc → hollow ring → dashed ring,
+  plus every rival candidate tied to its winner by a hairline), lists the 7
+  unlocatable places rather than plotting them, and offers the terrain raster as
+  an opt-in Relief view fetched only when selected. `src/utils/mapDataLoader.ts`
+  holds the pure view-model and the greedy highest-confidence-first label
+  decluttering. No map library, no new dependency.
+  **DELIBERATELY NOT BUILT, and the next piece of work:** how the map is reached
+  from a verse or a passage (today it is a temporary `?map` / `#map` entry in
+  `App.tsx`, marked in place and removable in three lines), pan/zoom/gesture
+  feel, tapping a place to open its candidates and its openbible.info page,
+  marker clustering, off-canvas indicators for the ~65 out-of-frame places, and
+  filtering the map to the chapter you are reading. Those are a taste pass with
+  the rendered map in hand, which is what slice 2 exists to make possible.
+
 - **Footnotes door (deep-dive rung 1) — the reading surface is BUILT
   (2026-09-01); what is left is a thumb on a real phone.** Design + data brief in
   `docs/proposals/footnotes-door.md`, visual reference in
