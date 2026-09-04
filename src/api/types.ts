@@ -9,9 +9,9 @@ import type {
   CreatePassageInput,
   CreateNoteInput,
   UpdateNoteInput,
-  DeleteNoteResult,
-  NoteCategoryDef
+  DeleteNoteResult
 } from '../types'
+import type { StoredCategoryDef } from '../utils/noteCategories'
 import type { ThemeId } from '../utils/useTheme'
 import type { TranslationId } from '../bible/provider'
 
@@ -107,12 +107,19 @@ export interface BereanApi {
    * Category definitions for this workspace. An EMPTY result means "nothing
    * customised", and the caller falls back to the built-in four — see
    * resolveCategories(). It is never an error state.
+   *
+   * Rows carry `archived_at` since migration 0011: a retired category is still
+   * a definition, it just stops being offered. Nothing about a note changes
+   * when one is retired, which is the whole point (docs/proposals/
+   * custom-categories.md §2).
    */
-  getNoteCategories(): Promise<NoteCategoryDef[]>
+  getNoteCategories(): Promise<StoredCategoryDef[]>
   /**
    * Replace the stored definitions wholesale. Callers pass only what differs
    * from the built-ins (changedFromDefaults), so a workspace that resets to
-   * defaults stores nothing at all rather than four redundant rows.
+   * defaults stores nothing at all rather than four redundant rows — with one
+   * exception this slice adds: a RETIRED built-in is stored even when its label
+   * and colour are untouched, because absence means "default, active".
    */
-  saveNoteCategories(defs: NoteCategoryDef[]): Promise<void>
+  saveNoteCategories(defs: StoredCategoryDef[]): Promise<void>
 }

@@ -1,7 +1,7 @@
 # Custom categories — adding and removing your own
 
 Status: **slice A built 2026-09-01; slice B's COLOUR half built 2026-09-02;
-B's create half, C and D not started.** Written
+B's CREATE half and slice C built 2026-09-03; D not started.** Written
 2026-08-31, after the rename slice shipped (`docs/BACKLOG.md`, "User-owned
 categories, slice 1: RENAME"). Rename was free because the KEY never moves.
 Everything left is about keys that move, and that is a different problem
@@ -653,6 +653,46 @@ what stops a category keyed `all`.
 delete confirm, the Retired divider, key-collision-offers-restore. Separable
 from B on purpose: a reader can add categories for a while before they need to
 remove one, and the archive semantics deserve their own review.
+
+**B's CREATE HALF AND C BUILT TOGETHER, 2026-09-03.** They shipped in one slice
+because C's storage model rewrites the same function B's create half rewrites:
+`resolveCategories` had to carry non-built-in keys AND learn a fourth state, and
+splitting that across two commits would have meant writing it twice. What
+landed:
+
+| Item | Where |
+|---|---|
+| `resolveCategories` carries custom keys, drops retired ones | `resolveAllCategories` / `resolveCategories`, `noteCategories.ts` |
+| Key derivation + automatic slot assignment + the cap | `deriveCategoryKey`, `nextPaletteSlot`, `planCategoryCreate`, `MAX_ACTIVE_CATEGORIES` |
+| `archived_at` | migration `0011_note_categories_archive.sql`, both api implementations |
+| The `⋯` submenu, the Retired divider, the two-form confirm, the create row | `CategoryMenu.tsx` |
+| Key-collision-offers-restore | `planCategoryCreate`'s `restore` branch |
+
+Three decisions worth recording, because none of them is in the paragraphs
+above:
+
+1. **The retired set reaches the menu through the SAME funnel the palette
+   does.** `resolveCategories` returns the ACTIVE set — that contract is what
+   every picker, composer and filter already renders, and widening it would have
+   offered retired categories everywhere. The retired set is published as a side
+   channel (`archivedCategories()`) off the one call the shared store makes on
+   load and on every save, for the reason `applyCategoryPalette` is written the
+   same way: a second fetch inside the menu would read the same rows a beat
+   later and could disagree with what the rest of the app is showing.
+2. **`archived_at` is on a NEW `StoredCategoryDef`, not on `NoteCategoryDef`.**
+   The field is optional, so the two types are mutually assignable and the ~47
+   call sites that pass definitions around kept compiling untouched.
+3. **KNOWN GAP, deliberately left: a retired category's LABEL falls back to its
+   KEY where an existing note renders.** §2 says archive "keeps supplying its
+   label and colour wherever an existing note renders", and the COLOUR half is
+   done — `applyCategoryPalette` paints retired categories too, so a note filed
+   under one still renders in its own colour. The label does not, because
+   `useCategoryLabels()` derives from the ACTIVE list and
+   `src/utils/useNoteCategories.ts` was outside this task's scope fence. It is
+   invisible for a retired BUILT-IN (whose key is its label lowercased) and
+   shows as a lowercased key only for a category that was RENAMED and then
+   retired. The fix is one line in that file — a `useAllCategoryLabels()` that
+   folds `archivedCategories()` in — and belongs to whoever owns it next.
 
 **Slice D — the filter field, plus the export label fix
 (`export.ts:92`).** Only worth doing once someone actually has seven categories.

@@ -11,9 +11,9 @@ import type {
   CreatePassageInput,
   CreateNoteInput,
   UpdateNoteInput,
-  DeleteNoteResult,
-  NoteCategoryDef
+  DeleteNoteResult
 } from '../types'
+import type { StoredCategoryDef } from '../utils/noteCategories'
 import { getBibleVerse } from '../bible/service'
 import { pageAll } from './paging'
 import { mirrorKey, readMirror, writeMirror } from '../offline/mirror'
@@ -434,21 +434,25 @@ export class SupabaseBereanApi implements BereanApi {
   // this table says what that key MEANS here. An empty result is the normal
   // case, not an error — it means nothing has been customised, and the caller
   // falls back to the built-in four (src/utils/noteCategories.ts).
-  async getNoteCategories(): Promise<NoteCategoryDef[]> {
+  //
+  // `archived_at` (migration 0011) is a definition-level flag and NOTHING
+  // ELSE: retiring a category writes one timestamp here and touches no note,
+  // no `notes.category` and no note content. That is why it is safe.
+  async getNoteCategories(): Promise<StoredCategoryDef[]> {
     return this.read('getNoteCategories', undefined, async () => {
       const { data, error } = await this.db
         .from('note_categories')
-        .select('key, label, color, sort_order')
+        .select('key, label, color, sort_order, archived_at')
         .eq('workspace_id', this.workspaceId)
         .order('sort_order', { ascending: true })
-      return this.assert(data, error) as NoteCategoryDef[]
+      return this.assert(data, error) as StoredCategoryDef[]
     })
   }
 
   // Replace wholesale. Delete-then-insert rather than upsert-then-prune,
   // because "what is stored" must end up exactly equal to what was passed —
   // a category the reader reset to its default has to disappear, not linger.
-  async saveNoteCategories(defs: NoteCategoryDef[]): Promise<void> {
+  async saveNoteCategories(defs: StoredCategoryDef[]): Promise<void> {
     return this.write(async () => {
       const { error: delErr } = await this.db
         .from('note_categories')
@@ -456,7 +460,17 @@ export class SupabaseBereanApi implements BereanApi {
         .eq('workspace_id', this.workspaceId)
       if (delErr) throw new Error(delErr.message)
       if (defs.length === 0) return
-      const rows = defs.map(d => ({ ...d, workspace_id: this.workspaceId }))
+      // archived_at is written explicitly rather than left to spread, so a
+      // RESTORE (archived_at dropped back to undefined) clears the column
+      // instead of leaving yesterday's timestamp behind.
+      const rows = defs.map(d => ({
+        key: d.key,
+        label: d.label,
+        color: d.color,
+        sort_order: d.sort_order,
+        archived_at: d.archived_at ?? null,
+        workspace_id: this.workspaceId
+      }))
       const { error } = await this.db.from('note_categories').insert(rows)
       if (error) throw new Error(error.message)
     })

@@ -11,9 +11,9 @@ import type {
   CreatePassageInput,
   CreateNoteInput,
   UpdateNoteInput,
-  DeleteNoteResult,
-  NoteCategoryDef
+  DeleteNoteResult
 } from '../types'
+import type { StoredCategoryDef } from '../utils/noteCategories'
 import { bookByNumber } from '../utils/bibleBooks'
 import { parseReferenceLabel } from '../utils/noteParser'
 import { getBibleVerse } from '../bible/service'
@@ -51,7 +51,11 @@ function passageInfo(p: Passage): Omit<NoteWithPassageInfo, keyof Note> {
 export function createMemoryApi(): BereanApi {
   // Category definitions. Empty means "nothing customised" and the caller
   // falls back to the built-in four; see src/utils/noteCategories.ts.
-  let noteCategories: NoteCategoryDef[] = []
+  //
+  // Rows carry `archived_at` exactly as the Supabase table does since migration
+  // 0011, so retire/restore behaves identically with no backend — which is the
+  // path a fresh checkout and every UI-only session actually take.
+  let noteCategories: StoredCategoryDef[] = []
   return {
     async getPassages() {
       return [...passages.values()].sort((a, b) =>
@@ -258,7 +262,10 @@ export function createMemoryApi(): BereanApi {
     },
 
     async saveNoteCategories(defs) {
-      noteCategories = defs
+      // Copied rather than aliased, and archived_at normalised to null the way
+      // a column would, so the stub cannot hand a caller back an object the
+      // caller still holds a reference to.
+      noteCategories = defs.map(d => ({ ...d, archived_at: d.archived_at ?? null }))
     }
   }
 }

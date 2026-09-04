@@ -193,6 +193,27 @@ belongs to and why that arc comes when it does.
   Remaining slices in order: (B) create + palette + cap; (C) retire/restore;
   (D) the filter field + export the label rather than the key
   (`src/platform/export.ts:92`).
+  **B's CREATE HALF AND C ARE BUILT (2026-09-03), in one slice** — they rewrite
+  the same function, so splitting them would have meant writing it twice.
+  `resolveCategories` now carries non-built-in keys and returns the ACTIVE set;
+  the retired set reaches the menu through `archivedCategories()`, a side
+  channel off the one call the shared store already makes (same reasoning as
+  `applyCategoryPalette` — a second fetch could disagree with what the rest of
+  the app shows). `CategoryMenu` gained a quiet `+ Create` row at the bottom, a
+  `⋯` submenu per row (Rename / Colour / Retire-or-Delete), a Retired divider
+  with Restore, and the two-form confirm stating the note count. Retiring writes
+  `archived_at` on the DEFINITION and touches no note; a zero-note CUSTOM
+  category deletes outright; a built-in is never deleted. Creating a name whose
+  derived key matches a retired one offers the restore instead. Cap is 8 ACTIVE
+  and at the limit the create row stays visible reading `8 of 8 — retire one
+  first`. **Migration `0011_note_categories_archive.sql` must be run by hand**
+  before archive persists, exactly as 0010 was.
+  **Left behind by C, small:** a retired category's LABEL falls back to its KEY
+  where an existing note renders, because `useCategoryLabels()` derives from the
+  ACTIVE list and `src/utils/useNoteCategories.ts` was outside that task's scope
+  fence. Colour is unaffected (the palette is written for retired categories
+  too). Invisible for a retired built-in; shows as a lowercased key only for a
+  category that was renamed and then retired. One line to fix in that file.
 
 - **Translations: the settled position + zero-cost next actions (2026-08-30;
   see the addendum in `docs/proposals/translations-esv-niv.md`).** Settled:
