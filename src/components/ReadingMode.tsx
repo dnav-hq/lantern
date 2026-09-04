@@ -803,6 +803,7 @@ export default function ReadingMode({
                         verse={v}
                         doors={selRange === null}
                         canOpen={canOpenFootnote}
+                        chapterReference={bookAndChapter}
                       />
                       <span
                         className="verse-add-btn"

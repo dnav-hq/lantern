@@ -1567,6 +1567,7 @@ function ChapterView({
                     verse={v}
                     doors={selRange === null}
                     canOpen={canOpenFootnote}
+                    chapterReference={`${bookName} ${chapter}`}
                   />
                   {/* The category NAME is what tells a mark apart from a
                       selection: both tint the row, only a mark says what it is.
