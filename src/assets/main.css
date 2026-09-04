@@ -8301,3 +8301,263 @@ body.dark .study-note-act .is-yes {
     transition: opacity var(--dur-1) var(--ease-out);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   The Bible map — slice 2 (docs/proposals/bible-map-v1.md)
+
+   Read-only preview. Every colour is a token, so the map inherits the app's
+   themes for free — which was one of the stated reasons the brief chose SVG
+   over canvas (section 4.1). Confidence is encoded by SIZE, FILL and DASH as well
+   as colour, because section 3.3 rule 1 forbids relying on colour alone.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.map-view {
+  --map-ink: var(--text-muted);
+  --map-coast: var(--text);
+  --map-water: rgba(63, 123, 160, 0.5);
+  --map-water-fill: rgba(63, 123, 160, 0.14);
+  --map-mark: var(--accent-ink);
+  --map-canvas: var(--surface);
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) var(--space-7);
+  color: var(--text);
+}
+
+.map-view-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+.map-view-eyebrow {
+  margin: 0;
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.map-view-title {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-2xl);
+  font-weight: 600;
+}
+
+.map-view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  padding: 2px;
+}
+.map-view-toggle-btn {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-base);
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+}
+.map-view-toggle-btn.is-active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.map-view-loading,
+.map-view-error {
+  color: var(--text-muted);
+  font-size: var(--text-base);
+}
+
+.map-canvas {
+  background: var(--map-canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.map-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* The opt-in relief raster. Grayscale hillshade sits UNDER the ink rather than
+   competing with it, so it is held back hard. */
+.map-terrain {
+  opacity: 0.5;
+}
+
+.map-layer-coast path {
+  fill: none;
+  stroke: var(--map-coast);
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+.map-layer-lakes path {
+  fill: var(--map-water-fill);
+  stroke: var(--map-water);
+  stroke-width: 0.7;
+}
+.map-layer-rivers path {
+  fill: none;
+  stroke: var(--map-water);
+  stroke-width: 0.7;
+  stroke-linecap: round;
+}
+
+/* ── Confidence, as geometry ──
+   A four-step ladder, readable in greyscale: settled = a full disc, high = a
+   half-filled disc, moderate = an outline, low = a dashed outline.
+   Contested places additionally draw every rival candidate as a small open
+   mark tied back to the best one (section 3.3 rule 2). */
+.map-place .map-place-dot {
+  fill: var(--map-mark);
+  stroke: var(--map-canvas);
+  stroke-width: 0.5;
+}
+.map-place.is-high .map-place-dot {
+  fill: var(--map-mark);
+  fill-opacity: 0.4;
+  stroke: var(--map-mark);
+  stroke-width: 0.9;
+}
+.map-place.is-moderate .map-place-dot {
+  fill: none;
+  stroke: var(--map-mark);
+  stroke-width: 0.9;
+}
+.map-place.is-low .map-place-dot {
+  fill: none;
+  stroke: var(--map-mark);
+  stroke-width: 0.8;
+  stroke-dasharray: 1.1 1.1;
+  opacity: 0.8;
+}
+.map-place-alt {
+  fill: none;
+  stroke: var(--map-mark);
+  stroke-width: 0.55;
+  opacity: 0.65;
+}
+.map-place-link {
+  stroke: var(--map-mark);
+  stroke-width: 0.4;
+  stroke-dasharray: 1 1.4;
+  opacity: 0.5;
+}
+
+.map-label {
+  fill: var(--text);
+  font-family: var(--ui-font);
+  font-size: 6px;
+  dominant-baseline: middle;
+  paint-order: stroke;
+  stroke: var(--map-canvas);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+/* ── Legend ── */
+.map-legend {
+  margin-top: var(--space-5);
+}
+.map-legend-title,
+.map-unlocated-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.map-legend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.map-legend-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-base);
+  color: var(--text-muted);
+}
+.map-legend-swatch {
+  width: 22px;
+  height: 14px;
+  overflow: visible;
+}
+.map-legend-swatch-none {
+  text-align: center;
+  color: var(--text-faint);
+}
+.map-legend-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+
+/* ── The seven places nobody can locate ── */
+.map-unlocated {
+  margin-top: var(--space-5);
+}
+.map-unlocated-note {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  max-width: 60ch;
+}
+.map-unlocated-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.map-unlocated-list li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
+.map-unlocated-type {
+  color: var(--text-faint);
+  font-size: var(--text-xs);
+}
+
+.map-attribution {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  max-width: 68ch;
+}
+.map-attribution p {
+  margin: 0 0 var(--space-2);
+}
+
+/* ── Dark canvas ──
+   The vectors carry over unchanged (they are token-coloured); the terrain
+   raster does not — it is a light-on-dark hillshade, so it is inverted rather
+   than left glowing white over a dark map. */
+body.dark .map-view {
+  --map-coast: var(--text);
+  --map-water: rgba(120, 176, 210, 0.45);
+  --map-water-fill: rgba(120, 176, 210, 0.1);
+  --map-mark: var(--accent);
+  --map-canvas: var(--surface);
+}
+body.dark .map-terrain {
+  filter: invert(1);
+  opacity: 0.28;
+}
