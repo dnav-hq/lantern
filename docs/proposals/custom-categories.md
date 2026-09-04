@@ -1,7 +1,8 @@
 # Custom categories — adding and removing your own
 
 Status: **slice A built 2026-09-01; slice B's COLOUR half built 2026-09-02;
-B's CREATE half and slice C built 2026-09-03; D not started.** Written
+slice C (create/archive/restore) and slice D (the Journal filter + the export
+label fix) both built 2026-09-03.** Written
 2026-08-31, after the rename slice shipped (`docs/BACKLOG.md`, "User-owned
 categories, slice 1: RENAME"). Rename was free because the KEY never moves.
 Everything left is about keys that move, and that is a different problem
@@ -697,8 +698,30 @@ above:
 **Slice D — the filter field, plus the export label fix
 (`export.ts:92`).** Only worth doing once someone actually has seven categories.
 
+**BUILT 2026-09-03, ahead of order, scoped to what does not need slice B's
+create affordance.** The Journal category filter (`JournalPage.tsx`) now
+derives its options from `categoriesPresent` (over the notes actually shown,
+not the active definitions list) rather than mapping `useNoteCategories()`
+directly, so a category that is archived or deleted outright still offers
+itself as a filter for the notes that carry it, and its label is looked up
+fresh each render so a rename is reflected immediately. `export.ts:92` no
+longer writes `note.category` (the key) into the Markdown meta line; a new
+`resolveExportCategories` (export.ts) resolves the reader's stored category
+rows to their current label and colour — including a non-built-in key, which
+`resolveCategories` still drops until slice B's create half ships — and a key
+with no definition at all (fully deleted) falls back to itself rather than
+being dropped. The stored colour resolves to its light hex in `notes.json`
+exactly as it already did for the four built-ins. No UI exists yet to actually
+CREATE a custom category (that is still slice B), so this was verified by
+writing a custom-keyed row directly through `saveNoteCategories` and a note
+carrying that `@tag` through the composer's raw text, the same path a note
+written on another device or before its category existed would take.
+
 Order matters and it is A → B → C → D. Anything else means shipping a feature on
-top of a parser that cannot see it.
+top of a parser that cannot see it. D's two fixes turned out to be an
+exception: both are read-side (filter, export) and neither needs a way to
+CREATE a category, so they were safe to build ahead of B/C without contradicting
+the ordering's reasoning.
 
 ---
 
