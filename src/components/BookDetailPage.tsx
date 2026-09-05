@@ -26,7 +26,11 @@ import type { DisplayPrefs } from './ReadingPrefs'
 import TranslationFooter from './TranslationFooter'
 import { writeDraft, readDraft, clearDraft } from '../offline/draft'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
-import { armProgrammaticScroll, useChromeAutoHide } from '../utils/useScrollDirection'
+import {
+  armProgrammaticScroll,
+  useChromeAutoHide,
+  type ProgrammaticScrollGuard
+} from '../utils/useScrollDirection'
 import {
   adjacentChapter,
   chapterKeyOf,
@@ -252,6 +256,9 @@ interface ChapterViewProps {
   preloaded?: BiblePassage | null
   // Verses to highlight + scroll to once loaded (after a "Save & Read").
   initialHighlightVerses?: number[]
+  // Armed before every scrollIntoView so the parent's chrome auto-hide never
+  // mistakes a jump the page made for the reader scrolling away.
+  chromeScrollGuard?: ProgrammaticScrollGuard
   // Skip the verse-by-verse entrance reveal — set when this chapter arrived via
   // a swipe/edge-arrow (its text was already slid on screen), so it doesn't
   // flicker by fading in again on commit.
@@ -272,6 +279,7 @@ function ChapterView({
   onEnterStudy,
   preloaded,
   initialHighlightVerses,
+  chromeScrollGuard,
   suppressEntrance,
   onServedTranslation
 }: ChapterViewProps): React.ReactElement {
@@ -607,7 +615,7 @@ function ChapterView({
     setHighlightedVerses(new Set(initialHighlightVerses))
     const first = initialHighlightVerses[0]
     requestAnimationFrame(() => {
-      armProgrammaticScroll(chromeGuardRef)
+      armProgrammaticScroll(chromeScrollGuard)
       verseRowRefs.current.get(first)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     })
   }, [initialHighlightVerses, bibleData])
@@ -949,7 +957,7 @@ function ChapterView({
 
   // Chip linkage: scroll the anchored verse into view (mobile).
   const scrollToVerse = (verse: number): void => {
-    armProgrammaticScroll(chromeGuardRef)
+    armProgrammaticScroll(chromeScrollGuard)
     verseRowRefs.current.get(verse)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
@@ -1913,9 +1921,7 @@ export default function BookDetailPage({
   // Armed before every scrollIntoView so the auto-hide never mistakes a jump
   // the page made (search result, note chip) for the reader scrolling away —
   // that was the "menu collapses after I search to mid-chapter" bug (Dennis,
-  // 2026-09-05). Declared here, ABOVE the early-return renders, but the
-  // callers below are all closures so declaration order only matters for the
-  // hook itself.
+  // 2026-09-05). Handed to ChapterView, which owns the scrollIntoView calls.
   const chromeGuardRef = useRef(0)
   // Reset to fully-visible chrome on every NAVIGATION (see resetKey) — this is
   // what stops the auto-hide from flip-flopping as you move between chapters.
@@ -2350,6 +2356,7 @@ export default function BookDetailPage({
                       onEnterStudy={peek ? noop : () => onToggleStudy(true)}
                       preloaded={getPreloaded(ref)}
                       initialHighlightVerses={peek ? undefined : initialHighlightVerses}
+                      chromeScrollGuard={chromeGuardRef}
                       // Scenery reveals nothing: the neighbour must not play the
                       // verse-by-verse entrance while it is sliding in, and it
                       // keeps this decision after it is promoted (the flag is
