@@ -292,6 +292,14 @@ function ChapterView({
   const entranceSuppressed = useRef(suppressEntrance).current
   const [bibleData, setBibleData] = useState<BiblePassage | null>(preloaded ?? null)
   const [loading, setLoading] = useState(!preloaded)
+  // A translation switch on a chapter that is ALREADY on screen. The text stays
+  // put (dimmed) until the new one lands, instead of collapsing to a skeleton:
+  // that collapse clamped the scroll container under a reader at the bottom of
+  // the chapter, which is where the switcher lives, and left them at a random
+  // height — sometimes mid-chapter, sometimes not moved at all (Dennis,
+  // 2026-09-05). Height stability is what makes the scroll-to-top below land.
+  const [switching, setSwitching] = useState(false)
+  const loadedRefRef = useRef<string | null>(null)
   // Read inside the fetch effect rather than listed as a dependency: a
   // neighbour arriving mid-render must not restart the current chapter's load.
   const preloadedRef = useRef(preloaded)
@@ -537,27 +545,44 @@ function ChapterView({
   useEffect(() => {
     const ready = preloadedRef.current
     if (ready) {
+      loadedRefRef.current = `${bookName} ${chapter}`
       setBibleData(ready)
       setLoading(false)
+      setSwitching(false)
       return
     }
     let cancelled = false
-    setLoading(true)
-    setBibleData(null)
+    const chapterRef = `${bookName} ${chapter}`
+    // Same chapter, new translation: keep what is there. Anything else is a
+    // fresh chapter and gets the skeleton as before.
+    const keepText = loadedRefRef.current === chapterRef && bibleData !== null
+    if (keepText) {
+      setSwitching(true)
+    } else {
+      setLoading(true)
+      setBibleData(null)
+    }
     // Opt into the BSB fallback: ESV draws on a quota shared by every Lantern
     // user, so a reader can hit a dead end through no fault of their own.
     // Substituted text is only honest because the notice below renders
     // `servedTranslation` — see getBibleVerse's options.
-    getBibleVerse(`${bookName} ${chapter}`, translation, { fallbackTo: 'BSB' })
+    getBibleVerse(chapterRef, translation, { fallbackTo: 'BSB' })
       .then(data => {
-        if (!cancelled) setBibleData(data)
+        if (cancelled) return
+        loadedRefRef.current = chapterRef
+        setBibleData(data)
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (cancelled) return
+        setLoading(false)
+        setSwitching(false)
       })
     return () => {
       cancelled = true
     }
+    // bibleData is read for the keep-text decision only; listing it would
+    // refetch on every render of the text.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookName, chapter, translation])
 
   // Tell the parent what was actually served, so the translation footer names
@@ -1370,7 +1395,8 @@ function ChapterView({
   return (
     <div
       ref={containerRef}
-      className={`chapter-marquee-surface${entranceSuppressed ? ' no-entrance' : ''}${composing !== null ? ' is-composing' : ''}`}
+      className={`chapter-marquee-surface${entranceSuppressed ? ' no-entrance' : ''}${composing !== null ? ' is-composing' : ''}${switching ? ' is-switching' : ''}`}
+      aria-busy={switching || undefined}
       onPointerDown={containerPointerDown}
       onClick={handleBackgroundClick}
     >
@@ -1937,7 +1963,12 @@ export default function BookDetailPage({
   // wake it (Dennis, 2026-09-04). Folding the verse target in resets the chrome
   // on that jump too. Joined into a stable string so an unchanged array ref can
   // never re-trigger.
-  const chromeResetKey = `${selectedChapter}:${initialHighlightVerses?.join(',') ?? ''}`
+  //
+  // The translation is in the key too: switching versions from the footer is a
+  // navigation as far as the chrome is concerned — the reader was at the
+  // BOTTOM (that is where the switcher is) with the chrome hidden, and lands
+  // at the top of the same chapter, which must arrive with the menu shown.
+  const chromeResetKey = `${selectedChapter}:${translation}:${initialHighlightVerses?.join(',') ?? ''}`
   useChromeAutoHide(layoutRef, !focusReading, onChromeVisibleChange, chromeResetKey, chromeGuardRef)
 
   const reloadNotes = useCallback(async (): Promise<void> => {
@@ -2068,7 +2099,9 @@ export default function BookDetailPage({
         : null
 
   // A new chapter starts at its first verse, not wherever the last one was
-  // left. Layout effect so this lands in the same frame the chapter does.
+  // left. Layout effect so this lands in the same frame the chapter does. A
+  // translation switch does the same: the switcher sits at the foot of the
+  // chapter, and the reader expects to start the new version from verse 1.
   const mounted = useRef(false)
   useLayoutEffect(() => {
     if (!mounted.current) {
@@ -2077,7 +2110,7 @@ export default function BookDetailPage({
     }
     layoutRef.current?.scrollTo({ top: 0 })
     contentRef.current?.scrollTo({ top: 0 })
-  }, [selectedChapter])
+  }, [selectedChapter, translation])
 
   // Suppress the entrance only when this chapter is the one the deck slid to.
   const suppressEntrance = deckTargetRef.current === selectedChapter
