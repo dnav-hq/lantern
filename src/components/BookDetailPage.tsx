@@ -618,7 +618,7 @@ function ChapterView({
       armProgrammaticScroll(chromeScrollGuard)
       verseRowRefs.current.get(first)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     })
-  }, [initialHighlightVerses, bibleData])
+  }, [initialHighlightVerses, bibleData, chromeScrollGuard])
 
   // Current selection as an inclusive [start, end] range, or null.
   const selRange: [number, number] | null =
