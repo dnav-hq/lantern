@@ -32,7 +32,21 @@ export function syncBrowserChrome(): void {
   const pureBlack = document.documentElement.hasAttribute('data-pure-black')
   const visual = document.documentElement.getAttribute('data-theme') ?? 'berean'
   const pair = CANVAS[visual] ?? CANVAS.berean
-  const bg = isDark ? (pureBlack ? PURE_BLACK_BG : pair[1]) : pair[0]
+  // In an INSTALLED PWA the system status bar is painted from this runtime meta
+  // (it overrides the manifest's theme_color), and a light-mode reader got the
+  // cream canvas there — a near-white bar that reads as broken (Dennis, repeatedly).
+  // So in standalone we force the DARK canvas regardless of the app's light/dark
+  // mode: a dark bar with white system icons, the way a good installed app looks.
+  // A browser TAB stays theme-aware (cream in light), where a matching bar is
+  // correct. `standalone` is false in a tab and true once added to the home screen.
+  let standalone = false
+  try {
+    standalone = window.matchMedia?.('(display-mode: standalone)').matches ?? false
+  } catch {
+    /* older webviews: treat as a browser tab */
+  }
+  const darkBar = isDark || standalone
+  const bg = darkBar ? (pureBlack ? PURE_BLACK_BG : pair[1]) : pair[0]
   // ALL of them, and strip `media`: index.html ships a media-scoped pair so the
   // installed Android PWA has a dark answer before any script runs, and a tag
   // still carrying `media` could out-vote the choice the reader actually made.
@@ -49,7 +63,7 @@ export function syncBrowserChrome(): void {
   // dark canvas, pure-black included.
   document
     .querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
-    ?.setAttribute('content', isDark ? 'black' : 'default')
+    ?.setAttribute('content', darkBar ? 'black' : 'default')
 }
 
 /** The reader's dark preference: their explicit choice, else the OS. */

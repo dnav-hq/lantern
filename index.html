@@ -61,11 +61,20 @@
           // tags that disagree with it would let the browser pick the wrong
           // one — a reader who has chosen dark on a light-mode phone must get
           // the dark bar, not the one their OS votes for.
+          // The STATUS BAR (theme-color) and the SPLASH (bg) diverge in an
+          // installed PWA: the splash is the app canvas (light in light mode,
+          // correct), but the system bar should be dark there regardless — a
+          // light-mode cream bar reads as a broken near-white strip. In a browser
+          // tab the bar stays theme-aware. See syncBrowserChrome for the runtime.
+          var standalone = false
+          try { standalone = window.matchMedia('(display-mode: standalone)').matches } catch (e2) {}
+          var darkBar = isDark || standalone
+          var barColor = darkBar ? (pureBlack ? '#000000' : (BG[visualTheme] || BG.berean)[1]) : bg
           var metas = document.querySelectorAll('meta[name="theme-color"]')
           for (var m = 0; m < metas.length; m++) {
             if (m === 0) {
               metas[m].removeAttribute('media')
-              metas[m].setAttribute('content', bg)
+              metas[m].setAttribute('content', barColor)
             } else {
               metas[m].parentNode.removeChild(metas[m])
             }
