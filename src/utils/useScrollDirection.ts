@@ -44,6 +44,36 @@ export const SHOW_TRAVEL = 14
 /** Never hide before the reader is genuinely into the text. */
 export const HIDE_FLOOR = 96
 
+/** How long a freshly-armed programmatic scroll is trusted to START (ms). */
+export const PROGRAMMATIC_ARM_WINDOW = 800
+/** Once it is scrolling, how long after the last event it is still "ours" (ms). */
+export const PROGRAMMATIC_IDLE_WINDOW = 160
+
+/**
+ * Programmatic scrolls (scrollIntoView on a search result, a note chip, a
+ * cross-ref) look exactly like a thumb-flick to the machine: a long downward
+ * travel, arriving whenever the data happens to land — usually AFTER the
+ * navigation settle window. Pages arm this guard right before they scroll so
+ * the hook can tell the two apart. The guard is a deadline in performance.now()
+ * time: it expires on its own if the scroll never fires (target already in
+ * view), and keeps extending while the smooth scroll is still emitting events.
+ */
+export type ProgrammaticScrollGuard = React.MutableRefObject<number>
+
+export function armProgrammaticScroll(guard: ProgrammaticScrollGuard | undefined): void {
+  if (guard) guard.current = performance.now() + PROGRAMMATIC_ARM_WINDOW
+}
+
+/**
+ * Pure decision for one scroll sample under a guard: returns the extended
+ * deadline while the sample is still part of the programmatic scroll, or null
+ * once the guard has lapsed and the sample belongs to the reader.
+ */
+export function nextGuardDeadline(deadline: number, now: number): number | null {
+  if (now >= deadline) return null
+  return Math.max(deadline, now + PROGRAMMATIC_IDLE_WINDOW)
+}
+
 export function initialChromeState(y = 0): ChromeScrollState {
   return { visible: true, lastY: y, travel: 0 }
 }
@@ -107,7 +137,10 @@ export function useChromeAutoHide(
   // chapter so navigating (click OR swipe) always lands with the chrome shown,
   // deterministically — instead of the auto-hide flip-flopping as the scroll
   // position resets under it on each chapter change.
-  resetKey?: unknown
+  resetKey?: unknown,
+  // See armProgrammaticScroll: samples inside the guard re-anchor the machine
+  // instead of driving it, so a scroll the PAGE asked for never hides chrome.
+  programmaticGuard?: ProgrammaticScrollGuard
 ): boolean {
   const [visible, setVisible] = useState(true)
   // Kept in a ref so the listener never needs re-binding as state advances.
@@ -163,6 +196,21 @@ export function useChromeAutoHide(
         lastMaxYRef.current = node.scrollHeight - node.clientHeight
         return
       }
+      if (programmaticGuard && programmaticGuard.current > 0) {
+        const extended = nextGuardDeadline(programmaticGuard.current, performance.now())
+        if (extended !== null) {
+          programmaticGuard.current = extended
+          stateRef.current = initialChromeState(node.scrollTop)
+          lastMaxYRef.current = node.scrollHeight - node.clientHeight
+          return
+        }
+        programmaticGuard.current = 0
+        // Lapsed mid-sample: re-anchor here so the guard's tail never counts
+        // as travel, and let the NEXT sample be the reader's.
+        stateRef.current = initialChromeState(node.scrollTop)
+        lastMaxYRef.current = node.scrollHeight - node.clientHeight
+        return
+      }
       const maxY = node.scrollHeight - node.clientHeight
       // A sample whose scrollable height moved is the bottom-tail animating as
       // the chrome toggles, not a finger — absorb it (re-anchor position, clear
@@ -199,7 +247,7 @@ export function useChromeAutoHide(
       // Leaving the surface must never strand the chrome off-screen.
       onChangeRef.current?.(true)
     }
-  }, [ref, enabled, resetKey])
+  }, [ref, enabled, resetKey, programmaticGuard])
 
   return visible
 }
