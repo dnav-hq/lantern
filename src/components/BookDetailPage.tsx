@@ -1908,14 +1908,22 @@ export default function BookDetailPage({
   // single line of scripture); on desktop it stays overflow:hidden and this
   // never fires. See .app-shell.reading-surface .book-detail-layout.
   const layoutRef = useRef<HTMLDivElement>(null)
-  // Reset to fully-visible chrome on every chapter change (see resetKey) — this
-  // is what stops the auto-hide from flip-flopping as you move between chapters.
+  // Reset to fully-visible chrome on every NAVIGATION (see resetKey) — this is
+  // what stops the auto-hide from flip-flopping as you move between chapters.
   // Disabled in Reading Mode: the one bar shouldn't auto-hide, and — key for the
   // exit flicker — toggling `enabled` re-initialises the machine, so leaving
   // Reading Mode always starts fresh/visible instead of re-asserting a stale
-  // scrolled-away state. `selectedChapter` as the reset key keeps navigation
-  // from flip-flopping the chrome.
-  useChromeAutoHide(layoutRef, !focusReading, onChromeVisibleChange, selectedChapter)
+  // scrolled-away state.
+  //
+  // The reset key is chapter AND the incoming verse target, not chapter alone.
+  // A jump to a verse in the SAME chapter (search result, cross-ref) scrolls the
+  // view but left selectedChapter unchanged, so the chrome stayed collapsed from
+  // wherever it was — a big empty gap under a hidden header until you scrolled to
+  // wake it (Dennis, 2026-09-04). Folding the verse target in resets the chrome
+  // on that jump too. Joined into a stable string so an unchanged array ref can
+  // never re-trigger.
+  const chromeResetKey = `${selectedChapter}:${initialHighlightVerses?.join(',') ?? ''}`
+  useChromeAutoHide(layoutRef, !focusReading, onChromeVisibleChange, chromeResetKey)
 
   const reloadNotes = useCallback(async (): Promise<void> => {
     setAllNotes(await api.getNotesByBook(bibleBook.number))

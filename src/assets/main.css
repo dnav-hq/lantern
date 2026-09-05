@@ -7708,6 +7708,13 @@ body.dark .mobile-menu-btn:active {
     font-weight: 600;
     color: var(--accent-ink);
     white-space: nowrap;
+    /* A long selection ("John 1:1-15") must not push the buttons out of the
+       bar. A flex item defaults to min-width:auto, which refuses to shrink
+       below its text — so the ref took its full width and shoved Note past the
+       edge. Let it shrink and ellipsize; the buttons stay flex:none and inside. */
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   /* Pushes the reference to the left and the clear/note actions to the right.
      (Replaced the old "tap more to extend" hint — too cramped on a phone.) */

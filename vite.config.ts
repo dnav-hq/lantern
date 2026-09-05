@@ -97,27 +97,21 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/',
         scope: '/',
-        // NO theme_color, deliberately — and `undefined` rather than omitted,
-        // because vite-plugin-pwa Object.assigns over its own default and would
-        // otherwise inject #42b883, a green belonging to no part of this app.
-        //
-        // A manifest's theme_color cannot be theme-aware (there is no media
-        // query in a manifest), and on an INSTALLED Android PWA it — not our
-        // <meta name="theme-color"> — paints the system bar. With it set to our
-        // light cream, a reader in dark mode got a cream bar (2026-09-02).
-        //
-        // Setting it DARK instead only mirrors the bug. The evidence is that the
-        // bar's ICONS flip with the system theme while theme_color stayed
-        // constant cream — so the icons follow the SYSTEM, not us. A permanently
-        // dark bar would therefore get dark icons on dark in light mode, which
-        // is the same legibility failure pointing the other way.
-        //
-        // Declaring nothing lets the system choose the bar, and the system is
-        // already choosing the icons correctly. theme_color is NOT part of
-        // Chrome's installability criteria (name, icons 192+512, start_url,
-        // display) — the plugin's warning to the contrary is overcautious. If
-        // that ever proves wrong, this is a one-line revert.
-        theme_color: undefined,
+        // A dark theme_color, on purpose. On an INSTALLED Android PWA the
+        // MANIFEST's theme_color paints the system status bar, and it cannot be
+        // theme-aware (a manifest has no media query). Two earlier attempts were
+        // wrong: light cream gave a cream bar in dark mode (2026-09-02), and
+        // `undefined` made Android fall back to a WHITE bar (Dennis, 2026-09-04),
+        // which looks worse than either. A dark value is what a good installed
+        // PWA does (Dennis's own HQ app is black bar + white icons): Android
+        // derives the icon colour from this luminance, so a dark bar always gets
+        // white icons, in both light and dark. The one accepted cost is that the
+        // bar is dark even when the app is in light mode — Dennis chose this
+        // deliberately over the white bar. Matches our dark canvas (#17140f) so
+        // it reads as on-brand near-black rather than pure black. The <meta
+        // name="theme-color"> pair in index.html still governs browser TABS,
+        // where theme-awareness works.
+        theme_color: '#17140f',
         background_color: '#f4f0e8',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
