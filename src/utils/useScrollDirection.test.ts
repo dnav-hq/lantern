@@ -6,7 +6,10 @@ import {
   HIDE_TRAVEL,
   SHOW_TRAVEL,
   REVEAL_ZONE,
-  type ChromeScrollState
+  type ChromeScrollState,
+  nextGuardDeadline,
+  PROGRAMMATIC_ARM_WINDOW,
+  PROGRAMMATIC_IDLE_WINDOW
 } from './useScrollDirection'
 
 const LONG = 4000
@@ -94,5 +97,25 @@ describe('nextChromeState', () => {
   it('returns the identical state object when a sample changes nothing', () => {
     const state = scrollThrough([HIDE_FLOOR + 200])
     expect(nextChromeState(state, { y: HIDE_FLOOR + 200, maxY: LONG })).toBe(state)
+  })
+})
+
+describe('nextGuardDeadline (programmatic scroll guard)', () => {
+  it('lapses once the deadline has passed, handing the sample to the reader', () => {
+    expect(nextGuardDeadline(1000, 1000)).toBeNull()
+    expect(nextGuardDeadline(1000, 1500)).toBeNull()
+  })
+
+  it('keeps extending while the smooth scroll is still emitting events', () => {
+    // A sample well inside the window never SHORTENS the deadline.
+    expect(nextGuardDeadline(1000, 100)).toBe(1000)
+    // A sample near the end pushes it out by the idle window.
+    expect(nextGuardDeadline(1000, 990)).toBe(990 + PROGRAMMATIC_IDLE_WINDOW)
+  })
+
+  it('an armed guard that never scrolls expires on its own', () => {
+    const armedAt = 5000
+    const deadline = armedAt + PROGRAMMATIC_ARM_WINDOW
+    expect(nextGuardDeadline(deadline, armedAt + PROGRAMMATIC_ARM_WINDOW + 1)).toBeNull()
   })
 })

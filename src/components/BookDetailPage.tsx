@@ -26,7 +26,7 @@ import type { DisplayPrefs } from './ReadingPrefs'
 import TranslationFooter from './TranslationFooter'
 import { writeDraft, readDraft, clearDraft } from '../offline/draft'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
-import { useChromeAutoHide } from '../utils/useScrollDirection'
+import { armProgrammaticScroll, useChromeAutoHide } from '../utils/useScrollDirection'
 import {
   adjacentChapter,
   chapterKeyOf,
@@ -607,6 +607,7 @@ function ChapterView({
     setHighlightedVerses(new Set(initialHighlightVerses))
     const first = initialHighlightVerses[0]
     requestAnimationFrame(() => {
+      armProgrammaticScroll(chromeGuardRef)
       verseRowRefs.current.get(first)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     })
   }, [initialHighlightVerses, bibleData])
@@ -948,6 +949,7 @@ function ChapterView({
 
   // Chip linkage: scroll the anchored verse into view (mobile).
   const scrollToVerse = (verse: number): void => {
+    armProgrammaticScroll(chromeGuardRef)
     verseRowRefs.current.get(verse)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
@@ -1908,6 +1910,13 @@ export default function BookDetailPage({
   // single line of scripture); on desktop it stays overflow:hidden and this
   // never fires. See .app-shell.reading-surface .book-detail-layout.
   const layoutRef = useRef<HTMLDivElement>(null)
+  // Armed before every scrollIntoView so the auto-hide never mistakes a jump
+  // the page made (search result, note chip) for the reader scrolling away —
+  // that was the "menu collapses after I search to mid-chapter" bug (Dennis,
+  // 2026-09-05). Declared here, ABOVE the early-return renders, but the
+  // callers below are all closures so declaration order only matters for the
+  // hook itself.
+  const chromeGuardRef = useRef(0)
   // Reset to fully-visible chrome on every NAVIGATION (see resetKey) — this is
   // what stops the auto-hide from flip-flopping as you move between chapters.
   // Disabled in Reading Mode: the one bar shouldn't auto-hide, and — key for the
@@ -1923,7 +1932,7 @@ export default function BookDetailPage({
   // on that jump too. Joined into a stable string so an unchanged array ref can
   // never re-trigger.
   const chromeResetKey = `${selectedChapter}:${initialHighlightVerses?.join(',') ?? ''}`
-  useChromeAutoHide(layoutRef, !focusReading, onChromeVisibleChange, chromeResetKey)
+  useChromeAutoHide(layoutRef, !focusReading, onChromeVisibleChange, chromeResetKey, chromeGuardRef)
 
   const reloadNotes = useCallback(async (): Promise<void> => {
     setAllNotes(await api.getNotesByBook(bibleBook.number))
