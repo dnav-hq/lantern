@@ -381,6 +381,11 @@ belongs to and why that arc comes when it does.
   splits that could be folded onto the bare Strong's number for ~100% coverage
   at the cost of merging senses BDB separates — a decision, deliberately not
   taken (§5.4).
+  The whole deep dive is now drawn as ONE system — entrance, the glance of each
+  door and the word door's deeper layer — in `design/deep-dive-doorways.html`, with
+  the glance-then-deeper rule, the code-change order (connections door first) and
+  the three decisions Dennis owes it in `docs/proposals/deep-dive-doorways.md`
+  (2026-09-12).
 
 - **Guest cleanup after the guest-is-the-App change (2026-08-27) — the two
   mechanical loose ends are DONE (2026-08-28, see Done); one optional item
