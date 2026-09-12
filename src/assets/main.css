@@ -9109,3 +9109,29 @@ body.dark .word-sheet {
 body.dark .word-scrim {
   background: rgba(0, 0, 0, 0.45);
 }
+
+/* The one control between a door's glance and the rest of it. A full-width
+   quiet line rather than a pill: it is a fold, not an action. */
+.word-deeper {
+  display: block;
+  width: 100%;
+  margin-top: 18px;
+  padding: 10px 0;
+  font-family: var(--ui-font);
+  font-size: var(--text-sm);
+  text-align: left;
+  background: none;
+  border: 0;
+  border-top: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+.word-deeper::after {
+  content: '↓';
+  float: right;
+  color: var(--text-faint);
+}
+.word-deeper[aria-expanded='true']::after {
+  content: '↑';
+}

@@ -44,6 +44,17 @@ import { salientWords, wordIndexLoader, type SalientWord } from '../utils/wordIn
 
 /** §9a.4: occurrences page flat and canonical, twenty at a time. */
 const PAGE = 20
+/**
+ * The GLANCE. Dennis's rule (2026-09-12): a door answers its question on one
+ * screen and everything else waits behind one quiet control. The first screen
+ * shows a few occurrences, a few rendering chips, and no grammar or lexicon;
+ * "More about this word" opens the rest. Nothing is removed, it just stops
+ * arriving uninvited.
+ */
+const GLANCE_OCCURRENCES = 5
+const GLANCE_CHIPS = 4
+/** The deeper layer's rendering chips never become a wall: page them. */
+const CHIP_PAGE = 24
 
 // R7. Named on the entry, not in a settings page — required by CC BY 4.0 for
 // the STEPBible material, and the honest signal that a gloss came from an
@@ -154,14 +165,18 @@ function DoorBody({
   const api = useApi()
   const [entry, setEntry] = useState<RawLemmaEntry | null>(null)
   const [failed, setFailed] = useState(false)
-  const [shown, setShown] = useState(PAGE)
+  const [shown, setShown] = useState(GLANCE_OCCURRENCES)
   const [texts, setTexts] = useState<Record<number, string>>({})
+  const [deeper, setDeeper] = useState(false)
+  const [chipsShown, setChipsShown] = useState(CHIP_PAGE)
 
   useEffect(() => {
     let live = true
     setEntry(null)
     setFailed(false)
-    setShown(PAGE)
+    setShown(GLANCE_OCCURRENCES)
+    setDeeper(false)
+    setChipsShown(CHIP_PAGE)
     wordIndexLoader
       .lemma(word.strongs)
       .then(found => live && setEntry(found))
@@ -250,7 +265,7 @@ function DoorBody({
       {/* §9a.5: the EXPANDED parsing, in plain English. The terse code the
           tables also ship rides along with the provenance, for anyone who
           reads it. */}
-      {grammar && (
+      {deeper && grammar && (
         <div className="word-row">
           <div className="word-key">Its grammar here</div>
           <div className="word-value">
@@ -262,7 +277,9 @@ function DoorBody({
 
       {/* 2. How the BSB renders it. NEVER "meanings" (§9a.1). The distinct-forms
           headline leads and the chips support it: the headline makes the
-          anti-single-meaning argument without ranking anything. */}
+          anti-single-meaning argument without ranking anything. The glance
+          shows the headline and the few chips it takes to make the point; the
+          deeper layer pages through all of them rather than opening a wall. */}
       <div className="word-row">
         <div className="word-key">
           How the BSB
@@ -274,12 +291,29 @@ function DoorBody({
             Put into English {entry.r.length} different {entry.r.length === 1 ? 'way' : 'ways'}{' '}
             across {entry.n} {entry.n === 1 ? 'occurrence' : 'occurrences'}.
           </p>
-          <Chips list={entry.rg} here={word.english} />
-          <p className="word-prov">
-            Counted from the BSB Translation Tables. The chips collapse those {entry.r.length} forms
-            to {entry.rg.length} by head word — an editorial grouping of ours, not a fact about the
-            word.
-          </p>
+          <Chips
+            list={deeper ? entry.rg.slice(0, chipsShown) : entry.rg.slice(0, GLANCE_CHIPS)}
+            here={word.english}
+          />
+          {!deeper && entry.rg.length > GLANCE_CHIPS && (
+            <p className="word-prov">and {entry.rg.length - GLANCE_CHIPS} more forms.</p>
+          )}
+          {deeper && entry.rg.length > chipsShown && (
+            <button
+              type="button"
+              className="word-more"
+              onClick={() => setChipsShown(s => s + CHIP_PAGE)}
+            >
+              Show more forms — {entry.rg.length - chipsShown} of {entry.rg.length} remaining
+            </button>
+          )}
+          {deeper && (
+            <p className="word-prov">
+              Counted from the BSB Translation Tables. The chips collapse those {entry.r.length}{' '}
+              forms to {entry.rg.length} by head word — an editorial grouping of ours, not a fact
+              about the word.
+            </p>
+          )}
         </div>
       </div>
 
@@ -309,10 +343,21 @@ function DoorBody({
         </button>
       )}
 
+      {/* The one control between the glance and the rest. Below it, in the
+          deeper layer only: grammar (above), the full renderings, the lexicon. */}
+      <button
+        type="button"
+        className="word-deeper"
+        aria-expanded={deeper}
+        onClick={() => setDeeper(d => !d)}
+      >
+        {deeper ? 'Less about this word' : 'More about this word'}
+      </button>
+
       {/* 4. The lexicon, LAST, with its provenance attached (§9a.2). Greek
           entries carry sense text and Hebrew ones do not (§4.2); neither door
           says so. */}
-      {hasGloss(entry) && (
+      {deeper && hasGloss(entry) && (
         <div className="word-row">
           <div className="word-key">A lexicon gloss</div>
           <div className="word-value word-muted">
@@ -324,7 +369,7 @@ function DoorBody({
           </div>
         </div>
       )}
-      {entry.s.length > 0 && (
+      {deeper && entry.s.length > 0 && (
         <div className="word-row">
           <div className="word-key">In the lexicon’s words</div>
           <div className="word-value word-muted">
