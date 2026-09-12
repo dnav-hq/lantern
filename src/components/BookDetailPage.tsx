@@ -840,12 +840,65 @@ function ChapterView({
   // through the same path a written note is, so it lands in the same place, is
   // anchored the same way, and can grow a body later by simply being edited.
   // The keyboard never opens: two taps, no typing, which is the point.
+  // The highlights (bodiless notes) the current selection touches. Drives the
+  // picker's "already highlighted" state, re-tinting in place, and removal —
+  // there was no way to un-mark a verse on a phone before this (Dennis,
+  // 2026-09-12): a highlight has no card to open, and tapping a marked verse
+  // selects it rather than opening the note behind it.
+  // Keyed on the range's two numbers, not the tuple: selRange is rebuilt every
+  // render, which would make this memo pointless.
+  const selStart = selRange?.[0] ?? null
+  const selEnd = selRange?.[1] ?? null
+  const selectedHighlights = useMemo(() => {
+    if (selStart === null || selEnd === null) return []
+    return localNotes.filter(n => {
+      if (!isHighlight(n) || n.anchor_start_verse === null) return false
+      const s = n.anchor_start_verse
+      const e = n.anchor_end_verse ?? s
+      return s <= selEnd && e >= selStart
+    })
+  }, [localNotes, selStart, selEnd])
+  const selectedHighlightCategory = selectedHighlights[0]?.category ?? null
+
   const handleHighlight = async (category: NoteCategory): Promise<void> => {
     if (selRange === null || savingInline) return
     const [start, end] = selRange
     setSavingInline(true)
     try {
-      await createAnchoredNote(composeNoteContent('', start, end, category), start)
+      // Re-tint in place when a highlight already covers exactly this range —
+      // otherwise every colour change stacked another bodiless note under the
+      // verse, and "last write wins" hid the pile until the Journal showed it.
+      const same = selectedHighlights.find(
+        n => n.anchor_start_verse === start && (n.anchor_end_verse ?? start) === end
+      )
+      if (same) {
+        const updated = await api.updateNote(same.id, {
+          content: composeNoteContent('', start, end, category),
+          anchor_start_verse: start,
+          anchor_end_verse: end,
+          category
+        })
+        setLocalNotes(prev => prev.map(n => (n.id === updated.id ? { ...n, ...updated } : n)))
+        onNotesChanged()
+      } else {
+        await createAnchoredNote(composeNoteContent('', start, end, category), start)
+      }
+      clearSelection()
+    } finally {
+      setSavingInline(false)
+    }
+  }
+
+  // Removes every highlight the selection touches. Written notes are never
+  // touched here — only bodiless marks, which is all selectedHighlights holds.
+  const handleRemoveHighlight = async (): Promise<void> => {
+    if (selectedHighlights.length === 0 || savingInline) return
+    setSavingInline(true)
+    try {
+      const ids = new Set(selectedHighlights.map(n => n.id))
+      for (const id of ids) await api.deleteNoteAndCascade(id)
+      setLocalNotes(prev => prev.filter(n => !ids.has(n.id)))
+      onNotesChanged()
       clearSelection()
     } finally {
       setSavingInline(false)
@@ -1723,6 +1776,8 @@ function ChapterView({
         onClear={clearSelection}
         onNote={openComposerOnSelection}
         onHighlight={key => void handleHighlight(key as NoteCategory)}
+        highlightedAs={selectedHighlightCategory}
+        onRemoveHighlight={() => void handleRemoveHighlight()}
       />
 
       {/* Portaled to <body>, like MobileSelectionBar: this bar is position:fixed,

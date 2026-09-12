@@ -24,6 +24,13 @@ interface MobileSelectionBarProps {
   onNote: () => void
   /** Applies a highlight in the chosen category. Never opens the keyboard. */
   onHighlight: (category: string) => void
+  /**
+   * The category the selection is ALREADY highlighted in, if any. With one set
+   * the picker shows it checked and offers "Remove highlight" — the only way
+   * to un-mark a verse on a phone, since a highlight has no card to open.
+   */
+  highlightedAs?: string | null
+  onRemoveHighlight?: () => void
 }
 
 export default function MobileSelectionBar({
@@ -31,7 +38,9 @@ export default function MobileSelectionBar({
   reference,
   onClear,
   onNote,
-  onHighlight
+  onHighlight,
+  highlightedAs = null,
+  onRemoveHighlight
 }: MobileSelectionBarProps): React.ReactElement | null {
   const [mounted, setMounted] = useState(shown)
   const [leaving, setLeaving] = useState(false)
@@ -99,7 +108,17 @@ export default function MobileSelectionBar({
         {picking && (
           <div className="mobile-selbar-menu">
             <CategoryMenu
-              title="Highlight as…"
+              title={highlightedAs ? 'Highlighted as…' : 'Highlight as…'}
+              selected={highlightedAs}
+              noneLabel={highlightedAs && onRemoveHighlight ? 'Remove highlight' : undefined}
+              onPickNone={
+                highlightedAs && onRemoveHighlight
+                  ? () => {
+                      setPicking(false)
+                      onRemoveHighlight()
+                    }
+                  : undefined
+              }
               onPick={key => {
                 setPicking(false)
                 onHighlight(key)
