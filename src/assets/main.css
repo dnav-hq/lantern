@@ -8310,12 +8310,18 @@ body.dark .study-note-act .is-yes {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   The Bible map — slice 2 (docs/proposals/bible-map-v1.md)
+   The Bible map — slices 2 + 3 (docs/proposals/bible-map-v1.md)
 
-   Read-only preview. Every colour is a token, so the map inherits the app's
-   themes for free — which was one of the stated reasons the brief chose SVG
-   over canvas (section 4.1). Confidence is encoded by SIZE, FILL and DASH as well
-   as colour, because section 3.3 rule 1 forbids relying on colour alone.
+   Every colour is a token, so the map inherits the app's themes for free —
+   which was one of the stated reasons the brief chose SVG over canvas
+   (section 4.1). Confidence is encoded by SIZE, FILL and DASH as well as
+   colour, because section 3.3 rule 1 forbids relying on colour alone.
+
+   Slice 3 makes it move. The SVG's viewBox is the camera; strokes are
+   non-scaling; and every marker and label sits in a `.map-place-scale` group
+   scaled by `--map-k` (artwork units per CSS pixel, set on the <svg> each
+   frame), so their geometry below is written in PIXELS and stays that size on
+   screen at every zoom. One custom property per frame moves 1,300 markers.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .map-view {
@@ -8380,16 +8386,37 @@ body.dark .study-note-act .is-yes {
   font-size: var(--text-base);
 }
 
+/* The canvas is a fixed-height stage, not the artwork's own aspect: on a
+   phone that gives the map the height it needs, and the letterbox is handled
+   inside the viewBox (mapViewport.fitViewBox), never by SVG's own centring. */
 .map-canvas {
+  position: relative;
   background: var(--map-canvas);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
+  height: clamp(320px, 62vh, 680px);
+}
+.map-stage {
+  position: absolute;
+  inset: 0;
 }
 .map-svg {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  /* The browser must not scroll or pinch-zoom the PAGE for gestures that
+     start here; every pointer belongs to the map. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+.map-svg:active {
+  cursor: grabbing;
+}
+.map-svg.is-home {
+  cursor: default;
 }
 
 /* The opt-in relief raster. Grayscale hillshade sits UNDER the ink rather than
@@ -8398,6 +8425,9 @@ body.dark .study-note-act .is-yes {
   opacity: 0.5;
 }
 
+.map-layer path {
+  pointer-events: none;
+}
 .map-layer-coast path {
   fill: none;
   stroke: var(--map-coast);
@@ -8422,52 +8452,185 @@ body.dark .study-note-act .is-yes {
    A four-step ladder, readable in greyscale: settled = a full disc, high = a
    half-filled disc, moderate = an outline, low = a dashed outline.
    Contested places additionally draw every rival candidate as a small open
-   mark tied back to the best one (section 3.3 rule 2). */
+   mark tied back to the best one (section 3.3 rule 2). Stroke and dash values
+   are pixels — see the note at the top. */
+.map-place-scale {
+  transform: scale(var(--map-k, 1));
+}
 .map-place .map-place-dot {
   fill: var(--map-mark);
   stroke: var(--map-canvas);
-  stroke-width: 0.5;
+  stroke-width: 0.8;
+  pointer-events: none;
 }
 .map-place.is-high .map-place-dot {
   fill: var(--map-mark);
   fill-opacity: 0.4;
   stroke: var(--map-mark);
-  stroke-width: 0.9;
+  stroke-width: 1.1;
 }
 .map-place.is-moderate .map-place-dot {
   fill: none;
   stroke: var(--map-mark);
-  stroke-width: 0.9;
+  stroke-width: 1.1;
 }
 .map-place.is-low .map-place-dot {
   fill: none;
   stroke: var(--map-mark);
-  stroke-width: 0.8;
-  stroke-dasharray: 1.1 1.1;
+  stroke-width: 1;
+  stroke-dasharray: 1.6 1.6;
   opacity: 0.8;
 }
 .map-place-alt {
   fill: none;
   stroke: var(--map-mark);
-  stroke-width: 0.55;
+  stroke-width: 0.8;
   opacity: 0.65;
+  pointer-events: none;
 }
 .map-place-link {
   stroke: var(--map-mark);
-  stroke-width: 0.4;
-  stroke-dasharray: 1 1.4;
+  stroke-width: 0.6;
+  stroke-dasharray: 2 2.4;
   opacity: 0.5;
+  pointer-events: none;
+}
+.map-place-halo {
+  fill: var(--map-mark);
+  fill-opacity: 0.16;
+  stroke: var(--map-mark);
+  stroke-width: 1;
+  pointer-events: none;
 }
 
+.map-labels {
+  pointer-events: none;
+}
 .map-label {
   fill: var(--text);
   font-family: var(--ui-font);
-  font-size: 6px;
+  font-size: 11px;
   dominant-baseline: middle;
   paint-order: stroke;
   stroke: var(--map-canvas);
-  stroke-width: 1.6;
+  stroke-width: 3;
   stroke-linejoin: round;
+}
+
+/* ── Zoom buttons: the mouse-and-keyboard route to what a pinch does ── */
+.map-zoom {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.map-zoom-btn {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+}
+.map-zoom-btn + .map-zoom-btn {
+  border-top: 1px solid var(--border);
+}
+.map-zoom-btn:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+.map-zoom-home {
+  font-size: 15px;
+}
+
+/* ── The place card ── */
+.map-card {
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: var(--space-3);
+  max-width: 360px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14);
+  color: var(--text);
+}
+.map-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.map-card-name {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.map-card-type {
+  margin: 2px 0 0;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--text-faint);
+}
+.map-card-close {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  margin: -6px -8px 0 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.map-card-facts {
+  margin: var(--space-3) 0 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.map-card-fact {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+.map-card-fact dt {
+  color: var(--text-muted);
+}
+.map-card-fact dd {
+  margin: 0;
+  text-align: right;
+}
+.map-card-score {
+  margin-left: var(--space-2);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .map-card {
+    animation: map-card-in 160ms ease-out;
+  }
+  @keyframes map-card-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
 }
 
 /* ── Legend ── */

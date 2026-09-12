@@ -279,26 +279,41 @@ belongs to and why that arc comes when it does.
   The deep-dive entry surface will likely be redesigned from scratch on the
   doorways model rather than reusing the connections prototype.
 
-- **Bible map (deep-dive rung 3) — slice 2, the RENDER, is built (2026-09-03);
-  what is left is the interaction design.** Brief in
+- **Bible map (deep-dive rung 3) — slice 3, INTERACTION, is built (2026-09-12);
+  what is left is the entry point and verse wiring.** Brief in
   `docs/proposals/bible-map-v1.md`. Slice 1 landed the data and artwork
   (`scripts/build-map-data.mjs`, `src/utils/mapData.ts`, the three bundles under
   `public/map/`). Slice 2 draws them: `src/components/MapView.tsx` renders the
-  coastline, lakes and rivers as inline SVG on the bundle's own viewBox, plots
-  all 1,335 locatable places with the same projection the artwork was built
-  with, shows confidence as geometry (solid disc → hollow ring → dashed ring,
-  plus every rival candidate tied to its winner by a hairline), lists the 7
-  unlocatable places rather than plotting them, and offers the terrain raster as
-  an opt-in Relief view fetched only when selected. `src/utils/mapDataLoader.ts`
-  holds the pure view-model and the greedy highest-confidence-first label
-  decluttering. No map library, no new dependency.
+  coastline, lakes and rivers as inline SVG, plots all 1,335 locatable places
+  with the same projection the artwork was built with, shows confidence as
+  geometry (solid disc → hollow ring → dashed ring, plus every rival candidate
+  tied to its winner by a hairline), lists the 7 unlocatable places rather than
+  plotting them, and offers the terrain raster as an opt-in Relief view fetched
+  only when selected. Slice 3 makes it move, exactly as brief section 4.4
+  prescribes and with no map library or new dependency: the SVG viewBox is the
+  camera (`src/utils/mapViewport.ts`, pure and unit-tested — fit, pan clamp,
+  zoom-about-point, pinch); one-finger drag pans, pinch zooms, wheel and
+  trackpad-pinch zoom on desktop, double-tap zooms a step, and +/−/home buttons
+  cover keyboard and mouse. Zoom is clamped to the full extent and 20×, pan so
+  the artwork cannot leave the screen. Strokes are non-scaling and markers and
+  labels are drawn in screen space (a CSS `--map-k` scale group per marker, set
+  once per frame), so nothing fattens or blobs at any zoom; gestures write the
+  DOM directly and React commits only at gesture end. Labels are decluttered
+  most-referenced-first with a budget that grows with zoom (Jerusalem, Babylon,
+  Assyria at home; every place by ~12×). Tapping a place opens a card with its
+  name, type, confidence band and score, modern identification, rival count and
+  the number of verses it appears in; tapping the background dismisses it. A
+  tap into a pile resolves to the most-referenced place within a few pixels
+  (`pickMarker`), so the Judean cluster means Jerusalem, not the wall segment
+  geocoded on top of it. Animated zooms respect `prefers-reduced-motion`.
   **DELIBERATELY NOT BUILT, and the next piece of work:** how the map is reached
   from a verse or a passage (today it is a temporary `?map` / `#map` entry in
-  `App.tsx`, marked in place and removable in three lines), pan/zoom/gesture
-  feel, tapping a place to open its candidates and its openbible.info page,
-  marker clustering, off-canvas indicators for the ~65 out-of-frame places, and
-  filtering the map to the chapter you are reading. Those are a taste pass with
-  the rendered map in hand, which is what slice 2 exists to make possible.
+  `App.tsx`, marked in place and removable in three lines); tapping the verse
+  count to go and read those verses, or a place's openbible.info page; momentum
+  after a fling (the brief calls it optional, interruptible-and-jank-free was the
+  requirement); marker clustering; off-canvas indicators for the ~65
+  out-of-frame places; filtering the map to the chapter you are reading; and
+  the timeline, which brief section 6 rules out for lack of verifiable data.
 
 - **Footnotes door (deep-dive rung 1) — the reading surface is BUILT
   (2026-09-01); what is left is a thumb on a real phone.** Design + data brief in

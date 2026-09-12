@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { buildViewModel, describeMarker, selectLabels, type PlaceMarker } from './mapDataLoader'
+import {
+  buildViewModel,
+  countVersesByPlace,
+  describeMarker,
+  pickMarker,
+  selectLabels,
+  type PlaceMarker
+} from './mapDataLoader'
 import { projectToView, type MapPlace } from './mapData'
 
 // Real records out of public/map/places.json.gz, pasted rather than invented so
@@ -76,7 +83,8 @@ function marker(name: string, x: number, y: number, score: number): PlaceMarker 
     contested: false,
     point: { x, y, score },
     alternatives: [],
-    score
+    score,
+    references: 0
   }
 }
 
@@ -101,6 +109,12 @@ describe('selectLabels', () => {
   it('honours the cap, keeping the most confident labels', () => {
     const many = [marker('One', 0, 0, 10), marker('Two', 0, 100, 900), marker('Three', 0, 200, 500)]
     expect(selectLabels(many, { limit: 2 }).map(l => l.name)).toEqual(['Two', 'Three'])
+  })
+
+  it('labels the most-referenced place first, before the most confident', () => {
+    const jerusalem = { ...marker('Jerusalem', 100, 100, 1000), references: 800 }
+    const angle = { ...marker('Angle', 100.4, 100, 1113), references: 1 }
+    expect(selectLabels([angle, jerusalem]).map(l => l.name)).toEqual(['Jerusalem'])
   })
 
   it('does not mutate the markers it was handed', () => {
@@ -142,5 +156,60 @@ describe('rival tethers', () => {
     expect(markers[0].alternatives.map(a => a.linked)).toEqual([true, false])
     // Both rivals are still DRAWN — only the tether is dropped.
     expect(markers[0].alternatives).toHaveLength(2)
+  })
+})
+
+describe('countVersesByPlace', () => {
+  it('counts the verses each place appears in, by bundle index', () => {
+    const counts = countVersesByPlace({
+      '01012001': [0, 3],
+      '01012002': [0],
+      '43001028': [7]
+    })
+    expect(counts.get(0)).toBe(2)
+    expect(counts.get(3)).toBe(1)
+    expect(counts.get(7)).toBe(1)
+    expect(counts.get(9)).toBeUndefined()
+  })
+})
+
+describe('pickMarker', () => {
+  const at = (index: number, x: number, y: number, references = 1, score = 500): PlaceMarker => ({
+    index,
+    name: `P${index}`,
+    type: 'settlement',
+    band: 'moderate',
+    contested: false,
+    point: { x, y, score },
+    alternatives: [],
+    score,
+    references
+  })
+
+  it('returns the nearest marker within the radius', () => {
+    const markers = [at(0, 10, 10), at(1, 14, 10), at(2, 40, 40)]
+    expect(pickMarker(markers, { x: 13, y: 10 }, 5)?.index).toBe(1)
+  })
+
+  it('returns null when nothing is within reach', () => {
+    expect(pickMarker([at(0, 10, 10)], { x: 30, y: 30 }, 5)).toBeNull()
+  })
+
+  it('treats places within the tolerance as a dead heat and picks the most-referenced', () => {
+    // "The Angle" (1 verse, score 1113) is geocoded on top of Jerusalem (800 verses).
+    const markers = [at(0, 10, 10, 1, 1113), at(1, 10.4, 10, 800, 1000)]
+    expect(pickMarker(markers, { x: 10, y: 10 }, 5, 1)?.index).toBe(1)
+    // With no tolerance, the nearer one simply wins.
+    expect(pickMarker(markers, { x: 10, y: 10 }, 5, 0)?.index).toBe(0)
+  })
+
+  it('falls back to confidence when references tie', () => {
+    const markers = [at(0, 10, 10, 3, 300), at(1, 10.4, 10, 3, 1000)]
+    expect(pickMarker(markers, { x: 10, y: 10 }, 5, 1)?.index).toBe(1)
+  })
+
+  it('picks the village when the tap is squarely on it and it stands apart', () => {
+    const markers = [at(0, 10, 10, 1, 300), at(1, 30, 10, 800, 1000)]
+    expect(pickMarker(markers, { x: 10.1, y: 10 }, 5, 1)?.index).toBe(0)
   })
 })

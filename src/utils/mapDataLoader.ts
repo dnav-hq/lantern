@@ -13,7 +13,8 @@ import {
   projectToView,
   type ConfidenceBand,
   type MapPlace,
-  type MapPlaceBundle
+  type MapPlaceBundle,
+  type VerseKey
 } from './mapData'
 
 /** One candidate location, already projected into view-box coordinates. */
@@ -48,6 +49,12 @@ export interface PlaceMarker {
   alternatives: MarkerPoint[]
   /** Best candidate's score, 0–1000. */
   score: number
+  /**
+   * How many verses mention the place — its weight in the text, which is what
+   * decides who gets a label when zoomed out and what a tap into a pile means.
+   * 0 when the view model was built without the bundle's verse index.
+   */
+  references: number
 }
 
 /**
@@ -82,9 +89,10 @@ export const MAX_LINK_DISTANCE = 60
  * Earth artwork, which is the only reason the markers land on their coastlines.
  */
 export function buildViewModel(
-  bundle: Pick<MapPlaceBundle, 'p'>,
+  bundle: Pick<MapPlaceBundle, 'p'> & Partial<Pick<MapPlaceBundle, 'vs'>>,
   maxLinkDistance = MAX_LINK_DISTANCE
 ): MapViewModel {
+  const references = countVersesByPlace(bundle.vs ?? {})
   const markers: PlaceMarker[] = []
   const unlocated: UnlocatedPlace[] = []
   const counts: Record<ConfidenceBand, number> = {
@@ -116,7 +124,8 @@ export function buildViewModel(
         alt.linked = Math.hypot(alt.x - point.x, alt.y - point.y) <= maxLinkDistance
         return alt
       }),
-      score: best.s
+      score: best.s,
+      references: references.get(index) ?? 0
     })
   })
 
@@ -149,10 +158,10 @@ export interface LabelOptions {
 
 /**
  * Greedy label decluttering (brief section 4.4). With 1,342 places every label
- * would overlap, so labels are awarded highest-confidence-first and a label is
- * dropped when its box hits one already placed. That ordering is deliberate:
- * the labels you can read are the places scholarship is most sure of, so the
- * decluttering doubles as a confidence cue rather than fighting one.
+ * would overlap, so labels are awarded most-referenced-first — Jerusalem before
+ * a village named once — and a label is dropped when its box hits one already
+ * placed. Among places the text leans on equally, scholarship's confidence
+ * decides, so the decluttering still doubles as a confidence cue.
  *
  * Ties break on name so the output is deterministic across runs and machines.
  */
@@ -162,7 +171,9 @@ export function selectLabels(markers: PlaceMarker[], options: LabelOptions = {})
   const offsetX = options.offsetX ?? 4.5
   const limit = options.limit ?? Infinity
 
-  const ranked = [...markers].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+  const ranked = [...markers].sort(
+    (a, b) => b.references - a.references || b.score - a.score || a.name.localeCompare(b.name)
+  )
   const taken: [number, number, number, number][] = []
   const labels: PlaceLabel[] = []
 
@@ -213,4 +224,54 @@ export function describeMarker(marker: PlaceMarker): string {
     )
   }
   return parts.join('; ')
+}
+
+/**
+ * How many verses mention each place, keyed by its index into the bundle's `p`
+ * array. Inverts the bundle's verse → places index once; the place card reads
+ * it, and it is the number a reader most wants beside a name ("Bethel: 66
+ * verses") because it says how much the text leans on the place.
+ */
+export function countVersesByPlace(vs: Record<VerseKey, number[]>): Map<number, number> {
+  const counts = new Map<number, number>()
+  for (const indices of Object.values(vs)) {
+    for (const index of indices) counts.set(index, (counts.get(index) ?? 0) + 1)
+  }
+  return counts
+}
+
+/**
+ * The marker a tap at `point` (artwork units) means, or null if none is within
+ * `radius` (also artwork units — the caller converts a finger-sized pixel
+ * radius at the current zoom). Any distance under `tolerance` counts as zero,
+ * and a dead heat goes to the place the text mentions most, then to the
+ * better-attested one. That is for the Judean pile, where "the Angle" of
+ * Nehemiah's wall is geocoded on top of Jerusalem and Ramah and Mozah sit a
+ * pixel either side of it: a tap there means Jerusalem. Zoom in until they
+ * separate and a tap on the village picks the village.
+ */
+export function pickMarker(
+  markers: PlaceMarker[],
+  point: { x: number; y: number },
+  radius: number,
+  tolerance = 0
+): PlaceMarker | null {
+  let best: PlaceMarker | null = null
+  let bestDistance = Infinity
+  for (const marker of markers) {
+    const d = Math.hypot(marker.point.x - point.x, marker.point.y - point.y)
+    if (d > radius) continue
+    const effective = Math.max(d, tolerance)
+    if (
+      effective < bestDistance ||
+      (effective === bestDistance &&
+        best &&
+        (marker.references > best.references ||
+          (marker.references === best.references && marker.score > best.score)))
+    ) {
+      best = marker
+      bestDistance = effective
+    }
+  }
+  return best
 }
