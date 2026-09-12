@@ -8341,86 +8341,6 @@ body.dark .study-note-act .is-yes {
 }
 .map-view-eyebrow {
   margin: 0;
-/* ── The word door ─────────────────────────────────────────────────────────
-   docs/proposals/word-door-guardrails.md, and design/word-door.html for the
-   look. Two things here are load-bearing rather than taste:
-
-   1. NOTHING styles the salient word in the scripture itself (§9a.3). There is
-      no rule below that touches .verse-text — the footnotes door owns the only
-      mark on a verse, and a second door in the same costume leading somewhere
-      else is worse than no door at all. The entrance is a line UNDER a verse
-      the reader already chose, and it inherits the UI font so it never reads as
-      part of the sentence above it.
-   2. The gloss carries no visual weight anywhere (R2/R3). It sits in the same
-      muted treatment as the provenance beside it, because a heading, a larger
-      size or a bolder ink would make it the answer no matter what the words
-      around it say. */
-
-.word-door-entrance {
-  padding: 2px 0 8px 0;
-}
-.word-door-open {
-  font-family: var(--ui-font);
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  background: none;
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-xl);
-  padding: 5px 13px;
-  cursor: pointer;
-}
-.word-door-open:hover {
-  color: var(--text);
-  border-color: var(--border-strong);
-}
-
-.word-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 980;
-  background: rgba(20, 16, 8, 0.28);
-}
-.word-sheet {
-  position: fixed;
-  z-index: 990;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  max-height: 88vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--surface);
-  border-top: 0.5px solid var(--border);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  box-shadow: 0 -8px 24px -10px rgba(20, 16, 8, 0.3);
-  color: var(--text);
-}
-/* Desktop: a centred panel rather than a bottom sheet. Same content, and the
-   measure is capped so occurrence sentences stay readable lines. */
-@media (min-width: 700px) {
-  .word-sheet {
-    top: 50%;
-    right: auto;
-    bottom: auto;
-    left: 50%;
-    width: min(760px, calc(100vw - 64px));
-    max-height: 82vh;
-    transform: translate(-50%, -50%);
-    border: 0.5px solid var(--border);
-    border-radius: var(--radius-lg);
-  }
-}
-.word-sheet-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: 12px 18px;
-  border-bottom: 0.5px solid var(--border);
-  flex-shrink: 0;
-}
-.word-door-ref {
-  font-family: var(--ui-font);
   font-size: var(--text-xs);
   letter-spacing: var(--tracking-eyebrow);
   text-transform: uppercase;
@@ -8654,6 +8574,93 @@ body.dark .map-terrain {
 .chapter-marquee-surface.is-switching {
   opacity: 0.55;
   transition: opacity 160ms ease-out;
+}
+
+/* ── The word door ─────────────────────────────────────────────────────────
+   docs/proposals/word-door-guardrails.md, and design/word-door.html for the
+   look. Two things here are load-bearing rather than taste:
+
+   1. NOTHING styles the salient word in the scripture itself (§9a.3). There is
+      no rule below that touches .verse-text — the footnotes door owns the only
+      mark on a verse, and a second door in the same costume leading somewhere
+      else is worse than no door at all. The entrance is a line UNDER a verse
+      the reader already chose, and it inherits the UI font so it never reads as
+      part of the sentence above it.
+   2. The gloss carries no visual weight anywhere (R2/R3). It sits in the same
+      muted treatment as the provenance beside it, because a heading, a larger
+      size or a bolder ink would make it the answer no matter what the words
+      around it say. */
+
+.word-door-entrance {
+  padding: 2px 0 8px 0;
+}
+.word-door-open {
+  font-family: var(--ui-font);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  background: none;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 5px 13px;
+  cursor: pointer;
+}
+.word-door-open:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.word-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 980;
+  background: rgba(20, 16, 8, 0.28);
+}
+.word-sheet {
+  position: fixed;
+  z-index: 990;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-top: 0.5px solid var(--border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: 0 -8px 24px -10px rgba(20, 16, 8, 0.3);
+  color: var(--text);
+}
+/* Desktop: a centred panel rather than a bottom sheet. Same content, and the
+   measure is capped so occurrence sentences stay readable lines. */
+@media (min-width: 700px) {
+  .word-sheet {
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    width: min(760px, calc(100vw - 64px));
+    max-height: 82vh;
+    transform: translate(-50%, -50%);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+}
+.word-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 12px 18px;
+  border-bottom: 0.5px solid var(--border);
+  flex-shrink: 0;
+}
+.word-door-ref {
+  font-family: var(--ui-font);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
 .word-close {
   background: none;
   border: 0;
