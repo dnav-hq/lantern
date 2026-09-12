@@ -31,6 +31,14 @@ interface MobileSelectionBarProps {
    */
   highlightedAs?: string | null
   onRemoveHighlight?: () => void
+  /**
+   * True when the text on screen is not the BSB, so the deep dive (the
+   * footnote door) would be silently missing for this selection. Renders one
+   * quiet line above the bar offering the same verse in BSB — the study text.
+   */
+  offerBsb?: boolean
+  /** Switches the reading translation to BSB, keeping chapter and selection. */
+  onViewInBsb?: () => void
 }
 
 export default function MobileSelectionBar({
@@ -40,7 +48,9 @@ export default function MobileSelectionBar({
   onNote,
   onHighlight,
   highlightedAs = null,
-  onRemoveHighlight
+  onRemoveHighlight,
+  offerBsb = false,
+  onViewInBsb
 }: MobileSelectionBarProps): React.ReactElement | null {
   const [mounted, setMounted] = useState(shown)
   const [leaving, setLeaving] = useState(false)
@@ -48,8 +58,8 @@ export default function MobileSelectionBar({
   // The selection (and so the reference) clears the instant `shown` goes false,
   // but the bar is still sliding out — freeze the last content so it reads right
   // for the length of that exit.
-  const last = useRef({ reference })
-  if (shown) last.current = { reference }
+  const last = useRef({ reference, offerBsb })
+  if (shown) last.current = { reference, offerBsb }
 
   useEffect(() => {
     if (shown) {
@@ -75,7 +85,7 @@ export default function MobileSelectionBar({
 
   if (!shown && picking) setPicking(false)
   if (!mounted) return null
-  const content = shown ? { reference } : last.current
+  const content = shown ? { reference, offerBsb } : last.current
 
   return createPortal(
     <div
@@ -83,6 +93,16 @@ export default function MobileSelectionBar({
       role="toolbar"
       aria-label="Selection actions"
     >
+      {/* The deep dive lives on the BSB only. Said once, quietly, with the way
+          there — never on BSB, and never as a modal or a disabled button. */}
+      {content.offerBsb && onViewInBsb && (
+        <p className="mobile-selbar-notice" role="status">
+          The deep dive works on the BSB.{' '}
+          <button type="button" className="mobile-selbar-notice-link" onClick={onViewInBsb}>
+            View this verse in BSB
+          </button>
+        </p>
+      )}
       <span className="mobile-selbar-ref">{content.reference}</span>
       <span className="mobile-selbar-spacer" />
       <button

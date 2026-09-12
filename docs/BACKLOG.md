@@ -320,6 +320,14 @@ belongs to and why that arc comes when it does.
   And from the brief: the email to Berean.Bible asking whether the public-domain
   dedication covers the apparatus as well as the text (§8), and the KJV's 6,959
   notes, a different apparatus needing their own parser and audit (§3.6).
+  SHIPPED 2026-09-12: the non-BSB notice. Doors only exist on the BSB
+  (`FOOTNOTE_TRANSLATIONS` in `helloao.ts`), so on KJV/ESV/NET a verse carried
+  no `notes` and the reader was silently denied. `MobileSelectionBar` now says
+  so in one muted line above the bar ("The deep dive works on the BSB. View
+  this verse in BSB") whenever the SERVED text is not BSB and a verse is
+  selected; the link switches the reading translation to BSB, keeps chapter and
+  selection, and scrolls the verse back into view. Desktop's verse-action-bar
+  does not carry it yet.
 
 
 - **Word door (deep-dive rung 2) — slice 1, the DATA, is built (2026-09-02);

@@ -284,7 +284,7 @@ function ChapterView({
   onServedTranslation
 }: ChapterViewProps): React.ReactElement {
   const api = useApi()
-  const [translation] = useReadingTranslation()
+  const [translation, setTranslation] = useReadingTranslation()
   // Frozen at mount: this instance is keyed per chapter, so whether it arrived
   // via a swipe is decided once. Freezing it means a later re-render (notes
   // loading) can't drop the class and accidentally trigger the entrance
@@ -591,6 +591,34 @@ function ChapterView({
   useEffect(() => {
     onServedTranslation?.(bibleData?.servedTranslation)
   }, [bibleData?.servedTranslation, onServedTranslation])
+
+  // The deep dive (the footnote door today, the word door later) exists only on
+  // the BSB: helloao's footnotes are walked for BSB alone (FOOTNOTE_TRANSLATIONS
+  // in src/bible/helloao.ts), so on KJV/ESV/NET a verse simply carries no
+  // `notes` and the dotted underline never appears. A reader must not be denied
+  // that silently. Judged on the text actually on screen, not the preference:
+  // ESV substituted by BSB during an outage IS the BSB, doors and all.
+  const servedTranslation = bibleData?.servedTranslation ?? translation
+  const deepDiveElsewhere = bibleData !== null && servedTranslation !== 'BSB'
+  // Switching keeps this ChapterView (it is keyed by chapter, not translation)
+  // and so the selection — but the parent scrolls a switched chapter to verse 1
+  // (the switcher lives at its foot). Coming from the selection bar the reader
+  // wants THEIR verse, so bring it back once the BSB text has landed.
+  const revealAfterSwitchRef = useRef<number | null>(null)
+  const viewSelectionInBsb = (): void => {
+    revealAfterSwitchRef.current = selAnchor
+    setTranslation('BSB')
+  }
+  useEffect(() => {
+    if (switching || loading || bibleData === null) return
+    const verse = revealAfterSwitchRef.current
+    if (verse === null) return
+    revealAfterSwitchRef.current = null
+    requestAnimationFrame(() => {
+      armProgrammaticScroll(chromeScrollGuard)
+      verseRowRefs.current.get(verse)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }, [switching, loading, bibleData, chromeScrollGuard])
 
   useEffect(() => {
     setLocalNotes(notes)
@@ -1778,6 +1806,8 @@ function ChapterView({
         onHighlight={key => void handleHighlight(key as NoteCategory)}
         highlightedAs={selectedHighlightCategory}
         onRemoveHighlight={() => void handleRemoveHighlight()}
+        offerBsb={deepDiveElsewhere}
+        onViewInBsb={viewSelectionInBsb}
       />
 
       {/* Portaled to <body>, like MobileSelectionBar: this bar is position:fixed,

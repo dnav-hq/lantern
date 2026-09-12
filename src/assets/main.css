@@ -7702,6 +7702,35 @@ body.dark .mobile-menu-btn:active {
   .app-shell.reading-surface.chrome-hidden .mobile-selbar {
     bottom: calc(12px + env(safe-area-inset-bottom));
   }
+  /* The "deep dive is on the BSB" line: sits just above the bar, in the same
+     register as .translation-substituted (muted, small, a hairline card), and
+     rides the bar's slide since it is positioned inside it. */
+  .mobile-selbar-notice {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 8px);
+    margin: 0;
+    padding: 7px 11px;
+    border: 0.5px solid var(--border);
+    border-left: 2px solid var(--accent);
+    border-radius: var(--radius-sm, 7px);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 12.5px;
+    line-height: 1.5;
+    box-shadow: var(--elev-2);
+  }
+  .mobile-selbar-notice-link {
+    border: none;
+    padding: 0;
+    background: none;
+    color: var(--accent-ink);
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
   .mobile-selbar-ref {
     font-family: var(--scripture-font);
     font-size: 15px;
