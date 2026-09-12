@@ -922,13 +922,21 @@ function ChapterView({
   // touched here — only bodiless marks, which is all selectedHighlights holds.
   const handleRemoveHighlight = async (): Promise<void> => {
     if (selectedHighlights.length === 0 || savingInline) return
+    const removed = selectedHighlights
+    const ids = new Set(removed.map(n => n.id))
+    // Optimistic: the tint leaves the page the moment the reader asks (the CSS
+    // fades it), and the deletes follow. Waiting on the round trip left the
+    // mark sitting there for a second or two and then vanishing with no
+    // transition at all (Dennis, 2026-09-12). If a delete fails the note is
+    // put back, so nothing is ever silently lost.
+    setLocalNotes(prev => prev.filter(n => !ids.has(n.id)))
+    clearSelection()
     setSavingInline(true)
     try {
-      const ids = new Set(selectedHighlights.map(n => n.id))
-      for (const id of ids) await api.deleteNoteAndCascade(id)
-      setLocalNotes(prev => prev.filter(n => !ids.has(n.id)))
+      await Promise.all([...ids].map(id => api.deleteNoteAndCascade(id)))
       onNotesChanged()
-      clearSelection()
+    } catch {
+      setLocalNotes(prev => [...prev, ...removed.filter(n => !prev.some(p => p.id === n.id))])
     } finally {
       setSavingInline(false)
     }

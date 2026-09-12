@@ -245,7 +245,7 @@ export default function CategoryMenu({
       return
     }
     if (plan.kind === 'full') {
-      setNotice(`${MAX_ACTIVE_CATEGORIES} of ${MAX_ACTIVE_CATEGORIES} — retire one first.`)
+      setNotice(`${MAX_ACTIVE_CATEGORIES} of ${MAX_ACTIVE_CATEGORIES} — delete one first.`)
       return
     }
     if (plan.kind === 'exists') {
@@ -270,7 +270,7 @@ export default function CategoryMenu({
   const restore = useCallback(
     async (key: string) => {
       if (atCap) {
-        setNotice(`${MAX_ACTIVE_CATEGORIES} of ${MAX_ACTIVE_CATEGORIES} — retire one first.`)
+        setNotice(`${MAX_ACTIVE_CATEGORIES} of ${MAX_ACTIVE_CATEGORIES} — delete one first.`)
         return
       }
       closeAll()
@@ -393,7 +393,7 @@ export default function CategoryMenu({
                   Colour
                 </button>
                 <button className="cat-menu-sub-action" onClick={() => setConfirmKey(cat.key)}>
-                  {canDelete(cat.key) ? 'Delete' : 'Retire'}
+                  Delete
                 </button>
               </div>
             )}
@@ -406,7 +406,7 @@ export default function CategoryMenu({
           key, so notes filed under it resolve again untouched. */}
       {retired.length > 0 && (
         <>
-          <div className="cat-menu-divider">Retired</div>
+          <div className="cat-menu-divider">Deleted</div>
           {retired.map(cat => (
             <div className="cat-menu-row is-retired" key={cat.key}>
               <span className={`cat-menu-dot cat-${cat.key}`} aria-hidden="true" />
@@ -416,7 +416,7 @@ export default function CategoryMenu({
                 disabled={atCap}
                 title={
                   atCap
-                    ? `${MAX_ACTIVE_CATEGORIES} of ${MAX_ACTIVE_CATEGORIES} — retire one first`
+                    ? `${MAX_ACTIVE_CATEGORIES} of ${MAX_ACTIVE_CATEGORIES} — delete one first`
                     : undefined
                 }
                 onClick={() => void restore(cat.key)}
@@ -470,7 +470,7 @@ export default function CategoryMenu({
           </span>
           <span className="cat-menu-label">
             {atCap
-              ? `${MAX_ACTIVE_CATEGORIES} of ${MAX_ACTIVE_CATEGORIES} — retire one first`
+              ? `${MAX_ACTIVE_CATEGORIES} of ${MAX_ACTIVE_CATEGORIES} — delete one first`
               : 'Create'}
           </span>
         </button>
@@ -489,7 +489,7 @@ export default function CategoryMenu({
 
       {offerRestore && (
         <div className="cat-menu-confirm">
-          <p>“{offerRestore.label}” is retired. Restore it rather than start again?</p>
+          <p>“{offerRestore.label}” was deleted. Restore it rather than start again?</p>
           <div className="cat-menu-confirm-actions">
             <button
               className="cat-menu-sub-action is-strong"
@@ -512,8 +512,8 @@ export default function CategoryMenu({
             {canDelete(confirmed.key)
               ? `Delete “${confirmed.label}”? Nothing is filed under it.`
               : noteCount === null
-                ? `Retire “${confirmed.label}”? Notes already filed under it keep their name and colour — you just won't be able to file new ones here.`
-                : `Retire “${confirmed.label}”? ${noteCount} ${noteCount === 1 ? 'note keeps' : 'notes keep'} their name and colour — you just won't be able to file new ones here.`}
+                ? `Delete “${confirmed.label}”? Notes already filed under it keep their name and colour — you just won't be able to file new ones here.`
+                : `Delete “${confirmed.label}”? ${noteCount} ${noteCount === 1 ? 'note keeps' : 'notes keep'} their name and colour — you just won't be able to file new ones here.`}
           </p>
           <div className="cat-menu-confirm-actions">
             <button
@@ -525,7 +525,7 @@ export default function CategoryMenu({
                 void save(next)
               }}
             >
-              {canDelete(confirmed.key) ? 'Delete' : 'Retire'}
+              Delete
             </button>
             <button className="cat-menu-sub-action" onClick={closeAll}>
               Cancel
