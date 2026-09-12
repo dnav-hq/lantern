@@ -319,6 +319,17 @@ belongs to and why that arc comes when it does.
   requirement); marker clustering; off-canvas indicators for the ~65
   out-of-frame places; filtering the map to the chapter you are reading; and
   the timeline, which brief section 6 rules out for lack of verifiable data.
+  **Gestures were made smooth (2026-09-12).** The cause was writing the
+  `viewBox` ATTRIBUTE to the DOM every frame during a drag/pinch: that forces
+  the browser to recompute layout for the whole subtree underneath it (1,335
+  markers, their labels, the relief raster), a main-thread cost the compositor
+  can't absorb. The fix keeps `viewBox` committed only once, at gesture end,
+  and drives the live frame instead with a `transform` on a single wrapping
+  `<g className="map-content">`, GPU-composited via `will-change: transform`
+  scoped to an `.is-live` class toggled for the gesture's duration; `PlaceGlyph`
+  is also memoized so the one commit-time re-render doesn't re-invoke all 1,335
+  markers. Measured on a scripted drag at 390×844: see the run's verify.txt for
+  before/after average and worst frame times.
 
 - **Footnotes door (deep-dive rung 1) — the reading surface is BUILT
   (2026-09-01); what is left is a thumb on a real phone.** Design + data brief in
