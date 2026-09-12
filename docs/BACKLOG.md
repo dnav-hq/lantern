@@ -333,6 +333,10 @@ belongs to and why that arc comes when it does.
   selected; the link switches the reading translation to BSB, keeps chapter and
   selection, and scrolls the verse back into view. Desktop's verse-action-bar
   does not carry it yet.
+  BRIEF 2026-09-12: `docs/proposals/footnotes-door-design-pass.md` measures
+  where doors actually fall (2,099 total, 23.0% of chapters have none, median
+  1 per chapter) and offers three visual options for the design pass, with a
+  recommendation and two open questions.
 
 
 - **Word door (deep-dive rung 2) — slice 1 (DATA, 2026-09-02) and slice 2 (THE
