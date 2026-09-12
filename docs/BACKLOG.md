@@ -328,8 +328,16 @@ belongs to and why that arc comes when it does.
   `<g className="map-content">`, GPU-composited via `will-change: transform`
   scoped to an `.is-live` class toggled for the gesture's duration; `PlaceGlyph`
   is also memoized so the one commit-time re-render doesn't re-invoke all 1,335
-  markers. Measured on a scripted drag at 390×844: see the run's verify.txt for
-  before/after average and worst frame times.
+  markers. Measured on a scripted 2s drag at 390×844 (headless Chrome, rAF
+  frame-interval probe): before, avg 40.2 ms / worst 266.8 ms; after, the
+  sustained per-frame cost while actively dragging is a steady 16.7 ms (locked
+  to the display's refresh rate) — the fix's whole job was eliminating the
+  per-frame main-thread layout, and it did. Two one-time, non-repeating frames
+  remain: the GPU layer promotion at gesture start and the React commit at
+  gesture end, together ~200 ms once per gesture, not per frame; folding those
+  into a single worst-frame number gives worst 133.3 ms / avg 18.0 ms across
+  the whole gesture. See the run's verify.txt for the full numbers and the
+  per-frame trace.
 
 - **Footnotes door (deep-dive rung 1) — the reading surface is BUILT
   (2026-09-01); what is left is a thumb on a real phone.** Design + data brief in
