@@ -13,6 +13,7 @@ import {
   restoreCategory
 } from '../utils/noteCategories'
 import { publishNoteCategories, useNoteCategories } from '../utils/useNoteCategories'
+import { useLongPress } from '../utils/useLongPress'
 
 /**
  * The category picker, and the only place a category is made, named or retired.
@@ -54,6 +55,66 @@ export interface CategoryMenuProps {
   /** Offered before the categories, for a note with no category. */
   noneLabel?: string
   onPickNone?: () => void
+}
+
+/**
+ * One pickable row. Its own component because it holds press state: on touch,
+ * HOLDING the row opens the same options the `⋯` does on hover, and the row
+ * acknowledges the hold while it lasts (see src/utils/useLongPress.ts).
+ */
+function CategoryRow({
+  cat,
+  checked,
+  open,
+  rowRef,
+  onPick,
+  onMore
+}: {
+  cat: StoredCategoryDef
+  checked: boolean
+  open: boolean
+  rowRef: (el: HTMLButtonElement | null) => void
+  onPick: () => void
+  onMore: () => void
+}): React.ReactElement {
+  const [pressing, setPressing] = useState(false)
+  const hold = useLongPress(onMore, setPressing)
+  return (
+    <button
+      className={`cat-menu-row${pressing ? ' is-pressing' : ''}`}
+      role="menuitem"
+      ref={rowRef}
+      onClick={onPick}
+      {...hold}
+    >
+      <span className={`cat-menu-dot cat-${cat.key}`} aria-hidden="true" />
+      <span className="cat-menu-label">{cat.label}</span>
+      {checked && <span className="cat-menu-check">✓</span>}
+      {/* Hidden until hover/focus on a pointer device; faintly visible on
+          touch, where holding the row is the other way in. A reader who only
+          ever picks a category never needs this control. */}
+      <span
+        className={`cat-menu-more${open ? ' is-open' : ''}`}
+        role="button"
+        tabIndex={0}
+        aria-label={`Manage ${cat.label}`}
+        aria-expanded={open}
+        onClick={e => {
+          e.stopPropagation()
+          onMore()
+        }}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            e.stopPropagation()
+            onMore()
+          }
+        }}
+      >
+        ⋯
+      </span>
+    </button>
+  )
 }
 
 export default function CategoryMenu({
@@ -299,49 +360,23 @@ export default function CategoryMenu({
           </div>
         ) : (
           <React.Fragment key={cat.key}>
-            <button
-              className="cat-menu-row"
-              role="menuitem"
-              ref={el => {
+            <CategoryRow
+              cat={cat}
+              checked={selected === cat.key}
+              open={openKey === cat.key}
+              rowRef={el => {
                 if (el) rows.current.set(cat.key, el)
                 else rows.current.delete(cat.key)
               }}
-              onClick={() => onPick(cat.key)}
-            >
-              <span className={`cat-menu-dot cat-${cat.key}`} aria-hidden="true" />
-              <span className="cat-menu-label">{cat.label}</span>
-              {selected === cat.key && <span className="cat-menu-check">✓</span>}
-              {/* Hidden until hover/focus. A reader who only ever picks a
-                  category never meets this control. */}
-              <span
-                className={`cat-menu-more${openKey === cat.key ? ' is-open' : ''}`}
-                role="button"
-                tabIndex={0}
-                aria-label={`Manage ${cat.label}`}
-                aria-expanded={openKey === cat.key}
-                onClick={e => {
-                  e.stopPropagation()
-                  setColoringKey(null)
-                  setEditingKey(null)
-                  setConfirmKey(null)
-                  setOpenKey(openKey === cat.key ? null : cat.key)
-                  loadCounts()
-                }}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setColoringKey(null)
-                    setEditingKey(null)
-                    setConfirmKey(null)
-                    setOpenKey(openKey === cat.key ? null : cat.key)
-                    loadCounts()
-                  }
-                }}
-              >
-                ⋯
-              </span>
-            </button>
+              onPick={() => onPick(cat.key)}
+              onMore={() => {
+                setColoringKey(null)
+                setEditingKey(null)
+                setConfirmKey(null)
+                setOpenKey(openKey === cat.key ? null : cat.key)
+                loadCounts()
+              }}
+            />
 
             {openKey === cat.key && confirmKey !== cat.key && (
               <div className="cat-menu-sub" role="group" aria-label={`Manage ${cat.label}`}>

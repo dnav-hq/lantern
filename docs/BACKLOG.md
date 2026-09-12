@@ -208,6 +208,11 @@ belongs to and why that arc comes when it does.
   and at the limit the create row stays visible reading `8 of 8 — retire one
   first`. Migration `0011_note_categories_archive.sql` was applied to prod via
   the Supabase MCP on 2026-09-12, so archive now persists.
+  **Touch (2026-09-12):** hover does not exist on a phone, so the `⋯` is now
+  faintly visible on every row under `(hover: none)`, and HOLDING a row opens
+  the same Rename / Colour / Retire options with visible press feedback
+  (`src/utils/useLongPress.ts`). A hold that turns into a scroll cancels; a
+  completed hold swallows the click that follows so it never also picks.
   **Left behind by C, small:** a retired category's LABEL falls back to its KEY
   where an existing note renders, because `useCategoryLabels()` derives from the
   ACTIVE list and `src/utils/useNoteCategories.ts` was outside that task's scope

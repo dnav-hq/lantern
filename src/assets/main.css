@@ -1481,6 +1481,35 @@ body.dark .search-backdrop {
   color: var(--text);
   background: var(--surface-3, var(--surface-2));
 }
+/* No hover on a phone, so hidden-until-hover is hidden for good. Two things
+   replace it there: the `⋯` is faintly visible on every row, and HOLDING a row
+   opens the same options — with the row visibly acknowledging the hold, which
+   is what tells a thumb that the hold is doing something (Dennis, 2026-09-12). */
+@media (hover: none) {
+  .cat-menu-more {
+    opacity: 0.55;
+    padding: 6px 8px;
+    font-size: 15px;
+  }
+  .cat-menu-row {
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transition:
+      background 120ms ease-out,
+      transform 120ms ease-out;
+  }
+  .cat-menu-row.is-pressing {
+    background: var(--surface-3, var(--surface-2));
+    transform: scale(0.985);
+    transition:
+      background 450ms ease-in,
+      transform 450ms ease-in;
+  }
+  .cat-menu-sub-action {
+    padding: 8px 12px;
+  }
+}
 
 /* The submenu is a row of quiet verbs under the row it belongs to, rather than
    a floating panel — a popover inside a popover is a positioning problem and
