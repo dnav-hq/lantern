@@ -1,0 +1,1428 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Lantern — the deep dive as one system</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ── The app's real tokens, copied inline (src/assets/tokens.css) ────────
+         Only what these artboards touch. Nothing is invented; if a value here
+         disagrees with tokens.css, tokens.css is right. */
+      :root {
+        --ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --scripture-font: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+        --scripture-size: 19px;
+        --scripture-lh: 1.72;
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-5: 24px;
+        --radius-sm: 7px;
+        --radius-md: 12px;
+        --radius-lg: 18px;
+        --radius-xl: 26px;
+        --text-xs: 11px;
+        --text-sm: 13px;
+        --text-base: 14px;
+        --text-2xl: 26px;
+        --tracking-eyebrow: 0.08em;
+        --bg: #f4f0e8;
+        --surface: #fbf9f4;
+        --surface-2: #ece6da;
+        --border: #e2dccf;
+        --border-strong: #d8d0c0;
+        --text: #201e1a;
+        --text-muted: #6a6353;
+        --text-faint: #938a77;
+        --accent: #6b62d6;
+        --accent-hover: #5b52c8;
+        --accent-ink: #594fd1;
+        --accent-weak: rgba(107, 98, 214, 0.11);
+        --accent-soft: rgba(107, 98, 214, 0.18);
+        --on-accent: #ffffff;
+        --elev-2: 0 2px 6px rgba(20, 16, 8, 0.06), 0 8px 20px -6px rgba(20, 16, 8, 0.1);
+        --elev-3: 0 8px 20px -6px rgba(20, 16, 8, 0.14), 0 24px 46px -14px rgba(20, 16, 8, 0.2);
+        --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        --dur-3: 320ms;
+      }
+      body.dark {
+        --bg: #17140f;
+        --surface: #211d17;
+        --surface-2: #2b2620;
+        --border: #38322a;
+        --border-strong: #473f34;
+        --text: #ece4d6;
+        --text-muted: #a99f8e;
+        --text-faint: #7a7264;
+        --accent: #a49cf0;
+        --accent-hover: #b6aff5;
+        --accent-ink: #a49cf0;
+        --accent-weak: rgba(164, 156, 240, 0.15);
+        --accent-soft: rgba(164, 156, 240, 0.22);
+        --on-accent: #17140f;
+        --elev-2: 0 2px 6px rgba(0, 0, 0, 0.3), 0 8px 20px -6px rgba(0, 0, 0, 0.45);
+        --elev-3: 0 8px 20px -6px rgba(0, 0, 0, 0.5), 0 24px 46px -14px rgba(0, 0, 0, 0.6);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--ui-font);
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+        color: inherit;
+      }
+
+      /* ── Mockup chrome (not app code) ───────────────────────────────────────
+         One phone-width column, so the page reads the same on a phone as it
+         does on a desktop: nothing here is ever wider than 390px of screen. */
+      .page {
+        max-width: 390px;
+        margin: 0 auto;
+        padding: 34px 0 120px;
+      }
+      .pad {
+        padding: 0 16px;
+      }
+      h1 {
+        font-family: var(--scripture-font);
+        font-size: 25px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin: 0 0 8px;
+      }
+      .sub {
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--text-muted);
+        margin: 0 0 14px;
+      }
+      h2 {
+        font-size: var(--text-xs);
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 44px 16px 10px;
+        padding-bottom: 7px;
+        border-bottom: 1px solid var(--border);
+      }
+      .cap {
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: var(--text-muted);
+        margin: 0 16px 14px;
+      }
+      .cap b,
+      .ann b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .ann {
+        font-size: 13px;
+        line-height: 1.62;
+        color: var(--text-muted);
+        margin: 14px 16px 0;
+        padding-left: 12px;
+        border-left: 2px solid var(--accent);
+      }
+      .ann.warn {
+        border-left-color: #b5732a;
+      }
+      .ann + .ann {
+        margin-top: 10px;
+      }
+      .toggle {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        z-index: 60;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 7px 14px;
+        font-size: 12.5px;
+        box-shadow: var(--elev-2);
+      }
+      .rule {
+        margin: 0 16px 6px;
+        padding: 13px 15px;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        font-size: 13.5px;
+        line-height: 1.6;
+      }
+      .rule b {
+        font-weight: 600;
+      }
+
+      /* The artboard: a real 390-wide screen, framed. Height is content-led, so
+         a sheet artboard shows the sheet and a strip of the page behind it. */
+      .board {
+        position: relative;
+        width: 100%;
+        border: 1px solid var(--border-strong);
+        border-radius: 22px;
+        background: var(--bg);
+        overflow: hidden;
+      }
+      .board-label {
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 0 16px 7px;
+      }
+
+      /* ── The reading surface (src/assets/main.css, real values) ── */
+      .reading {
+        padding: 14px 16px 18px;
+      }
+      .chapter-head {
+        font-family: var(--scripture-font);
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0 0 2px;
+      }
+      .chapter-sub {
+        font-size: var(--text-xs);
+        letter-spacing: var(--tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 0 0 14px;
+      }
+      .reading-verse-row {
+        display: flex;
+        align-items: baseline;
+        gap: 9px;
+        border-radius: 5px;
+        padding: 3px 5px;
+        margin-left: -5px;
+        position: relative;
+      }
+      .reading-verse-row.selected {
+        background: var(--accent-soft);
+        box-shadow: inset 2px 0 0 var(--accent);
+      }
+      .verse-number {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-faint);
+        line-height: 1;
+        min-width: 18px;
+        flex-shrink: 0;
+        position: relative;
+        top: 0.15em;
+      }
+      .verse-text {
+        font-family: var(--scripture-font);
+        font-size: var(--scripture-size);
+        line-height: var(--scripture-lh);
+        color: var(--text);
+        flex: 1;
+      }
+      .footnote-door {
+        text-decoration-line: underline;
+        text-decoration-style: dotted;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 4px;
+        text-decoration-color: color-mix(in srgb, currentColor 34%, transparent);
+      }
+
+      /* ── The doorways row — THE ONE NEW THING on the reading page ──
+         Today this space holds a single line, "The words behind this verse"
+         (WordDoor.tsx). The row is that line generalised: one entrance, the
+         doors this verse actually has, each an invitation plus the smallest
+         fact that makes its question askable. */
+      .doorways {
+        padding: 4px 0 10px 24px;
+      }
+      .doorways-lead {
+        font-size: var(--text-xs);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 0 0 7px;
+      }
+      .door {
+        display: flex;
+        width: 100%;
+        align-items: baseline;
+        gap: 8px;
+        text-align: left;
+        background: none;
+        border: 0;
+        border-top: 0.5px solid var(--border);
+        padding: 9px 2px;
+      }
+      .door:first-of-type {
+        border-top: 0;
+        padding-top: 4px;
+      }
+      .door-q {
+        font-size: var(--text-base);
+        color: var(--accent-ink);
+        line-height: 1.45;
+      }
+      .door-fact {
+        font-size: var(--text-xs);
+        color: var(--text-faint);
+        margin-left: auto;
+        white-space: nowrap;
+        padding-left: 6px;
+      }
+      .door-chev {
+        color: var(--text-faint);
+        font-size: 12px;
+      }
+
+      /* ── The mobile selection bar (real values, main.css @media ≤768) ── */
+      .mobile-selbar {
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        bottom: 12px;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 10px 10px 15px;
+        background: var(--surface);
+        border: 0.5px solid var(--border-strong);
+        border-radius: 16px;
+        box-shadow: var(--elev-3);
+      }
+      .mobile-selbar-ref {
+        font-family: var(--scripture-font);
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--accent-ink);
+        white-space: nowrap;
+      }
+      .mobile-selbar-spacer {
+        flex: 1;
+        min-width: 8px;
+      }
+      .mobile-selbar-clear {
+        flex: none;
+        width: 34px;
+        height: 34px;
+        border: none;
+        border-radius: 999px;
+        background: var(--surface-2);
+        color: var(--text-muted);
+        font-size: 15px;
+        line-height: 1;
+      }
+      .mobile-selbar-hl {
+        font-size: 13px;
+        padding: 7px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border-strong);
+        background: var(--surface-2);
+        color: var(--text);
+      }
+      .mobile-selbar-note {
+        flex: none;
+        border: none;
+        border-radius: 11px;
+        padding: 10px 20px;
+        background: var(--accent);
+        color: var(--on-accent);
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: var(--elev-2);
+      }
+      .tabbar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        border-top: 0.5px solid var(--border);
+        background: var(--surface);
+        font-size: 10.5px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+      }
+      .tabbar span.on {
+        color: var(--accent-ink);
+      }
+
+      /* ── The door sheet (WordDoor.tsx's real CSS, shared by all three doors) ── */
+      .behind {
+        padding: 12px 16px 0;
+        opacity: 0.5;
+      }
+      .scrim {
+        height: 26px;
+        background: rgba(20, 16, 8, 0.28);
+      }
+      body.dark .scrim {
+        background: rgba(0, 0, 0, 0.45);
+      }
+      .sheet {
+        background: var(--surface);
+        border-top: 0.5px solid var(--border);
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        box-shadow: 0 -8px 24px -10px rgba(20, 16, 8, 0.3);
+      }
+      body.dark .sheet {
+        background: var(--surface-2);
+      }
+      .sheet-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-3);
+        padding: 12px 18px;
+        border-bottom: 0.5px solid var(--border);
+      }
+      .word-door-ref {
+        font-size: var(--text-xs);
+        letter-spacing: var(--tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--text-faint);
+      }
+      .word-close {
+        background: none;
+        border: 0;
+        color: var(--text-faint);
+        font-size: 15px;
+        padding: 4px 6px;
+      }
+      .sheet-body {
+        padding: 4px 18px 22px;
+      }
+      .word-picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 12px 0 4px;
+      }
+      .word-picker button {
+        font-size: var(--text-sm);
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        padding: 5px 11px;
+        border-radius: var(--radius-xl);
+        border: 0.5px solid var(--border);
+        background: var(--surface-2);
+        color: var(--text-muted);
+      }
+      body.dark .word-picker button {
+        background: var(--surface);
+      }
+      .word-picker button.is-chosen {
+        border-color: var(--accent-soft);
+        background: var(--accent-weak);
+        color: var(--accent-ink);
+      }
+      .word-picker .word-translit {
+        font-size: var(--text-xs);
+        color: var(--text-faint);
+      }
+      .word-door-verse {
+        font-family: var(--scripture-font);
+        font-size: 18px;
+        line-height: 1.7;
+        margin: 12px 0 6px;
+      }
+      .word-here {
+        font-style: normal;
+        background: var(--accent-weak);
+        border-radius: 3px;
+        padding: 0 3px;
+      }
+      .word-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        padding: 13px 0;
+        border-top: 0.5px solid var(--border);
+      }
+      .word-key {
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: var(--tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--text-faint);
+        min-width: 132px;
+      }
+      .word-value {
+        flex: 1;
+        min-width: 200px;
+        font-size: var(--text-base);
+        line-height: 1.55;
+      }
+      .word-muted {
+        color: var(--text-muted);
+      }
+      .word-lemma {
+        font-family: var(--scripture-font);
+        font-size: 21px;
+      }
+      .word-translit {
+        font-style: italic;
+        color: var(--text-muted);
+      }
+      .word-count {
+        color: var(--text-faint);
+        font-size: var(--text-xs);
+        margin-left: 6px;
+      }
+      .word-headline {
+        margin: 0 0 8px;
+      }
+      .word-renderings {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .word-renderings span {
+        font-size: var(--text-sm);
+        padding: 3px 10px;
+        border-radius: var(--radius-xl);
+        background: var(--surface-2);
+        border: 0.5px solid var(--border);
+      }
+      body.dark .word-renderings span {
+        background: var(--surface);
+      }
+      .word-renderings span.is-here {
+        border-color: var(--accent-soft);
+        background: var(--accent-weak);
+        color: var(--accent-ink);
+      }
+      .word-renderings .word-count {
+        background: none;
+        border: 0;
+        padding: 0;
+      }
+      .word-prov {
+        font-size: var(--text-xs);
+        line-height: 1.55;
+        color: var(--text-faint);
+        margin: 8px 0 0;
+      }
+      .word-section {
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: var(--tracking-eyebrow);
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 22px 0 2px;
+        padding-top: 13px;
+        border-top: 0.5px solid var(--border);
+      }
+      .word-occ {
+        padding: 10px 0;
+        border-top: 0.5px solid var(--border);
+        font-family: var(--scripture-font);
+        font-size: 15px;
+        line-height: 1.62;
+      }
+      .word-occ:first-child {
+        border-top: 0;
+      }
+      .word-occ.pinned {
+        background: var(--accent-weak);
+        margin: 0 -12px;
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+        border-top: 0;
+      }
+      .word-occ-ref {
+        display: block;
+        font-family: var(--ui-font);
+        font-size: var(--text-xs);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin-bottom: 2px;
+      }
+      .word-more {
+        font-size: var(--text-sm);
+        margin-top: 12px;
+        background: none;
+        border: 0.5px solid var(--border);
+        border-radius: var(--radius-xl);
+        padding: 6px 14px;
+        color: var(--text-muted);
+      }
+      .word-limits {
+        font-size: var(--text-sm);
+        line-height: 1.62;
+        color: var(--text-muted);
+        margin: 20px 0 0;
+        padding-top: 13px;
+        border-top: 0.5px solid var(--border);
+      }
+      /* The one control between a glance and the rest — a fold, not an action. */
+      .word-deeper {
+        display: block;
+        width: 100%;
+        margin-top: 18px;
+        padding: 10px 0;
+        font-size: var(--text-sm);
+        text-align: left;
+        background: none;
+        border: 0;
+        border-top: 0.5px solid var(--border);
+        border-bottom: 0.5px solid var(--border);
+        color: var(--accent-ink);
+      }
+      .word-deeper::after {
+        content: '↓';
+        float: right;
+        color: var(--text-faint);
+      }
+      .word-deeper.is-open::after {
+        content: '↑';
+      }
+
+      /* ── The connections door. Relevance is ORDER and PROMINENCE (full text →
+         one line → bare ref), never a meter — validated in
+         design/reference-deep-dive.html and kept. ── */
+      .conn {
+        padding: 13px 0 3px;
+        border-top: 0.5px solid var(--border);
+      }
+      .conn:first-of-type {
+        border-top: 0;
+      }
+      .conn-head {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+      .conn-ref {
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--accent-ink);
+      }
+      .conn-why {
+        font-size: var(--text-xs);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+      }
+      .conn-text {
+        font-family: var(--scripture-font);
+        font-size: 15px;
+        line-height: 1.62;
+        margin: 0;
+      }
+      .conn-text.one-line {
+        font-size: 14.5px;
+        color: var(--text-muted);
+      }
+      .conn-text .sp {
+        background: var(--accent-weak);
+        border-radius: 3px;
+        padding: 0 3px;
+      }
+      .conn-bare {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 12px 0 2px;
+        border-top: 0.5px solid var(--border);
+      }
+      .conn-bare span {
+        font-size: var(--text-sm);
+        padding: 4px 11px;
+        border-radius: var(--radius-xl);
+        border: 0.5px solid var(--border);
+        color: var(--text-muted);
+      }
+
+      /* ── The map door (MapView.tsx's real classes and values) ── */
+      .map-view {
+        --map-ink: var(--text-muted);
+        --map-coast: var(--text);
+        --map-water: rgba(63, 123, 160, 0.5);
+        --map-water-fill: rgba(63, 123, 160, 0.14);
+        --map-mark: var(--accent-ink);
+        --map-canvas: var(--surface);
+      }
+      body.dark .map-view {
+        --map-canvas: var(--surface-2);
+      }
+      .map-canvas {
+        position: relative;
+        background: var(--map-canvas);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        height: 296px;
+        margin-top: 12px;
+      }
+      .map-svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .map-layer path {
+        pointer-events: none;
+      }
+      .map-layer-coast path {
+        fill: none;
+        stroke: var(--map-coast);
+        stroke-width: 0.9;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+        opacity: 0.75;
+      }
+      .map-layer-lakes path {
+        fill: var(--map-water-fill);
+        stroke: var(--map-water);
+        stroke-width: 0.7;
+      }
+      .map-layer-rivers path {
+        fill: none;
+        stroke: var(--map-water);
+        stroke-width: 0.7;
+        stroke-linecap: round;
+      }
+      /* Everything the chapter does not name: still drawn, deliberately quiet. */
+      .map-faded circle {
+        fill: var(--text-faint);
+        opacity: 0.3;
+      }
+      .map-place-dot {
+        fill: var(--map-mark);
+        stroke: var(--map-canvas);
+        stroke-width: 0.8;
+      }
+      .is-high .map-place-dot {
+        fill-opacity: 0.4;
+        stroke: var(--map-mark);
+        stroke-width: 1.1;
+      }
+      .is-moderate .map-place-dot {
+        fill: none;
+        stroke: var(--map-mark);
+        stroke-width: 1.1;
+      }
+      .map-place-leader {
+        stroke: var(--map-mark);
+        stroke-width: 0.6;
+        opacity: 0.45;
+      }
+      .map-label {
+        fill: var(--text);
+        font-family: var(--ui-font);
+        font-size: 11px;
+        dominant-baseline: middle;
+        paint-order: stroke;
+        stroke: var(--map-canvas);
+        stroke-width: 3;
+        stroke-linejoin: round;
+      }
+      .map-legend {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        font-size: var(--text-xs);
+        color: var(--text-faint);
+        margin: 9px 0 0;
+      }
+      .map-legend i {
+        font-style: normal;
+        color: var(--accent-ink);
+      }
+      .place-row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 9px 0;
+        border-top: 0.5px solid var(--border);
+        font-size: var(--text-base);
+      }
+      .place-row .pn {
+        font-family: var(--scripture-font);
+        font-size: 15px;
+      }
+      .place-row .pv {
+        margin-left: auto;
+        font-size: var(--text-xs);
+        color: var(--text-faint);
+      }
+      .place-row .pc {
+        font-size: var(--text-xs);
+        color: var(--text-faint);
+      }
+
+      .foot {
+        margin: 54px 16px 0;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        font-size: 13px;
+        line-height: 1.62;
+        color: var(--text-muted);
+      }
+      .foot b {
+        color: var(--text);
+      }
+      code {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 12px;
+        background: var(--surface-2);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <button class="toggle" onclick="document.body.classList.toggle('dark')">Light / dark</button>
+
+    <div class="page">
+      <div class="pad">
+        <h1>The deep dive as one system</h1>
+        <p class="sub">
+          One verse, one entrance, three doors, one way deeper. Every word, count, rendering,
+          coordinate and verse on this page is <b>read out of the shipped bundles</b> —
+          <code>public/bible/words/**</code>, <code>public/bible/bsb.json.gz</code> and
+          <code>public/map/places.json.gz</code> — not invented. The note is
+          <code>docs/proposals/deep-dive-doorways.md</code>.
+        </p>
+        <p class="rule">
+          <b>The rule this whole page exists to show.</b> One entrance under a verse the reader
+          chose. Each door asks <b>one question</b> and its glance is <b>one screen that answers
+          it</b> — no scrolling required to get the answer. Everything else sits behind
+          <b>one quiet fold</b>, in the same words on every door. Three doors that obey that read
+          as one deep dive; three doors that each dump their whole layer read as three features.
+        </p>
+        <p class="cap" style="margin-left: 0; margin-right: 0">
+          <b>Why Genesis 12:3.</b> It is the one verse where all three doors are genuinely full,
+          measured rather than assumed. <b>Word:</b> <em>bāraḵ</em> (H1288) stands three times in
+          it and 330 times in the Old Testament, put into English 141 different ways. <b>Connections:</b>
+          the New Testament quotes it twice by name (Galatians 3:8, Acts 3:25) and Genesis repeats
+          the promise to Isaac and Jacob. <b>Map:</b> Genesis 12 carries
+          <b>8 geocoded places</b> — Haran to Egypt — the chapter is a journey.
+          Ecclesiastes 1:2 was the other candidate and it fails the test: its word door is the
+          best in the Bible (<em>hebel</em>, already drawn in <code>design/word-door.html</code>),
+          but Ecclesiastes 1 has <b>one</b> place in the whole chapter (Jerusalem) and the verse
+          has no quotation of it anywhere. One verse cannot show a system with one and a half
+          doors.
+        </p>
+      </div>
+
+      <!-- ════════════════════════════ 1. THE ENTRANCE ════════════════════════ -->
+      <h2>Artboard 1 — the entrance</h2>
+      <p class="cap">
+        The reading page, one verse chosen, the doorways row under it. It is
+        <b>two to four invitations in the reader's own words</b>, each with the smallest fact that
+        makes its question askable — never the answer, and never an empty door.
+      </p>
+      <p class="board-label">390 × 844 · one verse selected</p>
+      <div class="board" style="height: 760px">
+        <div class="reading">
+          <p class="chapter-sub">Berean Standard Bible</p>
+          <p class="chapter-head">Genesis 12</p>
+
+          <div class="reading-verse-row">
+            <span class="verse-number">1</span>
+            <span class="verse-text"
+              >Then the LORD said to Abram, “Leave your country, your kindred, and your father’s
+              household, and go to the land I will show you.</span
+            >
+          </div>
+          <div class="reading-verse-row">
+            <span class="verse-number">2</span>
+            <span class="verse-text"
+              >I will make you into a great nation, and I will bless you; I will make your name
+              great, so that you will be a blessing.</span
+            >
+          </div>
+          <div class="reading-verse-row selected">
+            <span class="verse-number">3</span>
+            <span class="verse-text"
+              >I will bless those who bless you and curse those who curse you; and all the
+              families of the earth will be blessed through you.”</span
+            >
+          </div>
+
+          <!-- THE DOORWAYS ROW. Three doors, because this verse has three. -->
+          <div class="doorways">
+            <p class="doorways-lead">Go deeper</p>
+            <button class="door">
+              <span class="door-q">The word behind “blessed”</span>
+              <span class="door-fact">3× here</span>
+              <span class="door-chev">›</span>
+            </button>
+            <button class="door">
+              <span class="door-q">Where Scripture picks this up</span>
+              <span class="door-fact">2 quote · 4 echo</span>
+              <span class="door-chev">›</span>
+            </button>
+            <button class="door">
+              <span class="door-q">Where this chapter happens</span>
+              <span class="door-fact">Haran → Egypt</span>
+              <span class="door-chev">›</span>
+            </button>
+          </div>
+
+          <div class="reading-verse-row">
+            <span class="verse-number">4</span>
+            <span class="verse-text"
+              >So Abram departed, as the LORD had directed him, and Lot went with him. Abram was
+              seventy-five years old when he left Haran.</span
+            >
+          </div>
+          <div class="reading-verse-row">
+            <span class="verse-number">5</span>
+            <span class="verse-text"
+              >And Abram took his wife Sarai, his nephew Lot, and all the possessions and people
+              they had acquired in Haran, and set out for the land of Canaan.</span
+            >
+          </div>
+        </div>
+
+        <div class="mobile-selbar">
+          <span class="mobile-selbar-ref">Genesis 12:3</span>
+          <span class="mobile-selbar-spacer"></span>
+          <button class="mobile-selbar-clear">✕</button>
+          <button class="mobile-selbar-hl">Highlight</button>
+          <button class="mobile-selbar-note">Note</button>
+        </div>
+        <div class="tabbar"><span class="on">Bible</span><span>Journal</span><span>Profile</span></div>
+      </div>
+
+      <p class="ann">
+        <b>It does not fight the selection bar, because it is not doing the bar's job.</b> The bar
+        is fixed to the bottom of the screen and answers <em>do something to this verse</em> —
+        write on it, mark it. The doorways row is <em>in the text</em>, under the verse it belongs
+        to, and answers <em>go into this verse</em>. Two registers, two places, no third button in
+        the bar. It is also exactly where the shipped word-door line already sits
+        (<code>WordDoor.tsx</code>'s “The words behind this verse”), so this is that line
+        generalised rather than new furniture.
+      </p>
+      <p class="ann">
+        <b>Each door is a question plus the smallest fact, never the answer.</b> “3× here”,
+        “2 quote · 4 echo”, “Haran → Egypt” — enough to make you curious, not enough to satisfy
+        you. That is the information-gap finding in
+        <code>deep-dive-study.md</code>'s addendum: complete ignorance produces no curiosity, and
+        a filled gap produces no tap.
+      </p>
+      <p class="ann warn">
+        <b>Never an empty door, shown rather than claimed.</b> On Ecclesiastes 1:2 this same row
+        renders <em>two</em> doors — “The word behind ‘futility’ · 4× here” and “Where Scripture
+        picks this up · 1 echo” — and no map door at all, because Ecclesiastes 1 has one place in
+        the entire chapter and none in that verse. The row is built from what the bundles actually
+        hold for this verse, so a thin verse gets a thin row and a plain verse gets no row.
+      </p>
+      <p class="ann">
+        <b>The footnotes door is not in this row, on purpose.</b> It shipped 2026-09-01 and it
+        owns the dotted underline <em>inside</em> the sentence, because a translator's alternative
+        belongs on the words it is about. Repeating it as a doorway would give one door two
+        costumes.
+      </p>
+
+      <!-- ════════════════════════════ 2. WORD GLANCE ═════════════════════════ -->
+      <h2>Artboard 2 — the word door, glance</h2>
+      <p class="cap">
+        One question: <b>what is the word here, and where else does it stand?</b> The verse, the
+        word, one line of how the BSB renders it, and a handful of occurrences in their sentences.
+        Grammar, all 109 renderings and the lexicon are behind the fold.
+      </p>
+      <p class="board-label">390 × 844 · the sheet at rest</p>
+      <div class="board">
+        <div class="behind">
+          <div class="reading-verse-row selected">
+            <span class="verse-number">3</span>
+            <span class="verse-text">I will bless those who bless you and curse those…</span>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheet-head">
+            <span class="word-door-ref">Genesis 12:3</span>
+            <button class="word-close">✕</button>
+          </div>
+          <div class="sheet-body">
+            <!-- The door opens ON the word the doorway named. The verse's other
+                 content words stay reachable, in verse order, never ranked. -->
+            <div class="word-picker">
+              <button class="is-chosen">bless <span class="word-translit">bāraḵ</span></button>
+              <button>curse <span class="word-translit">’ārar</span></button>
+              <button>curse you <span class="word-translit">qālal</span></button>
+              <button>families <span class="word-translit">mišpāḥāh</span></button>
+              <button>earth <span class="word-translit">’ăḏāmāh</span></button>
+            </div>
+
+            <p class="word-door-verse">
+              “I <span class="word-here">will bless</span> those who
+              <span class="word-here">bless</span> you and curse those who curse you; and all the
+              families of the earth <span class="word-here">will be blessed</span> through you.”
+            </p>
+
+            <div class="word-row">
+              <div class="word-key">The word</div>
+              <div class="word-value">
+                <span class="word-lemma" lang="he">בָּרַךְ</span>
+                <span class="word-translit">bāraḵ</span>
+                <span class="word-count">H1288 · 330 times in the Old Testament</span>
+              </div>
+            </div>
+
+            <div class="word-row">
+              <div class="word-key">How the BSB<br />renders it</div>
+              <div class="word-value">
+                <p class="word-headline">
+                  Put into English 141 different ways across 330 occurrences.
+                </p>
+                <div class="word-renderings">
+                  <span>blessed <span class="word-count">82</span></span>
+                  <span class="is-here">bless <span class="word-count">44</span></span>
+                  <span>blessed be <span class="word-count">12</span></span>
+                  <span class="is-here">will be blessed <span class="word-count">12</span></span>
+                </div>
+                <p class="word-prov">
+                  and 105 more forms. Three of them stand in this one verse — “I will bless”,
+                  “bless”, “will be blessed”.
+                </p>
+              </div>
+            </div>
+
+            <h3 class="word-section">Where else it stands</h3>
+            <div class="word-occs">
+              <div class="word-occ pinned">
+                <span class="word-occ-ref">Genesis 12:3 · where you are · 3 times here</span>
+                I will bless those who bless you and curse those who curse you; and all the
+                families of the earth will be blessed through you.”
+              </div>
+              <div class="word-occ">
+                <span class="word-occ-ref">Genesis 1:22</span>
+                Then God blessed them and said, “Be fruitful and multiply and fill the waters of
+                the seas, and let birds multiply on the earth.”
+              </div>
+              <div class="word-occ">
+                <span class="word-occ-ref">Genesis 1:28</span>
+                God blessed them and said to them, “Be fruitful and multiply, and fill the earth
+                and subdue it…”
+              </div>
+              <div class="word-occ">
+                <span class="word-occ-ref">Genesis 2:3</span>
+                Then God blessed the seventh day and sanctified it, because on that day He rested
+                from all the work of creation that He had accomplished.
+              </div>
+              <div class="word-occ">
+                <span class="word-occ-ref">Genesis 9:26</span>
+                He also declared: “Blessed be the LORD, the God of Shem! May Canaan be the servant
+                of Shem.
+              </div>
+              <div class="word-occ">
+                <span class="word-occ-ref">Genesis 14:19 · 2 times here</span>
+                and he blessed Abram and said: “Blessed be Abram by God Most High, Creator of
+                heaven and earth,
+              </div>
+            </div>
+            <button class="word-more">Show more — 283 of 288 remaining</button>
+
+            <button class="word-deeper">More about this word</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="ann">
+        <b>The one thing this glance changes about the shipped door.</b> Today the door opens on a
+        word chooser and the reader must pick before anything is answered. The doorway already
+        named the word, so the door <em>opens on it</em> — the chooser stays, quiet, for the
+        verse's other five content words. One question asked, one question answered.
+      </p>
+      <p class="ann">
+        <b>All three of the verse's own occurrences are tinted, not just one.</b> One Hebrew word
+        wears three English coats inside a single sentence — “I will bless”, “bless”, “will be
+        blessed”. That is the anti-single-meaning argument made on the reader's own verse, for
+        free, without ranking or asserting anything. The shipped door tints one instance; this is
+        a change.
+      </p>
+      <p class="ann warn">
+        <b>There is no root or family line, and that is a measured decision, not an omission.</b>
+        A lemma entry in the shipped index carries lemma, transliteration, morph class, gloss,
+        Greek sense text, renderings and occurrences — <b>no relation to any other lemma</b>.
+        There is no family data to show. Guardrail R5 also keeps etymology out of the door
+        entirely, so if a family line is ever added it must be a link to another word's
+        <em>occurrences</em>, never a story about where this one came from.
+      </p>
+
+      <!-- ═════════════════════════ 3. CONNECTIONS GLANCE ═════════════════════ -->
+      <h2>Artboard 3 — the connections door, glance</h2>
+      <p class="cap">
+        One question: <b>where does Scripture pick this up?</b> The few strongest passages, each
+        carrying the reason it connects. Airy, ordered by strength, <b>no meter and no score</b> —
+        prominence does that job: full text, then one line, then a bare reference.
+      </p>
+      <p class="board-label">390 × 844 · the sheet at rest</p>
+      <div class="board">
+        <div class="behind">
+          <div class="reading-verse-row selected">
+            <span class="verse-number">3</span>
+            <span class="verse-text">I will bless those who bless you and curse those…</span>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheet-head">
+            <span class="word-door-ref">Genesis 12:3</span>
+            <button class="word-close">✕</button>
+          </div>
+          <div class="sheet-body">
+            <p class="word-door-verse">
+              “…and all the families of the earth
+              <span class="word-here">will be blessed through you</span>.”
+            </p>
+
+            <div class="conn">
+              <div class="conn-head">
+                <span class="conn-ref">Galatians 3:8</span>
+                <span class="conn-why">quotes it</span>
+              </div>
+              <p class="conn-text">
+                The Scripture foresaw that God would justify the Gentiles by faith, and foretold
+                the gospel to Abraham: <span class="sp">“All nations will be blessed through you.”</span>
+              </p>
+            </div>
+
+            <div class="conn">
+              <div class="conn-head">
+                <span class="conn-ref">Acts 3:25</span>
+                <span class="conn-why">quotes it</span>
+              </div>
+              <p class="conn-text">
+                …the covenant God made with your fathers when He said to Abraham,
+                <span class="sp">‘Through your offspring all the families of the earth will be
+                blessed.’</span>
+              </p>
+            </div>
+
+            <div class="conn">
+              <div class="conn-head">
+                <span class="conn-ref">Genesis 22:18</span>
+                <span class="conn-why">said again, to Abraham</span>
+              </div>
+              <p class="conn-text one-line">
+                And through your offspring all nations of the earth will be blessed, because you
+                have obeyed My voice.”
+              </p>
+            </div>
+
+            <div class="conn">
+              <div class="conn-head">
+                <span class="conn-ref">Genesis 28:14</span>
+                <span class="conn-why">said again, to Jacob</span>
+              </div>
+              <p class="conn-text one-line">
+                All the families of the earth will be blessed through you and your offspring.
+              </p>
+            </div>
+
+            <div class="conn">
+              <div class="conn-head">
+                <span class="conn-ref">Numbers 24:9</span>
+                <span class="conn-why">echoes the blessing and cursing</span>
+              </div>
+              <p class="conn-text one-line">
+                Blessed are those who bless you and cursed are those who curse you.”
+              </p>
+            </div>
+
+            <div class="conn-bare">
+              <span>Genesis 18:18</span>
+              <span>Genesis 26:4</span>
+              <span>Psalm 72:17</span>
+            </div>
+
+            <p class="word-prov">
+              Cross-references: OpenBible.info (CC BY 4.0). Whether a passage <em>quotes</em> or
+              <em>echoes</em> comes from the quotation database, not from us; a highlighted phrase
+              is drawn only where the words are genuinely shared.
+            </p>
+
+            <button class="word-deeper">More of these connections</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="ann">
+        <b>The reason it connects is the content, not decoration.</b> “Quotes it” and “said again,
+        to Jacob” are why the reader would tap; a percentage or a filled rail is not. The
+        connections prototype (<code>design/reference-deep-dive.html</code>) proved the meter was
+        unintuitive and that order plus prominence carries relevance perfectly well — that finding
+        is kept and the rail is gone.
+      </p>
+      <p class="ann">
+        <b>Why this door is built first.</b> It is verse-anchored and translation-independent: its
+        data needs no per-word alignment, so it works on the BSB, the KJV and the NET alike, and
+        it never has to say “the deep dive works on the BSB”. It is also the door whose glance is
+        naturally one screen, which makes it the cheapest place to prove the rule.
+      </p>
+
+      <!-- ═════════════════════════════ 4. MAP GLANCE ═════════════════════════ -->
+      <h2>Artboard 4 — the map door, glance</h2>
+      <p class="cap">
+        One question: <b>where does this happen?</b> The map arrives <b>already framed on this
+        chapter's eight places</b>, named, with the rest of the Bible world still drawn and
+        deliberately quiet. No search, no pinching to find anything, nothing to set up.
+      </p>
+      <p class="board-label">390 × 844 · the sheet at rest · real coordinates</p>
+      <div class="board">
+        <div class="behind">
+          <div class="reading-verse-row selected">
+            <span class="verse-number">3</span>
+            <span class="verse-text">I will bless those who bless you and curse those…</span>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheet-head">
+            <span class="word-door-ref">Genesis 12 · 8 places</span>
+            <button class="word-close">✕</button>
+          </div>
+          <div class="sheet-body map-view">
+            <div class="map-canvas">
+              <svg class="map-svg" viewBox="385.85 190.44 228.99 191.89" aria-label="Genesis 12: eight places, Haran to Egypt">
+                <g class="map-layer map-layer-coast"><path d="M497.2,463.1L491.4,450.7L482.2,433.4L480.3,429.1L481.1,425.9L478.2,421.2L475.6,416.5L472.4,410.3L473.1,409.8L472.8,408.8L471.9,405.9L473.1,404.8L469.2,400.8L466.9,398.5L463.1,392.2L459.6,386.0L457.3,383.0L457.1,379.0L452.1,370.0L454.1,362.8L455.9,361.5L455.7,360.8L456.8,363.6L457.7,368.8L458.5,371.8L460.1,373.8L462.6,377.2L466.6,381.7L466.8,388.3L467.7,390.4L468.7,392.3L474.4,397.7L477.1,401.6L479.6,403.9L484.9,407.2L486.0,407.9L486.2,406.9L488.3,404.4L489.4,401.1L490.2,393.2L493.3,386.6L493.5,382.5L495.0,377.6L496.4,373.5L499.9,370.6L499.2,375.4L498.3,377.0L497.1,384.1L495.2,394.2L494.2,397.3L493.7,399.2L492.1,400.8L493.5,401.3L494.1,400.0L495.5,400.7L496.1,401.2L497.1,400.7L500.0,400.4L503.0,401.6L504.7,403.8L508.2,409.3L515.1,419.5L519.4,425.7L526.1,437.7L531.1,443.4L532.4,449.3L534.1,449.7L538.5,455.2L540.2,458.8L543.7,466.3L541.2,468.8L542.8,471.1L546.6,478.2L550.0,481.4L553.3,481.4L556.3,482.4L557.5,482.7L559.0,484.9L564.4,488.6L567.9,493.6L570.0,496.2L570.2,495.9L573.8,504.1L573.9,506.2L577.7,509.7L575.4,508.3L577.2,510.7L580.3,516.5L581.6,519.5L579.4,525.4L579.2,528.2L577.7,528.1L580.7,534.0L581.4,534.1L581.9,538.4L582.8,539.5L583.2,545.4L585.9,551.0L586.8,551.2L588.3,552.5L588.6,554.1L590.3,554.6L592.2,557.9L595.8,562.9L601.5,564.0L605.4,566.4L611.8,570.4L614.2,574.1L617.4,577.9L621.0,580.8L622.4,584.6L623.6,587.8L626.0,593.1L628.5,599.0L630.5,600.1L633.5,606.7L634.9,607.4L637.5,611.3" vector-effect="non-scaling-stroke" /><path d="M480.4,428.2L480.4,428.2" vector-effect="non-scaling-stroke" /><path d="M481.5,413.0L480.5,413.1L481.5,413.0" vector-effect="non-scaling-stroke" /><path d="M492.3,403.7L491.5,402.9L491.1,404.3L492.3,403.7" vector-effect="non-scaling-stroke" /><path d="M463.8,337.8L463.8,337.8" vector-effect="non-scaling-stroke" /><path d="M497.8,309.9L490.7,327.8L474.8,337.3L471.1,337.3L469.6,338.0L467.6,338.1L466.3,337.4L466.1,335.5L464.7,337.4L464.3,337.7L463.7,338.1L463.1,337.6L459.6,338.4L461.3,337.4L455.4,337.1L452.3,333.6L451.2,333.9L451.3,336.4L449.2,336.8L448.8,337.5L448.1,338.1L447.5,336.9L447.0,334.6L446.5,334.4L444.5,334.8L444.6,333.8L442.6,333.0L442.8,331.5L443.4,330.5L443.3,329.7L443.7,328.6L444.3,328.2L445.9,330.0L445.5,328.2L432.6,326.5L430.6,327.3L430.8,328.3L427.5,328.9L425.7,329.4L422.8,329.4L420.7,329.4L418.9,328.4L417.3,328.4L415.1,331.6L415.7,332.1L415.2,332.8L414.2,332.9L412.3,331.8L408.3,333.1L406.5,334.4L392.7,340.4L383.1,335.1L377.4,333.9L369.7,331.4L364.9,330.3L361.2,327.0L352.9,324.0L336.6,319.8L324.8,319.4L323.2,312.2L318.2,309.3L304.8,307.2L295.1,303.5L293.0,303.0L290.2,297.8L290.6,296.1L288.7,292.5L280.9,289.2L274.4,285.1L267.4,284.1L256.2,286.2L242.8,291.7L233.6,301.1L234.5,314.3L230.7,325.0L221.5,331.7L216.9,333.3" vector-effect="non-scaling-stroke" /><path d="M455.1,1.8L455.3,4.3L454.4,9.0L449.8,9.3L450.2,5.7L447.6,5.8L445.9,10.1L437.8,10.8L436.5,15.2L433.4,19.6L427.4,26.1L425.2,25.4L424.1,26.4L422.3,28.3L422.0,29.8L420.7,26.6L419.8,28.1L420.7,31.1L420.1,33.1L421.0,33.2L420.9,34.5L420.1,38.7L419.6,40.8L417.7,47.0L409.0,49.4L411.3,46.3L409.9,45.6L409.2,42.5L407.3,45.1L408.0,47.3L405.8,49.1L407.0,49.8L408.8,49.6L408.7,49.4L406.8,50.4L405.4,51.1L405.0,51.8L405.4,53.0L407.7,51.2L403.9,56.4L403.4,60.1L401.6,67.9L399.4,76.3L395.8,75.9L390.3,79.9L389.9,85.4L386.9,90.0L385.4,93.2L382.2,94.7L383.6,95.2L385.1,95.4L386.2,96.3L386.2,97.9L386.6,99.7L389.9,103.9L389.3,109.1L392.2,114.9L405.9,122.2L405.8,124.8L403.7,127.2L398.0,127.5L397.5,125.3L396.7,127.2L388.9,125.6L381.0,126.2L377.6,130.8L372.9,133.5L368.1,135.6L365.3,138.6L361.3,142.3L359.8,140.6L359.0,138.6L363.7,136.1L367.8,134.2L368.8,132.2L362.5,132.9L357.1,131.2L356.9,128.3L356.7,127.7L352.3,126.8L345.1,124.5L343.7,122.9L340.8,123.2L337.0,125.0L334.0,122.9L329.8,124.0L328.0,126.1" vector-effect="non-scaling-stroke" /><path d="M558.6,1.8L554.6,4.3L550.1,6.4L550.5,7.1L552.8,9.0L547.4,8.3L542.1,10.0L544.4,15.7L545.7,14.8L553.2,21.1L548.6,20.3L545.5,26.4L545.8,25.2L545.2,22.7L542.3,28.7L540.0,31.8L538.9,31.3L539.5,33.0L539.5,31.8L541.2,35.2L540.6,37.6L539.0,38.7L538.2,37.5L535.3,38.0L534.9,39.1L531.1,39.5L527.5,35.6L526.8,36.8L527.1,38.4L529.3,38.2L526.9,40.2L524.8,42.4L534.9,46.9L539.1,52.2L542.8,51.9L544.5,53.1L546.6,54.8L554.8,58.6L561.3,63.4L568.4,70.1L575.0,75.6L580.6,79.1L583.0,82.3L588.0,83.5L595.6,89.4L600.5,90.9L604.2,101.3L605.3,112.9L601.7,118.5L597.1,121.3L591.5,124.3L587.5,127.1L581.0,129.8L574.3,128.5L568.0,127.8L562.2,128.3L558.6,130.3L552.1,130.5L545.7,129.3L542.8,126.7L540.2,129.0L533.9,126.8L529.1,122.6L524.1,124.5L521.1,123.3L517.7,119.7L515.4,114.8L515.1,114.6L506.3,115.6L503.3,113.1L502.2,108.7L501.3,108.5L499.2,107.0L495.2,110.3L484.3,109.4L473.7,108.5L461.8,112.7L458.2,114.3L447.1,121.0L442.8,123.0L440.1,127.2L432.4,126.9L424.0,125.0L407.5,122.7L404.7,126.8L409.0,131.1L409.7,131.8L414.9,132.6L418.9,134.2L412.2,133.6L403.6,135.0L403.4,138.8L405.3,139.6L397.9,140.5L393.3,139.4L386.3,139.5L387.4,136.9L382.8,136.7L385.9,139.3L382.6,140.6L377.1,139.0L375.3,137.2L367.5,137.5L361.1,143.4L358.2,145.1L356.8,150.3L355.2,155.7L358.1,156.6L367.3,155.1L369.1,157.0L367.1,158.7L364.4,160.4L365.5,162.8L366.1,166.6L367.2,168.9L369.1,169.0L370.3,169.8L368.7,171.1L367.5,171.0L367.5,172.7L364.3,174.2L365.4,175.5L366.9,177.5L367.5,179.1L370.0,179.9L365.0,180.2L363.1,179.8L362.3,179.3L362.8,178.0L358.4,173.5L358.6,177.9L359.6,178.6L358.3,180.8L357.1,179.8L356.6,180.6L357.6,182.6L358.6,182.9L360.8,185.1L361.7,184.7L364.4,184.5L365.8,187.3L369.1,187.9L371.6,191.4L369.5,194.9L370.6,197.6L370.7,199.5L370.9,202.4L373.0,201.2L373.4,202.9L374.9,202.9L374.9,204.9L376.9,204.2L376.1,206.1L376.1,207.0L372.9,206.9L371.8,207.0L370.4,207.7L371.2,210.1L372.6,209.8L374.1,209.9L376.8,210.3L381.1,209.7L384.8,209.8L387.1,210.5L386.4,211.2L385.5,211.9L383.5,212.3L383.1,213.8L383.1,215.0L379.3,214.2L376.4,214.1L371.7,215.6L373.2,216.7L376.1,216.7L379.4,215.1L383.2,215.1L384.8,215.7L384.5,216.4L383.2,216.3L383.5,217.4L382.9,218.7L382.6,219.2L384.2,218.8L386.7,216.7L386.8,215.5L388.0,214.3L387.9,214.6L389.0,213.8L390.3,214.0L391.5,215.3L392.6,215.3L393.4,216.9L395.6,217.9L396.3,219.6L397.3,218.2L397.0,217.7L398.6,217.1L400.8,218.9L399.7,220.6L401.0,220.9L401.1,223.8L401.5,225.0L405.2,227.2L407.0,228.4L409.4,229.3L409.9,230.4L411.4,230.2L412.8,229.4L416.5,228.1L417.8,227.6L421.7,227.9L423.9,227.6L424.0,226.3L425.4,222.6L425.7,217.3L431.9,216.0L442.8,219.8L449.8,223.1L454.0,228.6L458.9,232.8L467.6,233.2L471.4,232.3L475.4,232.1L477.1,231.1L479.7,230.3L481.9,229.1L483.1,228.8L487.8,222.9L496.1,218.2L505.4,223.4L508.1,222.7L511.1,221.1L511.9,220.1L510.6,220.6L509.7,220.9L510.9,219.4L517.1,215.8L520.4,221.4L516.7,225.1L513.5,229.3L514.8,238.3L513.6,241.9L512.6,244.0L513.9,245.5L516.5,252.0L515.1,257.3L515.6,267.1L513.0,268.9L511.2,272.4L511.1,277.1L508.4,278.9L506.9,284.4L503.3,292.2L502.8,294.3L500.5,301.7L497.8,309.9" vector-effect="non-scaling-stroke" /><path d="M328.0,126.1L321.6,125.2L320.5,128.0L322.8,130.5L321.7,133.0L323.8,132.5L326.9,135.6L329.0,139.7L326.2,136.4L319.9,134.2L319.8,137.3L323.1,140.5L322.7,142.1L321.5,142.7L320.5,141.1L319.8,139.6L312.9,136.0L316.5,141.2L318.0,143.2L313.0,140.8L308.1,133.3L305.3,129.3L307.6,127.3L305.4,127.8L303.0,128.5L301.7,129.3L302.4,131.8L302.1,140.4L307.3,150.7L309.7,158.4L306.5,159.4L306.3,159.0L308.4,157.7L305.6,154.4L304.3,154.6L302.5,157.4L303.7,158.6L304.6,160.0L305.7,160.4L303.4,162.3L300.8,163.2L298.1,162.1L297.2,163.0L297.4,163.8L301.2,165.2L304.5,166.4L306.4,168.0L308.9,169.9L309.6,171.4L312.1,172.2L312.8,174.1L315.7,176.1L319.7,181.1L318.5,185.3L318.9,187.5L319.1,189.5L316.9,190.3L316.1,188.2L314.4,187.4L312.2,184.1L309.5,182.3L305.7,182.8L301.9,185.1L303.6,187.1L306.5,192.2L307.7,190.2L307.4,192.7L308.0,194.9L304.6,195.7L303.1,196.8L302.3,195.9L301.8,194.5L302.9,193.6L301.6,192.6L299.3,191.2L297.9,191.2L296.4,191.9L297.4,195.8L299.1,200.6L299.8,203.0L300.1,205.5L300.4,208.4L299.9,209.2L301.1,212.6L301.0,214.5L299.6,213.4L296.6,210.1L295.9,208.2L292.0,206.4L291.3,208.5L290.8,209.8L289.9,211.6L288.5,212.2L288.2,210.9L288.1,209.7L288.7,207.6L286.4,203.3L285.6,200.6L281.3,204.2L280.3,206.1L277.6,203.8L277.4,200.8L276.2,198.2L278.5,194.1L274.9,185.8L273.2,185.2L270.6,180.5L274.6,178.0L276.0,174.0L278.3,175.4L284.1,172.5L287.8,174.6L289.7,176.4L296.9,179.9L300.3,180.9L303.3,180.8L306.1,179.0L303.6,178.2L301.8,177.1L301.0,177.7L299.4,176.8L297.6,174.1L297.1,173.6L296.2,174.8L293.4,172.1L290.2,172.8L284.6,171.8L281.9,171.8L278.1,172.4L278.0,171.0L276.4,168.8L276.0,169.5L274.7,170.7L273.1,171.3L272.5,171.0L271.8,170.4L272.4,169.5L272.2,169.1L271.9,167.8L271.2,167.2L269.8,163.3L268.2,161.2L268.5,159.2L268.9,158.2L270.6,157.7L273.5,159.0L273.6,155.8L273.0,156.9L270.9,155.4L269.6,155.8L269.7,154.7L268.7,155.4L269.2,157.3L267.5,156.0L264.5,149.9L262.0,149.1L261.0,146.6L261.5,145.0L260.4,144.0L260.4,143.1L257.8,140.3L258.7,136.7L256.0,132.3L253.8,130.3L248.9,123.4L251.6,125.3L251.0,121.5L251.0,120.3L251.4,115.6L251.9,113.4L252.7,114.0L253.1,113.3L253.6,108.7L253.8,104.9L254.5,103.0L256.0,100.8L257.4,99.1L257.5,98.8L257.9,96.0L254.7,93.7L251.8,89.2L250.1,86.8L247.8,83.5L245.8,80.9L244.1,80.5L246.1,80.8L243.5,79.4L242.8,79.2L237.0,72.7L235.0,70.4L233.0,70.3L228.4,67.5L225.3,64.7L222.3,62.6L228.8,66.1L232.4,68.3L231.3,67.0L229.9,64.4L228.8,63.5L224.1,58.9L216.8,51.8L214.1,50.4L210.4,51.0L208.8,49.5L207.8,48.8L208.8,47.5L208.8,46.4L205.4,44.2L203.7,41.8L198.6,33.5L198.9,31.7L199.9,31.8L201.4,31.8L204.7,33.0L199.1,26.2L198.4,16.9L194.8,9.1L192.3,7.4L189.0,10.9L187.7,12.1L187.5,13.4L186.1,13.8L185.3,14.3L183.8,16.9L182.6,16.4L182.0,16.5L182.1,15.2L180.2,11.0L181.5,9.7L179.8,6.5L179.8,4.9L179.9,1.1L183.7,1.0L183.9,-1.1L181.8,-4.7L179.1,-2.7L179.0,-3.9L175.8,-5.0L174.6,-4.8L174.3,-3.0L163.5,-0.8L164.6,-2.1L165.5,-2.2L164.4,-2.7L163.5,-2.7L162.9,-2.4L160.7,0.2L159.2,0.9L160.0,1.5L160.3,3.7L160.5,5.3L160.8,6.4L161.3,7.4L162.5,8.7L162.0,11.4L160.9,10.6L160.8,12.1L158.5,11.4L157.2,18.6L161.0,30.2L171.1,40.6L172.9,42.8L175.8,63.6L181.7,72.8L187.5,78.6L196.7,82.2L205.1,84.5L199.6,91.1L209.2,100.0L221.7,110.2L228.6,115.3L230.7,118.7L235.6,128.0L232.6,133.7L229.9,132.8L227.4,128.2L226.5,125.0L220.4,121.3L216.6,117.7L218.1,116.7L215.9,116.7L211.4,116.7L204.9,124.3L202.2,129.4L203.8,132.9L209.5,136.8L210.4,141.3L210.9,146.8L208.7,148.8L202.7,148.6L198.9,155.4L190.9,162.2L186.4,165.8L182.2,162.7L182.9,158.6L188.4,153.0L192.3,150.1L194.5,145.9L193.0,134.9L191.0,126.1L185.9,121.7L184.0,120.1L180.3,115.9L180.8,112.8L178.3,105.5L173.9,105.6L171.6,105.3L174.1,103.5L170.6,100.7L167.7,101.0L166.7,95.7L162.6,89.9L161.3,90.1L156.4,88.1L153.4,86.3L149.0,82.4L143.8,75.4L141.1,69.1L136.0,60.3L131.3,57.7L129.7,56.8L131.2,54.5L129.4,50.9L127.0,46.4L123.8,44.7L123.8,42.7L123.1,32.3L121.0,19.4L119.0,18.6L116.0,16.3L113.1,12.3L109.9,10.0L99.8,8.7L96.3,11.2L93.5,14.7L91.1,15.5" vector-effect="non-scaling-stroke" /><path d="M470.9,335.7L470.9,335.7" vector-effect="non-scaling-stroke" /><path d="M465.6,334.8L466.1,334.6L465.6,334.8" vector-effect="non-scaling-stroke" /><path d="M313.7,249.4L313.7,249.4" vector-effect="non-scaling-stroke" /><path d="M363.3,241.9L361.1,243.1L363.7,242.0L363.3,241.9" vector-effect="non-scaling-stroke" /><path d="M352.0,243.4L349.7,245.2L348.4,245.2L343.3,246.7L341.8,244.0L341.8,243.6L337.2,242.5L330.5,240.6L327.9,238.9L319.9,239.3L316.0,237.1L316.4,235.3L314.6,234.8L309.3,233.8L308.4,232.2L306.5,234.6L305.7,235.2L304.9,238.7L305.3,240.4L309.4,240.6L313.7,242.1L319.1,242.9L321.6,245.0L324.6,248.4L330.6,249.4L337.5,249.1L346.3,249.1L350.0,249.1L351.8,245.8L352.0,243.4" vector-effect="non-scaling-stroke" /><path d="M492.3,242.0L483.6,246.3L473.1,249.1L464.8,248.8L461.4,252.1L456.9,253.9L453.4,253.7L455.0,258.8L460.5,263.2L464.5,264.9L470.1,262.2L473.2,260.9L476.5,259.1L479.5,256.6L483.1,256.4L481.2,252.7L483.7,249.5L492.3,242.0" vector-effect="non-scaling-stroke" /><path d="M367.4,240.3L366.7,237.9L368.1,233.9L365.1,238.7L365.6,241.3L366.5,242.3L367.8,240.7L367.4,240.3" vector-effect="non-scaling-stroke" /><path d="M344.0,220.3L346.0,220.8L344.0,220.3" vector-effect="non-scaling-stroke" /><path d="M386.2,222.5L380.3,224.0L376.4,227.6L377.4,230.2L378.5,232.9L383.1,230.2L383.2,227.9L385.6,224.0L386.2,222.5" vector-effect="non-scaling-stroke" /><path d="M338.3,217.7L338.5,220.2L339.9,220.0L338.3,217.7" vector-effect="non-scaling-stroke" /><path d="M372.0,221.4L370.3,221.5L371.6,222.5L372.0,222.0L372.0,221.4" vector-effect="non-scaling-stroke" /><path d="M355.0,215.8L353.8,216.6L354.5,218.4L356.4,217.3L355.0,215.8" vector-effect="non-scaling-stroke" /><path d="M380.2,218.8L380.1,217.8L379.1,219.0L379.6,220.1L380.2,218.8" vector-effect="non-scaling-stroke" /><path d="M330.0,213.0L331.5,214.6L330.0,213.0" vector-effect="non-scaling-stroke" /><path d="M334.8,212.3L335.4,212.7L334.8,212.3" vector-effect="non-scaling-stroke" /><path d="M323.6,210.6L323.2,210.9L322.3,210.7L320.9,212.4L323.6,210.6" vector-effect="non-scaling-stroke" /><path d="M326.5,210.1L326.9,210.6L326.5,210.1" vector-effect="non-scaling-stroke" /><path d="M336.9,212.5L339.2,212.9L336.6,212.3L336.9,212.5" vector-effect="non-scaling-stroke" /><path d="M326.0,209.0L324.8,210.0L326.0,209.0" vector-effect="non-scaling-stroke" /><path d="M339.6,210.4L339.6,210.4" vector-effect="non-scaling-stroke" /><path d="M370.8,211.4L365.2,213.7L365.3,215.8L365.7,214.3L372.0,212.4L370.8,211.4" vector-effect="non-scaling-stroke" /><path d="M342.8,209.6L342.8,209.6" vector-effect="non-scaling-stroke" /><path d="M349.5,209.1L346.8,211.1L345.1,212.2L350.6,210.1L349.5,209.1" vector-effect="non-scaling-stroke" /><path d="M334.1,207.4L333.3,206.1L334.1,207.4" vector-effect="non-scaling-stroke" /><path d="M328.0,205.0L327.5,205.7L328.0,205.0" vector-effect="non-scaling-stroke" /><path d="M364.7,210.2L366.8,210.3L365.9,208.2L364.9,208.2L364.7,210.2" vector-effect="non-scaling-stroke" /><path d="M346.5,205.3L346.4,205.5L346.5,205.3" vector-effect="non-scaling-stroke" /><path d="M337.6,205.7L337.5,204.1L335.3,204.5L335.4,206.8L337.6,205.7" vector-effect="non-scaling-stroke" /><path d="M342.0,203.0L339.3,206.1L342.0,207.8L342.0,203.0" vector-effect="non-scaling-stroke" /><path d="M324.0,201.6L324.2,202.8L325.4,202.8L324.0,201.6" vector-effect="non-scaling-stroke" /><path d="M310.2,196.1L308.8,196.4L310.2,196.1" vector-effect="non-scaling-stroke" /><path d="M323.3,196.6L323.0,198.7L324.5,195.2L323.3,196.6" vector-effect="non-scaling-stroke" /><path d="M340.3,198.1L340.4,196.6L338.9,196.9L340.3,198.1" vector-effect="non-scaling-stroke" /><path d="M332.8,197.1L332.2,195.4L331.4,197.7L332.8,197.1" vector-effect="non-scaling-stroke" /><path d="M308.8,192.0L309.6,192.8L308.8,192.0" vector-effect="non-scaling-stroke" /><path d="M335.6,194.2L338.2,193.6L335.6,192.9L333.9,192.2L335.6,194.2" vector-effect="non-scaling-stroke" /><path d="M323.9,190.9L322.0,193.9L324.4,191.6L323.9,190.9" vector-effect="non-scaling-stroke" /><path d="M356.8,193.9L350.2,196.3L354.4,196.2L356.8,193.9" vector-effect="non-scaling-stroke" /><path d="M310.5,187.6L308.8,189.1L310.5,187.6" vector-effect="non-scaling-stroke" /><path d="M368.2,194.0L367.4,192.5L361.9,192.1L363.4,194.4L367.4,194.4L368.2,194.0" vector-effect="non-scaling-stroke" /><path d="M334.3,190.2L334.1,187.5L331.5,185.5L330.1,187.0L331.2,188.9L333.0,191.1L334.3,190.2" vector-effect="non-scaling-stroke" /><path d="M308.5,184.8L310.8,184.1L309.9,182.8L308.9,183.5L308.8,184.1L308.5,184.8" vector-effect="non-scaling-stroke" /><path d="M355.0,175.8L352.7,174.3L351.3,177.3L351.9,179.7L349.6,181.6L351.3,183.4L353.8,181.1L354.3,176.9L355.0,175.8" vector-effect="non-scaling-stroke" /><path d="M345.8,173.5L345.9,175.1L345.8,173.5" vector-effect="non-scaling-stroke" /><path d="M331.3,167.9L328.3,164.1L328.6,166.9L329.4,168.7L331.3,168.5L331.3,167.9" vector-effect="non-scaling-stroke" /><path d="M328.5,181.4L324.2,180.4L322.7,175.4L321.9,171.4L319.7,169.3L315.6,167.3L311.9,165.3L310.5,161.5L306.0,161.4L301.5,163.7L303.4,163.5L306.4,164.4L311.7,170.3L313.2,173.4L320.1,175.4L320.7,178.1L321.7,178.4L321.6,179.2L322.2,181.5L323.9,183.4L324.8,184.4L327.8,184.9L328.5,181.4" vector-effect="non-scaling-stroke" /><path d="M311.9,158.8L313.1,157.9L311.9,158.8" vector-effect="non-scaling-stroke" /><path d="M315.6,159.8L317.6,159.9L314.7,157.7L315.6,159.8" vector-effect="non-scaling-stroke" /><path d="M320.1,158.1L320.3,156.9L320.1,158.1" vector-effect="non-scaling-stroke" /><path d="M363.3,165.8L360.6,159.6L356.4,159.4L354.3,160.1L351.1,161.0L354.4,164.2L358.3,162.7L354.8,164.3L360.1,167.2L360.5,164.4L362.0,166.3L363.3,165.8" vector-effect="non-scaling-stroke" /><path d="M338.3,152.7L338.8,153.1L338.3,152.7" vector-effect="non-scaling-stroke" /><path d="M355.7,148.5L355.8,149.6L355.7,148.5" vector-effect="non-scaling-stroke" /><path d="M346.3,143.5L343.1,144.1L339.5,143.7L339.4,147.0L340.9,147.6L341.5,147.1L342.8,145.6L343.3,148.0L344.7,146.2L346.2,144.5L346.3,143.5" vector-effect="non-scaling-stroke" /><path d="M355.5,141.5L351.5,140.3L355.1,142.1L355.5,141.5" vector-effect="non-scaling-stroke" /><path d="M350.9,135.2L347.0,134.1L350.9,135.2" vector-effect="non-scaling-stroke" /><path d="M382.6,133.4L380.5,133.5L383.5,134.3L382.6,133.4" vector-effect="non-scaling-stroke" /><path d="M337.1,127.8L333.0,127.7L336.3,130.2L336.6,128.0L337.1,127.8" vector-effect="non-scaling-stroke" /><path d="M314.0,207.6L314.0,207.6" vector-effect="non-scaling-stroke" /><path d="M307.1,205.2L307.1,205.2" vector-effect="non-scaling-stroke" /><path d="M529.4,450.4L530.4,449.8L529.3,448.9L529.4,450.4" vector-effect="non-scaling-stroke" /><path d="M495.0,403.7L494.1,403.7L495.0,403.7" vector-effect="non-scaling-stroke" /><path d="M374.6,225.6L375.4,225.7L374.6,225.6" vector-effect="non-scaling-stroke" /><path d="M368.7,217.4L369.0,218.0L368.7,217.4" vector-effect="non-scaling-stroke" /><path d="M364.3,206.2L362.8,205.0L363.7,206.6L364.3,206.2" vector-effect="non-scaling-stroke" /><path d="M360.1,201.2L359.3,202.9L360.2,201.5L360.1,201.2" vector-effect="non-scaling-stroke" /><path d="M329.8,193.0L329.4,193.4L329.8,193.0" vector-effect="non-scaling-stroke" /><path d="M322.8,155.6L322.4,156.7L322.8,155.6" vector-effect="non-scaling-stroke" /><path d="M382.2,137.4L382.1,137.7L382.2,137.4" vector-effect="non-scaling-stroke" /></g>
+                <g class="map-layer map-layer-rivers"><path d="M528.3,179.7L530.3,183.1L534.7,187.4L534.6,191.7L532.6,196.7L527.5,203.0L521.4,206.9L514.1,210.4L513.1,213.2L510.2,215.3L508.0,221.5L509.6,222.9" vector-effect="non-scaling-stroke" /><path d="M404.1,167.5L395.9,165.2L387.4,161.2L390.7,152.8L390.2,146.6L395.7,139.8" vector-effect="non-scaling-stroke" /><path d="M574.6,152.2L573.9,147.9L566.0,147.2L554.4,147.3L531.5,140.2L522.5,133.6L526.2,129.5L526.3,122.3" vector-effect="non-scaling-stroke" /><path d="M315.8,88.1L311.8,87.5L309.2,91.5L313.9,106.1L312.4,114.6L321.8,122.4L322.2,125.2" vector-effect="non-scaling-stroke" /><path d="M568.6,183.1L577.1,183.7L585.6,187.0L587.0,194.5L603.1,195.6L613.7,201.3L620.4,204.1L623.3,208.6" vector-effect="non-scaling-stroke" /><path d="M623.3,208.6L625.9,213.0L630.5,214.8L632.7,216.7L633.5,219.9L641.0,228.9L640.9,233.9" vector-effect="non-scaling-stroke" /><path d="M640.9,233.9L640.9,241.9L643.8,244.8L646.0,251.6L650.0,259.2L655.2,268.6L663.0,274.3L663.8,284.4L669.3,289.8L672.4,290.4L676.0,292.7L680.3,295.5L685.0,297.1L690.4,298.5" vector-effect="non-scaling-stroke" /><path d="M640.9,233.9L640.9,233.9" vector-effect="non-scaling-stroke" /><path d="M690.3,298.3L705.6,297.5L707.2,304.5L714.5,308.6L721.7,318.7L722.6,326.1" vector-effect="non-scaling-stroke" /><path d="M690.4,298.5L692.8,302.8L696.5,311.3L704.2,325.2L703.7,329.5" vector-effect="non-scaling-stroke" /><path d="M431.8,357.0L426.2,352.3L424.9,350.9L424.3,343.3L423.8,341.9L424.0,338.7L419.9,334.1L418.8,330.8L417.9,328.8" vector-effect="non-scaling-stroke" /><path d="M455.8,356.5L452.3,351.3" vector-effect="non-scaling-stroke" /><path d="M452.3,351.4L451.9,333.6" vector-effect="non-scaling-stroke" /><path d="M455.8,356.5L456.0,360.1" vector-effect="non-scaling-stroke" /><path d="M430.2,355.9L429.6,351.5L431.9,342.1L435.3,337.6L441.3,331.0L443.7,328.0" vector-effect="non-scaling-stroke" /><path d="M431.8,357.1L440.8,348.7L451.4,347.8" vector-effect="non-scaling-stroke" /><path d="M510.5,300.1L510.1,303.9" vector-effect="non-scaling-stroke" /><path d="M507.6,333.1L509.9,323.8" vector-effect="non-scaling-stroke" /><path d="M515.0,285.5L510.5,300.1" vector-effect="non-scaling-stroke" /><path d="M510.1,303.9L509.3,317.7L509.9,323.8" vector-effect="non-scaling-stroke" /><path d="M507.6,333.1L507.2,335.1" vector-effect="non-scaling-stroke" /><path d="M674.5,321.9L681.8,325.0L682.7,324.0" vector-effect="non-scaling-stroke" /><path d="M323.0,93.5L327.9,95.2L343.8,98.4L348.1,99.2L358.1,105.0L366.9,111.0L362.4,119.3L360.3,126.4L357.1,129.6" vector-effect="non-scaling-stroke" /><path d="M543.0,153.3L530.1,156.6L511.3,171.6L505.2,173.2L498.4,177.8L486.2,171.8L473.9,163.2L474.8,157.8L475.2,149.4L483.8,143.7L492.5,137.9L497.3,130.8L491.3,127.2L501.8,121.8L507.2,123.4L512.0,122.4L514.5,116.5" vector-effect="non-scaling-stroke" /><path d="M458.9,487.1L459.1,476.4L459.4,465.3L453.3,456.5L454.2,452.1L456.9,446.9L455.5,440.6L448.2,443.6L443.5,438.6L439.2,432.0L436.7,430.2L427.3,418.2L422.5,412.6L422.8,404.4L421.3,394.4L424.8,383.9L432.7,366.6L431.4,359.4L431.8,357.0" vector-effect="non-scaling-stroke" /><path d="M665.3,306.4L671.0,314.0L670.2,319.2" vector-effect="non-scaling-stroke" /><path d="M662.9,296.4L667.3,302.3L673.7,309.3L677.7,316.4L682.1,322.8" vector-effect="non-scaling-stroke" /><path d="M603.4,265.2L606.6,265.1L608.6,264.3L611.3,264.7L615.7,263.8L620.1,263.2L625.7,267.0L627.5,266.5L627.6,270.7L631.0,272.9L632.6,274.3L634.1,278.0L640.6,282.2L645.7,282.3L650.6,283.9L652.8,284.3L656.7,288.0L660.4,290.3L662.4,299.8L668.1,312.6L675.6,321.3L682.0,322.5L682.8,324.0" vector-effect="non-scaling-stroke" /><path d="M682.8,324.0L686.9,324.1" vector-effect="non-scaling-stroke" /><path d="M682.8,324.0L682.8,324.0" vector-effect="non-scaling-stroke" /><path d="M686.8,324.1L697.5,326.7L720.3,327.8L723.3,327.1" vector-effect="non-scaling-stroke" /><path d="M423.6,343.3L413.4,335.0L409.8,332.5" vector-effect="non-scaling-stroke" /><path d="M561.7,175.2L561.0,169.6" vector-effect="non-scaling-stroke" /><path d="M556.9,176.8L560.7,183.4L567.0,184.7" vector-effect="non-scaling-stroke" /><path d="M565.9,194.2L565.5,196.3L565.1,198.1L560.5,200.2L555.3,203.2" vector-effect="non-scaling-stroke" /><path d="M603.8,144.3L588.2,150.0L585.1,154.9L572.0,156.1L560.2,160.8L554.7,163.7L561.0,169.6" vector-effect="non-scaling-stroke" /><path d="M561.7,175.2L556.9,176.8" vector-effect="non-scaling-stroke" /><path d="M567.0,184.7L569.6,187.6L567.3,192.0L565.9,194.2" vector-effect="non-scaling-stroke" /><path d="M555.3,203.2L549.8,204.3L549.8,212.6L550.7,217.0" vector-effect="non-scaling-stroke" /><path d="M560.4,237.1L552.2,233.3L553.7,227.3" vector-effect="non-scaling-stroke" /><path d="M550.7,217.0L555.4,223.3L553.7,227.3" vector-effect="non-scaling-stroke" /><path d="M560.4,237.1L564.6,235.5L574.6,236.8L578.0,238.6L582.2,241.2L588.2,247.2L589.7,248.3L593.0,252.0L595.4,254.5L599.8,259.1L602.0,261.3L603.4,265.2" vector-effect="non-scaling-stroke" /><path d="M411.9,148.2L416.1,143.5L421.1,139.1L429.8,131.0L429.7,128.7L430.8,126.0" vector-effect="non-scaling-stroke" /><path d="M680.4,122.5L691.5,123.8" vector-effect="non-scaling-stroke" /><path d="M631.9,125.5L635.0,129.0" vector-effect="non-scaling-stroke" /><path d="M624.6,127.2L618.2,126.3L624.0,121.3L631.8,117.0L627.3,112.8L637.8,102.1L654.5,108.1L666.5,117.0L675.4,121.1L680.5,122.5" vector-effect="non-scaling-stroke" /><path d="M691.5,123.8L695.4,128.9L697.7,129.9L698.0,131.8L700.8,133.2L704.2,134.5L709.9,135.2L713.2,137.0L722.5,136.4L725.8,141.8L726.9,146.1L732.9,148.8" vector-effect="non-scaling-stroke" /><path d="M678.1,189.8L680.3,185.3L690.8,179.4L706.0,183.5L710.9,179.2L710.2,177.4" vector-effect="non-scaling-stroke" /><path d="M425.6,184.2L418.2,187.3L408.5,189.4L401.2,188.3L394.6,191.8L376.6,193.1L373.3,198.2L370.1,197.9" vector-effect="non-scaling-stroke" /><path d="M371.8,198.1L370.2,199.3" vector-effect="non-scaling-stroke" /><path d="M635.0,129.0L637.1,135.6L640.2,141.8L643.5,144.6L654.9,147.7L659.7,151.6L665.1,159.8L681.7,165.5L688.8,163.9L696.4,154.4L709.7,142.3L716.6,136.7" vector-effect="non-scaling-stroke" /><path d="M579.7,177.1L573.3,175.7L562.4,173.8" vector-effect="non-scaling-stroke" /><path d="M639.3,157.9L630.2,152.3L623.0,159.9L614.3,166.6L606.9,172.1L603.5,172.2L597.1,171.8L584.3,175.4L579.7,177.1" vector-effect="non-scaling-stroke" /></g>
+                <g class="map-layer map-layer-lakes"><path d="M431.0,186.3L432.3,186.2L431.6,188.8L432.7,189.5L433.3,192.3L431.7,195.1L430.1,192.8L431.5,190.4L430.0,188.3L431.0,186.3" vector-effect="non-scaling-stroke" /><path d="M441.6,200.5L439.2,194.0L439.1,193.3L440.8,192.8L443.1,195.1L443.7,197.0L444.4,196.7L445.3,198.7L445.3,199.3L441.6,200.5" vector-effect="non-scaling-stroke" /><path d="M511.2,301.1L511.2,303.2L510.2,303.9L509.2,301.1L510.4,300.1L511.2,301.1" vector-effect="non-scaling-stroke" /><path d="M660.6,133.1L659.4,132.7L660.1,131.8L659.5,130.4L663.5,132.0L664.9,133.5L665.7,133.6L665.8,132.7L666.6,133.1L670.9,136.7L671.0,138.7L668.9,139.7L665.3,140.0L664.4,139.0L663.5,134.8L662.3,134.9L662.1,133.9L660.6,133.1" vector-effect="non-scaling-stroke" /><path d="M690.1,122.8L684.8,121.8L680.4,122.5L683.2,120.6L681.7,119.1L684.5,118.5L686.4,120.4L693.4,122.9L693.8,123.6L692.5,123.3L691.2,123.9L690.1,122.8" vector-effect="non-scaling-stroke" /><path d="M647.6,286.7L644.7,285.5L645.8,284.3L646.0,282.8L648.1,285.1L648.9,284.5L650.1,285.7L649.7,287.1L648.4,288.0L647.4,287.8L647.6,286.7" vector-effect="non-scaling-stroke" /><path d="M644.3,277.1L642.9,276.6L640.0,272.8L639.1,266.4L639.5,264.4L640.0,265.2L640.0,264.4L640.7,265.0L640.7,266.3L642.2,268.5L643.6,269.9L644.0,269.3L644.9,271.0L645.7,270.4L647.4,272.6L647.6,273.6L646.6,273.7L647.8,274.2L647.0,274.3L647.2,277.3L644.3,277.1" vector-effect="non-scaling-stroke" /><path d="M555.5,181.7L554.8,179.9L556.9,176.8L557.0,177.8L555.3,179.8L555.4,180.8L560.3,182.9L563.1,182.4L563.8,184.0L565.3,184.9L567.0,184.7L564.3,186.1L564.6,184.9L562.6,183.3L560.9,183.8L555.5,181.7" vector-effect="non-scaling-stroke" /><path d="M560.1,201.8L559.9,203.0L558.6,203.4L558.9,204.6L555.5,203.3L554.1,200.6L555.2,201.6L555.4,199.2L557.1,199.7L557.4,200.3L556.1,201.3L556.3,203.0L560.3,199.6L562.0,199.4L560.8,196.5L561.8,198.6L563.2,199.3L562.9,198.6L565.2,196.7L564.4,196.9L564.3,196.1L565.9,194.2L565.9,197.3L564.9,198.5L565.6,198.6L563.8,198.7L564.4,199.7L560.8,200.4L560.1,201.8" vector-effect="non-scaling-stroke" /><path d="M560.3,236.5L560.4,237.3L558.7,238.4L557.6,237.5L557.1,239.1L556.1,238.8L556.3,237.3L552.1,234.6L551.0,232.2L552.3,229.4L553.3,228.9L553.6,227.3L554.5,229.1L552.8,230.4L552.8,233.0L557.2,236.0L558.0,235.0L559.0,236.6L560.3,236.5" vector-effect="non-scaling-stroke" /><path d="M579.5,177.0L579.5,178.0L578.5,178.7L576.9,177.8L575.2,178.0L571.7,179.4L573.4,177.1L572.7,175.4L571.8,175.8L569.4,173.9L568.9,174.6L567.6,173.8L567.0,174.8L566.5,173.6L562.2,174.2L561.9,175.3L561.7,173.9L559.9,173.4L559.5,171.6L560.2,173.0L560.9,172.8L561.5,171.3L560.4,170.6L561.1,170.6L561.2,169.6L562.9,172.4L561.9,172.9L563.3,172.8L563.9,170.5L564.1,172.6L564.7,171.9L566.1,173.2L569.7,173.2L573.0,175.5L574.9,174.1L575.1,171.7L575.3,173.8L578.5,173.5L574.1,174.8L573.8,177.0L577.9,178.0L579.5,177.0" vector-effect="non-scaling-stroke" /><path d="M655.2,297.2L656.5,297.5L656.5,299.3L654.5,301.8L653.8,300.7L652.9,300.7L652.7,301.4L652.5,300.3L649.6,300.0L648.5,298.7L647.8,296.1L648.4,295.4L647.5,294.6L648.7,294.6L649.0,293.1L648.2,292.3L649.4,291.2L649.4,289.5L653.4,296.3L655.2,297.2" vector-effect="non-scaling-stroke" /><path d="M509.9,323.8L510.5,324.6L510.2,330.1L509.2,333.5L509.1,332.2L507.4,333.0L507.0,329.1L508.5,324.6L509.9,323.8" vector-effect="non-scaling-stroke" /><path d="M681.3,196.4L681.4,197.2L680.2,197.4L679.0,199.1L678.1,198.3L677.4,198.7L676.3,202.7L674.6,202.9L672.6,201.3L671.1,198.2L671.7,197.6L670.4,195.3L669.8,190.0L668.2,188.5L666.4,188.3L666.1,185.5L668.0,184.3L668.1,182.7L667.6,181.6L667.1,182.4L666.6,181.9L664.9,182.5L665.4,180.1L670.5,179.2L672.7,181.1L673.1,184.8L672.0,186.8L672.5,188.9L673.8,190.3L674.2,189.5L676.2,189.2L678.1,189.8L678.9,191.6L676.7,191.8L681.3,196.4" vector-effect="non-scaling-stroke" /><path d="M675.4,198.2L675.2,196.6L674.5,196.3L675.4,198.2" vector-effect="non-scaling-stroke" /><path d="M676.9,195.0L675.5,194.6L676.3,195.6L676.9,195.0" vector-effect="non-scaling-stroke" /><path d="M474.4,173.0L474.3,175.3L476.2,177.4L476.8,174.5L478.4,179.4L479.4,179.8L477.0,180.7L476.0,183.0L469.5,177.6L470.6,174.1L472.8,173.0L472.0,169.3L472.9,168.9L474.6,171.2L475.1,172.6L474.4,173.0" vector-effect="non-scaling-stroke" /><path d="M633.8,181.4L630.5,181.1L630.8,180.4L629.8,179.9L630.4,179.3L629.3,178.9L629.3,177.8L627.7,179.3L626.4,179.4L624.4,178.1L623.2,179.0L622.4,178.1L620.0,178.9L621.8,176.7L621.5,176.0L622.9,175.8L621.8,173.8L626.5,171.8L632.4,171.3L634.1,169.3L632.9,169.1L632.5,169.7L633.1,169.9L632.3,170.2L631.8,168.7L635.7,167.9L635.6,167.3L637.1,166.8L641.0,167.3L641.4,167.8L639.4,168.4L637.2,170.5L635.8,170.3L633.7,174.7L632.5,175.3L634.3,175.0L636.4,176.5L636.7,177.6L636.5,178.6L634.0,180.2L633.8,181.4" vector-effect="non-scaling-stroke" /><path d="M509.1,335.7L509.3,337.6L507.2,337.8L506.6,334.9L507.5,334.6L509.1,335.7" vector-effect="non-scaling-stroke" /><path d="M455.8,356.6L454.6,354.7L454.0,355.2L451.7,353.7L451.3,351.8L452.8,351.4L454.0,354.2L455.9,355.1L455.8,356.6" vector-effect="non-scaling-stroke" /></g>
+                <g class="map-faded"><circle cx="522.8" cy="287.1" r="1.2" /><circle cx="512" cy="322.3" r="1.2" /><circle cx="501.6" cy="299.7" r="1.2" /><circle cx="508.1" cy="302.2" r="1.2" /><circle cx="500.5" cy="329.3" r="1.2" /><circle cx="500.4" cy="322.3" r="1.2" /><circle cx="504.9" cy="322.6" r="1.2" /><circle cx="551.8" cy="219.8" r="1.2" /><circle cx="504.6" cy="323" r="1.2" /><circle cx="502" cy="301.3" r="1.2" /><circle cx="514" cy="332.3" r="1.2" /><circle cx="522.8" cy="287.2" r="1.2" /><circle cx="500.3" cy="318.4" r="1.2" /><circle cx="535.3" cy="225" r="1.2" /><circle cx="491.9" cy="326" r="1.2" /><circle cx="503.9" cy="321.5" r="1.2" /><circle cx="504.3" cy="320.6" r="1.2" /><circle cx="498.9" cy="325.2" r="1.2" /><circle cx="496.1" cy="322.3" r="1.2" /><circle cx="513.1" cy="325.6" r="1.2" /><circle cx="513.2" cy="324.5" r="1.2" /><circle cx="504.2" cy="323.6" r="1.2" /><circle cx="497.2" cy="334.8" r="1.2" /><circle cx="513.1" cy="325.6" r="1.2" /><circle cx="507.6" cy="293.8" r="1.2" /><circle cx="504.8" cy="321.7" r="1.2" /><circle cx="514.7" cy="326.5" r="1.2" /><circle cx="502.4" cy="324.6" r="1.2" /><circle cx="503.9" cy="324.4" r="1.2" /><circle cx="490.9" cy="339.7" r="1.2" /><circle cx="511.3" cy="320.8" r="1.2" /><circle cx="511.1" cy="299.9" r="1.2" /><circle cx="507" cy="311.2" r="1.2" /><circle cx="496.4" cy="334" r="1.2" /><circle cx="509.7" cy="323.1" r="1.2" /><circle cx="512.1" cy="292.8" r="1.2" /><circle cx="537.2" cy="228.7" r="1.2" /><circle cx="504.4" cy="319.7" r="1.2" /><circle cx="499.2" cy="326.4" r="1.2" /><circle cx="498.2" cy="216.1" r="1.2" /><circle cx="404.9" cy="195.2" r="1.2" /><circle cx="506.6" cy="304.4" r="1.2" /><circle cx="506.4" cy="322.8" r="1.2" /><circle cx="513.9" cy="329.3" r="1.2" /><circle cx="471.7" cy="380.8" r="1.2" /><circle cx="502.8" cy="297" r="1.2" /><circle cx="519.5" cy="305.8" r="1.2" /><circle cx="507.9" cy="321.6" r="1.2" /><circle cx="508.7" cy="304" r="1.2" /><circle cx="504.8" cy="323.7" r="1.2" /><circle cx="513.5" cy="310.9" r="1.2" /><circle cx="503.2" cy="325.6" r="1.2" /><circle cx="504.2" cy="323.6" r="1.2" /><circle cx="504.5" cy="322.8" r="1.2" /><circle cx="500.7" cy="310.6" r="1.2" /><circle cx="504.6" cy="321.9" r="1.2" /><circle cx="501.6" cy="326.6" r="1.2" /><circle cx="493" cy="331.9" r="1.2" /><circle cx="515.8" cy="313.2" r="1.2" /><circle cx="503.3" cy="322.1" r="1.2" /><circle cx="504.1" cy="322.7" r="1.2" /><circle cx="512.3" cy="315" r="1.2" /><circle cx="498" cy="321" r="1.2" /><circle cx="504.1" cy="323.6" r="1.2" /><circle cx="485.2" cy="323" r="1.2" /><circle cx="504" cy="330" r="1.2" /><circle cx="514.3" cy="308.1" r="1.2" /><circle cx="502.7" cy="295.4" r="1.2" /><circle cx="584.5" cy="215.9" r="1.2" /><circle cx="504.8" cy="324.5" r="1.2" /><circle cx="504.4" cy="343.9" r="1.2" /><circle cx="503.5" cy="322.5" r="1.2" /><circle cx="498.2" cy="216.1" r="1.2" /><circle cx="425.5" cy="378.6" r="1.2" /><circle cx="519.5" cy="264.4" r="1.2" /><circle cx="501.5" cy="321.2" r="1.2" /><circle cx="502.4" cy="325" r="1.2" /><circle cx="499.5" cy="324.2" r="1.2" /><circle cx="501.8" cy="323" r="1.2" /><circle cx="516.2" cy="327.5" r="1.2" /><circle cx="509.2" cy="306.5" r="1.2" /><circle cx="507.8" cy="322" r="1.2" /><circle cx="505.8" cy="307.3" r="1.2" /><circle cx="497.3" cy="328.1" r="1.2" /><circle cx="504.2" cy="323.6" r="1.2" /><circle cx="512.8" cy="306.6" r="1.2" /><circle cx="508.1" cy="295.7" r="1.2" /><circle cx="509.8" cy="303.6" r="1.2" /><circle cx="502.2" cy="332.7" r="1.2" /><circle cx="506.9" cy="305.1" r="1.2" /><circle cx="529.9" cy="253.1" r="1.2" /><circle cx="504.4" cy="317.7" r="1.2" /><circle cx="511.1" cy="304.6" r="1.2" /><circle cx="504.3" cy="320.6" r="1.2" /><circle cx="502" cy="326.9" r="1.2" /><circle cx="512.6" cy="333.7" r="1.2" /><circle cx="455" cy="340.1" r="1.2" /><circle cx="489.5" cy="356.8" r="1.2" /><circle cx="503" cy="305.3" r="1.2" /><circle cx="498.7" cy="332.6" r="1.2" /><circle cx="504.2" cy="323.6" r="1.2" /><circle cx="504.8" cy="321.7" r="1.2" /><circle cx="502.7" cy="300.7" r="1.2" /><circle cx="513.8" cy="316.4" r="1.2" /><circle cx="504.2" cy="323.6" r="1.2" /><circle cx="502.6" cy="323.2" r="1.2" /><circle cx="514.8" cy="289.6" r="1.2" /><circle cx="504.2" cy="323.6" r="1.2" /><circle cx="487.4" cy="350.2" r="1.2" /><circle cx="504.2" cy="323.6" r="1.2" /><circle cx="503.5" cy="304.7" r="1.2" /><circle cx="505.2" cy="304.3" r="1.2" /><circle cx="500.2" cy="327.6" r="1.2" /><circle cx="519.8" cy="230.4" r="1.2" /><circle cx="505.5" cy="322.4" r="1.2" /><circle cx="503.4" cy="337.3" r="1.2" /><circle cx="430.6" cy="213.8" r="1.2" /><circle cx="491.9" cy="326" r="1.2" /><circle cx="512.9" cy="323.8" r="1.2" /><circle cx="501.2" cy="299.7" r="1.2" /><circle cx="499.8" cy="322.6" r="1.2" /><circle cx="505.4" cy="295.7" r="1.2" /><circle cx="504.1" cy="322" r="1.2" /><circle cx="517.9" cy="308.4" r="1.2" /><circle cx="505.1" cy="295.6" r="1.2" /><circle cx="523.8" cy="286.6" r="1.2" /><circle cx="484" cy="381" r="1.2" /><circle cx="519.9" cy="286.4" r="1.2" /><circle cx="508.9" cy="329.4" r="1.2" /><circle cx="507" cy="324.9" r="1.2" /><circle cx="515.6" cy="232.6" r="1.2" /><circle cx="504.2" cy="323.8" r="1.2" /><circle cx="500.8" cy="315.8" r="1.2" /><circle cx="489.4" cy="330.1" r="1.2" /><circle cx="497.2" cy="334.8" r="1.2" /><circle cx="500.6" cy="301.9" r="1.2" /><circle cx="513.5" cy="323.5" r="1.2" /><circle cx="501.8" cy="328.5" r="1.2" /><circle cx="504.2" cy="323.6" r="1.2" /><circle cx="522.9" cy="287.2" r="1.2" /><circle cx="503.9" cy="308" r="1.2" /><circle cx="556.4" cy="264.8" r="1.2" /><circle cx="504.2" cy="322.1" r="1.2" /><circle cx="489.4" cy="347.4" r="1.2" /><circle cx="498.4" cy="323.5" r="1.2" /><circle cx="509.5" cy="297.4" r="1.2" /><circle cx="505" cy="314.5" r="1.2" /><circle cx="503.4" cy="292.4" r="1.2" /><circle cx="504.2" cy="323.6" r="1.2" /><circle cx="504.2" cy="323.6" r="1.2" /><circle cx="512.7" cy="324.1" r="1.2" /><circle cx="519.9" cy="276.8" r="1.2" /><circle cx="500.9" cy="324.1" r="1.2" /><circle cx="504.2" cy="323.8" r="1.2" /><circle cx="502.4" cy="331.3" r="1.2" /><circle cx="508.8" cy="339.1" r="1.2" /><circle cx="505.1" cy="288.3" r="1.2" /><circle cx="503.8" cy="320.9" r="1.2" /><circle cx="510.2" cy="313.3" r="1.2" /><circle cx="504.2" cy="323.6" r="1.2" /><circle cx="508.8" cy="339.1" r="1.2" /></g>
+                <g class="map-place is-moderate" transform="translate(504.6,320.7) scale(0.647)"><line class="map-place-leader" x1="0" y1="0" x2="8" y2="10" /><circle class="map-place-dot" r="3" /><text class="map-label" x="9" y="10" text-anchor="start">Ai</text></g>
+                <g class="map-place is-moderate" transform="translate(504.3,320.6) scale(0.647)"><line class="map-place-leader" x1="0" y1="0" x2="8" y2="-4" /><circle class="map-place-dot" r="3" /><text class="map-label" x="9" y="-4" text-anchor="start">Bethel</text></g>
+                <g class="map-place" transform="translate(505.9,302.9) scale(0.647)"><circle class="map-place-dot" r="3" /><text class="map-label" x="7" y="-2" text-anchor="start">Canaan</text></g>
+                <g class="map-place" transform="translate(433.1,356.9) scale(0.647)"><circle class="map-place-dot" r="3" /><text class="map-label" x="7" y="4" text-anchor="start">Egypt</text></g>
+                <g class="map-place is-high" transform="translate(567.6,215.8) scale(0.647)"><circle class="map-place-dot" r="3" /><text class="map-label" x="-7" y="0" text-anchor="end">Haran</text></g>
+                <g class="map-place is-high" transform="translate(505,314.5) scale(0.647)"><circle class="map-place-dot" r="3" /></g>
+                <g class="map-place" transform="translate(497.2,334.8) scale(0.647)"><circle class="map-place-dot" r="3" /><text class="map-label" x="-7" y="2" text-anchor="end">Negeb</text></g>
+                <g class="map-place" transform="translate(505,314.5) scale(0.647)"><circle class="map-place-dot" r="3" /><text class="map-label" x="-7" y="0" text-anchor="end">Shechem</text></g>
+              </svg>
+            </div>
+            <p class="map-legend">
+              <span><i>●</i> settled location</span>
+              <span><i>◐</i> high confidence</span>
+              <span><i>○</i> disputed</span>
+            </p>
+
+            <div class="place-row">
+              <span class="pn">Haran</span><span class="pc">settlement</span>
+              <span class="pv">v. 4, 5</span>
+            </div>
+            <div class="place-row">
+              <span class="pn">Canaan</span><span class="pc">region</span>
+              <span class="pv">v. 5, 10</span>
+            </div>
+            <div class="place-row">
+              <span class="pn">Shechem</span><span class="pc">with the Oak of Moreh</span>
+              <span class="pv">v. 6</span>
+            </div>
+            <div class="place-row">
+              <span class="pn">Bethel</span><span class="pc">disputed — 3 candidates</span>
+              <span class="pv">v. 8</span>
+            </div>
+            <div class="place-row">
+              <span class="pn">Ai</span><span class="pc">disputed — 5 candidates</span>
+              <span class="pv">v. 8</span>
+            </div>
+            <div class="place-row">
+              <span class="pn">Negeb</span><span class="pc">region — the Negev</span>
+              <span class="pv">v. 9</span>
+            </div>
+            <div class="place-row">
+              <span class="pn">Egypt</span><span class="pc">region</span>
+              <span class="pv">v. 10, 11, 14</span>
+            </div>
+
+            <p class="word-prov">
+              Place data: OpenBible.info Bible Geocoding Data by Stephen Smith (CC BY 4.0).
+              Coastlines and rivers: Natural Earth (public domain), drawn as modern geography with
+              ancient places on it.
+            </p>
+
+            <button class="word-deeper">More about these places</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="ann">
+        <b>Framing is the whole feature.</b> The shipped map (<code>MapView.tsx</code>) opens on
+        the entire Bible world and 1,335 places; a reader on Genesis 12 then has to find Haran
+        themselves. Here the viewBox is computed from this chapter's own coordinates and the other
+        161 places inside the frame stay drawn at 30% — so the chapter reads as a journey and the
+        world it sits in is still visible.
+      </p>
+      <p class="ann">
+        <b>Disagreement is drawn, not hidden.</b> Bethel and Ai come through the data as
+        <em>disputed</em> — three and five rival candidate locations, the best of each scoring 716
+        and 522 against OpenBible's own 1,000-point scale — and a hollow ring says so on the map
+        and in the list. No competitor bothers; it is the cheapest possible expression of “the
+        reader decides”.
+      </p>
+      <p class="ann warn">
+        <b>Two honest problems this artboard exposes, both in the data rather than the design.</b>
+        Shechem and the Oak of Moreh carry the <em>identical</em> coordinate, and Bethel and Ai sit
+        half a pixel apart at this frame — so labels must collide-resolve or merge (here: one label
+        for Shechem, leader lines for Bethel and Ai). And a region — Canaan, Egypt, the Negev —
+        arrives as a single point, so Egypt is a dot in the Delta and Canaan a dot north of
+        Shechem. Drawing a region as a dot quietly asserts something false. The note proposes what
+        to do about it.
+      </p>
+      <p class="ann">
+        <b>No route line.</b> The chapter does move Haran → Shechem → Bethel → the Negev → Egypt,
+        and drawing that arc would be beautiful, but the order comes from reading the chapter, not
+        from the geodata, and a drawn route claims a path nobody recorded. The verse numbers in the
+        list carry the same information honestly.
+      </p>
+
+      <!-- ══════════════════════════ 5. WORD DOOR, DEEPER ═════════════════════ -->
+      <h2>Artboard 5 — the word door, deeper</h2>
+      <p class="cap">
+        One tap on the fold. Grammar first, then all 109 renderings with the long tail
+        <b>paged</b>, then the gloss <b>last</b> with its provenance. Occurrences stay flat and
+        canonical, exactly as in the glance — no regrouping by rendering.
+      </p>
+      <p class="board-label">390 × 844 · after “More about this word”</p>
+      <div class="board">
+        <div class="sheet" style="border-radius: 0">
+          <div class="sheet-head">
+            <span class="word-door-ref">Genesis 12:3 · bāraḵ</span>
+            <button class="word-close">✕</button>
+          </div>
+          <div class="sheet-body">
+            <button class="word-deeper is-open" style="margin-top: 6px">Less about this word</button>
+
+            <div class="word-row">
+              <div class="word-key">Its grammar here</div>
+              <div class="word-value">
+                Verb · Nifal · perfect · third person common plural
+                <span class="word-count">“will be blessed”</span>
+                <p class="word-prov">
+                  Conjunctive waw | Verb - Nifal - Conjunctive perfect - third person common
+                  plural. The other two instances in this verse are Piel: “I will bless”
+                  (imperfect cohortative, first person singular) and “those who bless you”
+                  (participle, masculine plural construct). Same word, three forms, one sentence.
+                </p>
+              </div>
+            </div>
+
+            <div class="word-row">
+              <div class="word-key">Every form the<br />BSB uses</div>
+              <div class="word-value">
+                <p class="word-headline">
+                  109 forms, grouped by head word. 35 of them stand more than once; 74 stand
+                  exactly once.
+                </p>
+                <div class="word-renderings">
+                  <span>blessed <span class="word-count">82</span></span>
+                  <span class="is-here">bless <span class="word-count">44</span></span>
+                  <span>blessed be <span class="word-count">12</span></span>
+                  <span class="is-here">will be blessed <span class="word-count">12</span></span>
+                  <span>bless you <span class="word-count">8</span></span>
+                  <span>. . . <span class="word-count">6</span></span>
+                  <span>has blessed <span class="word-count">6</span></span>
+                  <span>I will bless <span class="word-count">6</span></span>
+                  <span>he blessed <span class="word-count">5</span></span>
+                  <span>he will bless <span class="word-count">5</span></span>
+                  <span>will bless <span class="word-count">5</span></span>
+                  <span>blessed him <span class="word-count">4</span></span>
+                  <span>has blessed you <span class="word-count">4</span></span>
+                  <span>I will bless you <span class="word-count">4</span></span>
+                  <span>they blessed <span class="word-count">4</span></span>
+                  <span>blessed them <span class="word-count">3</span></span>
+                  <span>had blessed <span class="word-count">3</span></span>
+                  <span>he blesses <span class="word-count">3</span></span>
+                  <span>I will bless her <span class="word-count">3</span></span>
+                  <span>may bless <span class="word-count">3</span></span>
+                </div>
+                <button class="word-more">Show more forms — 89 of 109 remaining</button>
+                <p class="word-prov">
+                  Counted from the BSB Translation Tables. The chips collapse 141 raw forms to 109
+                  by head word — an editorial grouping of ours, not a fact about the word.
+                </p>
+              </div>
+            </div>
+
+            <div class="word-row">
+              <div class="word-key">A lexicon gloss</div>
+              <div class="word-value word-muted">
+                to bless
+                <p class="word-prov">
+                  The Gloss column of TBESH (Tyndale House / STEPBible, CC BY 4.0) — one editor's
+                  one-word summary, not a definition. It is also one of the 141 forms the BSB
+                  itself uses, seven times out of 330; it is not the meaning of the other 323.
+                </p>
+              </div>
+            </div>
+
+            <p class="word-limits">
+              <b>What this can and cannot tell you.</b> You are looking at where a word stands and
+              how it has been put into English. That is evidence about the word's range, not a
+              definition of it, and a word does not carry all of its uses into any one verse. What
+              it means here is settled by this sentence.
+            </p>
+            <p class="word-prov">
+              Alignment and morphology: BSB Translation Tables (bereanbible.com), public domain.
+              Lexicon: STEPBible / Tyndale House (CC BY 4.0).
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <p class="ann">
+        <b>The long tail: paging, and here is why not the other two.</b> 109 chips is a wall, so
+        twenty show and the rest page — the <em>same</em> control the occurrence list already uses,
+        so the door has one paging idiom rather than two. A bare cap (“top 20, the rest hidden”)
+        loses the fact that most of the tail exists at all, and the tail <em>is</em> the evidence
+        that the range is wide. A search box is worse than both: a reader who can type “vanity” or
+        “curse” into a rendering list will find the meaning they already expected, which is
+        confirmation wearing the costume of research.
+      </p>
+      <p class="ann">
+        <b>Order is load-bearing.</b> Grammar, then renderings, then the gloss — and the gloss
+        carries no heading weight, no larger type, no colour. R2 and R3 are obeyed by
+        <em>placement</em>, not by a disclaimer: put a one-word gloss at the top of a screen and
+        nothing written underneath it will be read.
+      </p>
+
+      <div class="foot">
+        <p>
+          <b>What deeper means for the other two doors</b> is described in
+          <code>docs/proposals/deep-dive-doorways.md</code> rather than drawn — the note's
+          “Deeper, for the other two doors” section. In short: the connections door's deeper layer
+          is <em>more of the same list</em> (the remaining references, plus the thematic ones,
+          plus the stacked follow-a-connection behaviour the prototype already proved), and the
+          map door's deeper layer is <em>the map itself</em> — free pan and zoom out to the whole
+          Bible world, the rival candidates for a disputed place, and every verse a place appears
+          in.
+        </p>
+        <p>
+          Read next: <code>docs/proposals/deep-dive-doorways.md</code> for the decisions Dennis
+          has to make, and <code>docs/proposals/word-door-guardrails.md</code> §6 for the rules
+          every word screen above obeys.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
