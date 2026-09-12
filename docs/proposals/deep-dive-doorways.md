@@ -55,8 +55,8 @@ argument.** The same content laid out as the shipped door measures **1,220px** a
 wide — a screen and a half, which is the complaint. Under the fold went the rendering
 chips (one sentence says the same thing), the pinned repeat of the verse (the heading is
 200px above it) and the chooser; an occurrence row shows a **two-line window** of its
-sentence instead of all six lines of Genesis 1:28. **807px**, nothing deleted. The
-window must centre on the tapped word, with a leading ellipsis where it starts
+sentence instead of all six lines of Genesis 1:28. **788px** of the 844 a phone gives,
+nothing deleted. The window must centre on the tapped word, with a leading ellipsis where it starts
 mid-sentence: a window that hides the word is a bare reference in a sentence's clothes,
 which is what R1 forbids.
 
