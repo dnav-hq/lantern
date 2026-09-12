@@ -441,6 +441,60 @@ takes a `keepMeaning` flag that is `false` for Hebrew. Greek sense text is
 flattened out of STEPBible's `<BR />` / `<ref='…'>` markup into plain lines at
 build time, so no HTML from a third-party file can reach a renderer.
 
+### 5.5 AS BUILT, 2026-09-03 — slice 2, the reading surface
+
+The door is on screen: `src/components/WordDoor.tsx`, fed by
+`src/utils/wordIndexLoader.ts`. Reading order is §9a decision 2 exactly — the
+verse, the word and its grammar here, how the BSB renders it, where else it
+stands, and the lexicon LAST with its provenance. Four things were decided in
+the building and are recorded here rather than left implicit.
+
+**1. The entrance is one line under a verse the reader has already chosen.**
+§9a decision 3 ruled out a mark on the word and left "the Study side or a
+deliberate word tap". A word tap cannot be a plain click: on the reading page a
+click on a verse means *select this verse* (mobile) or *aim my note at it*
+(desktop Study), and words are most of a verse — intercepting them would break
+both. So the door is reached from BELOW the chosen verse: select a verse and a
+single quiet line, "The words behind this verse", appears under it; it is gone
+when the selection is. Nothing renders it while the composer is open (that tap
+was about writing), and the desktop Study workbench shows the same line for
+whichever verse the draft is anchored to, which is the §9a "Study side"
+entrance. Nothing anywhere touches `.verse-text`, so the reading page at rest is
+character-for-character what it was — the property §9a decision 3 was protecting.
+
+**2. Which words a door is offered on.** §8.2 wants ONE salient word per verse
+with the others reachable inside, ranked by the footnote/density/rarity/
+morphology precedence. That ranking is not built. What is built is the honest
+subset of it: function words are excluded outright — decided from the parsing
+table's own vocabulary, so a segment headed Article, Conjunctive, Preposition,
+Pronoun or Direct object marker is grammar and Noun/Verb/Adjective/Adverb/
+Number/Interjection is a word — repeats of a lemma collapse to their first
+instance, and what remains is offered IN VERSE ORDER. Ecclesiastes 1:2 gives
+four. Verse order is deliberate: a ranking we cannot yet justify would be the
+ranked list R2 forbids, wearing a different hat. The salience model stays open.
+
+**3. Occurrences are one row per VERSE, not per instance.** *hebel* stands four
+times in Ecclesiastes 1:2 and that is one sentence to read, not four rows, so
+rows carry a quiet "4 times here" instead. The header count is still the true
+occurrence count (73); the pinned verse is the one the reader came from and is
+not repeated in the list below it. Paging is §9a decision 4 unchanged — flat,
+canonical, twenty at a time.
+
+**4. The occurrence SENTENCES come from the app's scripture seam, not the
+index.** The verse shards carry per-word English, so a sentence could be
+reassembled from them — but it comes back without punctuation and with the
+translators' supplied brackets showing ("You, indeed have made my days [as]
+handbreadths"). R1 says occurrences appear in their sentences; a reconstruction
+is not the sentence. So each row's text is read through `api.getBibleVerse`,
+which caches a chapter forever, and only the page on screen is fetched: twenty
+rows cost at most twenty chapters, and a lemma with 700 occurrences still costs
+twenty.
+
+One thing the fence deferred: the loader throws a bare `Error`, because
+`ErrorCode` in `src/errors.ts` was outside this slice's scope and borrowing
+`BIBLE_BUNDLE_FETCH_FAILED` would poison a real outage signal. Promoting it to
+`WORD_INDEX_FETCH_FAILED` is a one-line follow-up.
+
 ---
 
 ## 6. The presentation rules
