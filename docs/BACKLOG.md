@@ -382,6 +382,35 @@ belongs to and why that arc comes when it does.
   at the cost of merging senses BDB separates — a decision, deliberately not
   taken (§5.4).
 
+- **Connections door (deep-dive rung — "where Scripture echoes this verse")
+  — design + data brief, nothing built (2026-09-12).**
+  `docs/proposals/connections-door.md`, measured against helloao's
+  `open-cross-ref` dataset (OpenBible's Bible Cross References, CC BY 4.0,
+  344,799 references total) with a seeded 200-verse sample:
+  `scripts/measure-cross-refs.mjs`. 93.5% of sampled verses carry at least
+  one connection, so the salience test is the STRENGTH of a verse's best
+  connection, not whether it has any — recommended threshold: top score ≥
+  30, which clears 5.5% of verses, the same order of magnitude as the
+  footnote door's 6.4%. The dataset is directional (a verse's own list is
+  not the mirror of the verses that point back at it) and translation
+  -independent (addressed by book/chapter/verse, so it works identically on
+  Tamil, unlike the word door). The prototype's planned quote-vs-echo
+  typing source, `spookylukey/bible-quotation-database`, turns out to carry
+  **no licence at all** (GitHub reports `license: null`, no LICENSE file,
+  and its own two upstream sources are unlicensed personal websites) — the
+  same shape of error `deep-dive-study.md` already caught once with
+  OpenScriptures. Recommendation: type quote vs. echo by computing shared
+  four-plus-word runs against the app's own already-licensed verse text
+  instead, never against that dataset. Reuses `deep-dive-study.md`'s
+  already-validated hold-firm stacking, breadcrumb and "relevance is order,
+  not a meter" principles rather than re-deciding them. Cheaper than the
+  footnote door (~3 vs ~5 sessions) since a whole-verse anchor needs no
+  character-offset computation. STILL OPEN: the mobile entry point, since
+  the deep dive (`studyMode = studyOpen && !isMobile`) is desktop-only
+  today; the salience threshold and quote/echo word-count wants a
+  confirmation pass with Dennis the same way the footnote classifier got
+  two blind audits before shipping.
+
 - **Guest cleanup after the guest-is-the-App change (2026-08-27) — the two
   mechanical loose ends are DONE (2026-08-28, see Done); one optional item
   remains.** A subtle in-reader "preview" indicator so a guest mid-reading (not
