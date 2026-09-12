@@ -1709,7 +1709,11 @@ function ChapterView({
                   selRange[0] === v.verse &&
                   selRange[1] === v.verse &&
                   composerVerse === null &&
-                  !showInline && (
+                  !showInline &&
+                  // The word index is aligned to the BSB's words; under another
+                  // translation's verse the chips would not match the text on
+                  // screen. The selection bar's notice offers the way to BSB.
+                  !deepDiveElsewhere && (
                     <WordDoorEntrance
                       book={bookNumber}
                       chapter={chapter}
@@ -1919,7 +1923,7 @@ function ChapterView({
             // workbench never has to know the word door exists — it only knows
             // which verse the draft is aimed at.
             const line = verses.find(v => v.verse === verse)
-            if (!line) return null
+            if (!line || deepDiveElsewhere) return null
             return (
               <WordDoorEntrance
                 book={bookNumber}
