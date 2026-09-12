@@ -206,8 +206,8 @@ belongs to and why that arc comes when it does.
   category deletes outright; a built-in is never deleted. Creating a name whose
   derived key matches a retired one offers the restore instead. Cap is 8 ACTIVE
   and at the limit the create row stays visible reading `8 of 8 — retire one
-  first`. **Migration `0011_note_categories_archive.sql` must be run by hand**
-  before archive persists, exactly as 0010 was.
+  first`. Migration `0011_note_categories_archive.sql` was applied to prod via
+  the Supabase MCP on 2026-09-12, so archive now persists.
   **Left behind by C, small:** a retired category's LABEL falls back to its KEY
   where an existing note renders, because `useCategoryLabels()` derives from the
   ACTIVE list and `src/utils/useNoteCategories.ts` was outside that task's scope
