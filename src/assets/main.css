@@ -7290,12 +7290,6 @@ body.dark .profile-page-btn-signout {
 .pwa-update-later:hover {
   color: var(--text);
 }
-/* On desktop the bottom nav is a sidebar, so no bottom-bar offset is needed. */
-@media (min-width: 769px) {
-  .pwa-update {
-    bottom: calc(20px + env(safe-area-inset-bottom));
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .pwa-update {
     animation: none;

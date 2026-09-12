@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { onPwaNeedRefresh, applyPwaUpdate } from '../offline/pwaUpdate'
-import { isStandalone } from '../platform/install'
+import { isStandalone, isMobileViewport } from '../platform/install'
 
 // A quiet, dismissible "a new version is ready" pill. Replaces the old
 // autoUpdate behaviour that force-reloaded the app a few seconds into a
@@ -14,13 +14,14 @@ export default function PwaUpdatePrompt(): React.ReactElement | null {
   // a job: a standalone PWA's service worker holds an old build until a full
   // relaunch, and there is no address bar to reload from. In a browser tab a
   // plain reload already fetches the new build, so the pill is pure noise.
-  //
-  // This deliberately does NOT ask how wide the window is. The first version of
-  // this guard tested `min-width: 769px` and called anything narrower "mobile",
-  // so a desktop reader with a split window — or, far more likely for a reading
-  // app, browser zoom, which shrinks the CSS viewport — was shown the pill
-  // mid-passage. Width was never the question; install context was.
   if (!isStandalone()) return null
+  // ...but "installed" isn't only a phone anymore — Chromium can install this
+  // app on desktop too, and a desk reader gets no benefit from the pill either:
+  // Dennis asked for it gone on desktop, full stop. isMobileViewport() is the
+  // same phone/tablet breakpoint the reading layout already switches on
+  // (BookDetailPage's useIsMobile), so this can never disagree with what the
+  // rest of the app calls "mobile".
+  if (!isMobileViewport()) return null
   return (
     <div className="pwa-update" role="status" aria-live="polite">
       <span className="pwa-update-text">A new version is available.</span>
