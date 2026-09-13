@@ -9,6 +9,7 @@ import InlineDeleteConfirm from './InlineDeleteConfirm'
 import CrossRefPill from './CrossRefPill'
 import FootnoteVerseText from './FootnoteDoor'
 import WordDoorEntrance from './WordDoor'
+import ConnectionsDoorEntrance from './ConnectionsDoor'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import ReadingControls from './ReadingControls'
@@ -833,6 +834,24 @@ export default function ReadingMode({
                           verse={v.verse}
                           reference={`${bookAndChapter}:${v.verse}`}
                           verseText={v.text}
+                        />
+                      )}
+
+                    {/* The connections door's entrance — a second line beside
+                        the word door's, under the same chosen verse, and gone
+                        with the same selection. Temporary: the doorways row
+                        (docs/proposals/deep-dive-doorways.md) replaces both. */}
+                    {selRange !== null &&
+                      selRange[0] === v.verse &&
+                      selRange[1] === v.verse &&
+                      !showInline && (
+                        <ConnectionsDoorEntrance
+                          book={passage.book_number}
+                          chapter={passage.chapter_start}
+                          verse={v.verse}
+                          reference={`${bookAndChapter}:${v.verse}`}
+                          verseText={v.text}
+                          translation={translation}
                         />
                       )}
 

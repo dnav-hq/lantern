@@ -450,7 +450,30 @@ belongs to and why that arc comes when it does.
   (2026-09-12).
 
 - **Connections door (deep-dive rung — "where Scripture echoes this verse")
-  — design + data brief, nothing built (2026-09-12).**
+  — SLICE 1 BUILT (2026-09-13); the brief below stands as the argument.**
+  What shipped: connections arrive through the scripture provider
+  (`BibleProvider.getConnections`, helloao's `open-cross-ref`), cached per
+  chapter in the existing IndexedDB layer under a TRANSLATION-FREE key, and
+  nothing is fetched until a reader deliberately chooses a verse. A verse whose
+  best connection scores ≥ 30 gains a second entrance line beside the word
+  door's — "Where Scripture echoes this" — and the glance is one screen: the top
+  connection in full, the next two as one line each, then one fold for the rest.
+  Quote vs echo is COMPUTED from the two verses' own words in the translation on
+  screen (`src/utils/connections.ts`), never sourced, and OpenBible.info /
+  CC BY 4.0 is credited on the door. Tapping a row stacks the passage over the
+  held verse with a tappable breadcrumb back.
+  WHAT IS OUT, each still its own item: the REVERSE direction ("who quotes this
+  verse" — a 344,799-reference corpus inversion, §2.3, and still a decision
+  Dennis owes rather than a build); SHOWING THE SCORE, deliberately never (§6.1);
+  a stack DEEPER THAN ONE LAYER — the stacked passage offers no onward door,
+  because the recursion belongs to the shared deep-dive stack that does not exist
+  yet (§6.3); DESKTOP WORKBENCH POLISH — the entrance renders in the Study
+  workbench but the panel's layout has had no pass; and BUNDLING connections into
+  the offline self-hosted fallback (§7), so an uncached chapter read offline shows
+  no door rather than an error. The entrance is a temporary second line by design:
+  `docs/proposals/deep-dive-doorways.md`'s doorways row replaces both lines, and
+  is the next task.
+  The brief, unchanged, is `docs/proposals/connections-door.md`:
   `docs/proposals/connections-door.md`, measured against helloao's
   `open-cross-ref` dataset (OpenBible's Bible Cross References, CC BY 4.0,
   344,799 references total) with a seeded 200-verse sample:
@@ -474,9 +497,11 @@ belongs to and why that arc comes when it does.
   footnote door (~3 vs ~5 sessions) since a whole-verse anchor needs no
   character-offset computation. STILL OPEN: the mobile entry point, since
   the deep dive (`studyMode = studyOpen && !isMobile`) is desktop-only
-  today; the salience threshold and quote/echo word-count wants a
-  confirmation pass with Dennis the same way the footnote classifier got
-  two blind audits before shipping.
+  today — ANSWERED for this door: the entrance is a line under a chosen verse,
+  which mobile already has, so the connections door needed no new surface. The
+  salience threshold (30) and the quote/echo word count (4) shipped as the
+  brief recommends and still want Dennis's eye on real chapters; a 30-row
+  hand-labelled check at the build found zero false quotes.
 
 - **Guest cleanup after the guest-is-the-App change (2026-08-27) — the two
   mechanical loose ends are DONE (2026-08-28, see Done); one optional item

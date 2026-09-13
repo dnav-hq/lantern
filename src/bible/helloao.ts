@@ -1,4 +1,10 @@
-import type { BibleProvider, BibleVerseLine, VerseNote } from './provider'
+import type {
+  BibleProvider,
+  BibleVerseLine,
+  ChapterConnections,
+  VerseConnection,
+  VerseNote
+} from './provider'
 import { CodedError } from '../errors'
 import { footnoteShips } from '../utils/footnotes'
 
@@ -103,6 +109,18 @@ const USFM_BY_BOOK_NUMBER: Record<number, string> = {
 
 export function usfmForBookNumber(bookNumber: number): string | undefined {
   return USFM_BY_BOOK_NUMBER[bookNumber]
+}
+
+// The same table read backwards, so a cross-reference's target ("JAS") becomes
+// the book_number every surface in this app already speaks. Built once from the
+// table above rather than typed out again — two hand-maintained copies of 66
+// codes is one copy too many.
+const BOOK_NUMBER_BY_USFM: Record<string, number> = Object.fromEntries(
+  Object.entries(USFM_BY_BOOK_NUMBER).map(([number, usfm]) => [usfm, Number(number)])
+)
+
+export function bookNumberForUsfm(usfm: string): number | undefined {
+  return BOOK_NUMBER_BY_USFM[usfm]
 }
 
 type VerseContentItem =
@@ -212,6 +230,25 @@ function verseNotesFor(
   return notes
 }
 
+// GET /api/d/open-cross-ref/{USFM}/{chapter}.json — the OpenBible.info
+// cross-reference dataset (CC BY 4.0), verified live 2026-09-12 and again on
+// build. One `content` entry per verse in the chapter, whether or not it has
+// references; a verse with nothing to show carries `references: []`.
+interface CrossRefResponse {
+  chapter: {
+    content: {
+      verse: number
+      references: {
+        book: string
+        chapter: number
+        verse: number
+        endVerse?: number
+        score: number
+      }[]
+    }[]
+  }
+}
+
 export class HelloaoBibleProvider implements BibleProvider {
   // helloao's own translation code — 'BSB', 'tam_irv', 'tam_tcv'. One instance
   // serves exactly one translation (see provider.ts's TranslationId comment).
@@ -253,5 +290,50 @@ export class HelloaoBibleProvider implements BibleProvider {
       )
     }
     return verses
+  }
+
+  // The chapter's cross-references. Deliberately its own request rather than a
+  // field on getChapter: a reader who never chooses a verse never fires it, and
+  // it is fetched from a dataset addressed by book+chapter ALONE — no
+  // translation component, on purpose (docs/proposals/connections-door.md §7).
+  //
+  // `dataset` is a peer of `{translation}` in the API's path, so this endpoint
+  // does NOT use this instance's translation code; every instance would return
+  // the identical bytes, which is exactly why connectionsLoader.ts keeps one.
+  async getConnections(bookNumber: number, chapter: number): Promise<ChapterConnections> {
+    const usfm = usfmForBookNumber(bookNumber)
+    if (!usfm) throw new CodedError('BIBLE_UNKNOWN_BOOK', `book_number ${bookNumber}`)
+
+    const res = await fetch(`${BASE_URL}/d/open-cross-ref/${usfm}/${chapter}.json`)
+    if (!res.ok) {
+      throw new CodedError(
+        'BIBLE_FETCH_FAILED',
+        `${res.status} ${res.statusText} (open-cross-ref ${usfm} ${chapter})`
+      )
+    }
+    const data = (await res.json()) as CrossRefResponse
+
+    const out: ChapterConnections = {}
+    for (const entry of data.chapter?.content ?? []) {
+      const refs: VerseConnection[] = []
+      for (const ref of entry.references ?? []) {
+        const book = bookNumberForUsfm(ref.book)
+        // A target this app cannot address is dropped rather than guessed at —
+        // same rule as a dangling footnote marker: no row, no count, no
+        // placeholder. (The dataset uses the same 66 codes, so this is a guard,
+        // not an expected path.)
+        if (!book) continue
+        refs.push({
+          book,
+          chapter: ref.chapter,
+          verse: ref.verse,
+          ...(ref.endVerse !== undefined ? { endVerse: ref.endVerse } : {}),
+          score: ref.score
+        })
+      }
+      // Absent rather than empty, so nothing downstream can render "0 links".
+      if (refs.length > 0) out[entry.verse] = refs
+    }
+    return out
   }
 }

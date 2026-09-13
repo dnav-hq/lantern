@@ -42,6 +42,7 @@ import {
 } from '../utils/useChapterNavigation'
 import FootnoteVerseText from './FootnoteDoor'
 import WordDoorEntrance from './WordDoor'
+import ConnectionsDoorEntrance from './ConnectionsDoor'
 import { markInstallEngagement } from '../utils/installNudge'
 import { formatRelativeTime } from '../utils/relativeTime'
 
@@ -1731,6 +1732,30 @@ function ChapterView({
                     />
                   )}
 
+                {/* The connections door's entrance, a SECOND line beside the
+                    word door's, under the same deliberately-chosen verse.
+                    Temporary by design: docs/proposals/deep-dive-doorways.md
+                    replaces both lines with one doorways row, which is the next
+                    task. Unlike the word door this one is NOT gated on the BSB —
+                    the cross-reference graph is verse-anchored and therefore
+                    translation-independent (connections-door.md §7), which is
+                    exactly why this is the door built first. It renders nothing
+                    at all unless this verse clears the salience bar. */}
+                {selRange !== null &&
+                  selRange[0] === v.verse &&
+                  selRange[1] === v.verse &&
+                  composerVerse === null &&
+                  !showInline && (
+                    <ConnectionsDoorEntrance
+                      book={bookNumber}
+                      chapter={chapter}
+                      verse={v.verse}
+                      reference={`${bookName} ${chapter}:${v.verse}`}
+                      verseText={v.text}
+                      translation={servedTranslation}
+                    />
+                  )}
+
                 {/* Single-verse notes render inline beneath their verse row. */}
                 {inlineHere && inlineHere.length > 0 && (
                   <div className="reading-notes-group inline-verse-notes">
@@ -1928,18 +1953,32 @@ function ChapterView({
           recoverDraft={workbenchRecover}
           wordDoor={verse => {
             // The Study-side entrance (brief §9a.3). A render prop so the
-            // workbench never has to know the word door exists — it only knows
-            // which verse the draft is aimed at.
+            // workbench never has to know which doors exist — it only knows
+            // which verse the draft is aimed at. The word door needs the BSB's
+            // word alignment; the connections door does not, so under another
+            // translation the reader keeps one door rather than none.
             const line = verses.find(v => v.verse === verse)
-            if (!line || deepDiveElsewhere) return null
+            if (!line) return null
             return (
-              <WordDoorEntrance
-                book={bookNumber}
-                chapter={chapter}
-                verse={verse}
-                reference={`${bookName} ${chapter}:${verse}`}
-                verseText={line.text}
-              />
+              <>
+                {!deepDiveElsewhere && (
+                  <WordDoorEntrance
+                    book={bookNumber}
+                    chapter={chapter}
+                    verse={verse}
+                    reference={`${bookName} ${chapter}:${verse}`}
+                    verseText={line.text}
+                  />
+                )}
+                <ConnectionsDoorEntrance
+                  book={bookNumber}
+                  chapter={chapter}
+                  verse={verse}
+                  reference={`${bookName} ${chapter}:${verse}`}
+                  verseText={line.text}
+                  translation={servedTranslation}
+                />
+              </>
             )
           }}
         />

@@ -9140,3 +9140,139 @@ body.dark .word-scrim {
 .word-deeper[aria-expanded='true']::after {
   content: '↑';
 }
+
+/* ── The connections door ─────────────────────────────────────────────────────
+   docs/proposals/connections-door.md, design/deep-dive-doorways.html artboard 3.
+   The sheet, scrim, close and fold are the word door's (DeepDiveSheet.tsx), so
+   nothing below re-declares them — only the rows, which are this door's own.
+
+   The single rule this block keeps: RELEVANCE IS ORDER AND PROMINENCE. There is
+   no meter, no bar and no number anywhere here, so the first row is simply the
+   biggest thing on the screen and every row after it is one line. A filled rail
+   was drawn, tried and rejected in design/reference-deep-dive.html; do not put
+   it back. */
+
+.conn-door-entrance {
+  padding-top: 0;
+}
+
+.conn-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* A row is a button because the whole row is the target — a tap anywhere on it
+   follows the connection. Reset the button, then rebuild it as text. */
+.conn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-top: 0.5px solid var(--border);
+  padding: 12px 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.conn:first-child {
+  border-top: 0;
+}
+.conn-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.conn-ref {
+  font-family: var(--ui-font);
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+/* The reason it connects, in the reader's own words. Quiet, because it is a
+   label and not a verdict. */
+.conn-why {
+  font-family: var(--ui-font);
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+}
+.conn-text {
+  display: block;
+  font-family: var(--scripture-font);
+  font-size: 15px;
+  line-height: 1.62;
+  color: var(--text-muted);
+}
+/* The lead row carries the target's words in full, at reading size. */
+.conn.lead .conn-text {
+  font-size: 17px;
+  color: var(--text);
+}
+/* Every row after the lead is exactly one line — the prominence tier IS the
+   relevance signal, so this clip is load-bearing, not a space saving. */
+.conn-text.one-line {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* The shared phrase, lit ONLY on a quote and only where it is genuinely
+   present — same tint as the word door's `.word-here`, because it is the same
+   claim: these are the words in question. */
+.conn-shared {
+  font-style: normal;
+  background: var(--accent-weak);
+  border-radius: 3px;
+  padding: 0 3px;
+}
+
+/* The stacked layer: the passage followed, over the verse still being held. */
+.conn-crumb {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: 0.5px solid var(--border);
+  padding: 10px 0;
+  margin-bottom: 4px;
+  font-family: var(--ui-font);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.conn-crumb em {
+  font-style: normal;
+  color: var(--text-faint);
+}
+.conn-crumb-back {
+  color: var(--text-faint);
+}
+.conn-stack-ref {
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 14px 0 6px;
+}
+.conn-stack-verses {
+  font-family: var(--scripture-font);
+  font-size: 17px;
+  line-height: 1.7;
+}
+/* Context verses are present but stand back: the reader followed a reference,
+   not a chapter. */
+.conn-v {
+  margin: 0 0 8px;
+  color: var(--text-faint);
+}
+.conn-v.here {
+  color: var(--text);
+}
+.conn-v .verse-number {
+  margin-right: 6px;
+}

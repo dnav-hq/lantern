@@ -32,8 +32,42 @@ export interface VerseNote {
   text: string
 }
 
+// One place Scripture picks this verse up, per docs/proposals/connections-door.md.
+// The LINK is the data (OpenBible.info's cross-references, CC BY 4.0); `kind`
+// is NOT — it is computed from the app's own verse text at render time (§4),
+// because the only dataset that carries it has no licence at all (§3.2). So it
+// is deliberately absent here: the seam ships what the source actually says.
+export interface VerseConnection {
+  /** book_number, 1-66 — resolved from the source data's USFM code. */
+  book: number
+  chapter: number
+  verse: number
+  /** Present only when the target is a RANGE. The source is always one verse. */
+  endVerse?: number
+  /**
+   * OpenBible's own relevance weighting. Unbounded and occasionally negative
+   * (measured -4..738), and NOT a measure of how literal a quotation is — so it
+   * governs whether a door exists (src/utils/connections.ts) and is NEVER shown
+   * to a reader (§6.1).
+   */
+  score: number
+}
+
+/** `{ [verseNumber]: VerseConnection[] }` — one chapter's outgoing links. */
+export type ChapterConnections = Record<number, VerseConnection[]>
+
 export interface BibleProvider {
   getChapter(bookNumber: number, chapter: number): Promise<BibleVerseLine[]>
+  /**
+   * The chapter's cross-references, ADDITIVE and OPTIONAL exactly like
+   * `notes` above: a provider that has none (the self-hosted bundles carry
+   * verse text only) simply does not implement it, and the door is absent
+   * rather than empty. Translation-independent — see connections-door.md §7 —
+   * which is why it is not threaded through service.ts's per-translation
+   * provider map; src/utils/connectionsLoader.ts owns the one instance every
+   * translation shares.
+   */
+  getConnections?(bookNumber: number, chapter: number): Promise<ChapterConnections>
 }
 
 // The translation dimension threaded through getBibleVerse (service.ts) and
