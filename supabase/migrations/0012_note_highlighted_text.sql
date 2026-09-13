@@ -1,0 +1,38 @@
+-- Word-level highlights: the words a mark was actually about.
+--
+-- WHY A COLUMN AND NOT AN ENCODING INSIDE content. `notes.content` already has
+-- a grammar — a leading verse anchor, `@category` tags, prose — parsed by
+-- parseNoteLine and read back by noteProse/isHighlight (src/utils/noteKind.ts),
+-- and a HIGHLIGHT is DEFINED as a note whose content is empty once the anchor
+-- and tag are stripped. Smuggling the quoted phrase into content would (a) make
+-- every word-level mark read as a written note whose text is the quote, and (b)
+-- need its own escaping the first time a reader's real note contains a quotation
+-- mark, which in Bible study is constantly. A column is orthogonal to content
+-- exactly the way anchor_start_verse/anchor_end_verse/category already are, so
+-- isHighlight needs zero changes. See docs/proposals/word-level-highlights.md §4.
+--
+-- WHY TEXT AND NOT AN OFFSET. This is the whole point of the design. A character
+-- range or word index breaks the moment the translation changes length — which
+-- is the objection that declined sub-verse highlighting once already
+-- (docs/proposals/note-object.md §2). A verbatim QUOTE has no such failure mode:
+-- at render time it either occurs in the verse as displayed, in which case only
+-- those words tint, or it doesn't, in which case the whole verse tints exactly
+-- as it does today. The verse anchor stays the single source of truth for WHERE
+-- the note is; this column is a rendering hint layered on top of it, so
+-- translation independence is not forfeited — it is what makes the fallback safe.
+--
+-- NULL MEANS "no word span", which is precisely what every note written before
+-- this ships means. Additive, no backfill, no default: old code reading the
+-- table is unaffected, and new code treats NULL as today's whole-verse mark.
+--
+-- NO RLS CHANGE. The notes policies in 0001_init.sql are row-level and column
+-- agnostic, so they already cover reading and writing this column.
+--
+-- NO INDEX. Nothing queries BY the quoted text — it is read along with the note
+-- it belongs to and matched client-side against the verse on screen. Word spans
+-- as a Journal search key are explicitly out of scope (brief §7).
+--
+-- Idempotent: safe to re-run.
+
+alter table public.notes
+  add column if not exists highlighted_text text;

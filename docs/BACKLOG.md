@@ -163,17 +163,34 @@ belongs to and why that arc comes when it does.
   deep-dive layers and group sharing, and unlike them it depends on no
   translation licence.
 
-- **Word-level highlights — measured, not yet built (2026-09-12).**
+- **Word-level highlights — SLICE 1 BUILT 2026-09-13, mobile, create-only.**
   `docs/proposals/word-level-highlights.md`. Verse anchor + exact quoted text,
   not a word offset — a translation-switch miss falls back to today's
   whole-verse tint, so translation independence is not at risk. Measured
   against the self-hosted BSB/KJV/NET bundles (seed 42, n=200): a BSB
   word-span survives verbatim into KJV 34.0% of the time, into NET 47.0%.
-  `highlighted_text` as a new nullable column on `notes`, not a `content`
-  encoding — keeps `isHighlight`/`noteProse` untouched. Selection gesture
-  proposed for mobile only (native long-press text selection scoped to a
-  verse); desktop, editing, and multi-verse spans are explicitly out of scope
-  for a first slice.
+  What shipped: `highlighted_text` (nullable, migration `0012`) carried through
+  both `BereanApi` implementations; `src/utils/highlightSpan.ts` re-locates the
+  quote in whatever translation is on screen (unique match or the verse tint,
+  never a guess); the mobile selection bar's picker gains ONE row, **Highlight
+  these words**, only once words are selected inside the selected verse; the
+  Journal and the export quote the marked words. Still deferred, as the brief
+  scoped them: the desktop selection gesture, EDITING a saved span
+  (delete-and-recreate today), multi-verse spans, word spans as a Journal
+  search key, and ESV/NIV (unmeasured, licence-gated).
+  Two follow-ups this slice created:
+  - **A verse showing a word-level mark shows no footnote door.** The mark is
+    rendered by splitting the verse text in `BookDetailPage`, which bypasses
+    `FootnoteVerseText`. Reuniting them means letting that component take a
+    span to tint (it already splits the same string for doors) — the right fix,
+    and out of this slice's scope fence.
+  - **Touch selection is opted back in for the SELECTED verse only.** Verse
+    text is `user-select: none` on touch on purpose (a pause before a scroll
+    otherwise starts a native selection that swallows the scroll and leaves a
+    stray highlight). Selection — and the iOS callout with it — is now enabled
+    on `.reading-verse-row.selected .verse-text`, which is where the gesture
+    lives. Worth a look on a real iPhone: if the OS callout fights the
+    selection bar, the fallback is the brief's tap-per-word chips (§5).
 
 - **User-owned categories, slice 2: ADD AND REMOVE.**
   `docs/proposals/custom-categories.md`. Rename shipped because the KEY never

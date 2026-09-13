@@ -22,8 +22,23 @@ interface MobileSelectionBarProps {
   reference: string
   onClear: () => void
   onNote: () => void
-  /** Applies a highlight in the chosen category. Never opens the keyboard. */
-  onHighlight: (category: string) => void
+  /**
+   * Applies a highlight in the chosen category. Never opens the keyboard.
+   *
+   * `words` is set only when the reader chose the "Highlight these words" scope
+   * — the exact phrase to store alongside the verse anchor. Undefined means the
+   * whole verse, which is what every call meant before word-level marks.
+   */
+  onHighlight: (category: string, words?: string) => void
+  /**
+   * The words the reader has selected INSIDE the selected verse, trimmed to
+   * word boundaries, or null when they have selected none.
+   *
+   * Present only on a single-verse selection whose text selection resolves
+   * inside that verse. While it is null the picker is character-for-character
+   * what it was before — no new row, no new wording.
+   */
+  selectedWords?: string | null
   /**
    * The category the selection is ALREADY highlighted in, if any. With one set
    * the picker shows it checked and offers "Remove highlight" — the only way
@@ -47,6 +62,7 @@ export default function MobileSelectionBar({
   onClear,
   onNote,
   onHighlight,
+  selectedWords = null,
   highlightedAs = null,
   onRemoveHighlight,
   offerBsb = false,
@@ -55,6 +71,11 @@ export default function MobileSelectionBar({
   const [mounted, setMounted] = useState(shown)
   const [leaving, setLeaving] = useState(false)
   const [picking, setPicking] = useState(false)
+  // Does the next colour pick mark the WORDS or the verse? Off by default, so
+  // the picker means what it has always meant, and reset whenever the picker
+  // closes or the word selection goes — a scope that outlived the selection it
+  // described would be a mode, which is the one thing this bar refuses to be.
+  const [wordScope, setWordScope] = useState(false)
   // The selection (and so the reference) clears the instant `shown` goes false,
   // but the bar is still sliding out — freeze the last content so it reads right
   // for the length of that exit.
@@ -84,6 +105,7 @@ export default function MobileSelectionBar({
   }, [shown, mounted])
 
   if (!shown && picking) setPicking(false)
+  if (wordScope && (!picking || !selectedWords)) setWordScope(false)
   if (!mounted) return null
   const content = shown ? { reference, offerBsb } : last.current
 
@@ -128,8 +150,20 @@ export default function MobileSelectionBar({
         {picking && (
           <div className="mobile-selbar-menu">
             <CategoryMenu
-              title={highlightedAs ? 'Highlighted as…' : 'Highlight as…'}
+              title={
+                wordScope
+                  ? 'Highlight these words as…'
+                  : highlightedAs
+                    ? 'Highlighted as…'
+                    : 'Highlight as…'
+              }
               selected={highlightedAs}
+              // One row, and only once there are words to offer. Nothing about
+              // this bar changes for a reader who never selects any.
+              scopeLabel={selectedWords ? 'Highlight these words' : undefined}
+              scopeQuote={selectedWords ?? undefined}
+              scopeActive={wordScope}
+              onToggleScope={selectedWords ? () => setWordScope(w => !w) : undefined}
               noneLabel={highlightedAs && onRemoveHighlight ? 'Remove highlight' : undefined}
               onPickNone={
                 highlightedAs && onRemoveHighlight
@@ -141,7 +175,7 @@ export default function MobileSelectionBar({
               }
               onPick={key => {
                 setPicking(false)
-                onHighlight(key)
+                onHighlight(key, wordScope && selectedWords ? selectedWords : undefined)
               }}
             />
           </div>

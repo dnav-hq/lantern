@@ -18,6 +18,7 @@ import QuickEditCard from './QuickEditCard'
 import MobileNoteComposer from './MobileNoteComposer'
 import CategoryMenu from './CategoryMenu'
 import { isHighlight } from '../utils/noteKind'
+import { findHighlightSpan, trimToWordBoundaries } from '../utils/highlightSpan'
 import { useNoteCategories } from '../utils/useNoteCategories'
 import MobileSelectionBar from './MobileSelectionBar'
 import StudyWorkbench, { type AnchorRequest, type StudyRange } from './StudyWorkbench'
@@ -358,19 +359,50 @@ function ChapterView({
     [categoryDefs]
   )
 
+  // A mark carrying `highlighted_text` tints only those words — WHEN they can be
+  // found, exactly once, in the verse as it is displayed RIGHT NOW. When they
+  // can't (most often because the mark was made in the BSB and this is the KJV,
+  // which keeps a BSB word-span verbatim about a third of the time — see
+  // docs/proposals/word-level-highlights.md §3), the mark falls back to tinting
+  // the whole verse, which is what every highlight has done until now. A miss
+  // therefore produces today's behaviour, never a misplaced mark.
+  const verseTexts = useMemo(() => {
+    const byVerse = new Map<number, string>()
+    for (const v of bibleData?.verses ?? []) byVerse.set(v.verse, v.text)
+    return byVerse
+  }, [bibleData])
+
   const markedVerses = useMemo(() => {
-    const marks = new Map<number, string>()
+    const marks = new Map<
+      number,
+      { category: string; span: { start: number; end: number } | null }
+    >()
     for (const note of localNotes) {
       if (!isHighlight(note) || !note.category) continue
       const start = note.anchor_start_verse
       if (start === null) continue
       const end = note.anchor_end_verse ?? start
+      // A quoted span never crosses a verse boundary (brief §5.4), so it only
+      // ever applies to a mark anchored on ONE verse.
+      const span =
+        start === end ? findHighlightSpan(verseTexts.get(start) ?? '', note.highlighted_text) : null
       // Last write wins on an overlap; the reader sees one colour per verse
-      // rather than a stack, which would turn scripture into a chart.
-      for (let v = start; v <= end; v++) marks.set(v, note.category)
+      // rather than a stack, which would turn scripture into a chart. That rule
+      // is unchanged by word spans: a word-level and a verse-level mark on the
+      // same verse resolve to whichever was written last, exactly as two
+      // verse-level marks always have.
+      for (let v = start; v <= end; v++) marks.set(v, { category: note.category, span })
     }
     return marks
-  }, [localNotes])
+  }, [localNotes, verseTexts])
+  /** The mark on a verse that tints the whole ROW — i.e. every mark but a resolved word span. */
+  const rowMarkCategory = useCallback(
+    (verse: number): string | null => {
+      const mark = markedVerses.get(verse)
+      return mark && !mark.span ? mark.category : null
+    },
+    [markedVerses]
+  )
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   // RichEditInput is uncontrolled (it owns a contenteditable), so a category
@@ -893,9 +925,57 @@ function ChapterView({
   }, [localNotes, selStart, selEnd])
   const selectedHighlightCategory = selectedHighlights[0]?.category ?? null
 
-  const handleHighlight = async (category: NoteCategory): Promise<void> => {
+  /* ── The words selected inside the selected verse ───────────────────────────
+     The gesture is the NATIVE one: long-press and drag inside the verse's own
+     text, which every mobile browser already teaches (brief §5). Nothing new to
+     learn, and no collision with tap-to-select-a-verse, which is a tap.
+
+     IT IS LATCHED, NOT LIVE. Reading `window.getSelection()` at the moment the
+     colour is tapped does not work: tapping "Highlight" collapses the native
+     selection before the picker is even open. So the phrase is captured the
+     moment it is selected and held until the VERSE selection moves, which is
+     also what lets the picker keep offering it while the reader chooses a colour.
+
+     SCOPED TO ONE VERSE'S TEXT. Both ends of the selection must land inside the
+     selected verse's own `.verse-text`, so a selection that wanders into the
+     verse number, the mark label, or the next verse is ignored rather than
+     stored as a quote that can never match (brief §5.4). */
+  const singleSelVerse = selStart !== null && selEnd === selStart ? selStart : null
+  const [wordSel, setWordSel] = useState<{ verse: number; quote: string } | null>(null)
+
+  // The latch belongs to ONE verse selection. Moving or clearing the selection
+  // drops it, which is also what removes the picker's extra row again.
+  useEffect(() => {
+    setWordSel(prev => (prev && prev.verse === singleSelVerse ? prev : null))
+  }, [singleSelVerse])
+
+  useEffect(() => {
+    if (singleSelVerse === null) return
+    const verseText = verseTexts.get(singleSelVerse)
+    if (!verseText) return
+    const onSelectionChange = (): void => {
+      const sel = window.getSelection()
+      // A COLLAPSED selection is not "no words" — it is the tap that just
+      // dismissed the native handles. Keep what was captured; see above.
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) return
+      const row = verseRowRefs.current.get(singleSelVerse)
+      const textEl = row?.querySelector('.verse-text')
+      if (!textEl || !textEl.contains(sel.anchorNode) || !textEl.contains(sel.focusNode)) return
+      const quote = trimToWordBoundaries(verseText, sel.toString())
+      if (quote) setWordSel({ verse: singleSelVerse, quote })
+    }
+    document.addEventListener('selectionchange', onSelectionChange)
+    return () => document.removeEventListener('selectionchange', onSelectionChange)
+  }, [singleSelVerse, verseTexts])
+
+  const selectedWords = wordSel && wordSel.verse === singleSelVerse ? wordSel.quote : null
+
+  const handleHighlight = async (category: NoteCategory, words?: string): Promise<void> => {
     if (selRange === null || savingInline) return
     const [start, end] = selRange
+    // A quote is only ever stored for a single-verse mark, and only for the
+    // verse the words were actually read out of.
+    const quote = words && start === end && wordSel?.verse === start ? words : null
     setSavingInline(true)
     try {
       // Re-tint in place when a highlight already covers exactly this range —
@@ -909,12 +989,16 @@ function ChapterView({
           content: composeNoteContent('', start, end, category),
           anchor_start_verse: start,
           anchor_end_verse: end,
-          category
+          category,
+          // Re-tinting is a colour change, not a change of what was marked: with
+          // no words chosen this time, whatever the mark was about is kept. Only
+          // a fresh word selection replaces it.
+          highlighted_text: quote ?? same.highlighted_text
         })
         setLocalNotes(prev => prev.map(n => (n.id === updated.id ? { ...n, ...updated } : n)))
         onNotesChanged()
       } else {
-        await createAnchoredNote(composeNoteContent('', start, end, category), start)
+        await createAnchoredNote(composeNoteContent('', start, end, category), start, quote)
       }
       clearSelection()
     } finally {
@@ -1085,7 +1169,10 @@ function ChapterView({
   // passage/session the same precise way and neither can drift.
   const createAnchoredNote = async (
     content: string,
-    fallbackVerse: number
+    fallbackVerse: number,
+    /** A word-level mark's exact words. null on every written note and every
+        whole-verse mark, which is every caller but the highlight picker. */
+    highlightedText: string | null = null
   ): Promise<NoteWithPassageInfo> => {
     const parsed = parseNoteLine(content)
     // Anchor to whatever "vN"/"vN-M" tag is in the text, falling back to the
@@ -1126,7 +1213,8 @@ function ChapterView({
       anchor_book_override: null,
       anchor_chapter_override: null,
       category: parsed.category,
-      indent_level: 0
+      indent_level: 0,
+      highlighted_text: highlightedText
     })
 
     const enriched: NoteWithPassageInfo = {
@@ -1616,6 +1704,13 @@ function ChapterView({
             const showInline = inlineVerse === v.verse
             const bracketCat = bracketByVerse.get(v.verse)
 
+            // A mark on this verse: `span` set means the reader marked WORDS and
+            // those words are findable in the text on screen, so only they tint;
+            // otherwise the whole row tints, exactly as before.
+            const mark = markedVerses.get(v.verse) ?? null
+            const rowMark = rowMarkCategory(v.verse)
+            const wordSpan = mark?.span ?? null
+
             const inlineHere = inlineGroupsByVerse.get(v.verse)
             const mobileRangeHere = mobileRangeByVerse.get(v.verse)
 
@@ -1666,7 +1761,7 @@ function ChapterView({
                     if (el) verseRowRefs.current.set(v.verse, el)
                     else verseRowRefs.current.delete(v.verse)
                   }}
-                  className={`reading-verse-row${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}${markedVerses.get(v.verse) ? ` marked cat-${markedVerses.get(v.verse)}` : ''}`}
+                  className={`reading-verse-row${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}${rowMark ? ` marked cat-${rowMark}` : ''}`}
                   onPointerDown={e => {
                     tapRef.current = { t: Date.now(), x: e.clientX, y: e.clientY, moved: false }
                   }}
@@ -1693,20 +1788,33 @@ function ChapterView({
                   {/* The doors are REMOVED while a selection is live, not left
                       inert (§10a.3): capture owns the verse, and a door you
                       have turned off is worse than no door. */}
-                  <FootnoteVerseText
-                    verse={v}
-                    doors={selRange === null}
-                    canOpen={canOpenFootnote}
-                    chapterReference={`${bookName} ${chapter}`}
-                  />
+                  {wordSpan && mark ? (
+                    // The words the reader marked, tinted in place. Rendering
+                    // the text here rather than through FootnoteVerseText means
+                    // a verse showing a word-level mark shows no footnote door
+                    // for as long as the mark is there — the one cost of this
+                    // slice, and the smaller one: the alternative is the
+                    // reader's own marked words not appearing where they put
+                    // them. The text itself is character-for-character the same.
+                    <span className="verse-text">
+                      {v.text.slice(0, wordSpan.start)}
+                      <mark className={`verse-word-mark cat-${mark.category}`}>
+                        {v.text.slice(wordSpan.start, wordSpan.end)}
+                      </mark>
+                      {v.text.slice(wordSpan.end)}
+                    </span>
+                  ) : (
+                    <FootnoteVerseText
+                      verse={v}
+                      doors={selRange === null}
+                      canOpen={canOpenFootnote}
+                      chapterReference={`${bookName} ${chapter}`}
+                    />
+                  )}
                   {/* The category NAME is what tells a mark apart from a
                       selection: both tint the row, only a mark says what it is.
                       Carries the reader's own naming. */}
-                  {markedVerses.get(v.verse) && (
-                    <span className="verse-mark-label">
-                      {categoryLabel(markedVerses.get(v.verse)!)}
-                    </span>
-                  )}
+                  {mark && <span className="verse-mark-label">{categoryLabel(mark.category)}</span>}
                 </div>
 
                 {/* The deep dive's ONLY entrance on the Read path — the
@@ -1846,7 +1954,8 @@ function ChapterView({
         reference={selReference}
         onClear={clearSelection}
         onNote={openComposerOnSelection}
-        onHighlight={key => void handleHighlight(key as NoteCategory)}
+        onHighlight={(key, words) => void handleHighlight(key as NoteCategory, words)}
+        selectedWords={selectedWords}
         highlightedAs={selectedHighlightCategory}
         onRemoveHighlight={() => void handleRemoveHighlight()}
         offerBsb={deepDiveElsewhere}

@@ -133,9 +133,14 @@ export function serializeBookMarkdown(
       .join(' · ')
     const indent = '  '.repeat(Math.max(0, note.indent_level))
     if (isHighlight(note)) {
-      // A highlight has no words. Say so, rather than writing a bullet that
-      // trails off into nothing and reads as data loss.
-      lines.push(`${indent}- **${meta}** — *(marked)*`)
+      // A highlight has no words of the reader's own. Say so, rather than
+      // writing a bullet that trails off into nothing and reads as data loss.
+      //
+      // A WORD-LEVEL mark does carry words — the scripture the reader marked —
+      // so the export quotes them. Every mark written before word spans existed
+      // has none, and its line is byte-for-byte what it has always been.
+      const quote = note.highlighted_text?.trim()
+      lines.push(`${indent}- **${meta}** — *(marked${quote ? `: "${quote}"` : ''})*`)
       continue
     }
     // A multi-line note keeps its shape by indenting continuation lines to sit

@@ -92,6 +92,9 @@ interface JournalNote {
   text: string
   // A note with no body — the reader marked the verse without writing.
   highlight: boolean
+  // The words a word-level mark was about, when it was about words rather than
+  // the whole verse. A mark with none reads exactly as it always has.
+  quote: string | null
   indent: number
   at: string
 }
@@ -155,6 +158,7 @@ function buildEntries(notes: NoteWithPassageInfo[]): ChapterEntry[] {
         category: note.category,
         text,
         highlight,
+        quote: note.highlighted_text ?? null,
         indent: note.indent_level,
         at: note.created_at
       })
@@ -575,7 +579,14 @@ export default function JournalPage({ onOpenChapter }: JournalPageProps): React.
                           }`}
                         >
                           <span className="journal-note-verse">{note.verse}</span>
-                          {note.highlight ? (
+                          {note.highlight && note.quote ? (
+                            // A WORD-LEVEL mark does have words — the reader's
+                            // own, quoted. Showing them is the difference
+                            // between "you marked something here" and "you
+                            // marked this", and they are the reader's text, not
+                            // prose the app invented (brief §6).
+                            <span className="journal-note-quote">“{note.quote}”</span>
+                          ) : note.highlight ? (
                             // A mark has no words, so it gets none. A short rule
                             // in the category colour says "you marked this" with
                             // nothing pretending to be prose — the same reason it
