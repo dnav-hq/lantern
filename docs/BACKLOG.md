@@ -331,6 +331,13 @@ belongs to and why that arc comes when it does.
   requirement); marker clustering; off-canvas indicators for the ~65
   out-of-frame places; filtering the map to the chapter you are reading; and
   the timeline, which brief section 6 rules out for lack of verifiable data.
+  **The entry-point question above now has a brief:**
+  `docs/proposals/map-in-the-story.md` (2026-09-12) proposes slice 4 — a map
+  door that opens framed on the current chapter's places (via the existing
+  chapter index, no new data) instead of the whole-Bible view, reframes
+  confidence for a 3-5-place frame, sets an atlas-inspired design direction,
+  and records a measured 60fps drag profile at 390px. Needs a decision from
+  Dennis before it starts.
 
 - **Footnotes door (deep-dive rung 1) — the reading surface is BUILT
   (2026-09-01); what is left is a thumb on a real phone.** Design + data brief in
