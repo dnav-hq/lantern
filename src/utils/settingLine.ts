@@ -190,7 +190,8 @@ export function checkSettingLines(lines: readonly CheckableLine[]): RuleViolatio
   const violations: RuleViolation[] = []
   for (const line of lines) {
     const banned = bannedTerm(line.text)
-    if (banned) violations.push({ key: line.key, rule: 'R3', detail: `“${banned}” in “${line.text}”` })
+    if (banned)
+      violations.push({ key: line.key, rule: 'R3', detail: `“${banned}” in “${line.text}”` })
     const count = wordCount(line.text)
     if (count > MAX_WORDS) {
       violations.push({ key: line.key, rule: 'R4', detail: `${count} words: “${line.text}”` })
@@ -227,9 +228,13 @@ export const SETTING_LINES_URL = '/bible/connections/settings.json.gz'
  * number (1f 8b) cannot collide with JSON's `{` (0x7b), so sniffing is correct
  * in both rather than green in dev and broken in production.
  */
-async function fetchGzJson<T>(url: string, fetchImpl: typeof fetch): Promise<T> {
+async function fetchGzJson<T>(url: string, fetchImpl: typeof fetch): Promise<T | null> {
   const res = await fetchImpl(url)
-  if (!res.ok) throw new Error(`${url} ${res.status}`)
+  // Null rather than an error, all the way down: a missing bundle is a door
+  // with no lines on it, which is a thing the reader is allowed to see. There
+  // is no code for it in src/errors.ts and there should not be one — nothing
+  // above here would do anything with it but swallow it.
+  if (!res.ok) return null
   const bytes = new Uint8Array(await res.arrayBuffer())
   const isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b
   const json = isGzip
