@@ -484,7 +484,7 @@ export default function App({
   function renderMain(): React.ReactElement {
     // The map surface. First, so it can't be
     // reached by any ordinary navigation.
-    if (mapOpen) return <MapView />
+    if (mapOpen) return <MapView chapter={mapChapter} />
 
     if (destination === 'journal') {
       // The Journal is a history of NOTES now, not of saved study containers,
@@ -540,7 +540,10 @@ export default function App({
           onToggleStudy={setStudyOpen}
           onRefresh={refresh}
           onChromeVisibleChange={setChromeVisible}
-          onOpenMap={() => setMapOpen(true)}
+          onOpenMap={() => {
+            setMapChapter({ book: selectedBibleBook.number, chapter: selectedChapter ?? 1 })
+            setMapOpen(true)
+          }}
         />
       )
     }
@@ -563,7 +566,13 @@ export default function App({
           hideNotes={hideNotes}
           onToggleHideNotes={() => setHideNotes(h => !h)}
           displayPrefs={displayPrefs}
-          onOpenMap={() => setMapOpen(true)}
+          onOpenMap={() => {
+            setMapChapter({
+              book: selectedPassage.book_number,
+              chapter: selectedPassage.chapter_start
+            })
+            setMapOpen(true)
+          }}
         />
       )
     }

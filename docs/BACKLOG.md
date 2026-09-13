@@ -24,7 +24,7 @@ belongs to and why that arc comes when it does.
   phone/tablet-width viewport — an installed mobile PWA is unchanged, an
   installed desktop PWA is not shown it, and a non-installed browser tab was
   never shown it either way. The update itself is unaffected: `registerType:
-  'prompt'` still installs the new worker in the background and it takes
+'prompt'` still installs the new worker in the background and it takes
   over on the next full launch regardless of whether the pill ever renders.
   Removed the now-dead `@media (min-width: 769px)` bottom-offset rule for
   `.pwa-update` in `main.css`, since the pill can no longer render at that
@@ -145,7 +145,7 @@ belongs to and why that arc comes when it does.
 - **The note object — highlights, user-owned categories, and RETRIEVAL
   (2026-08-30, new arc; see `docs/proposals/note-object.md`).** A research pass
   contradicted the standing assumption that capture latency is Lantern's top
-  defect: serious users of mature note tools complain about *retrieval*
+  defect: serious users of mature note tools complain about _retrieval_
   ("hard to find, hard to discover, hard to retrieve, hard to organize… the
   single worst part of Logos") and fear "a complete mess of notes." Lantern has
   not hit this yet only because it has one user with months of notes — the
@@ -159,7 +159,7 @@ belongs to and why that arc comes when it does.
   not just a derived history (needs its own design pass; nearest competitor
   Harvous ships "Recall" and made resurfacing its thesis). Hard constraints
   inherited from the research: no streaks, scores, or activity metrics; any
-  resurfacing is pull, never push. Note-object work sits *underneath* the
+  resurfacing is pull, never push. Note-object work sits _underneath_ the
   deep-dive layers and group sharing, and unlike them it depends on no
   translation licence.
 
@@ -238,7 +238,7 @@ belongs to and why that arc comes when it does.
   category deletes outright; a built-in is never deleted. Creating a name whose
   derived key matches a retired one offers the restore instead. Cap is 8 ACTIVE
   and at the limit the create row stays visible reading `8 of 8 — retire one
-  first`. Migration `0011_note_categories_archive.sql` was applied to prod via
+first`. Migration `0011_note_categories_archive.sql` was applied to prod via
   the Supabase MCP on 2026-09-12, so archive now persists.
   **Touch (2026-09-12):** hover does not exist on a phone, so the `⋯` is now
   faintly visible on every row under `(hover: none)`, and HOLDING a row opens
@@ -289,7 +289,6 @@ belongs to and why that arc comes when it does.
   app." Lantern has nothing comparable. Not 40 pages — the ten that matter,
   including an honest Lantern-vs-Harvous page. Cheapest meaningful win
   available, and it needs no licence and no schema change.
-
 
 - **Deep Dive — verse study exploration (the "go deeper" arc).** Full design +
   data research captured in `docs/proposals/deep-dive-study.md`; cross-references
@@ -370,6 +369,32 @@ belongs to and why that arc comes when it does.
   confidence for a 3-5-place frame, sets an atlas-inspired design direction,
   and records a measured 60fps drag profile at 390px. Needs a decision from
   Dennis before it starts.
+  **Slice 4 (the chapter frame) SHIPPED (2026-09-13), scoped to Genesis 12 as
+  the proof case, per the decisions the task carried.** `MapView` now accepts
+  a `chapter` address; opened with one (the doorways row's map door, already
+  wired to `onOpenMap` since the entry point above, now passes the reader's
+  current book/chapter through App.tsx instead of opening a plain view — the
+  `?map=1.12` URL form still works as a review shortcut for testing without a
+  live selection), it opens already framed on that chapter's geocoded places
+  via `frameViewBox` (`src/utils/mapViewport.ts`, unit-tested including the
+  degenerate single-place case), padded and fitted to the viewport; every
+  other place fades to a faint, unlabelled dot (`.map-place.is-faded`) rather
+  than disappearing, so the coastline still orients the reader. With no
+  chapter, the map behaves exactly as before (unframed, whole world). Dense
+  chapters (Joshua 15's 164 places is the stress case) label only the ~20
+  most-referenced in-frame places (`FRAME_LABEL_BASE` in `MapView.tsx`,
+  fed into the same zoom-grows-the-budget formula slice 3 already had) and
+  fold the rest behind the existing zoom-reveals-more behaviour. Confidence
+  reads honestly at this scale for free: the card and the legend's geometry
+  (solid/hollow/dashed, rival hairlines) are unchanged by framing, so a
+  disputed place among eight reads as disputed exactly as it always has among
+  1,335 — no new encoding was needed. A home control returns to the chapter
+  frame (not the world) once framed; panning and zooming out to the whole
+  world still work from there. **Deliberately NOT in this slice** (per the
+  brief's own plan and the task's scope): any journey line, including
+  Numbers 33's free case — a drawn route is a separate, hand-authored data
+  task (brief §2.2) — and the atlas-style visual pass (brief §4), which is a
+  design task independent of the door mechanism.
   **Gestures were made smooth (2026-09-12).** The cause was writing the
   `viewBox` ATTRIBUTE to the DOM every frame during a drag/pinch: that forces
   the browser to recompute layout for the whole subtree underneath it (1,335
@@ -395,7 +420,7 @@ belongs to and why that arc comes when it does.
   `docs/proposals/footnotes-door.md`, visual reference in
   `design/footnotes-door.html`. Slice 1 landed the invisible half: the 2,099
   alternate-rendering notes ride through the seam as `BibleVerseLine.notes:
-  { offset, text }[]`, anchored by character offset, with the 880 textual
+{ offset, text }[]`, anchored by character offset, with the 880 textual
   variants, 591 citations, 700 glosses, 350 measures and 13 supplied-word notes
   held back. Slice 2 put them on the page: `src/utils/footnoteSpan.ts` infers the
   span the data does not carry (strategy B, degrading to A — measured at 87.3% /
@@ -422,7 +447,6 @@ belongs to and why that arc comes when it does.
   where doors actually fall (2,099 total, 23.0% of chapters have none, median
   1 per chapter) and offers three visual options for the design pass, with a
   recommendation and two open questions.
-
 
 - **Word door (deep-dive rung 2) — slice 1 (DATA, 2026-09-02) and slice 2 (THE
   READING SURFACE, 2026-09-03) are built.** Design + data brief in
@@ -455,7 +479,7 @@ belongs to and why that arc comes when it does.
   verse shard + the parsing table, the door's own first two files, memoized per
   book. See §5.5 of the brief for what slice 2 decided and what it did not.
   STILL OPEN: the SALIENCE model of §8.2 — the door offers a verse's content
-  words in verse order, so nothing yet ranks which word a verse is *about*
+  words in verse order, so nothing yet ranks which word a verse is _about_
   (footnote-anchored, thematically dense, unusually rendered, marked
   morphology), and the footnote trigger (R6) stays with the footnotes door; the
   deep-dive doorway list §8.3 assumes now exists as the row above but ranks
@@ -548,7 +572,7 @@ belongs to and why that arc comes when it does.
 
 - **Retire `passages`/`sessions` tables; denormalise book/chapter onto `notes`.**
   The note-centric model (2026-08-26, see `docs/ARCHITECTURE.md`'s decision log)
-  shipped on the *existing* `passages`/`sessions` schema deliberately kept as
+  shipped on the _existing_ `passages`/`sessions` schema deliberately kept as
   invisible interim storage, specifically so mobile capture, Journal-as-history,
   and the desktop Read/Study toggle could ship with **zero migration**. That
   schema is no longer the model the UI presents (a note is the only saved unit;
@@ -568,7 +592,6 @@ belongs to and why that arc comes when it does.
   redundant row today. Revisit once the interim shape has proven itself in
   real use, or sooner if the extra join starts showing up as a real cost.
 
-
 - **Guest preview mode.**
   `docs/proposals/guest-preview-mode.md` (2026-08-03) resolves the guest-write
   question Dennis was unsure about: recommends (B), an ephemeral client-only
@@ -586,7 +609,7 @@ belongs to and why that arc comes when it does.
   until/unless that changes. See the proposal's own MVP slice and "Trigger to
   revisit" for sequencing.
   **Settled stance added 2026-08-03 (proposal §2a/§2b):** sign-in stays the
-  primary flow; guest is a durable, never-nagged free *reading* app (installing
+  primary flow; guest is a durable, never-nagged free _reading_ app (installing
   the PWA and reading forever without an account is a legitimate end state, not
   a failed conversion); the sign-in prompt is scoped to the note-taking moment
   only, so pure readers are never prompted; true offline reading stays deferred
@@ -613,7 +636,7 @@ belongs to and why that arc comes when it does.
   draft-recovery notice shape. The sign-in call to action is styled like the
   app's other inline text links (accent color + underline) rather than
   inheriting the notice's own tint, so it reads as tappable rather than as
-  part of the sentence. This is the *only* place a guest is invited to sign
+  part of the sentence. This is the _only_ place a guest is invited to sign
   in (§2a); reading stays un-nagged.
   - **G3 — the real landing CTA** (§7). G1 ships a deliberately temporary
     entry button so the guest tree is reachable now; the designed hero CTA
@@ -810,7 +833,7 @@ belongs to and why that arc comes when it does.
   up front, rather than lazily per chapter, for guaranteed offline reading.
   Still the real answer for offline readers and for `bible.helloao.org` being
   down (see the availability risk below): the cache is lazy, so today a user only
-  holds chapters they have already opened, and `HelloaoBibleProvider` *throws* on
+  holds chapters they have already opened, and `HelloaoBibleProvider` _throws_ on
   a failed fetch rather than degrading.
   **Partially mitigated in dev only** (2026-07-15): `FixtureBibleProvider`
   (`src/bible/fixture.ts`) bundles the four chapters `seedMemoryApi` seeds, and
@@ -822,7 +845,7 @@ belongs to and why that arc comes when it does.
   **Availability half now solved (2026-07-20):** the complete BSB is bundled and
   shipped as `public/bible/bsb.json.gz` (see "Self-hosted BSB fallback" under
   Done), so a helloao outage no longer throws — `SelfHostedBibleProvider` serves
-  the missing chapter. What remains of *this* item is the **prefetch** proper:
+  the missing chapter. What remains of _this_ item is the **prefetch** proper:
   the bundle already exists, so guaranteed up-front offline reading is now reduced
   to hydrating the IndexedDB cache from that bundle (decompress once, populate
   `berean-bible-cache`) instead of downloading anything new.
@@ -841,7 +864,7 @@ belongs to and why that arc comes when it does.
   UI to trigger and report it.
 
 - **Scripture full-text search (verse-text search).** Search v1 (UX overhaul,
-  workstream 6) only *parses* a query into a reference jump ("mat 2:13" →
+  workstream 6) only _parses_ a query into a reference jump ("mat 2:13" →
   Matthew 2) via `parseScriptureQuery`; it does NOT search the words of
   scripture. Searching verse text depends on having the full BSB available to
   index (the Full-Bible offline prefetch item above) plus a client-side index
@@ -858,7 +881,7 @@ belongs to and why that arc comes when it does.
   no migration.
   What actually remained was the one small **UI-only** gap the proposal
   identified: `BookDetailPage`'s selection-driven "Start study on {ref}" and
-  "Study chapter" always *reopened* an overlapping passage while still saying
+  "Study chapter" always _reopened_ an overlapping passage while still saying
   "Start"/using neutral wording, with no way to reach a genuinely new study
   short of retyping the reference in `+ Study`. **Fixed:** both buttons now
   read "Continue…" when `findOverlappingPassage` finds a match (unchanged
@@ -892,7 +915,6 @@ belongs to and why that arc comes when it does.
 
 - **Tauri desktop wrap.** Same idea for desktop, replacing the frozen Electron
   app. The web code is the source of truth.
-
 
 - **Paid tier considerations.** If/when hosting or AI costs warrant it: what's
   free vs paid, billing, quota enforcement. Design the free single-user
@@ -989,7 +1011,7 @@ belongs to and why that arc comes when it does.
   now shared rather than copied).
   Wired through every consumer so a mark is never silently dropped: the Journal
   keeps it and shows a quiet italic "Marked" rather than an empty row; export
-  writes "*(marked)*" rather than a bullet trailing into nothing; and the
+  writes "_(marked)_" rather than a bullet trailing into nothing; and the
   Journal gains a third filter axis (Notes / Marks), offered only when the
   reader actually has both. Capture is the existing mobile composer with no new
   button — picking a category without writing changes the Save label to "Mark",
@@ -1165,21 +1187,21 @@ belongs to and why that arc comes when it does.
   structural boundary) is **deleted**. The `guest` phase in `Root.tsx` now mounts
   the actual `App` inside `<ApiProvider api={createMemoryApi() /* unseeded */}>`,
   so a guest gets the whole product — the real `NavBar` (Bible · Journal ·
-  + Study), `BookDetailPage`, the desktop Read/Study workbench, the Journal —
-  backed by an in-memory API that forgets on reload. A guest can create notes
-  (they render inline and appear in the Journal) and study; nothing persists and
-  there is no account. A `guestSignIn` prop threads through `App` → `NavBar`
-  (swaps the account avatar for a "Sign in" button) and `ProfilePage` ("Trying
-  Lantern · Nothing here is saved yet · Sign in to keep your notes"). The memory
-  API has no credentials, so letting guest reach it leaks nothing — this
-  supersedes the maintain-forever isolation boundary. This makes the guest UI
-  impossible to drift from the signed-in app: it IS the signed-in app.
-  **Supersedes G1 (isolated guest reader) and G2 (ephemeral sandbox editor)
-  below** — they are historical now, not the shipped shape.
-  Follow-ups this created (see Deferred): limit guest to BSB/KJV (the full app's
-  translation picker still offers ESV, which needs a key a guest doesn't have),
-  and sweep the now-dead `guest-*` CSS (`.guest-topbar`, `.guest-scripture`,
-  `.guest-chapter-label`, `.chapter-flow-*`, etc. — ~19 lines in `main.css`).
+  - Study), `BookDetailPage`, the desktop Read/Study workbench, the Journal —
+    backed by an in-memory API that forgets on reload. A guest can create notes
+    (they render inline and appear in the Journal) and study; nothing persists and
+    there is no account. A `guestSignIn` prop threads through `App` → `NavBar`
+    (swaps the account avatar for a "Sign in" button) and `ProfilePage` ("Trying
+    Lantern · Nothing here is saved yet · Sign in to keep your notes"). The memory
+    API has no credentials, so letting guest reach it leaks nothing — this
+    supersedes the maintain-forever isolation boundary. This makes the guest UI
+    impossible to drift from the signed-in app: it IS the signed-in app.
+    **Supersedes G1 (isolated guest reader) and G2 (ephemeral sandbox editor)
+    below** — they are historical now, not the shipped shape.
+    Follow-ups this created (see Deferred): limit guest to BSB/KJV (the full app's
+    translation picker still offers ESV, which needs a key a guest doesn't have),
+    and sweep the now-dead `guest-*` CSS (`.guest-topbar`, `.guest-scripture`,
+    `.guest-chapter-label`, `.chapter-flow-*`, etc. — ~19 lines in `main.css`).
 
 - **Prod polish + dark-mode contrast sweep (2026-08-27).** A run of small
   prod-facing fixes: the PWA update pill and the verse-selection bars no longer
@@ -1220,7 +1242,7 @@ belongs to and why that arc comes when it does.
   **Follow-up fix, same day:** the first cut of this slice left two live mobile
   regressions, both traced to the toggle's `studyOpen` flag leaking onto phones
   — fixed by gating all study behaviour behind `studyMode = studyOpen &&
-  !isMobile`. (1) A tapped verse on mobile ran the study-aim path instead of
+!isMobile`. (1) A tapped verse on mobile ran the study-aim path instead of
   select→selection-bar, so verses highlighted with no way to make a note. (2)
   The bottom-bar "+ Study" tab set `studyOpen` and landed on a bare Bible page
   with no mobile study surface to show — removed; the mobile bottom nav is now
@@ -1370,9 +1392,9 @@ belongs to and why that arc comes when it does.
     ignores scroll samples caused by that layout change — the tail shrink at the
     bottom used to clamp `scrollTop` and read as an upward scroll, re-revealing the
     chrome in a hide/show oscillation.
-  Gate green throughout (tsc, 219 tests, lint baseline 3/9, build, prettier 0).
-  NOT confirmed in-code: the swipe FEEL and the latest tail-glide/oscillation
-  motion still want Dennis's on-device pass on prod (taste, unmeasurable headless).
+    Gate green throughout (tsc, 219 tests, lint baseline 3/9, build, prettier 0).
+    NOT confirmed in-code: the swipe FEEL and the latest tail-glide/oscillation
+    motion still want Dennis's on-device pass on prod (taste, unmeasurable headless).
 
 - **Stale-chunk production crash + verse-action-bar centring (2026-08-03).** Two
   unrelated fixes from a real user report (an international friend-of-a-friend
@@ -1380,7 +1402,7 @@ belongs to and why that arc comes when it does.
   full-screen "Something didn't load right" boundary).
   - **The crash.** Telemetry showed an `app-boundary` `TypeError` with a **null
     stack** on the current build — a synchronous render-time throw, `code
-    UNKNOWN_ERROR` (a raw JS error, not one of ours). Root cause, confirmed
+UNKNOWN_ERROR` (a raw JS error, not one of ours). Root cause, confirmed
     against live production: `Landing` is the app's only lazy `import()` and is
     loaded **only on the signed-out path** (so the signed-in friend never
     exercised it). When a client runs a stale `index.html` whose hashed chunk a
@@ -1393,7 +1415,7 @@ belongs to and why that arc comes when it does.
     service worker) is the most exposed. **Reproduced live** while verifying the
     deploy: the browser fetched the new `index.html` before this edge had served
     the new `Landing` chunk, hit the exact error, and recovered seconds later
-    once the chunk propagated — so even a *fresh* navigation in the brief
+    once the chunk propagated — so even a _fresh_ navigation in the brief
     per-deploy propagation window triggers it, not only stale caches. **Fix,
     defense-in-depth:** (1) `public/_redirects` now 404s a missing `/assets/*`
     instead of letting the SPA catch-all serve it back as HTML — the root evil:
@@ -1404,7 +1426,7 @@ belongs to and why that arc comes when it does.
     for a module fetch — the browser just sees the 404 and fails the import
     cleanly). (2) new `public/_headers` serves `index.html`/SPA routes
     `Cache-Control: no-cache` (the default was already `max-age=0,
-    must-revalidate`, so this strengthens it for misbehaving in-app caches) and
+must-revalidate`, so this strengthens it for misbehaving in-app caches) and
     `/assets/*` `immutable`; (3) a `vite:preloadError` handler in
     `src/telemetry/globalHandlers.ts` does a **one-time** guarded
     `location.reload()` (reload, not same-URL retry; a 10s `sessionStorage`
@@ -1417,7 +1439,7 @@ belongs to and why that arc comes when it does.
     indistinguishable from any other `TypeError` because telemetry strips
     messages for privacy and the Safari stack came through null.
     **Standing lessons:** the SPA catch-all makes a missing asset look like a
-    200-HTML *success*, not a 404 — so exclude `/assets/*` from it and keep
+    200-HTML _success_, not a 404 — so exclude `/assets/*` from it and keep
     `index.html` `no-cache`; NEVER let a path that can transiently 404-as-HTML be
     `immutable`-cached; and a dynamic-import failure is a caching/deploy problem
     first, a code bug second.
@@ -1612,10 +1634,10 @@ belongs to and why that arc comes when it does.
     handed to Dennis in-session. Write-only and unrecoverable from the dashboard
     — if lost, regenerate and `supabase secrets set` it again, then re-issue to
     HQ. Nothing in the repo or `.env` holds it.
-  **Telemetry is now live and collecting in production** (client errors,
-  scripture-fallback serves, draft recoveries), disclosed on the privacy page,
-  default-on with a working opt-out, bounded and self-pruning (0007 pg_cron,
-  daily 03:17 UTC).
+    **Telemetry is now live and collecting in production** (client errors,
+    scripture-fallback serves, draft recoveries), disclosed on the privacy page,
+    default-on with a working opt-out, bounded and self-pruning (0007 pg_cron,
+    daily 03:17 UTC).
 - **Accent-as-text contrast sweep applied (2026-07-22).** Closes the item
   deferred above. Every `color: var(--accent)` site in `main.css` and
   `landing.css` — links, buttons, active nav/tab states — switched to
@@ -1637,24 +1659,24 @@ belongs to and why that arc comes when it does.
   nearest `background-color` alone (a 13%-tint pill over the canvas is not
   the tint colour alone):
 
-  | site | theme | before | after |
-  |---|---|---|---|
-  | topnav/bottomnav active tab | berean | 3.89 | 4.88 |
-  | topnav/bottomnav active tab | scholarly | 4.32 | 4.98 |
-  | topnav/bottomnav active tab | paper | 3.12 | 4.94 |
-  | topnav/bottomnav active tab | modern | 4.74 (already passing) | 4.96 |
-  | `.bible-book-count` pill text | berean | 3.72 | 4.67 |
-  | `.bible-book-count` pill text | scholarly | 4.10 | 4.71 |
-  | `.bible-book-count` pill text | paper | 2.93 | 4.63 |
-  | `.bible-book-count` pill text | modern | 4.45 | 4.66 |
-  | `.btn-study-chapter` | berean | 3.91 | 4.90 |
-  | `.btn-study-chapter` | scholarly | 4.30 | 4.96 |
-  | `.btn-study-chapter` | paper | 3.12 | 4.94 |
-  | `.btn-study-chapter` | modern | 4.69 | 4.92 |
-  | `.book-detail-back:hover` | berean | 4.25 | 5.33 |
-  | `.book-detail-back:hover` | scholarly | 4.64 | 5.34 |
-  | `.book-detail-back:hover` | paper | 3.36 | 5.31 |
-  | `.book-detail-back:hover` | modern | 5.09 | 5.33 |
+  | site                          | theme     | before                 | after |
+  | ----------------------------- | --------- | ---------------------- | ----- |
+  | topnav/bottomnav active tab   | berean    | 3.89                   | 4.88  |
+  | topnav/bottomnav active tab   | scholarly | 4.32                   | 4.98  |
+  | topnav/bottomnav active tab   | paper     | 3.12                   | 4.94  |
+  | topnav/bottomnav active tab   | modern    | 4.74 (already passing) | 4.96  |
+  | `.bible-book-count` pill text | berean    | 3.72                   | 4.67  |
+  | `.bible-book-count` pill text | scholarly | 4.10                   | 4.71  |
+  | `.bible-book-count` pill text | paper     | 2.93                   | 4.63  |
+  | `.bible-book-count` pill text | modern    | 4.45                   | 4.66  |
+  | `.btn-study-chapter`          | berean    | 3.91                   | 4.90  |
+  | `.btn-study-chapter`          | scholarly | 4.30                   | 4.96  |
+  | `.btn-study-chapter`          | paper     | 3.12                   | 4.94  |
+  | `.btn-study-chapter`          | modern    | 4.69                   | 4.92  |
+  | `.book-detail-back:hover`     | berean    | 4.25                   | 5.33  |
+  | `.book-detail-back:hover`     | scholarly | 4.64                   | 5.34  |
+  | `.book-detail-back:hover`     | paper     | 3.36                   | 5.31  |
+  | `.book-detail-back:hover`     | modern    | 5.09                   | 5.33  |
 
   Every light-theme site measured now clears 4.5:1 (4.63–5.34); the two
   outliers below 4.5 in the raw sweep were `topnav`/`modern` and
@@ -1819,12 +1841,12 @@ belongs to and why that arc comes when it does.
       `throw new CodedError` site. The maps were confirmed unfetchable both
       anonymously and with the anon key (400 both ways), absent from `dist/`,
       and untracked by git.
-    All test rows and test maps were deleted afterwards; the buffer is back to
-    zero. **The function must be deployed with `--no-verify-jwt`** — HQ presents
-    a bearer token, not a Supabase JWT, so the platform gateway would otherwise
-    401 every legitimate call before our own constant-time check ran. This is
-    documented at the top of the function; redeploying without the flag breaks
-    the endpoint while looking like a tightening.
+      All test rows and test maps were deleted afterwards; the buffer is back to
+      zero. **The function must be deployed with `--no-verify-jwt`** — HQ presents
+      a bearer token, not a Supabase JWT, so the platform gateway would otherwise
+      401 every legitimate call before our own constant-time check ran. This is
+      documented at the top of the function; redeploying without the flag breaks
+      the endpoint while looking like a tightening.
   - **Retention no longer depends on a consumer that does not exist
     (`0007_telemetry_retention.sql`).** The original design swept old rows
     inside the edge function's pull. Sound, but insufficient alone: the sweep
@@ -1838,7 +1860,7 @@ belongs to and why that arc comes when it does.
     hard-fails on a missing extension would block every later migration), and it
     reports via `raise notice` so the outcome is visible at apply time rather
     than inferred; the live apply printed `pg_cron: scheduled
-    prune-telemetry-events daily at 03:17 UTC`. The edge-function sweep is
+prune-telemetry-events daily at 03:17 UTC`. The edge-function sweep is
     KEPT — cron covers nobody-is-pulling, the in-request sweep covers cron being
     disabled, and neither depends on the other. Verified live: two rows in (one
     current, one backdated 9 days), prune returned 1, the current row survived;
@@ -1855,7 +1877,7 @@ belongs to and why that arc comes when it does.
     `/privacy`; zero `sourceMappingURL` references in the deployed bundle.
     **Method lesson worth keeping: on this host you CANNOT test "is the source
     map public?" with a status code.** `public/_redirects` has a SPA catch-all,
-    so Cloudflare Pages answers *every* unmatched path with `HTTP 200` and
+    so Cloudflare Pages answers _every_ unmatched path with `HTTP 200` and
     `Content-Type: text/html` — the app shell. A first check asserting "the
     `.map` URL must 404" therefore looked like a leak when nothing was leaking.
     The correct test is to compare bodies: `/assets/index-<hash>.js.map` returns
@@ -1945,11 +1967,11 @@ belongs to and why that arc comes when it does.
      forbids calling `.detailForConsole()` from that directory, pointing the
      reader at `src/errors.ts` in the message — the one place a future
      telemetry change could reach for the human detail by mistake.
-  `src/errors.ts` itself was deliberately not touched — the guarantee it
-  provides was already correct; this only makes the build catch a regression
-  of it. One new test (124 total, was 123); lint's 3 pre-existing errors
-  (2 in `scripts/migrate-sqlite.ts`, 1 in `src/utils/richText.ts`) are
-  unchanged.
+     `src/errors.ts` itself was deliberately not touched — the guarantee it
+     provides was already correct; this only makes the build catch a regression
+     of it. One new test (124 total, was 123); lint's 3 pre-existing errors
+     (2 in `scripts/migrate-sqlite.ts`, 1 in `src/utils/richText.ts`) are
+     unchanged.
 
 - **Category/accent text contrast fixed with an `-ink` token (2026-07-21).**
   Measured, not eyeballed. Every light theme failed WCAG AA for category text:
@@ -2075,7 +2097,7 @@ belongs to and why that arc comes when it does.
   out of scope by design, so `public/privacy.html`'s "no third-party tracking"
   claim needed no change. Verified with a deliberately thrown test error,
   screenshotted in light/dark at desktop/mobile widths, then reverted; `tsc
-  --noEmit` clean, tests pass.
+--noEmit` clean, tests pass.
 
 - **Self-hosted BSB fallback (2026-07-20).** `bible.helloao.org` is no longer a
   single point of failure on the scripture read path. `scripts/build-bsb-bundle.mjs`
@@ -2124,13 +2146,13 @@ belongs to and why that arc comes when it does.
   specs were temporary and should go once ported, and all three are: `lantern-hero`
   (the flythrough), `lantern-features` (the three clips), and `lantern-mockup`
   (layout/copy/login direction). They remain in git history if a spec ever needs to
-  be re-read. Four *untracked* scratch files were removed at the same time
+  be re-read. Four _untracked_ scratch files were removed at the same time
   (`mockup.html`, `landing-mockup.html`, `lantern-anim.html`, `lantern-logo.html`)
   — earlier-generation explorations, including the pictorial-mark study whose
   conclusions are already written up in the Lantern rebrand entry below, so nothing
   load-bearing was lost. Note for anyone re-reading the landing code: the loop
   machinery in `useClipLoop.ts` was ported from these specs and the clone +
-  translateY compensation is load-bearing, so the *code* comments are now the only
+  translateY compensation is load-bearing, so the _code_ comments are now the only
   live explanation of why it works that way.
 
 - **Repo normalized with Prettier (2026-07-20).** Done as its own commit, alone,
@@ -2171,7 +2193,7 @@ belongs to and why that arc comes when it does.
   - **`hello@lanternword.com` routes.** Cloudflare Email Routing is configured as
     a catch-all forwarding all `@lanternword.com` mail to the owner, so the
     contact address published on the live `/privacy`, `/terms` and `/about` pages
-    is real. (Receive-only: replying *as* `hello@` would need Gmail "Send mail as"
+    is real. (Receive-only: replying _as_ `hello@` would need Gmail "Send mail as"
     over the existing Brevo SMTP credentials.)
   - **Legal pages reviewed and finalised.** Contact address resolved as above.
     Governing law deliberately stays NEUTRAL ("the laws applicable at the
@@ -2190,7 +2212,7 @@ belongs to and why that arc comes when it does.
   - **`prefers-reduced-motion` VERIFIED** (previously "never verified live").
     Audited rather than assumed: **32 of 32** `animation`/`transition`
     declarations in `motion.css` sit inside a `prefers-reduced-motion:
-    no-preference` guard (zero outside), backed by a global
+no-preference` guard (zero outside), backed by a global
     `*:not(.upd-spinner)` kill-switch using `!important` near-zero durations; and
     the JS side is covered too — `usePrefersReducedMotion()` reads the flag at
     mount and `useClipLoop` skips the script entirely. The resting states were
@@ -2226,15 +2248,15 @@ belongs to and why that arc comes when it does.
     same file that was uploaded (`icon-512.png`), rendered on the page next to the
     exact app name.
   - **Full app verification is NOT required** for non-sensitive scopes
-    (email/profile/openid) — only the lightweight *brand* verification. Ignore the
+    (email/profile/openid) — only the lightweight _brand_ verification. Ignore the
     Audience page's generic "submit your app for review" banner; that is the heavy
     sensitive-scope path.
   - Also fixed along the way: `/robots.txt` was being served as the app's HTML by
     the SPA catch-all (`public/robots.txt` + `public/sitemap.xml` now exist).
-  Incidental: Cloudflare **Email Obfuscation** rewrites `mailto:` links on the
-  static pages into `/cdn-cgi/l/email-protection` plus a decoder script — harmless,
-  but proof Cloudflare mutates served HTML; check Rocket Loader is off if crawler
-  rendering ever looks wrong. Full blow-by-blow is in git history.
+    Incidental: Cloudflare **Email Obfuscation** rewrites `mailto:` links on the
+    static pages into `/cdn-cgi/l/email-protection` plus a decoder script — harmless,
+    but proof Cloudflare mutates served HTML; check Rocket Loader is off if crawler
+    rendering ever looks wrong. Full blow-by-blow is in git history.
 
   **Standing decision — keep BOTH Google and email, not Google-only.** Google is
   the prominent one-click default; email OTP stays as the fallback ("or continue
@@ -2243,12 +2265,12 @@ belongs to and why that arc comes when it does.
   own data; (2) a real minority of users specifically avoid Google-linked sign-in
   for a personal spiritual-journal app; and (3) Apple's App Store guidelines
   require offering Sign in with Apple as a parallel option if Google sign-in is
-  offered, so a Google-only app would be forced to add a *third* auth method just
+  offered, so a Google-only app would be forced to add a _third_ auth method just
   to ship on iOS (see the Capacitor mobile wrap item), whereas keeping email as the
   neutral fallback never trips that rule.
 
 - **Custom SMTP auth email templates (2026-07-19).** `supabase/templates/
-  magic-link.html` (the one that matters — `signInWithOtp` with
+magic-link.html` (the one that matters — `signInWithOtp` with
   `enable_confirmations = false` routes through the "Magic Link" template for both
   new and returning users) and `confirm-signup.html` (defensive duplicate). Both
   lead with the 6-digit `{{ .Token }}` and offer `{{ .ConfirmationURL }}` as the
@@ -2261,7 +2283,7 @@ belongs to and why that arc comes when it does.
   real user could only type 6 of 8 and sign-in would fail. Fixed at the source
   (owner set the hosted Email OTP length to 6 — `config.toml` drives only the local
   CLI) and re-verified with no bypass. Brevo remains the send pipe; note Brevo SMTP
-  keys die after 90 days of *zero* sending, so if auth email ever stops silently,
+  keys die after 90 days of _zero_ sending, so if auth email ever stops silently,
   regenerate the key first.
 
 - **Cloudflare Pages deploy — live (2026-07-19).** `lanternword.com` is registered
@@ -2300,13 +2322,13 @@ belongs to and why that arc comes when it does.
   reassignment already produces via an always-applied `main.css` base rule of the
   identical `selector { property: var(--token) }`. NOT a blanket sweep — most
   `body.dark` rules survived because they do real work, and three traps were
-  caught: (1) **real overrides** where dark uses a *different* token than the base
+  caught: (1) **real overrides** where dark uses a _different_ token than the base
   (`.verse-text` light `--text` → dark `--text-muted`; every `::-webkit-scrollbar-thumb`
   light `--border` → dark `--surface-2`; `.reading-meta`/`.se-icon-btn`/`.bible-book-name`
   muted→faint; `.reading-note-card.highlighted` weak→weaker; etc.) or a raw
   dark-only value (`.note-timestamp #c4c1ba`, all the `rgba(255,255,255,…)` hairlines,
   the `#3a3654` bracket default); (2) **specificity traps** where deleting a matched
-  rule would let a *kept* higher-specificity `body.dark` rule take over — the
+  rule would let a _kept_ higher-specificity `body.dark` rule take over — the
   `.rail-bracket.cat-{historical,application,personal}` rules must out-specify the
   kept `body.dark .rail-bracket {background:#3a3654}` default, and
   `.verse-action-btn.primary(:hover)` must out-specify the kept generic
@@ -2355,8 +2377,8 @@ belongs to and why that arc comes when it does.
     `https://lanternword.com` + `https://lantern-5jf.pages.dev` + localhost. The
     hosted-dashboard allowlist confirmation remains an owner step (see the
     Cloudflare Pages item under Deferred).
-  Build (`tsc --noEmit` + vite) clean; `dist` emits both html pages + the updated
-  `_redirects`.
+    Build (`tsc --noEmit` + vite) clean; `dist` emits both html pages + the updated
+    `_redirects`.
 
 - **PWA PNG icons regenerated from the new mark, plus a browser favicon.** The
   three manifest icons (`public/icon-192.png`, `icon-512.png`,
@@ -2375,18 +2397,18 @@ belongs to and why that arc comes when it does.
   review of pass 1: slightly cramped (especially on wide displays), the buttons
   were confusing, and "Get started free" implied a SaaS pricing model.
   - **The buttons were one action wearing two labels.** "Get started" and "Sign
-    in" both opened the same dialog, because first sign-in *is* sign-up
+    in" both opened the same dialog, because first sign-in _is_ sign-up
     (`shouldCreateUser: true`) — there is no separate signup path to send anyone
     down. That pair is a SaaS funnel convention (free tier vs returning
     customer) borrowed into a product with no funnel. **Decided: the only real
-    choice is *how* to sign in, so that is the only one offered.** Nav is a
+    choice is _how_ to sign in, so that is the only one offered.** Nav is a
     single "Sign in"; the hero is "Continue with Google" + "Continue with email"
     (which is what the approved mockup always specced); the CTA is one button.
     `SignIn` takes `emailFirst` so the hero's email choice isn't re-asked inside
     the dialog.
   - **Anti-SaaS.** "Get started free" → "Start your first study", CTA heading →
     "Ready when you are.", and the hero's "Free to use" → "Nothing to buy" (the
-    word *free* only needs saying where a paid tier is implied). Added a **"The
+    word _free_ only needs saying where a paid tier is implied). Added a **"The
     name" section**: Psalm 119:105, why a lantern (carried, lights one step), and
     a short first-person note on why the tool exists. This also restores the
     mockup's "The name" nav link, which pass 1 dropped as a dead link.
@@ -2416,7 +2438,7 @@ belongs to and why that arc comes when it does.
     `<Wordmark />`), and its hero is a **static card superseded by**
     `lantern-hero.html`'s flythrough. Its static "Four lenses" and "Read. Note.
     Return." sections were replaced by the three clips (owner's call — one of the
-    clips *is* Four lenses, so keeping both duplicated a section). The hero clip's
+    clips _is_ Four lenses, so keeping both duplicated a section). The hero clip's
     topbar lamp icon (same retired mark) became the wordmark, matching the real
     app's top bar. The login card dropped its separate mark: with a wordmark it
     would render "Lantern" twice, stacked, above "Welcome to Lantern".
@@ -2484,9 +2506,9 @@ belongs to and why that arc comes when it does.
     object** is too complex to reduce (stripped down it reads as a bag/bell/jar);
     an **open book** is depth-ambiguous at mark size (four renderings — outlined,
     solid, edge-on, page-stack — all failed; you can't tell a closed back cover
-    from an open book); a **lamp** contradicts the name (a lantern is *carried*,
-    a pendant is *fixed*); and a **flame on a book** risks reading as a *burning
-    Bible*, which is disqualifying for this product. A wordmark is unambiguous,
+    from an open book); a **lamp** contradicts the name (a lantern is _carried_,
+    a pendant is _fixed_); and a **flame on a book** risks reading as a _burning
+    Bible_, which is disqualifying for this product. A wordmark is unambiguous,
     timeless, and makes the mark and the name one thing by definition.
   - **Changed:** `Wordmark` replaces the retired `AppLogo` (book+beacon, deleted)
     in `NavBar`, `SignIn`, `Onboarding`; `index.html` title; PWA manifest
@@ -2503,7 +2525,7 @@ belongs to and why that arc comes when it does.
   added one per row without threading through `App.tsx` (the page already holds
   `useApi()` + its own entries state). Each entry is now wrapped in a
   `.journal-entry-row` so a `.se-icon-btn.se-icon-danger` delete button sits as
-  a *sibling* of the row `<button>` (never nested — invalid HTML), overlaid at
+  a _sibling_ of the row `<button>` (never nested — invalid HTML), overlaid at
   the right edge, hover/focus-revealed (`opacity 0→1`) on pointer devices and
   always visible under `@media (hover: none)` for touch; the card reserves
   `padding-right: 40px` so neither the date nor the preview runs under the icon.
@@ -2624,10 +2646,10 @@ belongs to and why that arc comes when it does.
       playing. `.topnav` learned this the hard way: its boot-fade trapped
       the search backdrop/popover and the profile/workspace dropdown menus
       (all `position: fixed`/`absolute` descendants nested inside it) into
-      an undefined stacking position, silently painting them *below*
+      an undefined stacking position, silently painting them _below_
       `.main-area`'s later content regardless of their own `z-index`.
       Fixed by giving `.topnav` an explicit `position: relative; z-index:
-      140`. If you add an animation to a new ancestor element, check what's
+140`. If you add an animation to a new ancestor element, check what's
       nested inside it.
     - Giving an ancestor of a `position: fixed` element ANY `transform`
       value — even a no-op `translateY(0)`, even only for an animation's
@@ -2638,7 +2660,7 @@ belongs to and why that arc comes when it does.
     - A CSS animation's keyframe `transform` (e.g. `springIn`'s
       translateY/scale) permanently overrides any separately-cascaded static
       `transform` on the same property — so `left: 50%; transform:
-      translateX(-50%)` centering tricks silently break on any element that
+translateX(-50%)` centering tricks silently break on any element that
       also has an entrance animation touching `transform`. Center via
       `left: calc(50vw - half-width)` instead when both are needed.
     - Measuring an element's position/size for later use (`GlobalSearch`'s
@@ -2662,10 +2684,10 @@ belongs to and why that arc comes when it does.
     (`useTextSize.ts`, mirroring `useTheme.ts`'s pattern) plus a ~10% mobile
     size reduction, since the desktop "hero" scripture size ate most of a
     375px line width.
-  Verified live throughout (puppeteer-driven pointer sequences and
-  computed-style/CSSOM inspection) at desktop and mobile widths, light +
-  dark, across all 4 visual themes where relevant. Build
-  (`tsc --noEmit` + vite) clean.
+    Verified live throughout (puppeteer-driven pointer sequences and
+    computed-style/CSSOM inspection) at desktop and mobile widths, light +
+    dark, across all 4 visual themes where relevant. Build
+    (`tsc --noEmit` + vite) clean.
 
 - **Library spacing correction, mobile nav priority reverted, mobile study
   empty-state.**
@@ -2693,10 +2715,10 @@ belongs to and why that arc comes when it does.
     makes sense with a physical keyboard. Split via `.hint-text-desktop`/
     `.hint-text-mobile` at the existing mobile breakpoint, mirroring how the
     rest of the app splits responsive copy (no UA sniffing).
-  Verified live at 2000px and 390px: library spacing looks open rather than
-  cramped, mobile nav is back to uniform weight across all four tabs, the
-  empty scripture panel collapses correctly and expands the moment a valid
-  reference loads. Build clean.
+    Verified live at 2000px and 390px: library spacing looks open rather than
+    cramped, mobile nav is back to uniform weight across all four tabs, the
+    empty scripture panel collapses correctly and expands the moment a valid
+    reference loads. Build clean.
 
 - **Mobile study editor, blank-save guard, existing-note timestamps, mobile
   nav priority.**
@@ -2713,7 +2735,7 @@ belongs to and why that arc comes when it does.
     but zero real note lines silently created an empty `Passage`+`Session` — a
     dead Journal entry with nothing in it. Both Save buttons are now disabled
     (with an explanatory `title`) when there's no note content AND no
-    `initialPassageId` — editing an *existing* study down to zero notes is left
+    `initialPassageId` — editing an _existing_ study down to zero notes is left
     alone, since that's a legitimate delete-the-study action that should
     correctly cascade-delete the now-empty session/passage.
   - **Existing-note timestamps in the editor.** At scale, it's easy to lose
@@ -2722,7 +2744,7 @@ belongs to and why that arc comes when it does.
     `formatRelativeTime`/`.note-timestamp` pattern from `ReadingMode`'s note
     cards) — but ONLY while its content still exactly matches what's actually
     persisted; the moment you edit it, the stamp disappears, since showing
-    "saved" on since-changed content would be misleading. Its *absence* is
+    "saved" on since-changed content would be misleading. Its _absence_ is
     itself the "new or changed this session" signal. `NoteEditor` gained an
     `existingNotes` prop (the same `Map<string, Note>` `StudyMode` already
     hydrates from).
@@ -2738,9 +2760,9 @@ belongs to and why that arc comes when it does.
     joins Profile at `opacity: 0.72` at rest (both visited rarely, per
     discussion), returning to full weight when actually active — same
     established mechanism, no new visual language.
-  Build (`tsc --noEmit` + vite) clean throughout; verified live at 2000px and
-  390px, light + dark — including the overlap-matched existing-note timestamp
-  showing correctly and disappearing on edit, and the disabled Save state.
+    Build (`tsc --noEmit` + vite) clean throughout; verified live at 2000px and
+    390px, light + dark — including the overlap-matched existing-note timestamp
+    showing correctly and disappearing on edit, and the disabled Save state.
 
 - **Start-study overlap matching + a round of mobile/library follow-up fixes.**
   - **"Start study on {ref}" / "Study chapter" now reopen an existing passage**
@@ -2803,17 +2825,17 @@ belongs to and why that arc comes when it does.
     `PassagePane`'s rows, `scrollIntoView({block:'nearest'})` scoped to the
     panel's own scroll container (never scrolls the whole page), triggered from
     `StudyMode`'s existing `handleCursorLine`.
-  Build (`tsc --noEmit` + vite) clean throughout; verified live at 2000px and
-  390px, light + dark.
+    Build (`tsc --noEmit` + vite) clean throughout; verified live at 2000px and
+    390px, light + dark.
 
 - **Top-bar true centering + search/mobile-nav polish.** Fixed a real
   centering bug: `.topnav-tabs` used `flex:1; justify-content:center`, which
-  centers tabs in the *leftover space* between the logo (left) and
+  centers tabs in the _leftover space_ between the logo (left) and
   search-box+avatar (right) — correct only if both sides are equal width.
   They weren't (search box + avatar > logo), so the tabs sat visibly left of
   the true viewport center, exactly as flagged from a live screenshot. Fixed
   by switching `.topnav` to `display:grid; grid-template-columns: 1fr auto
-  1fr` and grouping the search box/button + avatar into one `.topnav-right`
+1fr` and grouping the search box/button + avatar into one `.topnav-right`
   wrapper (new, in `NavBar.tsx`) so the two outer columns are forced equal —
   tabs now land within 0.01px of true center (verified via
   `getBoundingClientRect`), independent of the two sides' own content width.
@@ -2836,15 +2858,15 @@ belongs to and why that arc comes when it does.
   - **Mobile "+ Study" tab.** The `nav-tab-action` class was already applied
     (shared `navTab()` helper) but had no bottom-nav-scoped styling. Added a
     light-touch treatment — permanently accent-tinted icon/label + slightly
-    bolder label — at the *same* size/shape/position as the other three tabs
+    bolder label — at the _same_ size/shape/position as the other three tabs
     (still one of four equal `flex:1` columns, no pill or badge), so it
     signals "this one's an action" without breaking the bottom bar's visual
     rhythm the way the desktop pill treatment would have.
   - **Font-size bump.** Top-bar nav tabs 13→14px, library/book-detail page
     titles 22→24px, library book names 14→15px, per a legibility pass against
     a real desktop screenshot.
-  Verified live at 2000px and 390px, light + dark. Build clean. No
-  schema/`BereanApi` change.
+    Verified live at 2000px and 390px, light + dark. Build clean. No
+    schema/`BereanApi` change.
 
 - **Page-shell centering on wide viewports (two passes).** The Bible Library and
   the book/chapter view (`BookDetailPage`) had no max-width, so on wide monitors
@@ -2856,7 +2878,7 @@ belongs to and why that arc comes when it does.
   stay full-bleed while their content centers) — initially at 1180px, on the
   theory of a wide "masthead" over a narrower reading column. **Live feedback
   correction:** that still looked off — a left-aligned block (page title, a
-  pill row, a grid) inside an *overly wide* centered box still reads as
+  pill row, a grid) inside an _overly wide_ centered box still reads as
   left-anchored, because the eye tracks the ragged content edge, not the
   invisible box; centering the container without the content filling it just
   relocates the dead space rather than removing the asymmetry. Fixed by
@@ -2906,7 +2928,7 @@ belongs to and why that arc comes when it does.
   variants scoped as `html[data-theme="x"] body.dark` — a descendant selector that
   out-specifies the generic Berean-dark `body.dark` block with no `!important`, so
   light/dark and theme compose correctly in all 8 combinations. `SettingsModal`
-  renders a 4-row swatch picker (each row previews its *own* theme's canvas/accent
+  renders a 4-row swatch picker (each row previews its _own_ theme's canvas/accent
   colors so all four are comparable regardless of which is active), threaded through
   `App.tsx` alongside the existing dark-mode toggle. Newsreader font added to
   `index.html` alongside Source Serif 4 (Warm Paper needs it). Verified live:
@@ -2979,13 +3001,13 @@ belongs to and why that arc comes when it does.
      the remaining legacy cool dark literals in `main.css` `body.dark` chrome blocks
      (nav menu, settings modal, toasts) tokenized so dark mode is cohesively warm with
      no cool/warm clash. `dark.css` was already fully token-driven.
-  Frozen `.welcome-*` navy and the danger/amber-alert schemes left as literals
-  (no semantic token yet). Build (`tsc --noEmit` + vite) clean throughout; verified
-  live at 1280px on reader/library/study/settings, **light + dark**. CSS/token +
-  one NavBar class + `index.html` font link; no schema/`BereanApi`/data change.
-  Direction from `design/mockup.html` (throwaway compare-artifact) + reading-UX/
-  color research. Remaining design work (F4 motion, font self-host, theme picker)
-  is in Deferred.
+     Frozen `.welcome-*` navy and the danger/amber-alert schemes left as literals
+     (no semantic token yet). Build (`tsc --noEmit` + vite) clean throughout; verified
+     live at 1280px on reader/library/study/settings, **light + dark**. CSS/token +
+     one NavBar class + `index.html` font link; no schema/`BereanApi`/data change.
+     Direction from `design/mockup.html` (throwaway compare-artifact) + reading-UX/
+     color research. Remaining design work (F4 motion, font self-host, theme picker)
+     is in Deferred.
 
 - **Reading-view interaction hardening.** Five fixes to the study-Bible reading
   layout (`BookDetailPage` ChapterView + `ReadingMode`), from live testing across
@@ -3011,22 +3033,22 @@ belongs to and why that arc comes when it does.
      never crossing their text, still selected them, because verses were
      effectively treated as spanning the full width. `hitTest` now also checks
      horizontal overlap and clears the selection when the box hits no rows.
-  Also (`de054fd`): mobile range notes (no rail there) now render inline right
-  after their LAST anchored verse instead of stacking at the bottom of the whole
-  chapter — `.mobile-range-notes` replaces the old bottom `.mobile-note-stack`,
-  keyed per-verse via `mobileRangeByVerse`, styled light + dark. Build/test/lint
-  clean; verified live in a real browser (puppeteer-driven pointer sequences,
-  not synthetic `dispatchEvent` alone) at both desktop and 390px, light + dark,
-  on both surfaces.
+     Also (`de054fd`): mobile range notes (no rail there) now render inline right
+     after their LAST anchored verse instead of stacking at the bottom of the whole
+     chapter — `.mobile-range-notes` replaces the old bottom `.mobile-note-stack`,
+     keyed per-verse via `mobileRangeByVerse`, styled light + dark. Build/test/lint
+     clean; verified live in a real browser (puppeteer-driven pointer sequences,
+     not synthetic `dispatchEvent` alone) at both desktop and 390px, light + dark,
+     on both surfaces.
 
 - **Marquee (box) verse selection (desktop).** Replaces the earlier
   gutter-only click-drag (retired `useVerseDragSelect`) with a Windows-style
   marquee: `useVerseMarquee` (`src/utils/useVerseMarquee.ts`), used by both
   `ReadingMode` and `BookDetailPage`'s ChapterView, without touching
   `selAnchor`/`selFocus` ownership (the hook only calls back into it).
-  `onPointerDown` on the `.scripture-grid` container begins a drag *unless* it
+  `onPointerDown` on the `.scripture-grid` container begins a drag _unless_ it
   lands on an interactive child (`button, a, input, textarea, [contenteditable],
-  [data-no-drag]`); it tracks a rectangle from the start point to the current
+[data-no-drag]`); it tracks a rectangle from the start point to the current
   pointer, renders a subtle accent-tinted overlay (`.verse-marquee`, dark-mode
   variant in `dark.css`), and hit-tests every registered verse row via
   `verseRowRefs` — any row whose `getBoundingClientRect` overlaps the box
@@ -3061,11 +3083,11 @@ belongs to and why that arc comes when it does.
 - **Note placement by anchor width (inline vs rail).** Refinement of the margin/
   span-notes layout below, from live user testing: verse-anchored notes are now
   split by how many verses they span. **Single-verse notes** (`anchor_start_verse
-  === anchor_end_verse`, or `anchor_end_verse` null) render **inline beneath their
+=== anchor_end_verse`, or `anchor_end_verse` null) render **inline beneath their
   verse row** (an `.inline-verse-notes` group in the scripture column), with their
   indented sub-notes inline too — the way inline notes read before the
   margin-rail change. **Multi-verse range notes** (`anchor_end_verse >
-  anchor_start_verse`) keep the right-hand rail with the category bracket spanning
+anchor_start_verse`) keep the right-hand rail with the category bracket spanning
   the anchored rows (the grid-row mechanism below). **Anchorless notes** stay
   passage-level (top block, never bracketed). The **rail only appears when there
   is at least one range or passage-level note** (`hasRail`); if every note is
@@ -3097,12 +3119,12 @@ belongs to and why that arc comes when it does.
   indicator, and anchored notes render in a stacked list (`.mobile-note-stack`,
   desktop-hidden) each with a `.note-range-chip` ("v4" / "vv.4-15") that scrolls to
   the anchored verse row (ref-map linkage). **Anchorless notes** (`anchor_start_verse
-  === null`) are handled as passage-level notes: rendered in a `.rail-passage-notes`
+=== null`) are handled as passage-level notes: rendered in a `.rail-passage-notes`
   block above the grid (a "Passage notes" label), never bracketed. Highlight linkage
   is preserved and bidirectional: hovering/clicking a rail note highlights its verses
   (`onMouseEnter`/`handleNoteClick` → `highlightVersesForNote`) and clicking a verse
   highlights its notes. **Centered passage column:** the scripture column is centered
-  as a block with a comfortable reading measure while verse *text* stays left-aligned
+  as a block with a comfortable reading measure while verse _text_ stays left-aligned
   — `.reading-content`/`.book-chapter-content` get `margin: 0 auto` (widened via
   `:has(.scripture-grid)` when a rail is present), and `PassagePane` gained a
   `.passage-pane-col` centered wrapper for the StudyMode passage pane; mobile stays
@@ -3218,7 +3240,7 @@ belongs to and why that arc comes when it does.
   carry no persisted timestamp) — only on rendered/persisted note cards.
 
 - **Editor behaviors (UX overhaul, workstream 4).** Reference field commits on
-  Enter/Tab and moves focus to the first note line *immediately* (synchronous —
+  Enter/Tab and moves focus to the first note line _immediately_ (synchronous —
   never on the async verse fetch); parse failure keeps focus in the field and
   shows an inline error; `enterKeyHint="go"` for mobile. `ReferenceInput.onSubmit`
   now returns a boolean so the field can decide focus-vs-error, and `StudyMode`
@@ -3226,7 +3248,7 @@ belongs to and why that arc comes when it does.
   target line. Outdent rules in `NoteEditor` keydown: Enter on an empty bullet at
   indent > 0 outdents in place (keeps the bullet, no new line); Enter on an empty
   level-0 bullet is a no-op; Backspace at the start of an empty indented bullet
-  also outdents; Shift+Tab unchanged. The keydown *decisions* were extracted to a
+  also outdents; Shift+Tab unchanged. The keydown _decisions_ were extracted to a
   pure module (`src/utils/noteKeydown.ts`) so they're unit-testable without a
   contenteditable — tag parsing stayed in `noteParser.ts`, layers kept separate.
   Tag discoverability (all passive): every empty note line shows the placeholder
