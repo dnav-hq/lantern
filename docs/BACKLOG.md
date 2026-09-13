@@ -389,6 +389,11 @@ belongs to and why that arc comes when it does.
   into a single worst-frame number gives worst 133.3 ms / avg 18.0 ms across
   the whole gesture. See the run's verify.txt for the full numbers and the
   per-frame trace.
+  **Journeys data landed (2026-09-13):** a hand-authored table of twelve
+  journeys (`scripts/data/journeys.yml` → `scripts/build-journeys.mjs` →
+  `public/bible/map/journeys.json`, sources and editorial calls in
+  `docs/proposals/journeys-data.md`) is ready for the map to draw from; this
+  was data-only, no UI, and the drawing slice itself is next.
 
 - **Footnotes door (deep-dive rung 1) — the reading surface is BUILT
   (2026-09-01); what is left is a thumb on a real phone.** Design + data brief in
