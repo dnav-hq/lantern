@@ -39,7 +39,7 @@ estimate from 200 verses. §9 says how to re-run each one.
    collapses the data problem: 39,209 reachable connection rows point at just
    11,491 distinct destination verses, so a destination-keyed file needs 3.6x
    fewer entries than a `(source, destination)`-keyed one and contains exactly
-   the same information (§6.1).
+   the same information (§7.1).
 3. **A source that cannot answer "whose passage is this, and where or when" is
    not a source for this feature.** People and places *mentioned in a verse* are
    a different fact from who is speaking and where they are, and the audit in §5
@@ -48,7 +48,7 @@ estimate from 200 verses. §9 says how to re-run each one.
    Lantern quoting a named source. That framing is load-bearing rather than
    cosmetic: it is what makes an editorial section heading an honest statement of
    *where the verse sits* rather than Lantern asserting what the verse means
-   (§3, R5).
+   (§4, R5).
 
 ---
 
@@ -82,7 +82,8 @@ sample was drawn honestly.
 The headings are **already in the chapter feed Lantern fetches**:
 helloao's `content` array interleaves `{ type: 'heading', content: [...] }`
 nodes with verse nodes, which `src/bible/helloao.ts` already types (it parses
-them and the reading page currently drops them — §6.3). A verse's heading is the
+them; the reading page does not render them today, and the shipped
+`public/bible/*.json.gz` bundles carry verse text only). A verse's heading is the
 nearest heading above it in that array.
 
 | Measured over the whole BSB | |
@@ -131,7 +132,7 @@ them.** Checked live: helloao's `eng_kjv` Genesis 15 response contains 21 verse
 nodes and **zero** heading nodes — the KJV has no section headings at all. So a
 KJV, NET or Tamil reader would be shown a heading the translation on their
 screen does not contain. That is defensible (the heading describes the passage,
-not the wording, and §3's R5 names its source on the line), but it is Dennis's
+not the wording, and R5 names its source on the line), but it is Dennis's
 call, and it is question D2 in §8.
 
 ### 3.2 Canonical Hebrew superscriptions — real scripture, thin coverage
@@ -147,7 +148,7 @@ setting (*"For the choirmaster. With stringed instruments."*), so the generator
 drops those clauses (see `superscriptionLine`). **May ship** (public domain,
 same basis as §3.1). Worth having as a second-choice source precisely where the
 heading gate is weakest (Psalms, median distance 8), which is why it sits second
-in the fallback chain in §6.1.
+in the fallback chain (§5, §7.1).
 
 ### 3.3 Theographic Bible Metadata — CC BY-SA 4.0, may ship, but the lines are vacuous
 
@@ -208,7 +209,7 @@ verse index of 5,616 verses. Read from the repo with no network.
 On the destinations: **1,149 verses (10.0%)** and **2,483 rows (6.3%)**. It is a
 strict subset of the "where" Theographic gives, it names no speaker, and it is
 already loaded for a different feature. **Verdict: not a line source.** Its role
-is the map thread, which §7 puts explicitly out of scope.
+is the map thread, which §9 puts explicitly out of scope.
 
 ### 3.5 STEPBible TIPNR — CC BY, the richest who/where, and not worth it yet
 
@@ -367,7 +368,7 @@ read well enough.** Eight of these twenty (2, 4, 6, 7, 15, 17, and effectively
 3 and 16) carry no information at all. Four are genuinely good — 12, 14, 18, and
 11 read like settings — and the pattern behind them is instructive: **they are
 the ones whose `event` is a real episode rather than a book**. That is a
-narrower, better-targeted use of Theographic than "fill every gap", and §7 files
+narrower, better-targeted use of Theographic than "fill every gap", and §9 files
 it as the second slice rather than throwing the dataset away.
 
 ### 5.3 No model, and what would have to be true to change that
@@ -548,7 +549,7 @@ negotiation.
   `reach ≤ 4` roughly halves the exposure and costs 31.6 points of row coverage
   (83.3% → 51.7%). Ship at ≤10, or tighten? *Recommendation: ship at ≤10.* A
   labelled section heading that is vaguely right is a smaller sin than an empty
-  row, and §5's concentration numbers make a targeted hand review cheap: the
+  row, and the row concentration makes a targeted hand review cheap: the
   1,000 most-referenced destinations cover 34.8% of all rows (the top 100 cover
   6.7%), so a one-evening pass over the head of the distribution fixes the lines
   a reader is most likely to meet.

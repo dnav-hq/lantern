@@ -62,12 +62,12 @@ const TIPNR_URL =
 
 /**
  * How far below its heading a verse may sit and still be described by it
- * (brief §3, R6). Past this the heading is a section label that happens to be
+ * (brief §4, R6). Past this the heading is a section label that happens to be
  * above the verse — Proverbs 21:30 under "The King's Heart" — not its setting.
  */
 const HEADING_REACH = 10
 
-/** The rules' hard word cap (brief §3, R4). One line may be at most this many words. */
+/** The rules' hard word cap (brief §4, R4). One line may be at most this many words. */
 const MAX_WORDS = 12
 
 // A line whose only named person is the divine name is true of most of Scripture
@@ -306,7 +306,7 @@ async function loadTheographic() {
  * abbreviates runs ("Gen.11.26-Heb", "1Ch"), so a faithful index needs a real
  * parser for its reference grammar. This measures what is unambiguously there
  * so the dataset can be compared against Theographic without pretending to a
- * precision the 20-line regex does not have (brief §2.5).
+ * precision the 20-line regex does not have (brief §3.5).
  */
 async function loadTipnr(bookNumberByUsfm) {
   let text
@@ -385,7 +385,7 @@ function superscriptionLine(bsbVerse) {
  * PART OF, never as what happens or what it means: Theographic's `people` and
  * `places` are entities MENTIONED in the verse, not a speaker and a location,
  * and a template that says "Moses at Sinai" would be asserting something the
- * data does not carry. `year` is deliberately unused — see brief §3, R2.
+ * data does not carry. `year` is deliberately unused — see brief §4, R2.
  */
 function templateLine(meta) {
   if (!meta) return null
@@ -515,7 +515,7 @@ async function main() {
 
   // ---- the shipped artefact, actually built and gzipped ------------------
   // Destination-keyed, because a setting line describes the destination alone
-  // (brief §5): `{ [verseID]: [line, sourceCode] }`.
+  // (brief §7.1): `{ [verseID]: [line, sourceCode] }`.
   const file = {}
   const slice1 = {}
   for (const { key, heading, superscription, template, reach } of auditPool) {
