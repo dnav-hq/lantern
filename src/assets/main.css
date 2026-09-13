@@ -9410,6 +9410,43 @@ body.dark .map-terrain {
   border: 0;
   padding: 0;
 }
+/* The map's line at the foot of the connections door — the same quiet
+   register as the fold above it, and present only where the chapter has
+   something to draw. */
+.conn-map {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 0;
+  font-family: var(--ui-font);
+  font-size: var(--text-sm);
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: 0.5px solid var(--border);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+.conn-map::after {
+  content: '→';
+  float: right;
+  color: var(--text-faint);
+}
+
+/* The map, opened from the door: a whole surface over the sheet, not a card
+   inside it. `.map-view` is `flex: 1` because it normally lives in
+   `.main-area`; this gives it the same kind of parent so it scrolls itself
+   here exactly as it does there. */
+.map-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
 .word-prov {
   font-family: var(--ui-font);
   font-size: var(--text-xs);

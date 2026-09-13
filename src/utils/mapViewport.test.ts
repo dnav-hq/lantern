@@ -8,6 +8,7 @@ import {
   frameViewBox,
   interpolateViewBox,
   isAtViewBox,
+  journeyViewBox,
   labelBudget,
   panViewBox,
   pinchViewBox,
@@ -317,5 +318,59 @@ describe('helpers', () => {
     expect(labelBudget(1)).toBe(40)
     expect(labelBudget(2)).toBe(160)
     expect(labelBudget(4)).toBe(640)
+  })
+})
+
+describe('journeyViewBox', () => {
+  const STOPS = [
+    { x: 400, y: 200 },
+    { x: 600, y: 400 }
+  ]
+
+  it('fits the whole journey, with room around it for the stop names', () => {
+    const box = journeyViewBox(STOPS, RECT, EXTENT, FIT)
+    // Every stop is inside the frame, and not against its edge: the padding is
+    // what stops a label falling off the screen.
+    for (const stop of STOPS) {
+      expect(stop.x).toBeGreaterThan(box.x)
+      expect(stop.x).toBeLessThan(box.x + box.w)
+      expect(stop.y).toBeGreaterThan(box.y)
+      expect(stop.y).toBeLessThan(box.y + box.h)
+    }
+    expect(box.w / box.h).toBeCloseTo(RECT.width / RECT.height)
+    // Centred on the route.
+    expect(box.x + box.w / 2).toBeCloseTo(500)
+    expect(box.y + box.h / 2).toBeCloseTo(300)
+  })
+
+  it('pads a journey more than a chapter of loose places', () => {
+    expect(journeyViewBox(STOPS, RECT, EXTENT, FIT).w).toBeGreaterThan(
+      frameViewBox(STOPS, RECT, EXTENT, FIT).w
+    )
+  })
+
+  it('does not zoom to street level for two neighbouring stops', () => {
+    const near = [
+      { x: 500, y: 250 },
+      { x: 502, y: 251 }
+    ]
+    // minSpan (70) dominates, not the 2-unit gap between them.
+    expect(journeyViewBox(near, RECT, EXTENT, FIT).w).toBeGreaterThanOrEqual(70)
+  })
+
+  it('never zooms out past the world, and falls back to it with no stops', () => {
+    close(journeyViewBox([], RECT, EXTENT, FIT), FIT)
+    close(
+      journeyViewBox(
+        [
+          { x: -5000, y: -5000 },
+          { x: 5000, y: 5000 }
+        ],
+        RECT,
+        EXTENT,
+        FIT
+      ),
+      FIT
+    )
   })
 })

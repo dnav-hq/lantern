@@ -421,6 +421,32 @@ belongs to and why that arc comes when it does.
   Numbers 33's free case — a drawn route is a separate, hand-authored data
   task (brief §2.2) — and the atlas-style visual pass (brief §4), which is a
   design task independent of the door mechanism.
+  **Slice 5 (the journey) SHIPPED (2026-09-13).** The map now draws the story
+  instead of the dots. `scripts/data/journeys.yml` gains a thirteenth journey,
+  Paul's own account of where he went in `Galatians 1:15-2:1` (Damascus →
+  Arabia → Damascus → Jerusalem → Syria → Cilicia, with the fourteen silent
+  years up to Jerusalem again recorded as a `gaps` entry, since Galatians 2:1
+  names a destination and no starting point). `MapView` accepts a journey and
+  draws it: legs in reading order, a DOTTED leg where the text is silent,
+  numbered stops (one badge per place, carrying every visit — "1 · 3" where the
+  route returns to Damascus), every stop named, and the frame fitted to the
+  route (`journeyViewBox`). The ordering is pure and unit-tested in
+  `src/utils/mapDataLoader.ts` (`buildJourneyRoute` splices each gap back into
+  reading order; a discontinuity with no gap record is still drawn dotted, never
+  as a confident line), and the route's key under the map lists the stops in
+  order and says in words why a dotted leg is dotted. **Everything outside the
+  story is now HIDDEN rather than faded** — for a journey and for a plain
+  chapter frame alike — which is the change Dennis asked for after seeing "a few
+  labels and a thousand dots with no story"; the whole dataset is one `All`
+  control away (every place, at world zoom) and the home control comes straight
+  back to the story. The connections door carries the entry: one quiet line at
+  its foot ("Follow Paul's route" where the chapter has a journey, "See where
+  this happens" where it only has places, nothing at all otherwise) that opens
+  the map over the door. `?map=48.1` remains the review shortcut. **Still OUT,
+  on purpose:** the atlas-style visual pass (brief §4 — a design task,
+  independent of this mechanism), a journey line for the other twelve journeys'
+  entry points beyond what the chapter lookup already gives for free, and
+  drawing incidental places a journey passes without stopping at.
   **Gestures were made smooth (2026-09-12).** The cause was writing the
   `viewBox` ATTRIBUTE to the DOM every frame during a drag/pinch: that forces
   the browser to recompute layout for the whole subtree underneath it (1,335
