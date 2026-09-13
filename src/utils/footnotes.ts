@@ -136,3 +136,16 @@ export function classifyFootnote(text: string): FootnoteClass {
 export function footnoteShips(text: string): boolean {
   return classifyFootnote(text) === 'rendering'
 }
+
+/**
+ * How many doors a chapter holds, summed straight from each verse's already-
+ * fetched `notes` (docs/proposals/footnotes-door-design-pass.md option 3) — no
+ * new request, no new classification. Takes the verse shape rather than
+ * `BibleVerse` itself so this stays a pure count over whatever map of
+ * verse -> notes the caller already has.
+ */
+export function chapterDoorCount(verses: { notes?: { text: string }[] }[]): number {
+  let count = 0
+  for (const v of verses) count += v.notes?.length ?? 0
+  return count
+}

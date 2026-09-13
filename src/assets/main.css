@@ -2192,6 +2192,14 @@ body.dark .search-backdrop {
 .footnote-door.is-open {
   text-decoration-color: color-mix(in srgb, currentColor 62%, transparent);
 }
+/* Briefly raised by the chapter door count's "jump to the first door" tap
+   (BookDetailPage's jumpToFirstDoor), so the eye has something to land on
+   after the scroll settles. Same currentColor mix the hover/open states
+   already use — no new colour. */
+.footnote-door.footnote-door-lift {
+  transition: text-decoration-color 0.2s var(--ease-out);
+  text-decoration-color: color-mix(in srgb, currentColor 85%, transparent);
+}
 .footnote-door:focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: 3px;
@@ -4410,6 +4418,27 @@ body.dark .chapter-pill.active.has-notes {
   max-width: 940px;
 }
 
+/* The per-chapter door count (docs/proposals/footnotes-door-design-pass.md
+   option 3) — same register as .book-detail-meta's "N with notes": 12px,
+   the muted text token, no badge/bubble/icon. Absent entirely when a chapter
+   has no doors, so a zero-door chapter stays pixel-identical to before. */
+.chapter-notes-count {
+  display: block;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: left;
+}
+@media (hover: hover) {
+  .chapter-notes-count:hover {
+    color: var(--text);
+  }
+}
+
 /* ─── Distraction-free reading ───────────────────────────────────────────────
    Two independent controls land here. The persisted Settings preference ("hide
    all notes") and the transient Focus toggle in the top bar both put
@@ -4566,6 +4595,12 @@ body.dark .chapter-pill.active.has-notes {
   border-bottom-width: 0;
   overflow: hidden;
   visibility: hidden;
+}
+/* The door count lives in the scrolling content, not the sticky header
+   above, so it needs its own hide rule rather than riding book-detail-titles'
+   collapse — but it disappears with the rest of the chrome all the same. */
+.app-shell.focus-reading .chapter-notes-count {
+  display: none;
 }
 .app-shell.focus-reading .book-detail-ref-group {
   display: inline-flex;

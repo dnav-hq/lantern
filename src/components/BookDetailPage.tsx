@@ -42,6 +42,7 @@ import {
 } from '../utils/useChapterNavigation'
 import FootnoteVerseText from './FootnoteDoor'
 import VerseDoorways from './VerseDoorways'
+import { chapterDoorCount } from '../utils/footnotes'
 import { markInstallEngagement } from '../utils/installNudge'
 import { formatRelativeTime } from '../utils/relativeTime'
 
@@ -1449,6 +1450,18 @@ function ChapterView({
   // `grid-row: startRow / endRow+1` and bracket exactly their anchor span. See the
   // .scripture-grid CSS comment for why numeric grid placement (not DOM measuring).
   const verses = bibleData.verses
+  // Straight from what's already on screen — the same `notes` the doors
+  // themselves render from, so a KJV/NET chapter (no footnotes served) and a
+  // zero-door BSB chapter both land at 0 with no extra fetch or classification.
+  const doorCount = chapterDoorCount(verses)
+  const jumpToFirstDoor = (): void => {
+    const first = containerRef.current?.querySelector<HTMLElement>('.footnote-door')
+    if (!first) return
+    armProgrammaticScroll(chromeScrollGuard)
+    first.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    first.classList.add('footnote-door-lift')
+    window.setTimeout(() => first.classList.remove('footnote-door-lift'), 900)
+  }
   const rowByVerse = new Map<number, number>()
   verses.forEach((v, i) => rowByVerse.set(v.verse, i + 1))
   const clampRow = (verse: number): number =>
@@ -1523,15 +1536,26 @@ function ChapterView({
             marginBottom: 20
           }}
         >
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text-faint)',
-              letterSpacing: '0.04em'
-            }}
-          >
-            CHAPTER {chapter}
+          <div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text-faint)',
+                letterSpacing: '0.04em'
+              }}
+            >
+              CHAPTER {chapter}
+            </div>
+            {/* Answers "is there anything to find here" before a reader starts
+                scrolling (docs/proposals/footnotes-door-design-pass.md option
+                3). Absent, not zero, when the chapter has no doors — same rule
+                the door itself already follows. */}
+            {doorCount > 0 && (
+              <button type="button" className="chapter-notes-count" onClick={jumpToFirstDoor}>
+                {doorCount} translator note{doorCount === 1 ? '' : 's'}
+              </button>
+            )}
           </div>
         </div>
 

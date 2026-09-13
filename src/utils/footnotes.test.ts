@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { classifyFootnote, footnoteShips } from './footnotes'
+import { classifyFootnote, footnoteShips, chapterDoorCount } from './footnotes'
 import { flattenVerseContent, HelloaoBibleProvider } from '../bible/helloao'
 
 // Every note text and every verse `content` array in this file is VERBATIM from
@@ -325,5 +325,24 @@ describe('HelloaoBibleProvider — carrying the notes through the seam', () => {
     })
     const [verse] = await new HelloaoBibleProvider('BSB').getChapter(19, 6)
     expect(verse.notes).toBeUndefined()
+  })
+})
+
+describe('chapterDoorCount — the per-chapter count line', () => {
+  it('sums notes across every verse', () => {
+    const verses = [
+      { notes: [{ text: 'Or futile' }, { text: 'Literally the temple' }] },
+      { notes: [] },
+      { notes: [{ text: 'Or offspring' }] }
+    ]
+    expect(chapterDoorCount(verses)).toBe(3)
+  })
+
+  it('is zero for a chapter with no doors at all', () => {
+    expect(chapterDoorCount([{ notes: [] }, {}, { notes: undefined }])).toBe(0)
+  })
+
+  it('is zero for an empty chapter', () => {
+    expect(chapterDoorCount([])).toBe(0)
   })
 })
