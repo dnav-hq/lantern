@@ -191,6 +191,22 @@ journeys:
       - { from: tyre, to: ptolemais, ref: "Acts 21:7" }
       - { from: ptolemais, to: caesarea, ref: "Acts 21:8" }
       - { from: caesarea, to: jerusalem, ref: "Acts 21:15-17" }
+  # Paul's own account of where he went after Damascus (the map's first drawn
+  # journey -- docs/proposals/map-in-the-story.md SS2.2's hand-authored case).
+  # Place ids follow OpenBible's OWN reading of this chapter: its verse index
+  # resolves Galatians 1's "Arabia" to `arabia-2` (Nabatea, around Petra --
+  # the kingdom of the Aretas whose governor watched Damascus, 2 Cor 11:32)
+  # rather than `arabia-1` (the peninsula), and its "Syria" to `syria-2`.
+  - id: paul-galatians-account
+    title: "Paul: Damascus, Arabia and Jerusalem"
+    source: "Galatians 1:15-2:1"
+    legs:
+      - { from: damascus, to: arabia-2, ref: "Galatians 1:17" }
+      - { from: arabia-2, to: damascus, ref: "Galatians 1:17" }
+      - { from: damascus, to: jerusalem, ref: "Galatians 1:17-18" }
+      - { from: jerusalem, to: syria-2, ref: "Galatians 1:18-21" }
+      - { from: syria-2, to: cilicia, ref: "Galatians 1:21" }
+
   - id: pauls-voyage-to-rome
     title: "Paul's voyage to Rome"
     source: "Acts 27:1-28:16"
@@ -210,4 +226,4 @@ journeys:
 gaps:
   - { journey: jesus-last-journey-to-jerusalem, from: samaria-2, to: jericho-2, note: "Luke's travel narrative (17:11-18:35) names no waypoint between the Samaria/Galilee border and Jericho -- teaching stops fill the chapters but no place is pinned to the route between them." }
   - { journey: pauls-voyage-to-rome, from: cauda, to: malta, note: "Acts 27:17-28:1: the ship ran before a storm for fourteen days with no navigation and no place named until it wrecked off Malta -- the course itself is what the text withholds." }
-
+  - { journey: paul-galatians-account, from: cilicia, to: jerusalem, note: "Galatians 2:1 gives the destination and the interval -- fourteen years later, up to Jerusalem again -- and names no starting point for that journey, so the return from Cilicia is drawn as silence rather than as a confident line." }

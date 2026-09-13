@@ -302,8 +302,57 @@ export function toPathData(points: [number, number][], decimals = 2): string {
   return points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${round(x)},${round(y)}`).join('')
 }
 
+/* ── Journeys (slice 5, docs/proposals/map-in-the-story.md §2.2) ──
+   A journey is EDITORIAL, not inferred: scripts/data/journeys.yml is
+   hand-authored from the text and built into public/bible/map/journeys.json
+   (docs/proposals/journeys-data.md). The types below are that file's shape,
+   and nothing here interprets it — ordering a journey into a drawable route
+   is mapDataLoader.ts's job, exactly as the projection/view-model split
+   works for places. */
+
+/** One move the text states, between two place ids, with the verse that says so. */
+export interface JourneyLeg {
+  /** A place id: the url-slug half of a place's `sl`, e.g. `damascus`. */
+  from: string
+  to: string
+  /** The citation in which BOTH place names occur, e.g. "Galatians 1:17". */
+  ref: string
+}
+
+/**
+ * A transition the text names the ends of and is SILENT about in between —
+ * Paul's fourteen years before going up to Jerusalem again. Drawn dotted, never
+ * as a confident line; that distinction is the whole reason gaps are a separate
+ * list rather than a leg with a weaker citation.
+ */
+export interface JourneyGap {
+  /** The journey id this gap belongs to. */
+  journey: string
+  from: string
+  to: string
+  /** Why the text is silent here. Shown to the reader, not just to an editor. */
+  note: string
+}
+
+export interface Journey {
+  id: string
+  title: string
+  /** The passage the journey is authored from, e.g. "Galatians 1:15-2:1". */
+  source: string
+  legs: JourneyLeg[]
+}
+
+/** public/bible/map/journeys.json */
+export interface JourneyBundle {
+  v: number
+  generated: string
+  journeys: Journey[]
+  gaps: JourneyGap[]
+}
+
 const PLACES_URL = '/map/places.json.gz'
 const BASE_URL = '/map/base.json.gz'
+const JOURNEYS_URL = '/bible/map/journeys.json'
 
 // Fetch + parse one bundle. Deliberately a copy of the shape in
 // src/bible/self-hosted.ts, including the sniff: hosts disagree about a `.gz`.
@@ -329,6 +378,7 @@ async function fetchGzJson<T>(url: string, fetchImpl: typeof fetch): Promise<T> 
 
 let placesPromise: Promise<MapPlaceBundle> | null = null
 let basePromise: Promise<MapBaseArtwork> | null = null
+let journeysPromise: Promise<JourneyBundle> | null = null
 
 /**
  * Load the place bundle, once. Memoized on the PROMISE so concurrent first reads
@@ -358,6 +408,23 @@ export function loadMapArtwork(fetchImpl: typeof fetch = fetch): Promise<MapBase
 }
 
 /**
+ * Load the hand-authored journeys, once. 18 KB of plain JSON — a fiftieth of
+ * the place bundle — which is why the connections door can ask "does this
+ * chapter have a journey?" without paying for the places first. Read through
+ * the same `fetchGzJson` as the other two purely for its gzip sniff: this file
+ * is not gzipped on disk, and the sniff is what makes that fine either way.
+ */
+export function loadMapJourneys(fetchImpl: typeof fetch = fetch): Promise<JourneyBundle> {
+  if (!journeysPromise) {
+    journeysPromise = fetchGzJson<JourneyBundle>(JOURNEYS_URL, fetchImpl).catch(err => {
+      journeysPromise = null
+      throw err
+    })
+  }
+  return journeysPromise
+}
+
+/**
  * How many geocoded places a chapter carries — the map door's presence check
  * (docs/proposals/deep-dive-doorways.md, decision 1: chapter-scoped). Costs
  * the place bundle once per app lifetime (145 KB gzipped, memoized above) and
@@ -377,4 +444,5 @@ export async function chapterPlaceCount(
 export function resetMapBundles(): void {
   placesPromise = null
   basePromise = null
+  journeysPromise = null
 }

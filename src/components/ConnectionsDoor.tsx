@@ -37,6 +37,7 @@
  * Nothing is fetched until the reader selects a verse. See connectionsLoader.ts.
  */
 import React, { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { BibleVerseLine, TranslationId } from '../bible/provider'
 import { getBibleVerse } from '../bible/service'
 import { bookByNumber } from '../utils/bibleBooks'
@@ -46,7 +47,10 @@ import {
   type VerseConnections
 } from '../utils/connectionsLoader'
 import type { SettingLine } from '../utils/settingLine'
+import { chapterPlaceCount, loadMapJourneys } from '../utils/mapData'
+import { findJourneyForChapter, journeyDoorLabel } from '../utils/mapDataLoader'
 import { DeepDiveSheet, Fold } from './DeepDiveSheet'
+import MapView from './MapView'
 
 /** The glance: one full row, two one-line rows, and the fold. */
 const GLANCE_ROWS = 3
@@ -216,6 +220,65 @@ function Stacked({
   )
 }
 
+/**
+ * The map's entrance (docs/proposals/map-in-the-story.md, slice 5). The door
+ * already knows the chapter, so it is the one surface that can offer the map
+ * without a reader asking for it — one quiet line at the foot, and ONLY where
+ * the chapter has something to show: a hand-authored journey ("Follow Paul's
+ * route") or, failing that, geocoded places ("See where this happens"). A
+ * chapter with neither renders nothing at all, exactly as the door itself does
+ * below the salience line.
+ *
+ * The journeys table is asked FIRST because it is 18 KB against the place
+ * bundle's 145 KB, so the common no-journey answer is cheap; the places are
+ * only counted when there is no journey, and they are needed anyway the moment
+ * the reader taps.
+ */
+function MapLine({ book, chapter }: { book: number; chapter: number }): React.ReactElement | null {
+  const [label, setLabel] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    let live = true
+    setLabel(null)
+    setOpen(false)
+    loadMapJourneys()
+      .then(async bundle => {
+        if (!live) return
+        const journey = findJourneyForChapter(bundle, book, chapter)
+        if (journey) {
+          setLabel(journeyDoorLabel(journey))
+          return
+        }
+        const places = await chapterPlaceCount(book, chapter)
+        if (live && places > 0) setLabel('See where this happens')
+      })
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [book, chapter])
+
+  if (!label) return null
+  return (
+    <>
+      <button type="button" className="conn-map" onClick={() => setOpen(true)}>
+        {label}
+      </button>
+      {/* The map is a whole surface, not a card inside a sheet, so it opens
+          over the door rather than inside it — and closing it lands back on
+          the same door, on the same verse, untouched. */}
+      {open &&
+        createPortal(
+          <div className="map-overlay">
+            <MapView chapter={{ book, chapter }} onClose={() => setOpen(false)} />
+          </div>,
+          document.body
+        )}
+    </>
+  )
+}
+
 /** Matches --dur-3 — the stacked passage's own slide, independent of the
  *  sheet's (DeepDiveSheet owns that one). */
 const STACK_EXIT_MS = 260
@@ -318,6 +381,9 @@ function Door({
           closed={`${rest} more`}
         />
       )}
+
+      {/* 4. The foot: where this happens, when the chapter has a map to show. */}
+      <MapLine book={address.book} chapter={address.chapter} />
 
       <p className="word-prov">
         {PROVENANCE}
