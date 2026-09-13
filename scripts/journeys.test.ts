@@ -1,4 +1,5 @@
-// Invariant tests for the built journeys data (scripts/build-journeys.mjs).
+// Invariant tests for the built journeys data (build-journeys.mjs). Lives under scripts/ because it reads the built
+// files with Node APIs, which src/ may not import (CLAUDE.md, pure web)..
 // These load the SHIPPED files straight off disk — the same two files a
 // browser would fetch — rather than re-deriving anything, so a stale build
 // (edited journeys.yml, forgot to re-run the build script) fails here too.
@@ -7,7 +8,7 @@ import { gunzipSync } from 'node:zlib'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const ROOT = resolve(__dirname, '..', '..')
+const ROOT = resolve(__dirname, '..')
 const JOURNEYS_PATH = resolve(ROOT, 'public', 'bible', 'map', 'journeys.json')
 const PLACES_PATH = resolve(ROOT, 'public', 'map', 'places.json.gz')
 const MAX_BYTES = 20 * 1024
@@ -79,7 +80,9 @@ describe('journeys.json', () => {
   it('resolves every leg place id against the shipped place bundle', () => {
     for (const journey of journeys.journeys) {
       for (const leg of journey.legs) {
-        expect(validPlaceIds.has(leg.from), `${journey.id}: unknown place id "${leg.from}"`).toBe(true)
+        expect(validPlaceIds.has(leg.from), `${journey.id}: unknown place id "${leg.from}"`).toBe(
+          true
+        )
         expect(validPlaceIds.has(leg.to), `${journey.id}: unknown place id "${leg.to}"`).toBe(true)
       }
     }
@@ -96,7 +99,9 @@ describe('journeys.json', () => {
   it('resolves every gap against a real journey and real place ids', () => {
     const journeyIds = new Set(journeys.journeys.map(j => j.id))
     for (const gap of journeys.gaps) {
-      expect(journeyIds.has(gap.journey), `gap references unknown journey "${gap.journey}"`).toBe(true)
+      expect(journeyIds.has(gap.journey), `gap references unknown journey "${gap.journey}"`).toBe(
+        true
+      )
       expect(validPlaceIds.has(gap.from), `gap: unknown place id "${gap.from}"`).toBe(true)
       expect(validPlaceIds.has(gap.to), `gap: unknown place id "${gap.to}"`).toBe(true)
       expect(gap.note.trim().length, `gap ${gap.from} -> ${gap.to} note`).toBeGreaterThan(0)
@@ -107,7 +112,10 @@ describe('journeys.json', () => {
     for (const journey of journeys.journeys) {
       const legPairs = new Set(journey.legs.map(l => `${l.from}>${l.to}`))
       for (const gap of journeys.gaps.filter(g => g.journey === journey.id)) {
-        expect(legPairs.has(`${gap.from}>${gap.to}`), `${journey.id}: ${gap.from} -> ${gap.to} is both a leg and a gap`).toBe(false)
+        expect(
+          legPairs.has(`${gap.from}>${gap.to}`),
+          `${journey.id}: ${gap.from} -> ${gap.to} is both a leg and a gap`
+        ).toBe(false)
       }
     }
   })
