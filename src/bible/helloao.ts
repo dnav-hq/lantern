@@ -105,6 +105,18 @@ export function usfmForBookNumber(bookNumber: number): string | undefined {
   return USFM_BY_BOOK_NUMBER[bookNumber]
 }
 
+// The same table, inverted, for datasets that NAME a book rather than being
+// asked for one — the cross-reference dataset's targets arrive as USFM codes
+// (docs/proposals/connections-door.md §7). Built once from the table above so
+// the two can never disagree.
+const BOOK_NUMBER_BY_USFM: Record<string, number> = Object.fromEntries(
+  Object.entries(USFM_BY_BOOK_NUMBER).map(([n, usfm]) => [usfm, Number(n)])
+)
+
+export function bookNumberForUsfm(usfm: string): number | undefined {
+  return BOOK_NUMBER_BY_USFM[usfm]
+}
+
 type VerseContentItem =
   string | { noteId: number } | { lineBreak: true } | { text: string; poem?: number }
 

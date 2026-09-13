@@ -1,3 +1,5 @@
+import type { ChapterConnections, RawConnection } from '../utils/connections'
+
 // BibleProvider is the scripture source seam. BSB via bible.helloao.org
 // (helloao.ts) is the first implementation; KJV (kjv.ts) is the second; ESV
 // (esv.ts) is the third, and the first that's copyrighted — it goes through a
@@ -49,3 +51,15 @@ export type TranslationId = 'BSB' | 'KJV' | 'ESV' | 'NET' | 'IRV' | 'TCV'
 // with a mapping table. Note anchoring is by verse number and therefore
 // language-independent: switching language never touches a note.
 export type BibleLanguageId = 'eng' | 'tam'
+
+// The cross-reference seam — docs/proposals/connections-door.md §7. Additive
+// and SEPARATE from BibleProvider on purpose: a connection anchors to a whole
+// verse, is addressed by (book, chapter) alone, and does not vary by
+// translation, so it is neither a property of a verse line nor of any one
+// translation's provider. One implementation (connections.ts, over helloao's
+// open-cross-ref dataset) wrapped in the same cache-forever layer chapters use.
+export interface ConnectionsProvider {
+  getConnections(bookNumber: number, chapter: number): Promise<ChapterConnections>
+}
+
+export type { ChapterConnections, RawConnection }

@@ -27,22 +27,31 @@ import { connectionsPresence } from '../utils/connectionsLoader'
 import { buildDoorways, leadWord, type PresenceReport } from '../utils/doorways'
 import { wordIndexLoader } from '../utils/wordIndexLoader'
 import { Door, type VerseAddress } from './WordDoor'
+import { ConnectionsDoorFor } from './ConnectionsDoor'
+import { useReadingTranslation } from '../utils/useTranslation'
+import type { TranslationId } from '../bible/provider'
 
 interface Props extends VerseAddress {
   /** Opens the map (a plain open; chapter framing is the map door's own slice). */
   onOpenMap?: () => void
-  /** Opens the connections door for this verse. */
-  onOpenConnections?: (verse: number) => void
+  /**
+   * The translation whose text is on screen: the connections door lights
+   * quoted words against it. Falls back to the reading preference.
+   */
+  translation?: TranslationId
 }
 
 export default function VerseDoorways({
   onOpenMap,
-  onOpenConnections,
+  translation,
   ...address
 }: Props): React.ReactElement | null {
   const { book, chapter, verse } = address
+  const [preferred] = useReadingTranslation()
+  const shownTranslation = translation ?? preferred
   const [report, setReport] = useState<PresenceReport>({})
   const [wordOpen, setWordOpen] = useState(false)
+  const [connectionsOpen, setConnectionsOpen] = useState(false)
 
   useEffect(() => {
     let live = true
@@ -77,7 +86,7 @@ export default function VerseDoorways({
           data-door={d.kind}
           onClick={() => {
             if (d.kind === 'word') setWordOpen(true)
-            else if (d.kind === 'connections') onOpenConnections?.(verse)
+            else if (d.kind === 'connections') setConnectionsOpen(true)
             else onOpenMap?.()
           }}
         >
@@ -89,6 +98,13 @@ export default function VerseDoorways({
           address={address}
           openOn={report.word?.lead.strongs}
           onClose={() => setWordOpen(false)}
+        />
+      )}
+      {connectionsOpen && (
+        <ConnectionsDoorFor
+          {...address}
+          translation={shownTranslation}
+          onClose={() => setConnectionsOpen(false)}
         />
       )}
     </div>

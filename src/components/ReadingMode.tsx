@@ -838,6 +838,7 @@ export default function ReadingMode({
                           reference={`${bookAndChapter}:${v.verse}`}
                           verseText={v.text}
                           onOpenMap={onOpenMap}
+                          translation={translation}
                         />
                       )}
 

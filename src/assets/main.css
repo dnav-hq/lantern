@@ -9149,3 +9149,123 @@ body.dark .word-scrim {
 .word-deeper[aria-expanded='true']::after {
   content: '↑';
 }
+
+/* ── The connections door ──────────────────────────────────────────────────
+   docs/proposals/connections-door.md; design/deep-dive-doorways.html artboard
+   3 for the look. Rides in the word door's sheet (DeepDiveSheet.tsx). Relevance
+   is ORDER and PROMINENCE — a whole sentence, then one line — never a meter,
+   a bar or a number. No icons; tokens only. */
+.conn {
+  padding: 13px 0 3px;
+  border-top: 0.5px solid var(--border);
+}
+.conn-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.conn-ref {
+  font-family: var(--ui-font);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--accent-ink);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.conn-why {
+  font-family: var(--ui-font);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.conn-text {
+  font-family: var(--scripture-font);
+  font-size: 15px;
+  line-height: 1.62;
+  margin: 0;
+  cursor: pointer;
+}
+.conn-text.one-line {
+  font-size: 14.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.conn-shared {
+  font-style: normal;
+  background: var(--accent-weak);
+  border-radius: 3px;
+  padding: 0 3px;
+}
+
+/* Stacked one level deeper: the head's eyebrow becomes the way back, and the
+   breadcrumb under it says why you are here. Both climb out. */
+.word-back {
+  font-family: var(--ui-font);
+  font-size: var(--text-sm);
+  color: var(--accent-ink);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.conn-crumb {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  margin: 0 0 4px;
+  padding: 10px 0;
+  background: var(--surface);
+  font-family: var(--ui-font);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  text-align: left;
+  color: var(--text-muted);
+  border: 0;
+  border-bottom: 0.5px solid var(--border);
+  cursor: pointer;
+}
+.conn-crumb strong {
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.conn-passage {
+  padding: 4px 0 8px;
+}
+.conn-passage-verse {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0;
+  font-family: var(--scripture-font);
+  font-size: 15px;
+  line-height: 1.62;
+  color: var(--text-muted);
+  /* Room for the sticky breadcrumb above a verse scrolled into view. */
+  scroll-margin-top: 52px;
+}
+body.dark .conn-crumb {
+  background: var(--surface-2);
+}
+.conn-passage-verse.is-target {
+  color: var(--text);
+  background: var(--accent-weak);
+  margin: 0 -12px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+}
+.conn-passage-num {
+  flex-shrink: 0;
+  min-width: 1.6em;
+  font-family: var(--ui-font);
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  padding-top: 5px;
+}

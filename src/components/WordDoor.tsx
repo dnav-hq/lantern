@@ -28,8 +28,8 @@
  * Nothing is fetched until the reader opens this. See wordIndexLoader.ts.
  */
 import React, { useEffect, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useApi } from '../api/context'
+import { DeepDiveSheet, Fold } from './DeepDiveSheet'
 import { bookByNumber } from '../utils/bibleBooks'
 import {
   decodeOccurrence,
@@ -345,14 +345,12 @@ function DoorBody({
 
       {/* The one control between the glance and the rest. Below it, in the
           deeper layer only: grammar (above), the full renderings, the lexicon. */}
-      <button
-        type="button"
-        className="word-deeper"
-        aria-expanded={deeper}
-        onClick={() => setDeeper(d => !d)}
-      >
-        {deeper ? 'Less about this word' : 'More about this word'}
-      </button>
+      <Fold
+        expanded={deeper}
+        onToggle={() => setDeeper(d => !d)}
+        open="Less about this word"
+        closed="More about this word"
+      />
 
       {/* 4. The lexicon, LAST, with its provenance attached (§9a.2). Greek
           entries carry sense text and Hebrew ones do not (§4.2); neither door
@@ -447,62 +445,39 @@ export function Door({
     }
   }, [address.book, address.chapter, address.verse, openOn])
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
-
   const word = words && words.length > 0 ? (words[chosen] ?? words[0]) : null
 
-  return createPortal(
-    <>
-      <div className="word-scrim" onClick={onClose} />
-      <div
-        className="word-sheet"
-        role="dialog"
-        aria-label={`The words behind ${address.reference}`}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="word-sheet-head">
-          <span className="word-door-ref">{address.reference}</span>
-          <button type="button" className="word-close" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
+  return (
+    <DeepDiveSheet
+      reference={address.reference}
+      label={`The words behind ${address.reference}`}
+      onClose={onClose}
+    >
+      {failed && <p className="word-door-state">The word index could not be loaded just now.</p>}
+      {!failed && words === null && <p className="word-door-state">Loading…</p>}
+      {words !== null && words.length === 0 && (
+        <p className="word-door-state">
+          This verse has no tagged words in the BSB Translation Tables.
+        </p>
+      )}
+      {words !== null && words.length > 0 && (
+        <div className="word-picker" role="tablist" aria-label="Words in this verse">
+          {words.map((w, i) => (
+            <button
+              key={w.strongs}
+              type="button"
+              role="tab"
+              aria-selected={i === chosen}
+              className={i === chosen ? 'is-chosen' : undefined}
+              onClick={() => setChosen(i)}
+            >
+              {w.english}
+              <span className="word-translit">{w.translit}</span>
+            </button>
+          ))}
         </div>
-        <div className="word-sheet-body">
-          {failed && (
-            <p className="word-door-state">The word index could not be loaded just now.</p>
-          )}
-          {!failed && words === null && <p className="word-door-state">Loading…</p>}
-          {words !== null && words.length === 0 && (
-            <p className="word-door-state">
-              This verse has no tagged words in the BSB Translation Tables.
-            </p>
-          )}
-          {words !== null && words.length > 0 && (
-            <div className="word-picker" role="tablist" aria-label="Words in this verse">
-              {words.map((w, i) => (
-                <button
-                  key={w.strongs}
-                  type="button"
-                  role="tab"
-                  aria-selected={i === chosen}
-                  className={i === chosen ? 'is-chosen' : undefined}
-                  onClick={() => setChosen(i)}
-                >
-                  {w.english}
-                  <span className="word-translit">{w.translit}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          {word && parsing && <DoorBody {...address} word={word} parsing={parsing} />}
-        </div>
-      </div>
-    </>,
-    document.body
+      )}
+      {word && parsing && <DoorBody {...address} word={word} parsing={parsing} />}
+    </DeepDiveSheet>
   )
 }

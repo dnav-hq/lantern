@@ -1735,6 +1735,7 @@ function ChapterView({
                       reference={`${bookName} ${chapter}:${v.verse}`}
                       verseText={v.text}
                       onOpenMap={onOpenMap}
+                      translation={servedTranslation}
                     />
                   )}
 
