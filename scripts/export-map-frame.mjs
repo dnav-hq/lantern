@@ -74,17 +74,17 @@ const FRAMES = [
       { place: 'Damascus', stop: 1, dx: 7, dy: -3, anchor: 'start' },
       { place: 'Jerusalem', stop: 3, dx: -7, dy: 3, anchor: 'end' },
       { place: 'Arabia 2', stop: 2, as: 'Arabia', dx: 7, dy: 4, anchor: 'start' },
-      { place: 'Cilicia', stop: 4, as: 'Syria & Cilicia', dx: 0, dy: -9, anchor: 'middle' }
+      { place: 'Cilicia', stop: 4, as: 'Syria & Cilicia', dx: 4, dy: -11, anchor: 'middle' }
     ],
     regions: [
       { place: 'Galatia', label: 'Galatia', dx: 0, dy: -4 },
       { place: 'Syria 2', label: 'Syria', dx: 16, dy: -14 },
-      { place: 'Judea 1', label: 'Judea', dx: -4, dy: 16 },
+      { place: 'Judea 1', label: 'Judea', dx: -26, dy: 20 },
       { place: 'Arabia 2', label: 'Arabia', dx: 10, dy: 22 }
     ],
     seas: [
-      { label: 'The Great Sea', lon: 32.2, lat: 34.6, rotate: -8 },
-      { label: 'Cyprus', lon: 33.1, lat: 35.05, size: 'small' }
+      { label: 'The Great Sea', lon: 30.6, lat: 33.9, rotate: -7 },
+      { label: 'Cyprus', lon: 33.05, lat: 34.72, size: 'small' }
     ],
     legs: [
       { from: 'Damascus', to: 'Arabia 2', ref: 'Galatians 1:17', bow: 0.16 },
@@ -106,17 +106,17 @@ const FRAMES = [
     marks: [
       { place: 'Haran', stop: 1, dx: 8, dy: -4, anchor: 'start' },
       { place: 'Shechem', stop: 2, dx: 8, dy: -4, anchor: 'start' },
-      { place: 'Bethel 1', stop: 3, as: 'Bethel', dx: -8, dy: -3, anchor: 'end' },
+      { place: 'Bethel 1', stop: 3, as: 'Bethel', dx: -10, dy: 3, anchor: 'end' },
       { place: 'Negeb', stop: 4, as: 'The Negeb', dx: -8, dy: 6, anchor: 'end' },
       { place: 'Egypt', stop: 5, dx: 8, dy: 8, anchor: 'start' }
     ],
     regions: [
-      { place: 'Canaan', label: 'Canaan', dx: 14, dy: -18 },
+      { place: 'Canaan', label: 'Canaan', dx: 30, dy: -26 },
       { place: 'Egypt', label: 'Egypt', dx: -18, dy: 26 }
     ],
     seas: [
       { label: 'The Great Sea', lon: 31.5, lat: 33.4, rotate: -6 },
-      { label: 'Sea of Galilee', lon: 35.6, lat: 32.82, size: 'small' }
+      { label: 'Sea of Galilee', lon: 36.4, lat: 32.55, size: 'small' }
     ],
     legs: [
       { from: 'Haran', to: 'Shechem', ref: 'Genesis 12:4-6', bow: 0.12 },
@@ -368,16 +368,30 @@ function seaMask(image) {
 function hachures(image, rect, frame, limit) {
   const { width, height, pixels } = image
   const { sea } = seaMask(image)
-  const step = 5
+  const step = 4
   const strokes = []
   const at = (x, y) => pixels[Math.min(height - 1, Math.max(0, y)) * width + Math.min(width - 1, Math.max(0, x))]
+  // The sea is FLAT, so the shoreline is the steepest gradient in the raster by
+  // a mile. Sampling it would ring every coast in hachures and leave the
+  // mountains bare — the exact opposite of what an engraved map does. Anything
+  // within two pixels of water is skipped; the coastline has its own hairline.
+  const nearSea = (x, y) => {
+    for (let j = -2; j <= 2; j++) {
+      for (let i = -2; i <= 2; i++) {
+        const yy = Math.min(height - 1, Math.max(0, y + j))
+        const xx = Math.min(width - 1, Math.max(0, x + i))
+        if (sea[yy * width + xx]) return true
+      }
+    }
+    return false
+  }
   for (let y = step; y < height - step; y += step) {
     for (let x = step; x < width - step; x += step) {
-      if (sea[y * width + x]) continue
+      if (nearSea(x, y)) continue
       const gx = at(x + 1, y) - at(x - 1, y)
       const gy = at(x, y + 1) - at(x, y - 1)
       const mag = Math.hypot(gx, gy)
-      if (mag < 10) continue
+      if (mag < 8) continue
       strokes.push({ x, y, gx, gy, mag })
     }
   }
@@ -387,7 +401,7 @@ function hachures(image, rect, frame, limit) {
   // coastline and scale with the frame rather than with the raster.
   const unit = frame.w / width
   const paths = kept.map(({ x, y, gx, gy, mag }) => {
-    const len = (0.9 + Math.min(1.6, mag / 26)) * unit * 2.1
+    const len = (0.8 + Math.min(1.4, mag / 30)) * unit * 1.5
     const nx = -gy / mag
     const ny = gx / mag
     const cx = frame.x + (x + 0.5) * unit
@@ -451,7 +465,7 @@ function buildFrame(spec) {
   const reliefPng = encodeGrayPng(small.width, small.height, small.pixels)
   const mask = seaMask(small)
   const maskPng = encodeGrayPng(small.width, small.height, mask.rows, 1)
-  const hatch = hachures(small, rect, frame, spec.id === 'genesis-12' ? 2600 : 1500)
+  const hatch = hachures(small, rect, frame, spec.id === 'genesis-12' ? 3600 : 2300)
   const hatchData = hatch.join(' ')
 
   // Scale bar and north mark, both derived rather than drawn: a conic projection
@@ -506,7 +520,12 @@ function buildFrame(spec) {
         ref: l.ref,
         dashed: Boolean(l.dashed)
       })),
-      scale: { km: barKm, units: round(barKm / kmPerUnit, 1), kmPerUnit: round(kmPerUnit, 3) },
+      scale: {
+        km: barKm,
+        units: round(barKm / kmPerUnit, 1),
+        kmPerUnit: round(kmPerUnit, 3),
+        atLat: Math.round(centre[1])
+      },
       north: round(northDeg, 1)
     },
     measured: {
@@ -541,7 +560,11 @@ const payload = {
     reliefPng: readFileSync(resolve(ROOT, 'public/map/terrain.png')).length,
     reliefPx: `${relief.width}x${relief.height}`
   },
-  frames: built.map((b) => b.frame)
+  frames: built.map((b) => b.frame),
+  // The byte table in the mockup prints these rather than quoting hand-copied
+  // numbers: a measurement that can drift from the thing it measures is worse
+  // than no measurement.
+  measured: built.map((b) => b.measured)
 }
 
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`
