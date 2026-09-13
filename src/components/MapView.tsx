@@ -474,7 +474,15 @@ export function MapCanvas({
   // "Home" is the frame when one was given, the world otherwise; the world
   // EDGE (nothing left to zoom out to) is judged against `fit`, always the
   // world, so a framed map never disables the reader's way back out to it.
-  const atHome = homeZoom <= 1.001
+  //
+  // `homeZoom` is a RATIO (home.w / viewBox.w), 1 exactly at home — and, once
+  // a frame makes home smaller than the world, it can go BELOW 1 when the
+  // reader zooms out past the frame toward the world. A `<= 1.001` test reads
+  // that as "still at home" and never re-enables the button, which is exactly
+  // backwards: zoomed out past the frame is the one moment the home control
+  // must work. Home is only "reached" within a small tolerance of the ratio
+  // being 1, in EITHER direction.
+  const atHome = Math.abs(homeZoom - 1) <= 0.001
   const atWorldEdge = zoomLevel(viewBox, fit) <= 1.001
   const framed = chapterMarkers !== null && chapterMarkers.length > 0
 
