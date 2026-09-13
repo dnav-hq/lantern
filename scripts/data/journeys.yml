@@ -1,0 +1,213 @@
+# Hand-authored journeys for the Bible map's drawing slice (a later task —
+# nothing draws from this file yet). docs/proposals/map-in-the-story.md §2.2
+# concluded a journey line is honest only where the text itself lists the
+# route or an editor has authored it from the text, and recommended a
+# hand-authored table of about a dozen rather than an inference engine. This
+# is that table.
+#
+# Every `from`/`to` is a place id: the URL-slug half of a `sl` field in
+# public/map/places.json.gz (e.g. `sl: "a231f80/jericho-1"` -> id
+# `jericho-1`), NEVER a display name — two different Jerichos (OT Tell
+# es-Sultan vs NT Tell el-Alayiq) share a name but not an id, which is the
+# whole point. scripts/build-journeys.mjs fails loudly if an id here doesn't
+# exist in the shipped bundle.
+#
+# Every leg's `ref` is a citation in which BOTH place names occur, in a
+# self-contained travel notice. A single verse (Numbers 33 is the clean
+# case — one leg, one verse, no interpretation) is preferred; a short range
+# is used where a Hebrew or Greek narrative spends 2-6 verses describing one
+# continuous move without naming any other place in between. Where even that
+# doesn't hold — the text is genuinely silent about the course between two
+# named points — the leg is left OUT of `legs` and recorded in `gaps`
+# instead, so the map draws it dotted rather than as a confident line.
+#
+# Sources, editorial calls, and what was left out: docs/proposals/journeys-data.md.
+
+journeys:
+  - id: abram-ur-to-canaan
+    title: "Abram: from Ur to Canaan"
+    source: "Genesis 11:31-13:18"
+    legs:
+      - { from: ur-2, to: haran, ref: "Genesis 11:31" }
+      - { from: haran, to: shechem, ref: "Genesis 12:4-6" }
+      - { from: shechem, to: bethel-1, ref: "Genesis 12:6-8" }
+      - { from: bethel-1, to: egypt, ref: "Genesis 12:8-10" }
+      - { from: egypt, to: negeb, ref: "Genesis 13:1" }
+      - { from: negeb, to: bethel-1, ref: "Genesis 13:3" }
+      - { from: bethel-1, to: hebron, ref: "Genesis 13:3-18" }
+  - id: jacob-to-haran-and-back
+    title: "Jacob: to Haran and back"
+    source: "Genesis 28:10-33:18"
+    legs:
+      - { from: beersheba-1, to: bethel-1, ref: "Genesis 28:10-19" }
+      - { from: bethel-1, to: haran, ref: "Genesis 28:19-29:4" }
+      - { from: haran, to: gilead-1, ref: "Genesis 31:18-21" }
+      - { from: gilead-1, to: mahanaim, ref: "Genesis 31:25-32:2" }
+      - { from: mahanaim, to: penuel, ref: "Genesis 32:2-30" }
+      - { from: penuel, to: succoth-1, ref: "Genesis 32:31-33:17" }
+      - { from: succoth-1, to: shechem, ref: "Genesis 33:17-18" }
+  - id: joseph-to-egypt
+    title: "Joseph: sold into Egypt"
+    source: "Genesis 37:12-36"
+    legs:
+      - { from: hebron, to: shechem, ref: "Genesis 37:14" }
+      - { from: shechem, to: dothan, ref: "Genesis 37:14-17" }
+      - { from: dothan, to: egypt, ref: "Genesis 37:17-28" }
+  - id: exodus-route
+    title: "The Exodus, station by station"
+    source: "Numbers 33:5-49"
+    legs:
+      - { from: rameses, to: succoth-2, ref: "Numbers 33:5" }
+      - { from: succoth-2, to: etham, ref: "Numbers 33:6" }
+      - { from: etham, to: pi-hahiroth, ref: "Numbers 33:7" }
+      - { from: pi-hahiroth, to: marah, ref: "Numbers 33:8" }
+      - { from: marah, to: elim, ref: "Numbers 33:9" }
+      - { from: elim, to: red-sea-3, ref: "Numbers 33:10" }
+      - { from: red-sea-3, to: sin, ref: "Numbers 33:11" }
+      - { from: sin, to: dophkah, ref: "Numbers 33:12" }
+      - { from: dophkah, to: alush, ref: "Numbers 33:13" }
+      - { from: alush, to: rephidim, ref: "Numbers 33:14" }
+      - { from: rephidim, to: wilderness-of-sinai, ref: "Numbers 33:15" }
+      - { from: wilderness-of-sinai, to: kibroth-hattaavah, ref: "Numbers 33:16" }
+      - { from: kibroth-hattaavah, to: hazeroth, ref: "Numbers 33:17" }
+      - { from: hazeroth, to: rithmah, ref: "Numbers 33:18" }
+      - { from: rithmah, to: rimmon-perez, ref: "Numbers 33:19" }
+      - { from: rimmon-perez, to: libnah-2, ref: "Numbers 33:20" }
+      - { from: libnah-2, to: rissah, ref: "Numbers 33:21" }
+      - { from: rissah, to: kehelathah, ref: "Numbers 33:22" }
+      - { from: kehelathah, to: mount-shepher, ref: "Numbers 33:23" }
+      - { from: mount-shepher, to: haradah, ref: "Numbers 33:24" }
+      - { from: haradah, to: makheloth, ref: "Numbers 33:25" }
+      - { from: makheloth, to: tahath, ref: "Numbers 33:26" }
+      - { from: tahath, to: terah, ref: "Numbers 33:27" }
+      - { from: terah, to: mithkah, ref: "Numbers 33:28" }
+      - { from: mithkah, to: hashmonah, ref: "Numbers 33:29" }
+      - { from: hashmonah, to: moseroth, ref: "Numbers 33:30" }
+      - { from: moseroth, to: bene-jaakan, ref: "Numbers 33:31" }
+      - { from: bene-jaakan, to: hor-haggidgad, ref: "Numbers 33:32" }
+      - { from: hor-haggidgad, to: jotbathah, ref: "Numbers 33:33" }
+      - { from: jotbathah, to: abronah, ref: "Numbers 33:34" }
+      - { from: abronah, to: ezion-geber, ref: "Numbers 33:35" }
+      - { from: ezion-geber, to: kadesh-barnea, ref: "Numbers 33:36" }
+      - { from: kadesh-barnea, to: mount-hor-1, ref: "Numbers 33:37" }
+      - { from: mount-hor-1, to: zalmonah, ref: "Numbers 33:41" }
+      - { from: zalmonah, to: punon, ref: "Numbers 33:42" }
+      - { from: punon, to: oboth, ref: "Numbers 33:43" }
+      - { from: oboth, to: iye-abarim, ref: "Numbers 33:44" }
+      - { from: iye-abarim, to: dibon-1, ref: "Numbers 33:45" }
+      - { from: dibon-1, to: almon-diblathaim, ref: "Numbers 33:46" }
+      - { from: almon-diblathaim, to: abarim, ref: "Numbers 33:47" }
+      - { from: abarim, to: abel-shittim, ref: "Numbers 33:48-49" }
+  - id: conquest-entry
+    title: "Joshua: the conquest begins"
+    source: "Joshua 3:1-6:1"
+    legs:
+      - { from: shittim, to: jordan, ref: "Joshua 3:1" }
+      - { from: jordan, to: gilgal-1, ref: "Joshua 4:19" }
+      - { from: gilgal-1, to: jericho-1, ref: "Joshua 5:10" }
+  - id: elijahs-flight
+    title: "Elijah's flight to Horeb"
+    source: "1 Kings 18:45-19:8"
+    legs:
+      - { from: jezreel-2, to: beersheba-1, ref: "1 Kings 18:45-19:3" }
+      - { from: beersheba-1, to: mount-horeb, ref: "1 Kings 19:3-8" }
+  - id: exile-and-return
+    title: "Exile to Babylon, and the return"
+    source: "2 Kings 25:1-21; Ezra 1:1-11"
+    legs:
+      - { from: jerusalem, to: riblah-1, ref: "2 Kings 25:6-7" }
+      - { from: riblah-1, to: babylon-1, ref: "2 Kings 25:7" }
+      - { from: babylon-1, to: jerusalem, ref: "Ezra 1:11" }
+  - id: jesus-last-journey-to-jerusalem
+    title: "Jesus's last journey to Jerusalem"
+    source: "Luke 9:51; 17:11-19:41"
+    legs:
+      - { from: galilee-1, to: samaria-2, ref: "Luke 17:11" }
+      - { from: jericho-2, to: bethany-1, ref: "Luke 19:1-29" }
+      - { from: bethany-1, to: jerusalem, ref: "Luke 19:29-41" }
+  - id: pauls-first-missionary-journey
+    title: "Paul's first missionary journey"
+    source: "Acts 13:4-14:26"
+    legs:
+      - { from: antioch-1, to: seleucia, ref: "Acts 13:4" }
+      - { from: seleucia, to: salamis, ref: "Acts 13:4-5" }
+      - { from: salamis, to: paphos, ref: "Acts 13:6" }
+      - { from: paphos, to: perga, ref: "Acts 13:13" }
+      - { from: perga, to: antioch-2, ref: "Acts 13:14" }
+      - { from: antioch-2, to: iconium, ref: "Acts 13:51" }
+      - { from: iconium, to: lystra, ref: "Acts 14:6" }
+      - { from: lystra, to: derbe, ref: "Acts 14:19-20" }
+      - { from: derbe, to: lystra, ref: "Acts 14:21" }
+      - { from: lystra, to: iconium, ref: "Acts 14:21" }
+      - { from: iconium, to: antioch-2, ref: "Acts 14:21" }
+      - { from: antioch-2, to: perga, ref: "Acts 14:24-25" }
+      - { from: perga, to: attalia, ref: "Acts 14:25" }
+      - { from: attalia, to: antioch-1, ref: "Acts 14:26" }
+  - id: pauls-second-missionary-journey
+    title: "Paul's second missionary journey"
+    source: "Acts 15:36-18:22"
+    legs:
+      - { from: antioch-1, to: cilicia, ref: "Acts 15:40-41" }
+      - { from: cilicia, to: derbe, ref: "Acts 15:41-16:1" }
+      - { from: derbe, to: lystra, ref: "Acts 16:1" }
+      - { from: lystra, to: phrygia, ref: "Acts 16:6" }
+      - { from: phrygia, to: galatia, ref: "Acts 16:6" }
+      - { from: galatia, to: mysia, ref: "Acts 16:7" }
+      - { from: mysia, to: troas, ref: "Acts 16:8" }
+      - { from: troas, to: samothrace, ref: "Acts 16:11" }
+      - { from: samothrace, to: neapolis, ref: "Acts 16:11" }
+      - { from: neapolis, to: philippi, ref: "Acts 16:12" }
+      - { from: philippi, to: amphipolis, ref: "Acts 17:1" }
+      - { from: amphipolis, to: apollonia, ref: "Acts 17:1" }
+      - { from: apollonia, to: thessalonica, ref: "Acts 17:1" }
+      - { from: thessalonica, to: berea, ref: "Acts 17:10" }
+      - { from: berea, to: athens, ref: "Acts 17:15" }
+      - { from: athens, to: corinth, ref: "Acts 18:1" }
+      - { from: corinth, to: cenchreae, ref: "Acts 18:18" }
+      - { from: cenchreae, to: ephesus, ref: "Acts 18:18-19" }
+      - { from: ephesus, to: caesarea, ref: "Acts 18:21-22" }
+      - { from: caesarea, to: jerusalem, ref: "Acts 18:22" }
+      - { from: jerusalem, to: antioch-1, ref: "Acts 18:22" }
+  - id: pauls-third-missionary-journey
+    title: "Paul's third missionary journey"
+    source: "Acts 18:23-21:17"
+    legs:
+      - { from: antioch-1, to: galatia, ref: "Acts 18:23" }
+      - { from: galatia, to: phrygia, ref: "Acts 18:23" }
+      - { from: phrygia, to: ephesus, ref: "Acts 19:1" }
+      - { from: ephesus, to: macedonia, ref: "Acts 20:1" }
+      - { from: macedonia, to: greece, ref: "Acts 20:2" }
+      - { from: greece, to: philippi, ref: "Acts 20:3-6" }
+      - { from: philippi, to: troas, ref: "Acts 20:6" }
+      - { from: troas, to: assos, ref: "Acts 20:13" }
+      - { from: assos, to: mitylene, ref: "Acts 20:14" }
+      - { from: mitylene, to: chios, ref: "Acts 20:15" }
+      - { from: chios, to: samos, ref: "Acts 20:15" }
+      - { from: samos, to: miletus, ref: "Acts 20:15" }
+      - { from: miletus, to: cos, ref: "Acts 21:1" }
+      - { from: cos, to: rhodes-2, ref: "Acts 21:1" }
+      - { from: rhodes-2, to: patara, ref: "Acts 21:1" }
+      - { from: patara, to: tyre, ref: "Acts 21:2-3" }
+      - { from: tyre, to: ptolemais, ref: "Acts 21:7" }
+      - { from: ptolemais, to: caesarea, ref: "Acts 21:8" }
+      - { from: caesarea, to: jerusalem, ref: "Acts 21:15-17" }
+  - id: pauls-voyage-to-rome
+    title: "Paul's voyage to Rome"
+    source: "Acts 27:1-28:16"
+    legs:
+      - { from: caesarea, to: sidon, ref: "Acts 25:1-27:3" }
+      - { from: sidon, to: myra, ref: "Acts 27:4-5" }
+      - { from: myra, to: cnidus, ref: "Acts 27:7" }
+      - { from: cnidus, to: fair-havens, ref: "Acts 27:7-8" }
+      - { from: fair-havens, to: cauda, ref: "Acts 27:14-16" }
+      - { from: malta, to: syracuse, ref: "Acts 28:11-12" }
+      - { from: syracuse, to: rhegium, ref: "Acts 28:13" }
+      - { from: rhegium, to: puteoli, ref: "Acts 28:13" }
+      - { from: puteoli, to: forum-of-appius, ref: "Acts 28:14-15" }
+      - { from: forum-of-appius, to: three-taverns, ref: "Acts 28:15" }
+      - { from: three-taverns, to: rome, ref: "Acts 28:15-16" }
+
+gaps:
+  - { journey: jesus-last-journey-to-jerusalem, from: samaria-2, to: jericho-2, note: "Luke's travel narrative (17:11-18:35) names no waypoint between the Samaria/Galilee border and Jericho -- teaching stops fill the chapters but no place is pinned to the route between them." }
+  - { journey: pauls-voyage-to-rome, from: cauda, to: malta, note: "Acts 27:17-28:1: the ship ran before a storm for fourteen days with no navigation and no place named until it wrecked off Malta -- the course itself is what the text withholds." }
+
