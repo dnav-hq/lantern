@@ -573,6 +573,15 @@ async function main() {
   const far = headingDistances.filter(d => d > 10).length
   console.log(`  verses below their heading (median/p90) : ${median(headingDistances)} / ${distAsc[Math.floor(distAsc.length * 0.9)]}`)
   console.log(`  destinations >${HEADING_REACH} verses below it        : ${far} (${pct(far, tally.heading.verses)})`)
+  // The coverage/usefulness curve, so the reach gate is a choice with a price
+  // on it rather than a number picked in a brief.
+  for (const reach of [0, 2, 4, 10, Infinity]) {
+    const covered = auditPool.filter(a => a.heading && a.reach <= reach)
+    const rowsCovered = covered.reduce((n, a) => n + a.rows, 0)
+    console.log(
+      `  reach <= ${String(reach).padEnd(8)}: ${covered.length} destinations, ${rowsCovered} rows (${pct(rowsCovered, nRows)})`
+    )
+  }
   console.log(`  ROWS still covered with the reach gate  : ${tally.headingGated.rows}/${nRows} (${pct(tally.headingGated.rows, nRows)})`)
   console.log(`  top-3 rows covered with the gate        : ${tally.headingGated.top}/${topRows} (${pct(tally.headingGated.top, topRows)})`)
   const byBook = {}
@@ -632,6 +641,17 @@ async function main() {
   const s1gz = gzipSync(Buffer.from(JSON.stringify(slice1)), { level: 9 }).length
   console.log(`  a (source,destination)-keyed file would need ${pairKeys} entries (${(pairKeys / Object.keys(file).length).toFixed(1)}x) for identical content`)
   console.log(`  SLICE 1 (gated headings only)          : ${Object.keys(slice1).length} lines, ${(s1raw / 1024).toFixed(1)} KB raw, ${(s1gz / 1024).toFixed(1)} KB gzipped`)
+
+  // How tractable a hand review is: rows are heavily concentrated on a few
+  // much-referenced destinations, so reviewing the head buys most of the risk.
+  const byRows = [...auditPool].sort((a, b) => b.rows - a.rows)
+  const top3Destinations = auditPool.filter(a => a.top > 0).length
+  const headRows = n => byRows.slice(0, n).reduce((sum, a) => sum + a.rows, 0)
+  console.log(`\n--- How much a hand review would have to cover ---`)
+  console.log(`  destinations that ever reach a top-3 slot : ${top3Destinations}`)
+  console.log(`  rows covered by the 100 most-referenced   : ${headRows(100)} (${pct(headRows(100), nRows)})`)
+  console.log(`  rows covered by the 500 most-referenced   : ${headRows(500)} (${pct(headRows(500), nRows)})`)
+  console.log(`  rows covered by the 1000 most-referenced  : ${headRows(1000)} (${pct(headRows(1000), nRows)})`)
 
   const draw = (arr, n) => seededShuffle(arr, SEED).slice(0, n)
 
