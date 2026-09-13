@@ -266,7 +266,7 @@ function DoorBody({
           tables also ship rides along with the provenance, for anyone who
           reads it. */}
       {deeper && grammar && (
-        <div className="word-row">
+        <div className="word-row deep-reveal">
           <div className="word-key">Its grammar here</div>
           <div className="word-value">
             {grammar}
@@ -356,7 +356,7 @@ function DoorBody({
           entries carry sense text and Hebrew ones do not (§4.2); neither door
           says so. */}
       {deeper && hasGloss(entry) && (
-        <div className="word-row">
+        <div className="word-row deep-reveal">
           <div className="word-key">A lexicon gloss</div>
           <div className="word-value word-muted">
             {entry.g.join('; ')}
@@ -368,7 +368,7 @@ function DoorBody({
         </div>
       )}
       {deeper && entry.s.length > 0 && (
-        <div className="word-row">
+        <div className="word-row deep-reveal">
           <div className="word-key">In the lexicon’s words</div>
           <div className="word-value word-muted">
             {entry.s.map((line, i) => (

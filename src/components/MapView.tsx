@@ -37,6 +37,10 @@ import {
 import { BIBLE_BOOKS } from '../utils/bibleBooks'
 import { usePrefersReducedMotion } from '../utils/useChapterNavigation'
 
+/** Matches --dur-3 — the close fade/slide MapView plays before telling its
+ *  caller to unmount (the same own-the-exit shape as DeepDiveSheet). */
+const CLOSE_EXIT_MS = 260
+
 // The Bible map — slice 3 of docs/proposals/bible-map-v1.md: it MOVES.
 //
 // Slice 2 drew the world at one fixed viewBox. This slice makes that viewBox
@@ -768,6 +772,8 @@ function PlaceCard({
 }
 
 interface MapViewProps {
+  /** Leaves the map; the page underneath is untouched. */
+  onClose: () => void
   /**
    * Frame the map on this chapter's geocoded places (docs/proposals/
    * map-in-the-story.md) instead of opening on the whole world. Omit for the
@@ -780,12 +786,34 @@ interface MapViewProps {
  * The map surface: loads both bundles lazily on mount (nothing fetches them at
  * app start — see `loadMapPlaces`), then draws.
  */
-export default function MapView({ chapter = null }: MapViewProps = {}): React.ReactElement {
+export default function MapView({ chapter = null, onClose }: MapViewProps): React.ReactElement {
   const [artwork, setArtwork] = useState<MapBaseArtwork | null>(null)
   const [places, setPlaces] = useState<MapPlaceBundle | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<MapBaseView>('plain')
   const [selected, setSelected] = useState<number | null>(null)
+  // Plays the close motion (fade + settle) before telling App.tsx to swap the
+  // map back out — the same own-the-exit shape as DeepDiveSheet/
+  // MobileSelectionBar, so leaving the map is as calm as every other surface.
+  const [closing, setClosing] = useState(false)
+  const reducedMotion = usePrefersReducedMotion()
+
+  const requestClose = useCallback(() => {
+    if (reducedMotion) {
+      onClose()
+      return
+    }
+    setClosing(true)
+    window.setTimeout(onClose, CLOSE_EXIT_MS)
+  }, [onClose, reducedMotion])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') requestClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [requestClose])
 
   useEffect(() => {
     let live = true
@@ -817,7 +845,7 @@ export default function MapView({ chapter = null }: MapViewProps = {}): React.Re
   const chapterLabel = chapterBook ? `${chapterBook.name} ${chapter!.chapter}` : null
 
   return (
-    <div className="map-view">
+    <div className={`map-view${closing ? ' is-closing' : ''}`}>
       <header className="map-view-head">
         <div>
           <p className="map-view-eyebrow">{chapterLabel ?? 'Preview'}</p>
@@ -825,18 +853,26 @@ export default function MapView({ chapter = null }: MapViewProps = {}): React.Re
             {chapterLabel ? 'This chapter’s places' : 'The Bible world'}
           </h1>
         </div>
-        <div className="map-view-toggle" role="group" aria-label="Base layer">
-          {(['plain', 'relief'] as MapBaseView[]).map(option => (
-            <button
-              key={option}
-              type="button"
-              className={`map-view-toggle-btn${view === option ? ' is-active' : ''}`}
-              aria-pressed={view === option}
-              onClick={() => setView(option)}
-            >
-              {option === 'plain' ? 'Plain' : 'Relief'}
-            </button>
-          ))}
+        <div className="map-view-head-actions">
+          <div className="map-view-toggle" role="group" aria-label="Base layer">
+            {(['plain', 'relief'] as MapBaseView[]).map(option => (
+              <button
+                key={option}
+                type="button"
+                className={`map-view-toggle-btn${view === option ? ' is-active' : ''}`}
+                aria-pressed={view === option}
+                onClick={() => setView(option)}
+              >
+                {option === 'plain' ? 'Plain' : 'Relief'}
+              </button>
+            ))}
+          </div>
+          {/* The map's own way home — in the same register as a deep-dive
+              sheet's close control (same class, same ✕), since until now a
+              reader who opened the map from a verse had no way back at all. */}
+          <button type="button" className="word-close" onClick={requestClose} aria-label="Close">
+            ✕
+          </button>
         </div>
       </header>
 
