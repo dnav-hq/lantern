@@ -8566,6 +8566,14 @@ body.dark .study-note-act .is-yes {
   pointer-events: none;
 }
 
+/* Slice 4's chapter frame (docs/proposals/map-in-the-story.md §2.1): a place
+   outside the framed chapter stays on the map for orientation but recedes to
+   a faint dot — no label (selectLabels never sees it), and confidence
+   geometry keeps working underneath so a faded ring is still a ring. */
+.map-place.is-faded {
+  opacity: 0.3;
+}
+
 .map-labels {
   pointer-events: none;
 }

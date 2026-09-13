@@ -5,6 +5,7 @@ import {
   clampViewBox,
   fitViewBox,
   formatViewBox,
+  frameViewBox,
   interpolateViewBox,
   labelBudget,
   panViewBox,
@@ -193,6 +194,76 @@ describe('pinchViewBox', () => {
       { x: 400, y: 175 }
     ]
     close(pinchViewBox(FIT, RECT, same, apart, EXTENT, FIT), FIT)
+  })
+})
+
+describe('frameViewBox', () => {
+  it('frames a bounding box with padding, matching the viewport aspect', () => {
+    // Two points 200 units apart on each axis, at the RECT's 2:1 aspect.
+    const box = frameViewBox(
+      [
+        { x: 400, y: 200 },
+        { x: 600, y: 400 }
+      ],
+      RECT,
+      EXTENT,
+      FIT,
+      { padding: 0.5 }
+    )
+    // Raw bbox is 200×200; padded 300×300; then fitted to the 2:1 aspect,
+    // which means widening rather than cropping — nothing of the bbox is lost.
+    expect(box.w).toBeCloseTo(600)
+    expect(box.h).toBeCloseTo(300)
+    expect(box.x).toBeCloseTo(500 - 300)
+    expect(box.y).toBeCloseTo(300 - 150)
+    expect(box.w / box.h).toBeCloseTo(RECT.width / RECT.height)
+  })
+
+  it('degenerates gracefully for a single place, never asking for a zero-size box', () => {
+    const box = frameViewBox([{ x: 500, y: 250 }], RECT, EXTENT, FIT, { minSpan: 40 })
+    expect(box.w).toBeGreaterThan(0)
+    expect(box.h).toBeGreaterThan(0)
+    // Centred on the one point.
+    expect(box.x + box.w / 2).toBeCloseTo(500)
+    expect(box.y + box.h / 2).toBeCloseTo(250)
+  })
+
+  it('degenerates the same way for several coincident places', () => {
+    const one = frameViewBox([{ x: 500, y: 250 }], RECT, EXTENT, FIT)
+    const many = frameViewBox(
+      [
+        { x: 500, y: 250 },
+        { x: 500, y: 250 },
+        { x: 500, y: 250 }
+      ],
+      RECT,
+      EXTENT,
+      FIT
+    )
+    close(one, many)
+  })
+
+  it('falls back to the world fit when there is nothing to frame', () => {
+    close(frameViewBox([], RECT, EXTENT, FIT), FIT)
+  })
+
+  it('never zooms out past the world fit even for a huge, sparse chapter', () => {
+    const box = frameViewBox(
+      [
+        { x: -5000, y: -5000 },
+        { x: 5000, y: 5000 }
+      ],
+      RECT,
+      EXTENT,
+      FIT
+    )
+    close(box, FIT)
+  })
+
+  it('stays inside the extent rather than centring off the edge of the map', () => {
+    const box = frameViewBox([{ x: 0, y: 0 }], RECT, EXTENT, FIT, { minSpan: 40 })
+    expect(box.x).toBeGreaterThanOrEqual(EXTENT.x)
+    expect(box.y).toBeGreaterThanOrEqual(EXTENT.y)
   })
 })
 

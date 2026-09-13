@@ -198,6 +198,45 @@ export function interpolateViewBox(a: ViewBox, b: ViewBox, t: number): ViewBox {
 }
 
 /**
+ * The map door's chapter frame (docs/proposals/map-in-the-story.md §2.1): the
+ * smallest viewport-shaped box that contains a chapter's places with padding,
+ * clamped exactly like any other viewBox so it can never show less than the
+ * artwork or more than `fit` (the whole-world view stays reachable by
+ * zooming out from the frame, it is just not where the frame starts).
+ *
+ * Degenerate on purpose: a single place (or several that happen to coincide)
+ * has a zero-size bounding box, which would ask for an infinite zoom, so
+ * each axis is never narrower than `minSpan` artwork units.
+ */
+export function frameViewBox(
+  points: { x: number; y: number }[],
+  viewport: { width: number; height: number },
+  extent: ViewBox,
+  fit: ViewBox,
+  options: { padding?: number; minSpan?: number; maxZoom?: number } = {}
+): ViewBox {
+  if (points.length === 0) return fit
+  const padding = options.padding ?? 0.35
+  const minSpan = options.minSpan ?? 40
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const p of points) {
+    if (p.x < minX) minX = p.x
+    if (p.x > maxX) maxX = p.x
+    if (p.y < minY) minY = p.y
+    if (p.y > maxY) maxY = p.y
+  }
+  const w = Math.max(maxX - minX, minSpan) * (1 + padding)
+  const h = Math.max(maxY - minY, minSpan) * (1 + padding)
+  const cx = (minX + maxX) / 2
+  const cy = (minY + maxY) / 2
+  const bounds: ViewBox = { x: cx - w / 2, y: cy - h / 2, w, h }
+  return clampViewBox(fitViewBox(bounds, viewport), extent, fit, options.maxZoom ?? MAX_ZOOM)
+}
+
+/**
  * Zoom snapped to half-octaves (1, 1.41, 2, 2.83, 4 …). Label decluttering is
  * recomputed only when this changes, so a pan or a small pinch never re-lays
  * out 1,300 labels mid-gesture.

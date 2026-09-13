@@ -7,7 +7,7 @@ import BookDetailPage from './components/BookDetailPage'
 import JournalPage from './components/JournalPage'
 import ProfilePage from './components/ProfilePage'
 import SettingsModal from './components/SettingsModal'
-import MapView from './components/MapView'
+import MapView, { type MapChapterAddress } from './components/MapView'
 import OfflineIndicator from './components/OfflineIndicator'
 import InstallNudge from './components/InstallNudge'
 import { Passage } from './types'
@@ -60,14 +60,26 @@ function writeFocusReading(value: boolean): void {
   }
 }
 
-// ─── MAP ENTRY — slice 2 of docs/proposals/bible-map-v1.md ─────────────────
-// The map's first real entry is the doorways row's map door (VerseDoorways.tsx
-// → `onOpenMap`), a plain, unframed open: the chapter-framed glance is the map
-// door's own slice (deep-dive-doorways.md item 4). The URL form, `?map` or
-// `#map`, stays as the review shortcut: read once, at mount, and any nav tap
-// leaves it. When the framed door lands, `isMapReviewRequested` can go.
-function isMapReviewRequested(loc: { search: string; hash: string }): boolean {
-  return new URLSearchParams(loc.search).has('map') || loc.hash.replace('#', '') === 'map'
+// ─── MAP ENTRY ──────────────────────────────────────────────────────────────
+// The map's real entry is the doorways row's map door (VerseDoorways.tsx →
+// `onOpenMap`), which slice 4 (docs/proposals/map-in-the-story.md) now opens
+// FRAMED on the chapter being read — App.tsx already knows that chapter
+// (selectedChapter / the open passage), so no new prop is threaded through
+// VerseDoorways, BookDetailPage or ReadingMode for it (see the two onOpenMap
+// call sites below). The URL form stays as the review shortcut: bare `?map`
+// or `#map` opens unframed exactly as slice 2 shipped it, and `?map=1.12`
+// (book.chapter) opens framed on that chapter for testing without a live
+// verse selection. Read once, at mount; any nav tap leaves the map.
+function parseMapEntry(loc: {
+  search: string
+  hash: string
+}): MapChapterAddress | 'unframed' | null {
+  const params = new URLSearchParams(loc.search)
+  if (params.has('map')) {
+    const match = /^(\d+)\.(\d+)$/.exec(params.get('map') ?? '')
+    return match ? { book: Number(match[1]), chapter: Number(match[2]) } : 'unframed'
+  }
+  return loc.hash.replace('#', '') === 'map' ? 'unframed' : null
 }
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -250,7 +262,13 @@ export default function App({
     }
   })
   // Map surface. Opened by the doorways row (onOpenMap) or the ?map review URL.
-  const [mapOpen, setMapOpen] = useState(() => isMapReviewRequested(window.location))
+  // `mapChapter` is the chapter it opens framed on — null means the plain,
+  // unframed world view (the bare ?map/#map shortcut).
+  const initialMapEntry = useMemo(() => parseMapEntry(window.location), [])
+  const [mapOpen, setMapOpen] = useState(() => initialMapEntry !== null)
+  const [mapChapter, setMapChapter] = useState<MapChapterAddress | null>(() =>
+    initialMapEntry && initialMapEntry !== 'unframed' ? initialMapEntry : null
+  )
   // Mobile-only: the dedicated search surface (an overlay). Desktop search is
   // the always-present top-bar input, so this stays false there.
   const [searchOpen, setSearchOpen] = useState(false)
@@ -278,6 +296,7 @@ export default function App({
 
   const doNavigate = (dest: Destination): void => {
     setMapOpen(false) // Any nav tap leaves the map.
+    setMapChapter(null)
     setStudyOpen(false)
     setState(prev => ({
       ...prev,
