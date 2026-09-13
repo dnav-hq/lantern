@@ -71,6 +71,22 @@ export function zoomLevel(vb: ViewBox, fit: ViewBox): number {
   return fit.w / vb.w
 }
 
+/**
+ * Whether `vb` IS `target` (within a small floating-point tolerance), used to
+ * disable a "return to X" control once pressing it would be a no-op.
+ *
+ * Not the same question as "is `vb` zoomed IN on `target`" — `zoomLevel(vb,
+ * target) <= 1 + tolerance` looks similar but is true for the whole zoomed-OUT
+ * half too (a ratio below 1), which is exactly wrong for a control whose
+ * target can be zoomed out PAST (the map door's chapter frame, unlike the
+ * whole-world view slice 3 shipped this against, is smaller than the world
+ * fit, so panning/zooming out past it is a real, reachable state). Reached
+ * only within `tolerance` of ratio 1, in either direction.
+ */
+export function isAtViewBox(vb: ViewBox, target: ViewBox, tolerance = 0.001): boolean {
+  return Math.abs(zoomLevel(vb, target) - 1) <= tolerance
+}
+
 /** Artwork units per CSS pixel at this viewBox in this rect. */
 export function unitsPerPixel(vb: ViewBox, rect: ScreenRect): number {
   return rect.width > 0 ? vb.w / rect.width : 1
@@ -195,6 +211,45 @@ export function interpolateViewBox(a: ViewBox, b: ViewBox, t: number): ViewBox {
     w: a.w + (b.w - a.w) * u,
     h: a.h + (b.h - a.h) * u
   }
+}
+
+/**
+ * The map door's chapter frame (docs/proposals/map-in-the-story.md §2.1): the
+ * smallest viewport-shaped box that contains a chapter's places with padding,
+ * clamped exactly like any other viewBox so it can never show less than the
+ * artwork or more than `fit` (the whole-world view stays reachable by
+ * zooming out from the frame, it is just not where the frame starts).
+ *
+ * Degenerate on purpose: a single place (or several that happen to coincide)
+ * has a zero-size bounding box, which would ask for an infinite zoom, so
+ * each axis is never narrower than `minSpan` artwork units.
+ */
+export function frameViewBox(
+  points: { x: number; y: number }[],
+  viewport: { width: number; height: number },
+  extent: ViewBox,
+  fit: ViewBox,
+  options: { padding?: number; minSpan?: number; maxZoom?: number } = {}
+): ViewBox {
+  if (points.length === 0) return fit
+  const padding = options.padding ?? 0.35
+  const minSpan = options.minSpan ?? 40
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const p of points) {
+    if (p.x < minX) minX = p.x
+    if (p.x > maxX) maxX = p.x
+    if (p.y < minY) minY = p.y
+    if (p.y > maxY) maxY = p.y
+  }
+  const w = Math.max(maxX - minX, minSpan) * (1 + padding)
+  const h = Math.max(maxY - minY, minSpan) * (1 + padding)
+  const cx = (minX + maxX) / 2
+  const cy = (minY + maxY) / 2
+  const bounds: ViewBox = { x: cx - w / 2, y: cy - h / 2, w, h }
+  return clampViewBox(fitViewBox(bounds, viewport), extent, fit, options.maxZoom ?? MAX_ZOOM)
 }
 
 /**

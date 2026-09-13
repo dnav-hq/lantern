@@ -5,7 +5,9 @@ import {
   clampViewBox,
   fitViewBox,
   formatViewBox,
+  frameViewBox,
   interpolateViewBox,
+  isAtViewBox,
   labelBudget,
   panViewBox,
   pinchViewBox,
@@ -193,6 +195,103 @@ describe('pinchViewBox', () => {
       { x: 400, y: 175 }
     ]
     close(pinchViewBox(FIT, RECT, same, apart, EXTENT, FIT), FIT)
+  })
+})
+
+describe('frameViewBox', () => {
+  it('frames a bounding box with padding, matching the viewport aspect', () => {
+    // Two points 200 units apart on each axis, at the RECT's 2:1 aspect.
+    const box = frameViewBox(
+      [
+        { x: 400, y: 200 },
+        { x: 600, y: 400 }
+      ],
+      RECT,
+      EXTENT,
+      FIT,
+      { padding: 0.5 }
+    )
+    // Raw bbox is 200×200; padded 300×300; then fitted to the 2:1 aspect,
+    // which means widening rather than cropping — nothing of the bbox is lost.
+    expect(box.w).toBeCloseTo(600)
+    expect(box.h).toBeCloseTo(300)
+    expect(box.x).toBeCloseTo(500 - 300)
+    expect(box.y).toBeCloseTo(300 - 150)
+    expect(box.w / box.h).toBeCloseTo(RECT.width / RECT.height)
+  })
+
+  it('degenerates gracefully for a single place, never asking for a zero-size box', () => {
+    const box = frameViewBox([{ x: 500, y: 250 }], RECT, EXTENT, FIT, { minSpan: 40 })
+    expect(box.w).toBeGreaterThan(0)
+    expect(box.h).toBeGreaterThan(0)
+    // Centred on the one point.
+    expect(box.x + box.w / 2).toBeCloseTo(500)
+    expect(box.y + box.h / 2).toBeCloseTo(250)
+  })
+
+  it('degenerates the same way for several coincident places', () => {
+    const one = frameViewBox([{ x: 500, y: 250 }], RECT, EXTENT, FIT)
+    const many = frameViewBox(
+      [
+        { x: 500, y: 250 },
+        { x: 500, y: 250 },
+        { x: 500, y: 250 }
+      ],
+      RECT,
+      EXTENT,
+      FIT
+    )
+    close(one, many)
+  })
+
+  it('falls back to the world fit when there is nothing to frame', () => {
+    close(frameViewBox([], RECT, EXTENT, FIT), FIT)
+  })
+
+  it('never zooms out past the world fit even for a huge, sparse chapter', () => {
+    const box = frameViewBox(
+      [
+        { x: -5000, y: -5000 },
+        { x: 5000, y: 5000 }
+      ],
+      RECT,
+      EXTENT,
+      FIT
+    )
+    close(box, FIT)
+  })
+
+  it('stays inside the extent rather than centring off the edge of the map', () => {
+    const box = frameViewBox([{ x: 0, y: 0 }], RECT, EXTENT, FIT, { minSpan: 40 })
+    expect(box.x).toBeGreaterThanOrEqual(EXTENT.x)
+    expect(box.y).toBeGreaterThanOrEqual(EXTENT.y)
+  })
+})
+
+describe('isAtViewBox', () => {
+  // Regression: the map door's chapter frame (docs/proposals/
+  // map-in-the-story.md) made "home" smaller than the world for the first
+  // time, so zooming OUT past it is now a reachable state — the "Return to
+  // this chapter" control must re-enable there, not just when zoomed IN.
+  const home: ViewBox = { x: 400, y: 200, w: 200, h: 100 }
+
+  it('is true exactly at the target', () => {
+    expect(isAtViewBox(home, home)).toBe(true)
+  })
+
+  it('is false zoomed IN past the target', () => {
+    const zoomedIn: ViewBox = { x: 450, y: 225, w: 100, h: 50 }
+    expect(isAtViewBox(zoomedIn, home)).toBe(false)
+  })
+
+  it('is false zoomed OUT past the target — the bug a plain `ratio <= 1` test missed', () => {
+    const zoomedOut: ViewBox = { x: 300, y: 150, w: 400, h: 200 }
+    expect(isAtViewBox(zoomedOut, home)).toBe(false)
+  })
+
+  it('tolerates floating-point noise at the boundary', () => {
+    const almostHome: ViewBox = { ...home, w: home.w * 1.0000001 }
+    expect(isAtViewBox(almostHome, home)).toBe(true)
   })
 })
 

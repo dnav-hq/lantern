@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  chapterKey,
   loadMapArtwork,
   loadMapPlaces,
   type MapBaseArtwork,
@@ -17,7 +18,9 @@ import {
   clampViewBox,
   fitViewBox,
   formatViewBox,
+  frameViewBox,
   interpolateViewBox,
+  isAtViewBox,
   labelBudget,
   panViewBox,
   pinchViewBox,
@@ -31,6 +34,7 @@ import {
   type ScreenRect,
   type ViewBox
 } from '../utils/mapViewport'
+import { BIBLE_BOOKS } from '../utils/bibleBooks'
 import { usePrefersReducedMotion } from '../utils/useChapterNavigation'
 
 // The Bible map — slice 3 of docs/proposals/bible-map-v1.md: it MOVES.
@@ -61,12 +65,35 @@ import { usePrefersReducedMotion } from '../utils/useChapterNavigation'
 // unaffected — it already accounted for the true live viewBox, not the
 // committed one.
 //
-// Still NOT here, on purpose: how the map is reached from a verse (App.tsx's
-// temporary `?map` entry stands), tapping a verse count to go and read those
+// Slice 4 (docs/proposals/map-in-the-story.md) adds the chapter FRAME: given a
+// chapter address, the map opens already zoomed on that chapter's places
+// (`frameViewBox` in mapViewport.ts, fed the chapter index's markers) instead
+// of the whole world, everything outside the chapter is faded to a dot with
+// no label, and the home control returns to the frame rather than the world —
+// the world is still one zoom-out away, never removed. No journey line: that
+// is a separate, hand-authored data task (brief §2.2).
+//
+// Still NOT here, on purpose: tapping a verse count to go and read those
 // verses, clustering, and edge indicators for the ~65 out-of-frame places.
 
 /** The two base layers. `relief` fetches terrain.png; `plain` never touches it. */
 export type MapBaseView = 'plain' | 'relief'
+
+/** A chapter to open the map framed on (`?book=1&chapter=12` → Genesis 12). */
+export interface MapChapterAddress {
+  book: number
+  chapter: number
+}
+
+/**
+ * How many of a framed chapter's places get a label before the rest fold
+ * behind the existing zoom-in-to-reveal-more behaviour (docs/proposals/
+ * map-in-the-story.md §2.1 — Joshua 15's 164 places is the stress case this
+ * rule exists for). Fed to `labelBudget` as its base instead of the whole-map
+ * default of 40, so the SAME formula that grows the budget with zoom just
+ * starts from a tighter number when the map is framed.
+ */
+const FRAME_LABEL_BASE = 20
 
 /** Pixels a pointer may wander and still count as a tap, not a drag. */
 const TAP_SLOP = 8
@@ -91,6 +118,12 @@ interface MapCanvasProps {
   /** Index (into the bundle's `p`) of the place whose card is open. */
   selected?: number | null
   onSelect?: (index: number | null) => void
+  /**
+   * Indices (into the bundle's `p`) of the places a chapter names, from the
+   * bundle's own `ch` index — the map door's frame. Omitted or empty: the map
+   * behaves exactly as before slice 4, opening on the whole world.
+   */
+  chapterIndices?: number[] | null
 }
 
 /**
@@ -103,17 +136,47 @@ export function MapCanvas({
   places,
   view,
   selected = null,
-  onSelect
+  onSelect,
+  chapterIndices = null
 }: MapCanvasProps): React.ReactElement {
   const extent = useMemo(() => toViewBox(artwork.viewBox), [artwork])
   const model = useMemo(() => buildViewModel(places), [places])
   const reducedMotion = usePrefersReducedMotion()
 
+  // The chapter's own markers, full opacity and eligible for a label; every
+  // other marker (below) is faded to a dot and never labelled. Null — not the
+  // whole-map fallback below — is what tells `home` there is nothing to frame.
+  const chapterSet = useMemo(
+    () => (chapterIndices && chapterIndices.length > 0 ? new Set(chapterIndices) : null),
+    [chapterIndices]
+  )
+  const chapterMarkers = useMemo(
+    () => (chapterSet ? model.markers.filter(m => chapterSet.has(m.index)) : null),
+    [model, chapterSet]
+  )
+
   const svgRef = useRef<SVGSVGElement>(null)
   // The SVG's measured size. Null until mounted; the first render fits the
   // extent to itself, which is what the static markup tests see.
   const [size, setSize] = useState<{ width: number; height: number } | null>(null)
+  // `fit` is the WORLD view — the one thing a chapter frame must never be
+  // clamped tighter than, so zooming out from the frame always reaches it.
   const fit = useMemo(() => (size ? fitViewBox(extent, size) : extent), [extent, size])
+  // `home` is where the map opens and what the home control returns to: the
+  // chapter frame when one was given and has geocoded places, the world
+  // otherwise (slice 4's "with no chapter it behaves exactly as today").
+  const home = useMemo(
+    () =>
+      size && chapterMarkers && chapterMarkers.length > 0
+        ? frameViewBox(
+            chapterMarkers.map(m => m.point),
+            size,
+            extent,
+            fit
+          )
+        : fit,
+    [size, chapterMarkers, extent, fit]
+  )
 
   // The committed viewBox — what React renders (and what the `viewBox`
   // attribute is set to). The ref is the live one that gestures move; they
@@ -174,19 +237,19 @@ export function MapCanvas({
     return () => ro.disconnect()
   }, [])
 
-  const fitSeen = useRef<ViewBox | null>(null)
+  const homeSeen = useRef<ViewBox | null>(null)
   useEffect(() => {
     if (!size) return
-    const prevFit = fitSeen.current
-    fitSeen.current = fit
+    const prevHome = homeSeen.current
+    homeSeen.current = home
     let next: ViewBox
-    if (!prevFit) {
-      next = fit
+    if (!prevHome) {
+      next = home
     } else {
       const live = liveRef.current
-      const zoom = zoomLevel(live, prevFit)
-      const w = fit.w / zoom
-      const h = fit.h / zoom
+      const zoom = zoomLevel(live, prevHome)
+      const w = home.w / zoom
+      const h = home.h / zoom
       next = clampViewBox(
         { x: live.x + live.w / 2 - w / 2, y: live.y + live.h / 2 - h / 2, w, h },
         extent,
@@ -196,7 +259,7 @@ export function MapCanvas({
     baseRef.current = next
     applyToDom(next)
     setViewBox(next)
-  }, [fit, size, extent, applyToDom])
+  }, [home, fit, size, extent, applyToDom])
 
   // Keep the DOM in step with the committed state whenever React renders it:
   // the `viewBox` attribute comes from state via JSX below, but `--map-k` and
@@ -386,33 +449,53 @@ export function MapCanvas({
     }
   }, [applyToDom, cancelAnimation, commit, extent, setLive])
 
-  /* ── Labels: decluttered in screen space at the committed zoom ── */
-  const zoom = zoomLevel(viewBox, fit)
-  const zoomStep = quantizeZoom(zoom)
+  /* ── Labels: decluttered in screen space at the committed zoom ──
+     Framed on a chapter, only that chapter's own places are candidates — the
+     rest are faded dots and never earn a label — and the budget starts from
+     FRAME_LABEL_BASE rather than the whole-map default, which is what caps a
+     dense chapter (Joshua 15's 164 places) at ~20 labels before the SAME
+     zoom-in-reveals-more formula takes back over (labelBudget below). */
+  const homeZoom = zoomLevel(viewBox, home)
+  const zoomStep = quantizeZoom(homeZoom)
   const width = size?.width ?? extent.w
+  const labelCandidates = chapterMarkers ?? model.markers
   const labels = useMemo(() => {
     // Units per pixel at the quantised zoom step, so a pan never relays out.
-    const k = fit.w / zoomStep / width
-    return selectLabels(model.markers, {
+    const k = home.w / zoomStep / width
+    return selectLabels(labelCandidates, {
       charWidth: LABEL_METRICS.charWidth * k,
       lineHeight: LABEL_METRICS.lineHeight * k,
       offsetX: LABEL_METRICS.offsetX * k,
-      limit: labelBudget(zoomStep)
+      limit: labelBudget(zoomStep, chapterMarkers ? FRAME_LABEL_BASE : undefined)
     })
-  }, [model, fit.w, zoomStep, width])
+  }, [labelCandidates, chapterMarkers, home.w, zoomStep, width])
 
   const [, , vbWidth, vbHeight] = artwork.viewBox
   const terrain = artwork.terrain
-  const atHome = zoom <= 1.001
+  // "Home" is the frame when one was given, the world otherwise; the world
+  // EDGE (nothing left to zoom out to) is judged against `fit`, always the
+  // world, so a framed map never disables the reader's way back out to it.
+  // `isAtViewBox` (not a plain `zoomLevel(...) <= 1.001` test) matters once a
+  // frame makes home smaller than the world: zooming OUT past the frame drives
+  // that ratio BELOW 1, and a `<=` test reads that as "still at home" and
+  // never re-enables the button — exactly backwards, since zoomed out past
+  // the frame is the one moment the home control must work.
+  const atHome = isAtViewBox(viewBox, home)
+  const atWorldEdge = isAtViewBox(viewBox, fit)
+  const framed = chapterMarkers !== null && chapterMarkers.length > 0
 
   return (
     <div className="map-stage">
       <svg
         ref={svgRef}
-        className={`map-svg${atHome ? ' is-home' : ''}`}
+        className={`map-svg${atWorldEdge ? ' is-home' : ''}`}
         viewBox={formatViewBox(viewBox)}
         role="img"
-        aria-label={`The Bible world: ${model.markers.length} places from Genesis to Revelation, drawn on modern coastlines. Drag to pan, pinch or scroll to zoom, tap a place for details.`}
+        aria-label={
+          framed
+            ? `${chapterMarkers!.length} places in this chapter, framed on modern coastlines; the rest of the Bible world is faded out but still reachable by zooming out. Drag to pan, pinch or scroll to zoom, tap a place for details.`
+            : `The Bible world: ${model.markers.length} places from Genesis to Revelation, drawn on modern coastlines. Drag to pan, pinch or scroll to zoom, tap a place for details.`
+        }
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={e => endPointer(e, false)}
@@ -455,7 +538,12 @@ export function MapCanvas({
 
           <g className="map-markers">
             {model.markers.map(marker => (
-              <PlaceGlyph key={marker.index} marker={marker} selected={marker.index === selected} />
+              <PlaceGlyph
+                key={marker.index}
+                marker={marker}
+                selected={marker.index === selected}
+                faded={chapterSet !== null && !chapterSet.has(marker.index)}
+              />
             ))}
           </g>
 
@@ -486,7 +574,7 @@ export function MapCanvas({
           type="button"
           className="map-zoom-btn"
           aria-label="Zoom out"
-          disabled={atHome}
+          disabled={atWorldEdge}
           onClick={() => zoomBy(1 / ZOOM_STEP)}
         >
           −
@@ -494,9 +582,9 @@ export function MapCanvas({
         <button
           type="button"
           className="map-zoom-btn map-zoom-home"
-          aria-label="Show the whole map"
+          aria-label={framed ? 'Return to this chapter' : 'Show the whole map'}
           disabled={atHome}
-          onClick={() => animateTo(fit)}
+          onClick={() => animateTo(home)}
         >
           ⌂
         </button>
@@ -524,15 +612,18 @@ export function MapCanvas({
  */
 const PlaceGlyph = React.memo(function PlaceGlyph({
   marker,
-  selected
+  selected,
+  faded = false
 }: {
   marker: PlaceMarker
   selected: boolean
+  /** Outside the chapter frame: still drawn, for orientation, but de-emphasised. */
+  faded?: boolean
 }): React.ReactElement {
   const { point, band, contested, alternatives } = marker
   return (
     <g
-      className={`map-place is-${band}${contested ? ' is-contested' : ''}${selected ? ' is-selected' : ''}`}
+      className={`map-place is-${band}${contested ? ' is-contested' : ''}${selected ? ' is-selected' : ''}${faded ? ' is-faded' : ''}`}
     >
       <title>{describeMarker(marker)}</title>
       {alternatives.map((alt, i) => (
@@ -676,11 +767,20 @@ function PlaceCard({
   )
 }
 
+interface MapViewProps {
+  /**
+   * Frame the map on this chapter's geocoded places (docs/proposals/
+   * map-in-the-story.md) instead of opening on the whole world. Omit for the
+   * plain, unframed open slice 3 shipped with.
+   */
+  chapter?: MapChapterAddress | null
+}
+
 /**
  * The map surface: loads both bundles lazily on mount (nothing fetches them at
  * app start — see `loadMapPlaces`), then draws.
  */
-export default function MapView(): React.ReactElement {
+export default function MapView({ chapter = null }: MapViewProps = {}): React.ReactElement {
   const [artwork, setArtwork] = useState<MapBaseArtwork | null>(null)
   const [places, setPlaces] = useState<MapPlaceBundle | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -707,12 +807,23 @@ export default function MapView(): React.ReactElement {
   const selectedMarker =
     selected === null ? null : (model?.markers.find(m => m.index === selected) ?? null)
 
+  // The chapter index lookup slice 4 adds no new data for (docs/proposals/
+  // map-in-the-story.md §2.1): `places.ch` is already shipped, keyed BBCCC.
+  const chapterIndices = useMemo(
+    () => (chapter && places ? (places.ch[chapterKey(chapter.book, chapter.chapter)] ?? []) : null),
+    [chapter, places]
+  )
+  const chapterBook = chapter ? BIBLE_BOOKS.find(b => b.number === chapter.book) : undefined
+  const chapterLabel = chapterBook ? `${chapterBook.name} ${chapter!.chapter}` : null
+
   return (
     <div className="map-view">
       <header className="map-view-head">
         <div>
-          <p className="map-view-eyebrow">Preview</p>
-          <h1 className="map-view-title">The Bible world</h1>
+          <p className="map-view-eyebrow">{chapterLabel ?? 'Preview'}</p>
+          <h1 className="map-view-title">
+            {chapterLabel ? 'This chapter’s places' : 'The Bible world'}
+          </h1>
         </div>
         <div className="map-view-toggle" role="group" aria-label="Base layer">
           {(['plain', 'relief'] as MapBaseView[]).map(option => (
@@ -744,6 +855,7 @@ export default function MapView(): React.ReactElement {
               view={view}
               selected={selected}
               onSelect={setSelected}
+              chapterIndices={chapterIndices}
             />
             {selectedMarker && (
               <PlaceCard

@@ -370,6 +370,32 @@ belongs to and why that arc comes when it does.
   confidence for a 3-5-place frame, sets an atlas-inspired design direction,
   and records a measured 60fps drag profile at 390px. Needs a decision from
   Dennis before it starts.
+  **Slice 4 (the chapter frame) SHIPPED (2026-09-13), scoped to Genesis 12 as
+  the proof case, per the decisions the task carried.** `MapView` now accepts
+  a `chapter` address; opened with one (the doorways row's map door, already
+  wired to `onOpenMap` since the entry point above, now passes the reader's
+  current book/chapter through App.tsx instead of opening a plain view — the
+  `?map=1.12` URL form still works as a review shortcut for testing without a
+  live selection), it opens already framed on that chapter's geocoded places
+  via `frameViewBox` (`src/utils/mapViewport.ts`, unit-tested including the
+  degenerate single-place case), padded and fitted to the viewport; every
+  other place fades to a faint, unlabelled dot (`.map-place.is-faded`) rather
+  than disappearing, so the coastline still orients the reader. With no
+  chapter, the map behaves exactly as before (unframed, whole world). Dense
+  chapters (Joshua 15's 164 places is the stress case) label only the ~20
+  most-referenced in-frame places (`FRAME_LABEL_BASE` in `MapView.tsx`,
+  fed into the same zoom-grows-the-budget formula slice 3 already had) and
+  fold the rest behind the existing zoom-reveals-more behaviour. Confidence
+  reads honestly at this scale for free: the card and the legend's geometry
+  (solid/hollow/dashed, rival hairlines) are unchanged by framing, so a
+  disputed place among eight reads as disputed exactly as it always has among
+  1,335 — no new encoding was needed. A home control returns to the chapter
+  frame (not the world) once framed; panning and zooming out to the whole
+  world still work from there. **Deliberately NOT in this slice** (per the
+  brief's own plan and the task's scope): any journey line, including
+  Numbers 33's free case — a drawn route is a separate, hand-authored data
+  task (brief §2.2) — and the atlas-style visual pass (brief §4), which is a
+  design task independent of the door mechanism.
   **Gestures were made smooth (2026-09-12).** The cause was writing the
   `viewBox` ATTRIBUTE to the DOM every frame during a drag/pinch: that forces
   the browser to recompute layout for the whole subtree underneath it (1,335
