@@ -67,33 +67,63 @@ describe('classifyConnection', () => {
     )
   })
 
-  // §4's whole reason for the four-word bar: a stock formula is not a quotation,
-  // and calling one a quote lights words in a verse the source never quoted.
-  it('does not let a stock formula score as a quotation', () => {
-    const a = 'And it came to pass in those days that a decree went out.'
-    const b = 'And it came to pass that the famine was severe in the land.'
-    expect(classifyConnection(a, b).kind).toBe('echo')
+  // The whole reason the bar exists: a stock formula is not a quotation, and
+  // calling one a quote lights words in a verse the source never quoted. These
+  // four are the false positives the 2026-09-13 measurement pass found at the
+  // brief's provisional four-word threshold — they are the reason it is five.
+  it.each([
+    [
+      'and it came to pass',
+      'And it came to pass in those days that a decree went out.',
+      'And it came to pass that the famine was severe in the land.'
+    ],
+    [
+      'do not be afraid (Genesis 15:1 / Isaiah 41:10)',
+      'Do not be afraid, Abram. I am your shield, your very great reward.',
+      'Do not fear, for I am with you; do not be afraid, for I am your God.'
+    ],
+    [
+      'what we do not (Hebrews 11:1 / Romans 8:24)',
+      'Now faith is the assurance of what we hope for and the certainty of what we do not see.',
+      'For in this hope we were saved; but hope that is seen is no hope at all. Who hopes for ' +
+        'what he can already see? But if we hope for what we do not yet see, we wait for it ' +
+        'patiently.'
+    ],
+    [
+      'are those who hear (Revelation 1:3 / Luke 11:28)',
+      'Blessed is the one who reads the words of this prophecy, and blessed are those who hear ' +
+        'and obey what is written in it.',
+      'But He replied, “Blessed rather are those who hear the word of God and obey it.”'
+    ]
+  ])('does not let a stock formula score as a quotation: %s', (_name, source, target) => {
+    expect(classifyConnection(source, target).kind).toBe('echo')
   })
 
   it('requires the run to be CONTIGUOUS, not merely shared', () => {
     // Every non-trivial word of the source stands in the target, scattered.
-    const source = 'bread wine oil salt'
-    const target = 'bread with wine beside oil under salt'
+    const source = 'bread wine oil salt honey'
+    const target = 'bread with wine beside oil under salt over honey'
     expect(classifyConnection(source, target).kind).toBe('echo')
   })
 
   it('needs QUOTE_MIN_WORDS non-trivial words, counting stop words for none', () => {
-    const source = 'alpha beta gamma delta'
-    expect(classifyConnection(source, 'alpha beta gamma delta').kind).toBe('quote')
-    // Four words, but one of them is a stop word — three non-trivial, so an echo.
-    expect(classifyConnection('alpha and beta gamma', 'alpha and beta gamma').kind).toBe('echo')
-    expect(QUOTE_MIN_WORDS).toBe(4)
+    expect(QUOTE_MIN_WORDS).toBe(5)
+    expect(
+      classifyConnection('alpha beta gamma delta epsilon', 'alpha beta gamma delta epsilon').kind
+    ).toBe('quote')
+    // One word short.
+    expect(classifyConnection('alpha beta gamma delta', 'alpha beta gamma delta').kind).toBe('echo')
+    // Five words, but one of them is a stop word — four non-trivial, so an echo.
+    expect(
+      classifyConnection('alpha and beta gamma delta', 'alpha and beta gamma delta').kind
+    ).toBe('echo')
   })
 
   it('ignores case and punctuation on both sides', () => {
-    expect(classifyConnection('Alpha, beta; gamma — delta!', 'alpha beta gamma delta').kind).toBe(
-      'quote'
-    )
+    expect(
+      classifyConnection('Alpha, beta; gamma — delta: epsilon!', 'alpha beta gamma delta epsilon')
+        .kind
+    ).toBe('quote')
   })
 })
 

@@ -13,8 +13,10 @@
  *     translation is on screen, because the obvious dataset for this
  *     (spookylukey/bible-quotation-database) carries no licence at all and is
  *     therefore out of the build entirely (§3.2). A row is a `quote` only when
- *     a contiguous run of four or more non-trivial words stands in both
- *     verses; everything else is an `echo`.
+ *     a contiguous run of five or more non-trivial words stands in both
+ *     verses; everything else is an `echo`. (The brief proposes four and
+ *     forbids shipping that number unmeasured; QUOTE_MIN_WORDS below carries
+ *     the measurement and why it landed on five.)
  *   - THE CACHE KEY (§7). Cross-references are addressed by (book, chapter)
  *     alone — the graph does not vary by translation — so one cached record
  *     serves a BSB, KJV, NET or Tamil reader alike.
@@ -29,8 +31,32 @@ import type { VerseConnection } from '../bible/provider'
 /** §5's measured threshold: the top connection's score. ~5.5% of verses. */
 export const SALIENCE_MIN_SCORE = 30
 
-/** §4: four is long enough that "and it came to pass" cannot trip it. */
-export const QUOTE_MIN_WORDS = 4
+/**
+ * FIVE, not the brief's provisional four — and this is the measurement pass §4
+ * explicitly refused to ship without ("Do not ship the exact threshold above
+ * without at least one such pass").
+ *
+ * The pass, run 2026-09-13 against live BSB text and live `open-cross-ref`
+ * data: every reference scoring >= 30 in twelve chapters drawn across narrative,
+ * law, psalm, prophet, gospel and epistle (Genesis 12/15/22, Deuteronomy 6,
+ * Psalm 110, Isaiah 53, Matthew 4, Acts 3, Romans 4, Galatians 3, Hebrews 11,
+ * Revelation 1) — 191 rows, hand-labelled.
+ *
+ *   at four words: 54 quotes, of which FOUR were false — runs made entirely of
+ *     stock words, exactly the failure "and it came to pass" was meant to stand
+ *     for. Hebrews 11:1 -> Romans 8:24 on "what we do not"; Revelation 1:3 ->
+ *     Luke 11:28 on "are those who hear"; Genesis 15:1 -> Isaiah 41:10 and ->
+ *     Genesis 26:24, both on "do not be afraid".
+ *   at five words: 44 quotes, ZERO false.
+ *   at six words: 29 quotes, zero false, but Romans 4:3 -> Genesis 15:6 — the
+ *     single most famous quotation in the dataset — becomes an echo. Too strict.
+ *
+ * Five costs four genuine quotations (they read as echoes: Romans 4:9,
+ * Galatians 3:13, Revelation 1:8 -> 22:13, Genesis 22:18), which is the right
+ * trade: §9's bar is asymmetric on purpose. A missed quote is a row that reads
+ * modestly; a false one lights words as a quotation that nobody quoted.
+ */
+export const QUOTE_MIN_WORDS = 5
 
 /**
  * §4's list, verbatim. Small on purpose — it exists to stop stock formulae

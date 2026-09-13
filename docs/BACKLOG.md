@@ -499,9 +499,15 @@ belongs to and why that arc comes when it does.
   the deep dive (`studyMode = studyOpen && !isMobile`) is desktop-only
   today — ANSWERED for this door: the entrance is a line under a chosen verse,
   which mobile already has, so the connections door needed no new surface. The
-  salience threshold (30) and the quote/echo word count (4) shipped as the
-  brief recommends and still want Dennis's eye on real chapters; a 30-row
-  hand-labelled check at the build found zero false quotes.
+  salience threshold shipped at the brief's recommended 30 and still wants
+  Dennis's eye on real chapters. The quote/echo word count did NOT: the brief's
+  provisional four forbids itself from shipping unmeasured, and the measurement
+  pass it demanded (191 rows scoring ≥ 30 across twelve chapters, hand-labelled
+  2026-09-13) found FOUR false quotes at four words — all of them stock phrases
+  like "do not be afraid" — and zero at five. So it ships at five; six was tried
+  and is too strict (it turns Romans 4:3 → Genesis 15:6 into an echo). The cost
+  is four genuine quotations reading as echoes, which is the asymmetry §9 asks
+  for. Worth Dennis's eye.
 
 - **Guest cleanup after the guest-is-the-App change (2026-08-27) — the two
   mechanical loose ends are DONE (2026-08-28, see Done); one optional item
