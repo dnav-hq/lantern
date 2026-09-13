@@ -143,6 +143,18 @@ belongs to and why that arc comes when it does.
   deep-dive layers and group sharing, and unlike them it depends on no
   translation licence.
 
+- **Word-level highlights — measured, not yet built (2026-09-12).**
+  `docs/proposals/word-level-highlights.md`. Verse anchor + exact quoted text,
+  not a word offset — a translation-switch miss falls back to today's
+  whole-verse tint, so translation independence is not at risk. Measured
+  against the self-hosted BSB/KJV/NET bundles (seed 42, n=200): a BSB
+  word-span survives verbatim into KJV 34.0% of the time, into NET 47.0%.
+  `highlighted_text` as a new nullable column on `notes`, not a `content`
+  encoding — keeps `isHighlight`/`noteProse` untouched. Selection gesture
+  proposed for mobile only (native long-press text selection scoped to a
+  verse); desktop, editing, and multi-verse spans are explicitly out of scope
+  for a first slice.
+
 - **User-owned categories, slice 2: ADD AND REMOVE.**
   `docs/proposals/custom-categories.md`. Rename shipped because the KEY never
   moves; adding a key does. **Slice A (open the seams) is BUILT 2026-09-01** and
