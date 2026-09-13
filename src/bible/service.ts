@@ -1,8 +1,14 @@
 import type { BiblePassage } from '../types'
-import type { BibleProvider, TranslationId } from './provider'
+import type {
+  BibleProvider,
+  ChapterConnections,
+  ConnectionsProvider,
+  TranslationId
+} from './provider'
 import { findBookByAlias, normalizeReference } from '../utils/bibleBooks'
 import { HelloaoBibleProvider } from './helloao'
-import { CachedBibleProvider } from './cache'
+import { CachedBibleProvider, CachedConnectionsProvider } from './cache'
+import { HelloaoConnectionsProvider } from './connections'
 import { FallbackBibleProvider } from './fallback'
 import { FixtureBibleProvider } from './fixture'
 import { SelfHostedBibleProvider } from './self-hosted'
@@ -106,6 +112,20 @@ const providers: Record<TranslationId, BibleProvider> = {
   NET: netProvider,
   IRV: irvProvider,
   TCV: tcvProvider
+}
+
+// Cross-references, one instance for the whole app and every translation
+// (they do not vary by translation — see cache.ts). Nothing reads this until a
+// door would show; see src/utils/connectionsLoader.ts.
+const connectionsProvider: ConnectionsProvider = new CachedConnectionsProvider(
+  new HelloaoConnectionsProvider()
+)
+
+export function getChapterConnections(
+  bookNumber: number,
+  chapter: number
+): Promise<ChapterConnections> {
+  return connectionsProvider.getConnections(bookNumber, chapter)
 }
 
 interface ParsedReference {

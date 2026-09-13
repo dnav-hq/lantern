@@ -1,4 +1,10 @@
-import type { BibleProvider, BibleVerseLine } from './provider'
+import type {
+  BibleProvider,
+  BibleVerseLine,
+  ChapterConnections,
+  ConnectionsProvider
+} from './provider'
+import { connectionsCacheKey } from '../utils/connections'
 
 // Wraps any BibleProvider with a cache-forever IndexedDB layer, keyed by
 // translation/book/chapter. Scripture chapters are immutable text, so once a
@@ -44,13 +50,15 @@ function openDb(): Promise<IDBDatabase> {
   return dbPromise
 }
 
-async function readCached(key: string): Promise<CachedChapter | null> {
+// Any record in the store: a chapter of scripture, or (below) a chapter's
+// cross-references. They share the one object store, told apart by key prefix.
+async function readRecord<T extends { key: string }>(key: string): Promise<T | null> {
   try {
     const db = await openDb()
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readonly')
       const req = tx.objectStore(STORE_NAME).get(key)
-      req.onsuccess = () => resolve((req.result as CachedChapter | undefined) ?? null)
+      req.onsuccess = () => resolve((req.result as T | undefined) ?? null)
       req.onerror = () => reject(req.error)
     })
   } catch {
@@ -59,12 +67,12 @@ async function readCached(key: string): Promise<CachedChapter | null> {
   }
 }
 
-async function writeCached(key: string, verses: BibleVerseLine[]): Promise<void> {
+async function writeRecord<T extends { key: string }>(record: T): Promise<void> {
   try {
     const db = await openDb()
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite')
-      tx.objectStore(STORE_NAME).put({ key, verses, schema: SCHEMA } satisfies CachedChapter)
+      tx.objectStore(STORE_NAME).put(record)
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)
     })
@@ -72,6 +80,11 @@ async function writeCached(key: string, verses: BibleVerseLine[]): Promise<void>
     // Best-effort cache; a write failure just means we re-fetch next time.
   }
 }
+
+const readCached = (key: string): Promise<CachedChapter | null> => readRecord<CachedChapter>(key)
+
+const writeCached = (key: string, verses: BibleVerseLine[]): Promise<void> =>
+  writeRecord({ key, verses, schema: SCHEMA } satisfies CachedChapter)
 
 // Keys currently being refreshed, so a reader who flicks back and forth across
 // a stale chapter starts one background fetch rather than one per read.
@@ -115,5 +128,29 @@ export class CachedBibleProvider implements BibleProvider {
     } finally {
       refreshing.delete(key)
     }
+  }
+}
+
+// A chapter's cross-references, cached forever in the same store. The key
+// carries NO translation (docs/proposals/connections-door.md §7): the data is
+// addressed by book and chapter alone, so one record serves a reader in any
+// translation. Offline, a chapter already visited keeps its doors; one never
+// visited throws through to the loader, which shows nothing rather than an
+// error — the same degradation footnotes chose.
+interface CachedConnections {
+  key: string
+  connections: ChapterConnections
+}
+
+export class CachedConnectionsProvider implements ConnectionsProvider {
+  constructor(private readonly inner: ConnectionsProvider) {}
+
+  async getConnections(bookNumber: number, chapter: number): Promise<ChapterConnections> {
+    const key = connectionsCacheKey(bookNumber, chapter)
+    const cached = await readRecord<CachedConnections>(key)
+    if (cached) return cached.connections
+    const connections = await this.inner.getConnections(bookNumber, chapter)
+    void writeRecord({ key, connections } satisfies CachedConnections)
+    return connections
   }
 }

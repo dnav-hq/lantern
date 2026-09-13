@@ -450,8 +450,34 @@ belongs to and why that arc comes when it does.
   (2026-09-12).
 
 - **Connections door (deep-dive rung — "where Scripture echoes this verse")
-  — design + data brief, nothing built (2026-09-12).**
-  `docs/proposals/connections-door.md`, measured against helloao's
+  — SLICE 1 BUILT (2026-09-13), on a phone.** What shipped: a
+  `ConnectionsProvider` seam (`src/bible/connections.ts` over helloao's
+  `open-cross-ref`, cached per chapter in the existing IndexedDB store under a
+  translation-free key, `src/bible/cache.ts`); the pure logic in
+  `src/utils/connections.ts` (salience: top score ≥ 30; quote vs echo: a
+  contiguous run of ≥ 4 non-trivial words shared by both verses' own text in
+  the translation on screen, the brief's stop-word list exactly); the lazy
+  loader `src/utils/connectionsLoader.ts` (nothing fetched until a verse is
+  selected; a verse below the line costs one chapter fetch and no text) with
+  `connectionsPresence()` as the doorways row's seam; `DeepDiveSheet.tsx`
+  extracted from the word door and shared; `ConnectionsDoor.tsx` — the glance
+  (held verse, the top row in full with its reason, two one-line rows, one
+  "N more" fold, OpenBible.info CC BY 4.0 line), and jump-and-come-back at
+  depth ONE (a row opens its chapter stacked inside the same sheet with a
+  tappable "Romans 4:3 quotes Genesis 15:6" breadcrumb; the stacked passage
+  offers no door onward). The quotation database is not used in any form.
+  Hand-check: 40 live rows ≥ 30 across Genesis 12/15, Deuteronomy 32, Psalm
+  22, Isaiah 53 — 17 quotes, every lit run genuinely in both texts, zero
+  fabricated; note that stock formulae of four content words ("do not be
+  afraid", Genesis 15:1 → Isaiah 41:10) do qualify as quotes under the
+  brief's rule as written — a threshold observation for Dennis's pass, not
+  changed here. NOT in this slice, each its own later item: the reverse
+  ("who quotes this") direction (§2.3, a corpus inversion); any UI for the
+  score (never shown, by design); desktop polish (the sheet is the word
+  door's centred panel, unstyled further); depth beyond one; bundling
+  connections into the offline fallback (§7). The entrance is a temporary
+  second line beside the word door's, to be replaced by the doorways row.
+  Brief: `docs/proposals/connections-door.md`, measured against helloao's
   `open-cross-ref` dataset (OpenBible's Bible Cross References, CC BY 4.0,
   344,799 references total) with a seeded 200-verse sample:
   `scripts/measure-cross-refs.mjs`. 93.5% of sampled verses carry at least

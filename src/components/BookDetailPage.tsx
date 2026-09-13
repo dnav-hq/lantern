@@ -42,6 +42,7 @@ import {
 } from '../utils/useChapterNavigation'
 import FootnoteVerseText from './FootnoteDoor'
 import WordDoorEntrance from './WordDoor'
+import ConnectionsDoorEntrance from './ConnectionsDoor'
 import { markInstallEngagement } from '../utils/installNudge'
 import { formatRelativeTime } from '../utils/relativeTime'
 
@@ -1728,6 +1729,24 @@ function ChapterView({
                       verse={v.verse}
                       reference={`${bookName} ${chapter}:${v.verse}`}
                       verseText={v.text}
+                    />
+                  )}
+                {/* The connections door's entrance (temporary; the doorways
+                    row replaces both lines). Translation-independent, so it
+                    is not gated on the BSB — and it renders nothing at all
+                    unless the verse clears the salience line. */}
+                {selRange !== null &&
+                  selRange[0] === v.verse &&
+                  selRange[1] === v.verse &&
+                  composerVerse === null &&
+                  !showInline && (
+                    <ConnectionsDoorEntrance
+                      book={bookNumber}
+                      chapter={chapter}
+                      verse={v.verse}
+                      reference={`${bookName} ${chapter}:${v.verse}`}
+                      verseText={v.text}
+                      translation={servedTranslation}
                     />
                   )}
 
