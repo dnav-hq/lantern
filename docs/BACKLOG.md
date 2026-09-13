@@ -322,6 +322,14 @@ belongs to and why that arc comes when it does.
   `connectionsPresence()` in `src/utils/connectionsLoader.ts`, a stub returning
   null until the connections door merges; its tap (`onOpenConnections`) is
   unwired for the same reason.
+  **Motion pass, 2026-09-13:** the doorways row, the shared `DeepDiveSheet`
+  (open/close, the fold reveal), the connections door's stacked passage
+  in/out, and the map's open now all move on the app's existing sheet/bar
+  timing (`--dur-3`/`--ease-out`, reduce-motion instant fallback throughout).
+  The map also gained its missing way back (a close control matching the
+  sheets') and lost the scroll trap that came with it — `.map-view` never
+  opted into `.main-area`'s own-your-scroll contract the way
+  `.journal-page`/`.profile-page` already do.
 
 - **Bible map (deep-dive rung 3) — slice 3, INTERACTION, is built (2026-09-12);
   what is left is the entry point and verse wiring.** Brief in
