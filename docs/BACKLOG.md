@@ -526,6 +526,18 @@ belongs to and why that arc comes when it does.
   confirmation pass with Dennis the same way the footnote classifier got
   two blind audits before shipping.
 
+- **The setting line under a cross-reference — one short objective sentence
+  saying whose passage it is and where or when, so three references can be told
+  apart.** BRIEF 2026-09-13: `docs/proposals/setting-line.md`, measured over the
+  whole corpus by `scripts/measure-setting-line.mjs`. Recommends slice 1 = the
+  BSB's own section heading, framed as a heading and gated to verses within 10
+  of it (83.3% of the 39,209 reachable connection rows, 9,152 lines, ~51 KB
+  gzipped, public domain). Theographic (CC BY-SA 4.0) and STEPBible TIPNR (CC
+  BY) are licensed and measured but produce vacuous lines — 27% say only "the
+  text names God" — so no metadata sentence and no model in slice 1. Two
+  questions for Dennis in §8: the 10% imprecision rate of headings, and whether
+  to show a BSB heading to a KJV/NET/Tamil reader.
+
 - **Guest cleanup after the guest-is-the-App change (2026-08-27) — the two
   mechanical loose ends are DONE (2026-08-28, see Done); one optional item
   remains.** A subtle in-reader "preview" indicator so a guest mid-reading (not
