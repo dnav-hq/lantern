@@ -34,6 +34,7 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
 const MOCKUP = resolve(ROOT, 'design', 'bible-map-atlas.html')
+const JOURNEY_MOCKUP = resolve(ROOT, 'design', 'bible-map-journey.html')
 const DEG = Math.PI / 180
 
 // The sea is a single flat value in Natural Earth's SR_50M hillshade — verified
@@ -543,7 +544,319 @@ function buildFrame(spec) {
   }
 }
 
+// ── the journey frames ──────────────────────────────────────────────────────
+//
+// A second export, for design/bible-map-journey.html: the same real geometry and
+// the same relief crop, but the ROUTE is the subject. Two differences from the
+// frames above, and both exist because the question is "can you follow it":
+//
+//   1. A route is an ordered list of STOPS, not a list of legs. Revisits fall
+//      out of that list (Galatians 1 stands on Damascus twice and Jerusalem
+//      twice), and a stop carries every visit number it earns.
+//   2. Each leg is exported twice — `dStraight` (the line we draw today) and
+//      `d` (the offset arc). Retraced pairs bow by the same amount in opposite
+//      directions of travel, which puts them on opposite sides of the straight
+//      line by construction, so an out-and-back reads as a lens rather than as
+//      one stroke drawn twice.
+//
+// Place ids here are slugs from scripts/data/journeys.yml, not display names —
+// the rule that file's header sets out, for the reason it gives (two Jerichos).
+const JOURNEY_FRAMES = [
+  {
+    id: 'galatians-1',
+    title: 'Galatians 1',
+    caption: 'Damascus twice, Jerusalem twice — the route that crosses itself',
+    aspect: 342 / 336,
+    pad: 0.36,
+    reliefWidth: 700,
+    bow: 0.17,
+    // Reading order, exactly as the letter tells it. `ref` is the citation for
+    // the leg that ARRIVES at this stop; `silent` marks a course the text never
+    // describes (drawn dashed) — the same honesty rule journeys.yml uses for
+    // its `gaps`, and the last stop here IS one of its gaps.
+    stops: [
+      { place: 'damascus', ref: 'Galatians 1:17', line: '“I returned again to Damascus.”' },
+      { place: 'arabia-2', as: 'Arabia', ref: 'Galatians 1:17', line: '“I went away into Arabia.”' },
+      { place: 'damascus', ref: 'Galatians 1:17', silent: true, line: '“…and returned again to Damascus.”' },
+      { place: 'jerusalem', ref: 'Galatians 1:18', line: '“Then after three years I went up to Jerusalem.”' },
+      { place: 'cilicia', as: 'Syria & Cilicia', ref: 'Galatians 1:21', silent: true, line: '“Then I went into the regions of Syria and Cilicia.”' },
+      { place: 'jerusalem', ref: 'Galatians 2:1', silent: true, line: '“After fourteen years I went up again to Jerusalem.”' }
+    ],
+    regions: [
+      { place: 'galatia', label: 'Galatia', dx: 0, dy: -4 },
+      { place: 'syria-2', label: 'Syria', dx: 20, dy: -16 },
+      { place: 'judea-1', label: 'Judea', dx: -28, dy: 22 },
+      { place: 'arabia-2', label: 'Arabia', dx: 14, dy: 24 }
+    ],
+    seas: [
+      { label: 'The Great Sea', lon: 30.6, lat: 33.9, rotate: -7 },
+      { label: 'Cyprus', lon: 33.05, lat: 34.72, size: 'small' }
+    ]
+  },
+  {
+    id: 'pauls-second-journey',
+    title: "Paul's second journey",
+    caption: 'Antioch to Corinth and back — twenty-one legs, one revisit',
+    aspect: 342 / 300,
+    pad: 0.12,
+    reliefWidth: 780,
+    bow: 0.07,
+    // scripts/data/journeys.yml, `pauls-second-missionary-journey`, verbatim in
+    // order. `rank` is the label priority ladder (see the note): a lower rank is
+    // offered a slot first, and a stop that cannot get a clean one keeps its
+    // number and is named in the step-through instead.
+    stops: [
+      { place: 'antioch-1', as: 'Antioch', ref: 'Acts 15:40-41', rank: 0 },
+      { place: 'cilicia', ref: 'Acts 15:41', rank: 6 },
+      { place: 'derbe', ref: 'Acts 16:1', rank: 5 },
+      { place: 'lystra', ref: 'Acts 16:1', rank: 4 },
+      { place: 'phrygia', ref: 'Acts 16:6', rank: 12 },
+      { place: 'galatia', ref: 'Acts 16:6', rank: 11 },
+      { place: 'mysia', ref: 'Acts 16:7', rank: 13 },
+      { place: 'troas', ref: 'Acts 16:8', rank: 3 },
+      { place: 'samothrace', ref: 'Acts 16:11', rank: 15 },
+      { place: 'neapolis', ref: 'Acts 16:11', rank: 14 },
+      { place: 'philippi', ref: 'Acts 16:12', rank: 1 },
+      { place: 'amphipolis', ref: 'Acts 17:1', rank: 16 },
+      { place: 'apollonia', ref: 'Acts 17:1', rank: 17 },
+      { place: 'thessalonica', ref: 'Acts 17:1', rank: 2 },
+      { place: 'berea', ref: 'Acts 17:10', rank: 9 },
+      { place: 'athens', ref: 'Acts 17:15', rank: 7 },
+      { place: 'corinth', ref: 'Acts 18:1', rank: 8 },
+      { place: 'cenchreae', ref: 'Acts 18:18', rank: 18 },
+      { place: 'ephesus', ref: 'Acts 18:18-19', rank: 3 },
+      { place: 'caesarea', ref: 'Acts 18:21-22', rank: 10 },
+      { place: 'jerusalem', ref: 'Acts 18:22', rank: 1 },
+      { place: 'antioch-1', as: 'Antioch', ref: 'Acts 18:22', rank: 0 }
+    ],
+    regions: [
+      { place: 'macedonia', label: 'Macedonia', dx: -10, dy: -16 },
+      { place: 'achaia', label: 'Achaia', dx: -14, dy: 16 },
+      { place: 'phrygia', label: 'Phrygia', dx: 0, dy: 26 },
+      { place: 'syria-2', label: 'Syria', dx: 18, dy: 18 }
+    ],
+    seas: [
+      { label: 'The Great Sea', lon: 29.5, lat: 34.2, rotate: -5 },
+      { label: 'Aegean Sea', lon: 25.2, lat: 38.4, size: 'small', rotate: -70 }
+    ]
+  }
+]
+
+/** A place by its journeys.yml slug id, which is the half of `sl` after the hash. */
+const placeBySlug = new Map(places.p.map((p) => [String(p.sl).split('/').pop(), p]))
+function pointOfSlug(id) {
+  const place = placeBySlug.get(id)
+  if (!place) throw new Error(`no place with id "${id}" in the bundle`)
+  const best = place.c[0]
+  if (!best) throw new Error(`"${id}" has no candidate location`)
+  const [x, y] = projectToView(best.ll[0], best.ll[1])
+  return { id, name: place.n, x, y, lon: best.ll[0], lat: best.ll[1], type: place.t }
+}
+
+/** The frame every artboard of a route shares: its own stops, padded, to aspect. */
+function routeViewBox(points, spec) {
+  const xs = points.map((p) => p.x)
+  const ys = points.map((p) => p.y)
+  const bounds = {
+    x: Math.min(...xs),
+    y: Math.min(...ys),
+    w: Math.max(...xs) - Math.min(...xs),
+    h: Math.max(...ys) - Math.min(...ys)
+  }
+  const pad = Math.max(bounds.w, bounds.h) * spec.pad
+  let frame = { x: bounds.x - pad, y: bounds.y - pad, w: bounds.w + pad * 2, h: bounds.h + pad * 2 }
+  if (frame.w / frame.h < spec.aspect) {
+    const w = frame.h * spec.aspect
+    frame = { ...frame, x: frame.x - (w - frame.w) / 2, w }
+  } else {
+    const h = frame.w / spec.aspect
+    frame = { ...frame, y: frame.y - (h - frame.h) / 2, h }
+  }
+  return { x: round(frame.x, 2), y: round(frame.y, 2), w: round(frame.w, 2), h: round(frame.h, 2) }
+}
+
+function buildJourneyFrame(spec) {
+  const points = spec.stops.map((s) => pointOfSlug(s.place))
+  const frame = routeViewBox(points, spec)
+
+  const layers = {}
+  for (const [name, paths] of Object.entries(base.layers)) {
+    const out = []
+    for (const d of paths) {
+      for (const run of clipToFrame(parsePath(d), frame)) {
+        const path = toPath(run)
+        if (path) out.push(path)
+      }
+    }
+    layers[name] = out
+  }
+
+  const rect = reliefRect(frame)
+  const small = downsample(rect, spec.reliefWidth)
+  const reliefPng = encodeGrayPng(small.width, small.height, small.pixels)
+  const maskPng = encodeGrayPng(small.width, small.height, seaMask(small).rows, 1)
+
+  // Stops fold to one mark per PLACE, carrying every visit number it earns, in
+  // order. That is the whole of criterion "a repeated stop shows its visit
+  // numbers": the numbers live on the place, not on the leg.
+  const marks = []
+  const markOf = new Map()
+  spec.stops.forEach((s, i) => {
+    const key = s.place
+    if (!markOf.has(key)) {
+      const p = points[i]
+      markOf.set(key, marks.length)
+      marks.push({
+        place: key,
+        label: s.as ?? p.name,
+        x: round(p.x, 1),
+        y: round(p.y, 1),
+        type: p.type,
+        rank: s.rank ?? i,
+        visits: []
+      })
+    }
+    const mark = marks[markOf.get(key)]
+    mark.visits.push(i + 1)
+    mark.rank = Math.min(mark.rank, s.rank ?? i)
+  })
+
+  // Bows. A retraced pair gets the SAME bow value, which mirrors it to the far
+  // side of the straight line because the control point is built from the
+  // direction of travel; a pair walked a third time bows wider so it clears both.
+  const seen = new Map()
+  const legs = spec.stops.slice(1).map((s, i) => {
+    const from = points[i]
+    const to = points[i + 1]
+    const key = [spec.stops[i].place, s.place].sort().join('|')
+    const nth = seen.get(key) ?? 0
+    seen.set(key, nth + 1)
+    return {
+      order: i + 1,
+      from: spec.stops[i].place,
+      to: s.place,
+      d: legPath(from, to, spec.bow * (1 + nth * 0.95)),
+      dStraight: legPath(from, to, 0),
+      ref: s.ref,
+      line: s.line ?? null,
+      dashed: Boolean(s.silent)
+    }
+  })
+
+  const centre = invertView(frame.x + frame.w / 2, frame.y + frame.h / 2)
+  const east = invertView(frame.x + frame.w / 2 + 10, frame.y + frame.h / 2)
+  const kmPerUnit = haversineKm(centre, east) / 10
+  const northOf = projectToView(centre[0], centre[1] + 0.5)
+  const northDeg =
+    (Math.atan2(northOf[0] - (frame.x + frame.w / 2), frame.y + frame.h / 2 - northOf[1]) * 180) /
+    Math.PI
+  const barKm = [50, 100, 200, 250, 500, 1000].find((km) => km / kmPerUnit > frame.w * 0.16) ?? 1000
+
+  return {
+    frame: {
+      id: spec.id,
+      title: spec.title,
+      caption: spec.caption,
+      viewBox: [frame.x, frame.y, frame.w, frame.h],
+      layers,
+      relief: {
+        href: `data:image/png;base64,${reliefPng.toString('base64')}`,
+        mask: `data:image/png;base64,${maskPng.toString('base64')}`,
+        x: round(rect.x0 / RELIEF_SCALE, 2),
+        y: round(rect.y0 / RELIEF_SCALE, 2),
+        w: round(rect.w / RELIEF_SCALE, 2),
+        h: round(rect.h / RELIEF_SCALE, 2)
+      },
+      marks,
+      regions: spec.regions.map((r) => {
+        const p = pointOfSlug(r.place)
+        return { ...r, x: round(p.x, 1), y: round(p.y, 1) }
+      }),
+      seas: spec.seas.map((s) => {
+        const [x, y] = projectToView(s.lon, s.lat)
+        return { ...s, x: round(x, 1), y: round(y, 1) }
+      }),
+      stops: spec.stops.map((s, i) => ({
+        n: i + 1,
+        place: s.place,
+        ref: s.ref,
+        line: s.line ?? null,
+        silent: Boolean(s.silent)
+      })),
+      legs,
+      scale: { km: barKm, units: round(barKm / kmPerUnit, 1), atLat: Math.round(centre[1]) },
+      north: round(northDeg, 1)
+    },
+    measured: {
+      id: spec.id,
+      stops: spec.stops.length,
+      marks: marks.length,
+      legs: legs.length,
+      reliefPx: `${small.width}x${small.height}`,
+      reliefBytes: reliefPng.length,
+      maskBytes: maskPng.length,
+      artworkGz: gzipSync(Buffer.from(Object.values(layers).flat().join(''))).length
+    }
+  }
+}
+
+/** Build both route frames and inject them into the journey mockup. */
+function runJourney() {
+  const built = JOURNEY_FRAMES.map(buildJourneyFrame)
+  const payload = {
+    generated: new Date().toISOString().slice(0, 10),
+    source: {
+      base: 'public/map/base.json.gz',
+      places: 'public/map/places.json.gz',
+      relief: 'public/map/terrain.png',
+      journeys: 'scripts/data/journeys.yml',
+      attribution: [base.attribution, places.attribution]
+    },
+    shipped: {
+      baseGz: readFileSync(resolve(ROOT, 'public/map/base.json.gz')).length,
+      placesGz: readFileSync(resolve(ROOT, 'public/map/places.json.gz')).length,
+      reliefPng: readFileSync(resolve(ROOT, 'public/map/terrain.png')).length
+    },
+    frames: built.map((b) => b.frame),
+    measured: built.map((b) => b.measured)
+  }
+  const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`
+  for (const { measured } of built) {
+    console.error('')
+    console.error(`ROUTE ${measured.id}`)
+    console.error(`  ${measured.stops} stops -> ${measured.marks} marks, ${measured.legs} legs`)
+    console.error(`  artwork in frame      ${kb(measured.artworkGz)} gzipped`)
+    console.error(`  relief crop           ${kb(measured.reliefBytes)}  ${measured.reliefPx} grayscale PNG`)
+    console.error(`  sea mask              ${kb(measured.maskBytes)}  1-bit PNG, same pixels`)
+  }
+  if (!process.argv.includes('--write')) {
+    process.stdout.write(JSON.stringify(payload))
+    return
+  }
+  const html = readFileSync(JOURNEY_MOCKUP, 'utf8')
+  const start = '/* frames:start */'
+  const end = '/* frames:end */'
+  const a = html.indexOf(start)
+  const b = html.indexOf(end)
+  if (a < 0 || b < 0) throw new Error(`no ${start} … ${end} markers in ${JOURNEY_MOCKUP}`)
+  const next =
+    html.slice(0, a + start.length) +
+    `\n      const FRAMES = ${JSON.stringify(payload)}\n      ` +
+    html.slice(b)
+  writeFileSync(JOURNEY_MOCKUP, next)
+  console.error('')
+  console.error(`written  design/bible-map-journey.html  (${kb(Buffer.byteLength(next))} on disk)`)
+}
+
 // ── run ─────────────────────────────────────────────────────────────────────
+
+// The journey mockup is a second export from the same geometry; it exits here so
+// the atlas path below is untouched by it.
+if (process.argv.includes('--journey')) {
+  runJourney()
+  process.exit(0)
+}
+
 
 const built = FRAMES.map(buildFrame)
 const payload = {
