@@ -422,6 +422,16 @@ belongs to and why that arc comes when it does.
   where doors actually fall (2,099 total, 23.0% of chapters have none, median
   1 per chapter) and offers three visual options for the design pass, with a
   recommendation and two open questions.
+  SHIPPED 2026-09-13: option 3, the per-chapter count line. `chapterDoorCount`
+  (`src/utils/footnotes.ts`) sums the `notes` already on each fetched verse —
+  no new request, no new classification — and `BookDetailPage` renders it
+  under the chapter title as "N translator note(s)" in the same muted register
+  as the chapter strip's "N with notes", nothing at all when the count is
+  zero. Tapping it scrolls to the chapter's first door and briefly lifts its
+  underline (`.footnote-door-lift`) so the eye lands on it; the underline
+  itself is untouched. Hides with the rest of the chrome in Reading Mode
+  (`.app-shell.focus-reading .chapter-notes-count`). KJV/NET/ESV correctly
+  show nothing since no `notes` ride through for them.
 
 
 - **Word door (deep-dive rung 2) — slice 1 (DATA, 2026-09-02) and slice 2 (THE
