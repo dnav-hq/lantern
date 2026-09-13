@@ -67,6 +67,20 @@ export interface Note {
   anchor_chapter_override: number | null
   category: NoteCategory | null
   indent_level: number
+  /**
+   * The exact words this mark was about, when the reader selected words inside
+   * the verse rather than the whole verse. NULL on every note written before
+   * word-level highlights shipped, and on every whole-verse mark since.
+   *
+   * A QUOTE, never an offset. A character range breaks the moment the
+   * translation changes length, which is why sub-verse highlighting was
+   * declined once (docs/proposals/note-object.md §2); a verbatim quote either
+   * occurs in the verse as displayed — tint those words — or it doesn't — tint
+   * the whole verse, exactly as today. The anchor stays the source of truth for
+   * WHERE the note is, so translation independence is untouched. See
+   * docs/proposals/word-level-highlights.md §4 and src/utils/highlightSpan.ts.
+   */
+  highlighted_text: string | null
   created_at: string
   updated_at: string
 }
@@ -152,6 +166,8 @@ export interface CreateNoteInput {
   anchor_chapter_override: number | null
   category: NoteCategory | null
   indent_level: number
+  /** Optional: absent means a whole-verse mark, which is every note until now. */
+  highlighted_text?: string | null
 }
 
 export interface UpdateNoteInput {
@@ -160,6 +176,8 @@ export interface UpdateNoteInput {
   anchor_end_verse?: number | null
   category?: NoteCategory | null
   indent_level?: number
+  /** Pass null to turn a word-level mark back into a whole-verse one. */
+  highlighted_text?: string | null
 }
 
 // Result of a cascading note delete: reports which parents were emptied and removed.

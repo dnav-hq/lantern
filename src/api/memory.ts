@@ -170,7 +170,17 @@ export function createMemoryApi(): BereanApi {
     },
 
     async createNote(data: CreateNoteInput) {
-      const n: Note = { id: uuid(), created_at: now(), updated_at: now(), ...data }
+      // highlighted_text is optional on the INPUT and always present on the
+      // note, so the absent case becomes an explicit null rather than
+      // undefined — the stub's notes are the ones pure-UI work renders, and a
+      // missing key would read as "not loaded" rather than "whole-verse mark".
+      const n: Note = {
+        id: uuid(),
+        created_at: now(),
+        updated_at: now(),
+        ...data,
+        highlighted_text: data.highlighted_text ?? null
+      }
       notes.set(n.id, n)
       return n
     },
@@ -292,6 +302,8 @@ interface SeedNote {
   anchor_end_verse: number | null
   category: Note['category']
   indent_level: number
+  /** A word-level mark: the exact words it was about. Omit for a whole verse. */
+  highlighted_text?: string | null
 }
 
 interface SeedPassage {
@@ -454,6 +466,7 @@ export function seedMemoryApi(): void {
           anchor_chapter_override: null,
           category: seedNote.category,
           indent_level: seedNote.indent_level,
+          highlighted_text: seedNote.highlighted_text ?? null,
           created_at: at,
           updated_at: at
         }

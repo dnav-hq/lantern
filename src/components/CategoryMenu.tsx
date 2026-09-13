@@ -55,6 +55,19 @@ export interface CategoryMenuProps {
   /** Offered before the categories, for a note with no category. */
   noneLabel?: string
   onPickNone?: () => void
+  /**
+   * An optional SCOPE row above the colours: what the next pick will apply to.
+   *
+   * It exists only when there is a second scope to offer — on the reading page,
+   * only once the reader has selected words INSIDE the selected verse — so a
+   * reader who never selects words never meets it, and picking a colour means
+   * exactly what it meant before. See docs/proposals/word-level-highlights.md §5.
+   */
+  scopeLabel?: string
+  /** The words the scope row is offering, shown quoted so it says what it marks. */
+  scopeQuote?: string
+  scopeActive?: boolean
+  onToggleScope?: () => void
 }
 
 /**
@@ -122,7 +135,11 @@ export default function CategoryMenu({
   title,
   selected = null,
   noneLabel,
-  onPickNone
+  onPickNone,
+  scopeLabel,
+  scopeQuote,
+  scopeActive = false,
+  onToggleScope
 }: CategoryMenuProps): React.ReactElement {
   const api = useApi()
   const categories = useNoteCategories()
@@ -299,6 +316,29 @@ export default function CategoryMenu({
       }}
     >
       {title && <div className="cat-menu-title">{title}</div>}
+
+      {/* ── Scope, when there is a choice of scope ───────────────────────────
+          ONE row, above the colours, that says what the next pick will mark.
+          A toggle rather than a doubled set of colours: eight swatches in two
+          groups is a menu you have to read, and the colours must keep meaning
+          the same thing they have always meant. Off by default, so the picker
+          behaves exactly as it did for every reader who has not just selected
+          words. */}
+      {scopeLabel && onToggleScope && (
+        <button
+          className={`cat-menu-row cat-menu-scope${scopeActive ? ' is-on' : ''}`}
+          role="menuitemcheckbox"
+          aria-checked={scopeActive}
+          onClick={onToggleScope}
+        >
+          <span className="cat-menu-scope-mark" aria-hidden="true" />
+          <span className="cat-menu-label">
+            {scopeLabel}
+            {scopeQuote && <span className="cat-menu-scope-quote">“{scopeQuote}”</span>}
+          </span>
+          {scopeActive && <span className="cat-menu-check">✓</span>}
+        </button>
+      )}
 
       {noneLabel && onPickNone && (
         <button className="cat-menu-row" role="menuitem" onClick={onPickNone}>

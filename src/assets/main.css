@@ -1370,6 +1370,18 @@ body.dark .search-backdrop {
    the category colour, which the row's own cat-* class already supplies. The
    word "Marked" was worse than nothing — it occupied a note's space and said
    something the reader had not written. */
+/* A WORD-LEVEL mark in the Journal: the reader's own marked words, quoted and
+   italic, in place of the blank body the rule below stands in for. Muted rather
+   than full-strength text — it is scripture the reader pointed at, not a note
+   they wrote, and the two must not read as the same thing. */
+.journal-note-quote {
+  font-family: var(--scripture-font);
+  font-style: italic;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
 .journal-note-mark {
   display: inline-block;
   width: 26px;
@@ -1656,6 +1668,47 @@ body.dark .search-backdrop {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
+/* ── The scope row ──────────────────────────────────────────────────────────
+   One row above the colours, present only when there are words to offer. It is
+   a checkbox, not a second set of swatches: the colours must keep meaning what
+   they have always meant. Quiet when off, and carrying the reader's own words so
+   it says exactly what the next pick will mark. */
+.cat-menu-scope {
+  gap: 8px;
+}
+.cat-menu-scope .cat-menu-label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.cat-menu-scope-quote {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-faint);
+  /* One line: the quote is a reminder of what is selected, not the verse. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+.cat-menu-scope.is-on .cat-menu-scope-quote {
+  color: var(--text-muted);
+}
+/* A small square rather than a category dot — this row picks a SCOPE, not a
+   colour, and a dot here would read as a fifth category. */
+.cat-menu-scope-mark {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border-radius: 2px;
+  border: 1.25px solid var(--text-faint);
+}
+.cat-menu-scope.is-on .cat-menu-scope-mark {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
 .cat-menu-foot {
   border-top: 1px solid var(--border);
   margin-top: 5px;
@@ -1696,6 +1749,51 @@ body.dark .search-backdrop {
 }
 .reading-verse-row.selected .verse-mark-label {
   opacity: 0.45;
+}
+
+/* ── A word-level mark ──────────────────────────────────────────────────────
+   The same tint as the whole-verse mark above, around the words the reader
+   actually selected — the same colour source, so no new palette enters the
+   reading page (docs/proposals/word-level-highlights.md §6). `color: inherit`
+   is load-bearing: a bare <mark> is black-on-yellow by UA default, which would
+   be the one place scripture changed colour.
+
+   The horizontal padding is cancelled by an equal negative margin so the tint
+   has breathing room WITHOUT moving a single word — a mark that reflowed the
+   verse would be visible as a jump the moment it appeared. box-decoration-break
+   keeps both ends rounded when the phrase wraps across a line. */
+.verse-word-mark {
+  background: var(--cat-c-tint, var(--accent-weak));
+  color: inherit;
+  border-radius: 3px;
+  padding: 0.05em 0.18em;
+  margin: 0 -0.18em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+/* Selection is transient and the reader is acting on it, so it wins — same rule
+   the whole-verse mark follows. The words stay legible as part of the wash
+   rather than fighting it. */
+.reading-verse-row.selected .verse-word-mark {
+  background: transparent;
+  box-shadow: inset 0 -0.5em 0 var(--cat-c-tint, var(--accent-weak));
+}
+
+/* ── Selecting WORDS inside the selected verse ──────────────────────────────
+   Verse text is deliberately non-selectable on touch (see the .reading-verse-row
+   rule further down and its comment): a pause before a scroll otherwise starts a
+   native selection that swallows the scroll and leaves a light highlight behind.
+   That rule stays exactly as it is for reading.
+
+   Selection is opted back IN for one verse only — the one the reader has already
+   deliberately tapped — which is where the word-level mark gesture lives (brief
+   §5, and the task's "within an already-selected verse"). While simply reading,
+   nothing is selectable and nothing has changed. The callout comes back with it,
+   because on iOS the long-press handles are part of the same native affordance. */
+.reading-verse-row.selected .verse-text {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* The highlight picker, anchored to its button in both bars. */

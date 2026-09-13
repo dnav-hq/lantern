@@ -41,7 +41,7 @@ const now = (): string => new Date().toISOString()
 const PASSAGE_COLS =
   'id, workspace_id, book_number, chapter_start, verse_start, chapter_end, verse_end, reference_label, created_at'
 const NOTE_COLS =
-  'id, session_id, content, anchor_start_verse, anchor_end_verse, anchor_book_override, anchor_chapter_override, category, indent_level, created_at, updated_at'
+  'id, session_id, content, anchor_start_verse, anchor_end_verse, anchor_book_override, anchor_chapter_override, category, indent_level, highlighted_text, created_at, updated_at'
 
 export class SupabaseBereanApi implements BereanApi {
   private readonly db: SupabaseClient
