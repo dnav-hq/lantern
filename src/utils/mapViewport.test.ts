@@ -7,6 +7,7 @@ import {
   formatViewBox,
   frameViewBox,
   interpolateViewBox,
+  isAtViewBox,
   labelBudget,
   panViewBox,
   pinchViewBox,
@@ -264,6 +265,33 @@ describe('frameViewBox', () => {
     const box = frameViewBox([{ x: 0, y: 0 }], RECT, EXTENT, FIT, { minSpan: 40 })
     expect(box.x).toBeGreaterThanOrEqual(EXTENT.x)
     expect(box.y).toBeGreaterThanOrEqual(EXTENT.y)
+  })
+})
+
+describe('isAtViewBox', () => {
+  // Regression: the map door's chapter frame (docs/proposals/
+  // map-in-the-story.md) made "home" smaller than the world for the first
+  // time, so zooming OUT past it is now a reachable state — the "Return to
+  // this chapter" control must re-enable there, not just when zoomed IN.
+  const home: ViewBox = { x: 400, y: 200, w: 200, h: 100 }
+
+  it('is true exactly at the target', () => {
+    expect(isAtViewBox(home, home)).toBe(true)
+  })
+
+  it('is false zoomed IN past the target', () => {
+    const zoomedIn: ViewBox = { x: 450, y: 225, w: 100, h: 50 }
+    expect(isAtViewBox(zoomedIn, home)).toBe(false)
+  })
+
+  it('is false zoomed OUT past the target — the bug a plain `ratio <= 1` test missed', () => {
+    const zoomedOut: ViewBox = { x: 300, y: 150, w: 400, h: 200 }
+    expect(isAtViewBox(zoomedOut, home)).toBe(false)
+  })
+
+  it('tolerates floating-point noise at the boundary', () => {
+    const almostHome: ViewBox = { ...home, w: home.w * 1.0000001 }
+    expect(isAtViewBox(almostHome, home)).toBe(true)
   })
 })
 

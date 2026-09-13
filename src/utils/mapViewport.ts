@@ -71,6 +71,22 @@ export function zoomLevel(vb: ViewBox, fit: ViewBox): number {
   return fit.w / vb.w
 }
 
+/**
+ * Whether `vb` IS `target` (within a small floating-point tolerance), used to
+ * disable a "return to X" control once pressing it would be a no-op.
+ *
+ * Not the same question as "is `vb` zoomed IN on `target`" — `zoomLevel(vb,
+ * target) <= 1 + tolerance` looks similar but is true for the whole zoomed-OUT
+ * half too (a ratio below 1), which is exactly wrong for a control whose
+ * target can be zoomed out PAST (the map door's chapter frame, unlike the
+ * whole-world view slice 3 shipped this against, is smaller than the world
+ * fit, so panning/zooming out past it is a real, reachable state). Reached
+ * only within `tolerance` of ratio 1, in either direction.
+ */
+export function isAtViewBox(vb: ViewBox, target: ViewBox, tolerance = 0.001): boolean {
+  return Math.abs(zoomLevel(vb, target) - 1) <= tolerance
+}
+
 /** Artwork units per CSS pixel at this viewBox in this rect. */
 export function unitsPerPixel(vb: ViewBox, rect: ScreenRect): number {
   return rect.width > 0 ? vb.w / rect.width : 1
