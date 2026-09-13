@@ -14,6 +14,26 @@ belongs to and why that arc comes when it does.
 
 ## Deferred
 
+- **DONE 2026-09-12: the PWA update pill no longer reaches desktop.** The
+  2026-09-01 fix (`isStandalone()` instead of a width check) closed the
+  narrow-desktop/zoom false positive but reopened the real ask: Chromium can
+  install this app on desktop too, and a desktop install still showed the
+  pill at any width. `PwaUpdatePrompt.tsx` now also requires
+  `isMobileViewport()` (the same phone/tablet breakpoint `BookDetailPage`'s
+  `useIsMobile` already uses), so the pill needs BOTH an installed app AND a
+  phone/tablet-width viewport — an installed mobile PWA is unchanged, an
+  installed desktop PWA is not shown it, and a non-installed browser tab was
+  never shown it either way. The update itself is unaffected: `registerType:
+  'prompt'` still installs the new worker in the background and it takes
+  over on the next full launch regardless of whether the pill ever renders.
+  Removed the now-dead `@media (min-width: 769px)` bottom-offset rule for
+  `.pwa-update` in `main.css`, since the pill can no longer render at that
+  width. A stale-chunk failure (an open tab requesting a JS chunk a new
+  deploy replaced) already recovers with exactly one reload —
+  `src/telemetry/globalHandlers.ts`'s `vite:preloadError` handler
+  (`shouldReloadOnChunkError`, tested in `globalHandlers.test.ts`) — so that
+  recovery path needed no change here.
+
 - **PARKED 2026-09-03: cross-version renderings — panel built, not yet reachable.**
   `docs/proposals/cross-version-renderings.md`. `CrossVersionPanel.tsx`,
   `verbatimMatch.ts` and the `FootnoteDoor.tsx` trigger are built, typechecked,
