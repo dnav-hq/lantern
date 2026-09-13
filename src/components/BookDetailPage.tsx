@@ -969,7 +969,13 @@ function ChapterView({
     return () => document.removeEventListener('selectionchange', onSelectionChange)
   }, [singleSelVerse, verseTexts])
 
-  const selectedWords = wordSel && wordSel.verse === singleSelVerse ? wordSel.quote : null
+  // OFF in prod for now: the native word selection felt glitchy on Android and
+  // nothing tells a reader it exists (Dennis, 2026-09-13). The render path
+  // (a stored quote tints only its words) stays live; only capture is held
+  // until the fix-or-scrap decision. Flip this to re-enable.
+  const WORD_CAPTURE_ENABLED = false
+  const selectedWords =
+    WORD_CAPTURE_ENABLED && wordSel && wordSel.verse === singleSelVerse ? wordSel.quote : null
 
   const handleHighlight = async (category: NoteCategory, words?: string): Promise<void> => {
     if (selRange === null || savingInline) return

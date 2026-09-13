@@ -14,6 +14,12 @@
       "port": 5173
     },
     {
+      "name": "dev-phone",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--host", "--port", "5240", "--strictPort"],
+      "port": 5240
+    },
+    {
       "name": "dev-landing",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--port", "5241", "--strictPort"],
