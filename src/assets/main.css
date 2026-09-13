@@ -1803,8 +1803,16 @@ body.dark .search-backdrop {
    deliberately tapped — which is where the word-level mark gesture lives (brief
    §5, and the task's "within an already-selected verse"). While simply reading,
    nothing is selectable and nothing has changed. The callout comes back with it,
-   because on iOS the long-press handles are part of the same native affordance. */
-.reading-verse-row.selected .verse-text {
+   because on iOS the long-press handles are part of the same native affordance.
+
+   GATED ON .word-select-armed, NOT JUST .selected (2026-09-13 fix). `.selected`
+   alone is a CSS class every selected verse gets regardless of the
+   WORD_CAPTURE_ENABLED flag in BookDetailPage.tsx, so this rule used to make the
+   verse long-press-selectable — callout and all — even with capture switched
+   off: the flag only withheld the SAVE action, not the native gesture that
+   produces it. `.word-select-armed` is applied only when the flag is on, so
+   "capture is off" now actually means no native text selection happens at all. */
+.reading-verse-row.selected.word-select-armed .verse-text {
   -webkit-touch-callout: default;
   -webkit-user-select: text;
   user-select: text;

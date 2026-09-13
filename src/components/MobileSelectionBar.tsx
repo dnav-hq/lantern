@@ -151,7 +151,16 @@ export default function MobileSelectionBar({
         <button
           type="button"
           className="mobile-selbar-hl"
-          onClick={() => setPicking(p => !p)}
+          onClick={() => {
+            // The words are already latched into `selectedWords` by this point
+            // (BookDetailPage's selectionchange capture) — the live native
+            // selection has nothing left to do. Left alone it lingers behind
+            // the picker (confirmed: tapping this button does NOT collapse it
+            // on its own), OS callout and all, fighting the very menu that is
+            // about to open on top of it.
+            window.getSelection()?.removeAllRanges()
+            setPicking(p => !p)
+          }}
           aria-expanded={picking}
         >
           Highlight

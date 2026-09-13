@@ -996,18 +996,24 @@ function ChapterView({
     return () => document.removeEventListener('selectionchange', onSelectionChange)
   }, [singleSelVerse, verseTexts])
 
-  // STILL OFF (2026-09-13 investigation): the latch/scope logic above was
-  // audited and is sound (scoped to the selected verse's own text, survives
+  // STILL OFF (2026-09-13 investigation, see docs/BACKLOG.md for the full
+  // finding). Confirmed and fixed: `.reading-verse-row.selected .verse-text`
+  // was selectable purely from the CSS class, regardless of this flag — the
+  // native long-press gesture (and its callout) was reachable in production
+  // the whole time this was "off". Now gated on `.word-select-armed` too,
+  // which this flag controls, so off genuinely means off. Also confirmed and
+  // fixed: tapping "Highlight" did not collapse the native selection on its
+  // own (Chromium, both mouse and touch input) — the selection, and whatever
+  // OS callout rides with it, was left to linger behind the picker that just
+  // opened on top of it; the button now clears it explicitly.
+  // The latch/scope logic (scoped to the selected verse's own text, survives
   // the collapse a tap on the bar causes, clears the moment the verse
-  // deselects — see docs/BACKLOG.md), and the discoverability gap now has a
-  // cue (the greyed "Highlight these words" row in the picker, above). What
-  // could NOT be re-verified here is the native gesture itself: this sandbox
-  // has no iOS Safari, and headless Chromium's touch emulation would not even
-  // start a native long-press text selection via synthetic touch input, so
-  // the original "glitchy on Android" finding is neither confirmed nor fixed
-  // by this change. Do one real on-device pass before flipping this — if it
-  // still feels rough there, the render path (a stored quote tints only its
-  // words) is the only part worth keeping.
+  // deselects) was audited and is sound, and the discoverability gap now has
+  // a cue (the greyed "Highlight these words" row in the picker, above).
+  // STILL NOT verifiable here: how the native selection handles and callout
+  // actually feel and lay out on real Android Chrome / iOS Safari — that is
+  // OS chrome, not DOM, so no headless preview or screenshot could ever show
+  // it either way. Do one real on-device pass before flipping this.
   const WORD_CAPTURE_ENABLED = false
   const selectedWords =
     WORD_CAPTURE_ENABLED && wordSel && wordSel.verse === singleSelVerse ? wordSel.quote : null
@@ -1763,6 +1769,14 @@ function ChapterView({
           {verses.map((v, i) => {
             const isSelected = selRange !== null && v.verse >= selRange[0] && v.verse <= selRange[1]
             const isHighlighted = highlightedVerses.has(v.verse)
+            // Gates the touch-selectable CSS on the verse text (see main.css):
+            // without it, `.selected .verse-text` alone would make the verse
+            // long-press-selectable purely from the CSS class, regardless of
+            // WORD_CAPTURE_ENABLED — which is exactly how the native gesture
+            // stayed live in production even after the switch was flipped off
+            // (2026-09-13 investigation). Armed only for the one verse word
+            // capture can actually land on.
+            const wordSelectArmed = WORD_CAPTURE_ENABLED && v.verse === singleSelVerse
             // Read dims everything outside the highlight to make one passage
             // stand out for a moment. Study's highlight is a standing anchor,
             // not a moment — dimming the chapter for as long as a note is open
@@ -1830,7 +1844,7 @@ function ChapterView({
                     if (el) verseRowRefs.current.set(v.verse, el)
                     else verseRowRefs.current.delete(v.verse)
                   }}
-                  className={`reading-verse-row${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}${rowMark ? ` marked cat-${rowMark}` : ''}`}
+                  className={`reading-verse-row${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}${wordSelectArmed ? ' word-select-armed' : ''}${rowMark ? ` marked cat-${rowMark}` : ''}`}
                   onPointerDown={e => {
                     tapRef.current = { t: Date.now(), x: e.clientX, y: e.clientY, moved: false }
                   }}

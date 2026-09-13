@@ -188,9 +188,59 @@ belongs to and why that arc comes when it does.
     text is `user-select: none` on touch on purpose (a pause before a scroll
     otherwise starts a native selection that swallows the scroll and leaves a
     stray highlight). Selection — and the iOS callout with it — is now enabled
-    on `.reading-verse-row.selected .verse-text`, which is where the gesture
-    lives. Worth a look on a real iPhone: if the OS callout fights the
-    selection bar, the fallback is the brief's tap-per-word chips (§5).
+    on the selected verse, which is where the gesture lives. CORRECTION
+    (2026-09-13): the note this used to carry here — "the fallback is the
+    brief's tap-per-word chips (§5)" — was wrong. `word-level-highlights.md`
+    §5 explicitly REJECTS tap-per-word chips (new touch target per word, a new
+    selection-extend gesture, reinventing the OS's own text selection worse
+    than the OS does it); there is no design-approved fallback gesture, only
+    this one.
+
+- **Word-level highlights: fix-or-scrap investigation (2026-09-13, capture
+  still OFF).** Findings from driving the picker at 390x844 with touch
+  emulation (Chromium — the same engine as Android Chrome; no iOS Safari
+  available in this sandbox, so that half of the brief is still untested):
+  - **Confirmed bug, now fixed: capture being "off" did not actually turn off
+    the native gesture.** `.reading-verse-row.selected .verse-text` was made
+    touch-selectable by a CSS class (`selected`) every selected verse gets
+    regardless of the `WORD_CAPTURE_ENABLED` flag — the flag only withheld
+    *saving* a word span, never the CSS that makes the verse long-press-
+    selectable in the first place. So on Dennis's phone, "off" still meant the
+    OS's native selection UI (handles, and on iOS the callout) was reachable
+    on every selected verse the whole time. Selectability is now gated behind
+    a second class, `.word-select-armed`, applied only when the flag is on —
+    off now genuinely means no native text selection happens at all.
+  - **Confirmed bug, now fixed: the native selection lingered behind the
+    picker.** Tapping "Highlight" does not collapse an active text selection
+    on its own (verified both simulated-mouse and real-touch tap in
+    Chromium) — the selection (and whatever OS callout rides with it on a
+    real device) was left showing underneath the category picker that opens
+    right on top of it, which is exactly the "callout appearing" / "selection
+    fighting the bar" failure mode the brief asked to rule out. The button
+    now clears the selection explicitly before opening the picker; the
+    already-latched quote is unaffected (it lives in React state, not the
+    live DOM selection).
+  - **Audited and sound, no change needed:** selection is scoped to the
+    selected verse's own text node (a selection that wanders into the verse
+    number or the next verse is ignored); the latched quote survives the
+    selection collapsing when the bar is tapped; the latch clears the instant
+    the verse is deselected (verified: reselecting the same verse after
+    deselecting shows neither the old quote nor a stale hint, just the plain
+    picker). The picker's "Highlight these words" row reads back the exact
+    trimmed quote (`trimToWordBoundaries`), verified against a live selection.
+  - **Discoverability cue added:** the picker's word-scope row now renders
+    greyed with "Select words in the verse first" the first time a verse is
+    selected, and stops rendering for good the first time a reader actually
+    uses the gesture (`berean.wordHighlightHintSeen`).
+  - **Recommendation:** the concrete bug most likely responsible for "felt
+    glitchy" — a native selection (and its callout) reachable and lingering
+    even while the feature was supposedly off — is now fixed; do one real
+    on-device pass (Android Chrome + iOS Safari) before flipping
+    `WORD_CAPTURE_ENABLED` back on, and if it still feels rough there, scrap
+    mobile word-capture for good and keep only the render path (a stored
+    quote still tints correctly with capture off) — there is no cheaper
+    fallback gesture per the correction above, so "scrap" means the feature
+    stays verse-level highlighting only.
 
 - **User-owned categories, slice 2: ADD AND REMOVE.**
   `docs/proposals/custom-categories.md`. Rename shipped because the KEY never
