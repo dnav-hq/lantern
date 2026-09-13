@@ -20,9 +20,9 @@
  *     grouping quietly rebuilds the ranked sense list R2 forbids.
  *   - NOTHING MARKS THE WORD IN THE READING PAGE (§9a.3). The footnotes door
  *     already owns the dotted underline and leads somewhere else; a second door
- *     in the same costume is worse than none. The only entrance is the
- *     deliberate one below, which appears under a verse the reader has already
- *     chosen and is gone the moment they let it go.
+ *     in the same costume is worse than none. The only entrance is the doorways
+ *     row (VerseDoorways.tsx), which appears under a verse the reader has
+ *     already chosen and is gone the moment they let it go.
  *   - PROVENANCE IS ON THE DOOR (R7), for CC BY 4.0 and for the epistemics.
  *
  * Nothing is fetched until the reader opens this. See wordIndexLoader.ts.
@@ -63,7 +63,7 @@ const PROVENANCE =
   'Alignment and morphology: BSB Translation Tables (bereanbible.com), public domain. ' +
   'Lexicon: STEPBible / Tyndale House, CC BY 4.0.'
 
-interface VerseAddress {
+export interface VerseAddress {
   book: number
   chapter: number
   verse: number
@@ -407,11 +407,19 @@ function DoorBody({
  * does not have, and inventing one would be exactly the ranked list the brief
  * forbids everywhere else.
  */
-function Door({
+export function Door({
   address,
+  openOn,
   onClose
 }: {
   address: VerseAddress
+  /**
+   * The Strong's key the doorway named, so the door opens on that word rather
+   * than on a chooser that answers nothing until the reader picks
+   * (deep-dive-doorways.md: "the word door opens on the word the doorway
+   * named"). Absent or unknown, the verse's first content word leads.
+   */
+  openOn?: string
   onClose: () => void
 }): React.ReactElement {
   const [words, setWords] = useState<SalientWord[] | null>(null)
@@ -427,14 +435,17 @@ function Door({
     ])
       .then(([verseWords, table]) => {
         if (!live) return
+        const salient = salientWords(verseWords, table)
         setParsing(table)
-        setWords(salientWords(verseWords, table))
+        setWords(salient)
+        const at = openOn ? salient.findIndex(w => w.strongs === openOn) : -1
+        setChosen(at >= 0 ? at : 0)
       })
       .catch(() => live && setFailed(true))
     return () => {
       live = false
     }
-  }, [address.book, address.chapter, address.verse])
+  }, [address.book, address.chapter, address.verse, openOn])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -493,27 +504,5 @@ function Door({
       </div>
     </>,
     document.body
-  )
-}
-
-/**
- * The only entrance: one quiet line under a verse the reader has already chosen.
- *
- * It cannot be a mark on the word (§9a.3), and it must not fight verse
- * selection — which on mobile is what a tap already means. So it does neither:
- * it is a separate control that appears BELOW the chosen verse, downstream of
- * the selection rather than competing with it, and it disappears with the
- * selection. Reaching it therefore takes a deliberate second act, and a reader
- * who never performs it downloads not one byte of the word index.
- */
-export default function WordDoorEntrance(props: VerseAddress): React.ReactElement {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="word-door-entrance" onClick={e => e.stopPropagation()}>
-      <button type="button" className="word-door-open" onClick={() => setOpen(true)}>
-        The words behind this verse
-      </button>
-      {open && <Door address={props} onClose={() => setOpen(false)} />}
-    </div>
   )
 }

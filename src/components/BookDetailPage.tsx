@@ -41,7 +41,7 @@ import {
   type ChapterRef
 } from '../utils/useChapterNavigation'
 import FootnoteVerseText from './FootnoteDoor'
-import WordDoorEntrance from './WordDoor'
+import VerseDoorways from './VerseDoorways'
 import { markInstallEngagement } from '../utils/installNudge'
 import { formatRelativeTime } from '../utils/relativeTime'
 
@@ -268,6 +268,9 @@ interface ChapterViewProps {
    *  chosen because a fallback fired. Lets the footer attribute the text that
    *  is really on screen. */
   onServedTranslation?: (t: TranslationId | undefined) => void
+  // The doorways row's map door (VerseDoorways.tsx). Owned by App because the
+  // map is a whole-screen surface outside the reading column.
+  onOpenMap?: () => void
 }
 
 function ChapterView({
@@ -282,7 +285,8 @@ function ChapterView({
   initialHighlightVerses,
   chromeScrollGuard,
   suppressEntrance,
-  onServedTranslation
+  onServedTranslation,
+  onOpenMap
 }: ChapterViewProps): React.ReactElement {
   const api = useApi()
   const [translation, setTranslation] = useReadingTranslation()
@@ -1705,14 +1709,15 @@ function ChapterView({
                   )}
                 </div>
 
-                {/* The word door's ONLY entrance on the Read path (brief
-                    §9a.3): nothing marks the word in the verse, and this line
-                    exists only under the ONE verse the reader has deliberately
-                    chosen. It is downstream of the selection rather than in
-                    competition with it, which is how it coexists with a mobile
-                    tap already meaning "select this verse" — and it goes when
-                    the selection goes. Not while the composer is open: that
-                    tap was about writing, not about a word. */}
+                {/* The deep dive's ONLY entrance on the Read path — the
+                    doorways row (VerseDoorways.tsx). Nothing marks the verse
+                    itself (word-door brief §9a.3); the row exists only under
+                    the ONE verse the reader has deliberately chosen. It is
+                    downstream of the selection rather than in competition with
+                    it, which is how it coexists with a mobile tap already
+                    meaning "select this verse" — and it goes when the
+                    selection goes. Not while the composer is open: that tap
+                    was about writing, not about going deeper. */}
                 {selRange !== null &&
                   selRange[0] === v.verse &&
                   selRange[1] === v.verse &&
@@ -1722,12 +1727,14 @@ function ChapterView({
                   // translation's verse the chips would not match the text on
                   // screen. The selection bar's notice offers the way to BSB.
                   !deepDiveElsewhere && (
-                    <WordDoorEntrance
+                    <VerseDoorways
+                      key={v.verse}
                       book={bookNumber}
                       chapter={chapter}
                       verse={v.verse}
                       reference={`${bookName} ${chapter}:${v.verse}`}
                       verseText={v.text}
+                      onOpenMap={onOpenMap}
                     />
                   )}
 
@@ -1927,18 +1934,20 @@ function ChapterView({
           onDraftClear={clearDraftNow}
           recoverDraft={workbenchRecover}
           wordDoor={verse => {
-            // The Study-side entrance (brief §9a.3). A render prop so the
-            // workbench never has to know the word door exists — it only knows
-            // which verse the draft is aimed at.
+            // The Study-side entrance: the same doorways row. A render prop so
+            // the workbench never has to know the deep dive exists — it only
+            // knows which verse the draft is aimed at.
             const line = verses.find(v => v.verse === verse)
             if (!line || deepDiveElsewhere) return null
             return (
-              <WordDoorEntrance
+              <VerseDoorways
+                key={verse}
                 book={bookNumber}
                 chapter={chapter}
                 verse={verse}
                 reference={`${bookName} ${chapter}:${verse}`}
                 verseText={line.text}
+                onOpenMap={onOpenMap}
               />
             )
           }}
@@ -2053,6 +2062,8 @@ interface BookDetailPageProps {
   // Verses to highlight + scroll to once the chapter loads (set after a
   // "Save & Read" so the just-written notes are seen in context). Consumed once.
   initialHighlightVerses?: number[]
+  // The doorways row's map door. See App.tsx.
+  onOpenMap?: () => void
 }
 
 export default function BookDetailPage({
@@ -2069,7 +2080,8 @@ export default function BookDetailPage({
   onToggleHideNotes,
   displayPrefs,
   onChromeVisibleChange,
-  initialHighlightVerses
+  initialHighlightVerses,
+  onOpenMap
 }: BookDetailPageProps): React.ReactElement {
   const api = useApi()
   const [translation] = useReadingTranslation()
@@ -2532,6 +2544,7 @@ export default function BookDetailPage({
                       // frozen at mount). A pill or search jump mounts a fresh
                       // pane instead, and still gets the reveal.
                       suppressEntrance={peek ? true : suppressEntrance}
+                      onOpenMap={peek ? undefined : onOpenMap}
                     />
                   </ErrorBoundary>
                   {!peek && <ChapterFlowNav prev={prev} next={next} onGo={swipe.go} />}

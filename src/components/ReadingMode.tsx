@@ -8,7 +8,7 @@ import RichEditInput from './RichEditInput'
 import InlineDeleteConfirm from './InlineDeleteConfirm'
 import CrossRefPill from './CrossRefPill'
 import FootnoteVerseText from './FootnoteDoor'
-import WordDoorEntrance from './WordDoor'
+import VerseDoorways from './VerseDoorways'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import ReadingControls from './ReadingControls'
@@ -40,6 +40,8 @@ interface ReadingModeProps {
   onToggleHideNotes: () => void
   // Look / text size for the header's display-options popover (owned by App).
   displayPrefs: DisplayPrefs
+  // The doorways row's map door (VerseDoorways.tsx). Owned by App.
+  onOpenMap?: () => void
 }
 
 interface NoteGroup {
@@ -142,7 +144,8 @@ export default function ReadingMode({
   onToggleFocusReading,
   hideNotes,
   onToggleHideNotes,
-  displayPrefs
+  displayPrefs,
+  onOpenMap
 }: ReadingModeProps): React.ReactElement {
   const categoryLabels = useCategoryLabels()
   const api = useApi()
@@ -819,20 +822,22 @@ export default function ReadingMode({
                       </span>
                     </div>
 
-                    {/* The word door's entrance, under the ONE verse the reader
-                        deliberately chose — nothing marks the word in the text
-                        itself (docs/proposals/word-door-guardrails.md §9a.3),
-                        and this line leaves with the selection. */}
+                    {/* The deep dive's one entrance, the doorways row, under
+                        the ONE verse the reader deliberately chose — nothing
+                        marks the text itself (word-door brief §9a.3), and the
+                        row leaves with the selection. */}
                     {selRange !== null &&
                       selRange[0] === v.verse &&
                       selRange[1] === v.verse &&
                       !showInline && (
-                        <WordDoorEntrance
+                        <VerseDoorways
+                          key={v.verse}
                           book={passage.book_number}
                           chapter={passage.chapter_start}
                           verse={v.verse}
                           reference={`${bookAndChapter}:${v.verse}`}
                           verseText={v.text}
+                          onOpenMap={onOpenMap}
                         />
                       )}
 

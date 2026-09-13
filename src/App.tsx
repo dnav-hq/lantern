@@ -60,13 +60,12 @@ function writeFocusReading(value: boolean): void {
   }
 }
 
-// ─── TEMPORARY MAP ENTRY — slice 2 of docs/proposals/bible-map-v1.md ───────
-// The map has no designed entry point yet (how a verse or a passage opens it is
-// the taste pass, explicitly NOT this slice), so it is reachable only by asking
-// for it in the URL: `?map` or `#map`. It is read once, at mount, and any nav
-// tap leaves it — nothing in the reading path, the nav or the router knows the
-// map exists. DELETE THIS BLOCK, its one `useState` below and the two lines in
-// `doNavigate`/`renderMain` that reference `mapOpen` when the real entry lands.
+// ─── MAP ENTRY — slice 2 of docs/proposals/bible-map-v1.md ─────────────────
+// The map's first real entry is the doorways row's map door (VerseDoorways.tsx
+// → `onOpenMap`), a plain, unframed open: the chapter-framed glance is the map
+// door's own slice (deep-dive-doorways.md item 4). The URL form, `?map` or
+// `#map`, stays as the review shortcut: read once, at mount, and any nav tap
+// leaves it. When the framed door lands, `isMapReviewRequested` can go.
 function isMapReviewRequested(loc: { search: string; hash: string }): boolean {
   return new URLSearchParams(loc.search).has('map') || loc.hash.replace('#', '') === 'map'
 }
@@ -250,7 +249,7 @@ export default function App({
       selectedVerse: null
     }
   })
-  // TEMPORARY: see isMapReviewRequested above. Read once; any nav tap clears it.
+  // Map surface. Opened by the doorways row (onOpenMap) or the ?map review URL.
   const [mapOpen, setMapOpen] = useState(() => isMapReviewRequested(window.location))
   // Mobile-only: the dedicated search surface (an overlay). Desktop search is
   // the always-present top-bar input, so this stays false there.
@@ -278,7 +277,7 @@ export default function App({
   }, [refresh])
 
   const doNavigate = (dest: Destination): void => {
-    setMapOpen(false) // TEMPORARY map entry — see isMapReviewRequested.
+    setMapOpen(false) // Any nav tap leaves the map.
     setStudyOpen(false)
     setState(prev => ({
       ...prev,
@@ -464,7 +463,7 @@ export default function App({
     .join(' ')
 
   function renderMain(): React.ReactElement {
-    // TEMPORARY map entry — see isMapReviewRequested. First, so it can't be
+    // The map surface. First, so it can't be
     // reached by any ordinary navigation.
     if (mapOpen) return <MapView />
 
@@ -522,6 +521,7 @@ export default function App({
           onToggleStudy={setStudyOpen}
           onRefresh={refresh}
           onChromeVisibleChange={setChromeVisible}
+          onOpenMap={() => setMapOpen(true)}
         />
       )
     }
@@ -544,6 +544,7 @@ export default function App({
           hideNotes={hideNotes}
           onToggleHideNotes={() => setHideNotes(h => !h)}
           displayPrefs={displayPrefs}
+          onOpenMap={() => setMapOpen(true)}
         />
       )
     }

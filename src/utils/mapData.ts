@@ -357,6 +357,22 @@ export function loadMapArtwork(fetchImpl: typeof fetch = fetch): Promise<MapBase
   return basePromise
 }
 
+/**
+ * How many geocoded places a chapter carries — the map door's presence check
+ * (docs/proposals/deep-dive-doorways.md, decision 1: chapter-scoped). Costs
+ * the place bundle once per app lifetime (145 KB gzipped, memoized above) and
+ * never the artwork or the relief raster; a chapter absent from the index has
+ * no places.
+ */
+export async function chapterPlaceCount(
+  book: number,
+  chapter: number,
+  fetchImpl: typeof fetch = fetch
+): Promise<number> {
+  const bundle = await loadMapPlaces(fetchImpl)
+  return bundle.ch[chapterKey(book, chapter)]?.length ?? 0
+}
+
 /** Test seam: drop the memoized bundles. */
 export function resetMapBundles(): void {
   placesPromise = null

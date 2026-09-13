@@ -313,8 +313,15 @@ belongs to and why that arc comes when it does.
   the footnote layer in two: alternate-rendering footnotes are safe and ship
   first, textual-variant footnotes ("some manuscripts omit") cause anxiety and
   should be gated. Build order unchanged: footnotes → word door → map → intros.
-  The deep-dive entry surface will likely be redesigned from scratch on the
-  doorways model rather than reusing the connections prototype.
+  The deep-dive entry surface SHIPPED 2026-09-13 as the doorways row
+  (`src/components/VerseDoorways.tsx`; item 2 of
+  `docs/proposals/deep-dive-doorways.md`): under the one selected verse, only
+  the doors the verse has, each a fact in tokens, no icons, gone when nothing
+  is behind the verse. Presence-only and presence-ordered; the §8.2 salience
+  model is still unbuilt. The connections doorway is coded against
+  `connectionsPresence()` in `src/utils/connectionsLoader.ts`, a stub returning
+  null until the connections door merges; its tap (`onOpenConnections`) is
+  unwired for the same reason.
 
 - **Bible map (deep-dive rung 3) — slice 3, INTERACTION, is built (2026-09-12);
   what is left is the entry point and verse wiring.** Brief in
@@ -343,9 +350,14 @@ belongs to and why that arc comes when it does.
   tap into a pile resolves to the most-referenced place within a few pixels
   (`pickMarker`), so the Judean cluster means Jerusalem, not the wall segment
   geocoded on top of it. Animated zooms respect `prefers-reduced-motion`.
-  **DELIBERATELY NOT BUILT, and the next piece of work:** how the map is reached
-  from a verse or a passage (today it is a temporary `?map` / `#map` entry in
-  `App.tsx`, marked in place and removable in three lines); tapping the verse
+  **The entry point SHIPPED 2026-09-13 as the doorways row's map door**
+  (`src/components/VerseDoorways.tsx` → `onOpenMap` in `App.tsx`): "8 places
+  in this chapter" under a chosen verse, chapter-scoped per decision 1 of
+  `docs/proposals/deep-dive-doorways.md`, presence read from the place bundle's
+  chapter index (`chapterPlaceCount` in `src/utils/mapData.ts`, 145 KB once,
+  never the artwork). It is a PLAIN, UNFRAMED open — the chapter-framed glance
+  (item 4 of that proposal) is still to build; `?map` / `#map` stays as the
+  review shortcut. **DELIBERATELY NOT BUILT:** the chapter framing; tapping the verse
   count to go and read those verses, or a place's openbible.info page; momentum
   after a fling (the brief calls it optional, interruptible-and-jank-free was the
   requirement); marker clustering; off-canvas indicators for the ~65
@@ -430,16 +442,26 @@ belongs to and why that arc comes when it does.
   and `src/utils/wordIndexLoader.ts` (the lazy, per-shard fetch — a reader who
   never opens a door downloads none of the 8.17 MB, and opening one costs the
   book's verse shard, the parsing table and ONE lemma shard). Nothing marks the
-  word in the scripture (§9a decision 3); the entrance is a single line under a
-  verse the reader has already chosen, plus the same line in the desktop Study
-  workbench. See §5.5 of the brief for what slice 2 decided and what it did not.
+  word in the scripture (§9a decision 3). **The entrance changed 2026-09-13:**
+  the single "The words behind this verse" line (`WordDoorEntrance`, deleted)
+  was replaced on all three surfaces — chapter, saved passage, desktop Study
+  workbench — by the DOORWAYS ROW, `src/components/VerseDoorways.tsx`, the one
+  entrance to the whole deep dive (pure logic + tests in `src/utils/doorways.ts`).
+  Its word doorway names a fact, "hăḇêl · 4× here" (the verse's own form of the
+  lead lemma, the one the verse says most often, ties in verse order; the
+  dictionary form lives only in the lemma shard, which must not load before the
+  tap — a `lemma translit` column on the verse shard would fix that cheaply), and
+  the door now opens ON that word (`Door`'s `openOn`). Presence costs the book's
+  verse shard + the parsing table, the door's own first two files, memoized per
+  book. See §5.5 of the brief for what slice 2 decided and what it did not.
   STILL OPEN: the SALIENCE model of §8.2 — the door offers a verse's content
   words in verse order, so nothing yet ranks which word a verse is *about*
   (footnote-anchored, thematically dense, unusually rendered, marked
   morphology), and the footnote trigger (R6) stays with the footnotes door; the
-  deep-dive doorway list §8.3 assumes does not exist yet; discoverability of the
-  entrance is unmeasured (§9a.3 reserves a solid 2px baseline rule if it proves
-  invisible, and only that); and the 542 gloss-less lemmas are BDB sub-lemma
+  deep-dive doorway list §8.3 assumes now exists as the row above but ranks
+  nothing (presence order word → connections → map, a stated ordering);
+  discoverability of the entrance is unmeasured (§9a.3 reserves a solid 2px
+  baseline rule if it proves invisible, and only that); and the 542 gloss-less lemmas are BDB sub-lemma
   splits that could be folded onto the bare Strong's number for ~100% coverage
   at the cost of merging senses BDB separates — a decision, deliberately not
   taken (§5.4).
