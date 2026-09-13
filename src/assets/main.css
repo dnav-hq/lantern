@@ -9443,6 +9443,53 @@ body.dark .word-scrim {
   padding: 0;
   cursor: pointer;
 }
+/* Where each row lands — docs/proposals/setting-line.md. One quiet line under
+   the reference, the BSB's own section heading for the destination verse. It is
+   UI type, not scripture: the line is a note about the text's layout, and
+   nothing about it may read as the verse's own voice. Clamped to one line on
+   purpose — the glance has to stay one screen with three of these on it (§9,
+   simplicity check) — and the heading's name is the part that carries, so the
+   framing word around it stays faint. */
+.conn-setting {
+  font-family: var(--ui-font);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--text-faint);
+  margin: 0 0 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.conn-setting-name {
+  color: var(--text-muted);
+}
+.conn-setting-source {
+  color: var(--text-faint);
+}
+
+/* The stacked passage's head: the way back, and under it where this passage
+   sits. Sticky as ONE block (the breadcrumb used to be sticky on its own) so a
+   verse scrolled into view keeps both above it. */
+.conn-stack-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 0.5px solid var(--border);
+  margin-bottom: 4px;
+}
+.conn-stack-head .conn-crumb {
+  position: static;
+  margin: 0;
+  border-bottom: 0;
+}
+.conn-stack-head .conn-setting {
+  margin: 0;
+  padding: 0 0 8px;
+}
+body.dark .conn-stack-head {
+  background: var(--surface-2);
+}
 .conn-crumb {
   position: sticky;
   top: 0;
@@ -9507,6 +9554,11 @@ body.dark .word-scrim {
   color: var(--text-muted);
   /* Room for the sticky breadcrumb above a verse scrolled into view. */
   scroll-margin-top: 52px;
+}
+/* And room for the setting line under it, where there is one. Scoped to that
+   case so a passage without a line lands exactly where it always did. */
+.conn-passage.has-setting .conn-passage-verse {
+  scroll-margin-top: 74px;
 }
 body.dark .conn-crumb {
   background: var(--surface-2);

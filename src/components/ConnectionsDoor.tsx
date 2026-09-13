@@ -24,6 +24,15 @@
  *     verse with the same selection. Depth is ONE: the stacked passage offers
  *     no door onward. That is this slice, said plainly.
  *   - PROVENANCE IS ON THE DOOR (§3.1): OpenBible.info, CC BY 4.0.
+ *   - WHERE EACH ROW LANDS (docs/proposals/setting-line.md): one quiet line
+ *     under the reference — the BSB's own section heading for the destination
+ *     verse, framed as a heading ("Under “Faith and Works”") rather than as a
+ *     sentence, because printed bare it would read as Lantern telling the
+ *     reader what the passage means (§6.2). It appears only where the shipped
+ *     bundle has a line for that verse — the heading has to be within ten
+ *     verses (§4, R6) — and a row without one is exactly the row we shipped
+ *     before. The source is named ONCE, in the door's provenance, rather than
+ *     repeated under every reference.
  *
  * Nothing is fetched until the reader selects a verse. See connectionsLoader.ts.
  */
@@ -36,12 +45,27 @@ import {
   type ConnectionRow,
   type VerseConnections
 } from '../utils/connectionsLoader'
+import type { SettingLine } from '../utils/settingLine'
 import { DeepDiveSheet, Fold } from './DeepDiveSheet'
 
 /** The glance: one full row, two one-line rows, and the fold. */
 const GLANCE_ROWS = 3
 
 const PROVENANCE = 'Cross-references: OpenBible.info, CC BY 4.0.'
+
+/** §4, R5: what the line under each reference is, said once, on the door. */
+function settingProvenance(rows: readonly ConnectionRow[]): string | null {
+  const headings = rows.some(row => row.setting?.source === 'h')
+  const titles = rows.some(row => row.setting?.source === 's')
+  if (!headings && !titles) return null
+  const what =
+    headings && titles
+      ? 'Section headings and psalm titles'
+      : headings
+        ? 'Section headings'
+        : 'Psalm titles'
+  return `${what} under each reference: Berean Standard Bible (public domain).`
+}
 
 interface VerseAddress {
   book: number
@@ -69,6 +93,36 @@ function Lit({ text, run }: { text: string; run: [number, number] | null }): Rea
 
 const why = (row: ConnectionRow): string => (row.kind === 'quotes' ? 'quotes it' : 'echoes it')
 
+/**
+ * Where the row lands, in one line. A section heading is shown AS a heading —
+ * "Under “Faith and Works”" — which is what makes it a true statement about the
+ * BSB's own layout rather than a claim about the verse (setting-line.md §4, R5
+ * and §6.2). A psalm title is scripture's own words, so it is shown as it
+ * stands. `source` names the translation it came from, for the stacked passage,
+ * where the door's provenance line is off screen.
+ */
+function SettingLineRow({
+  setting,
+  source = false
+}: {
+  setting: SettingLine | null
+  source?: boolean
+}): React.ReactElement | null {
+  if (!setting) return null
+  return (
+    <p className="conn-setting">
+      {setting.source === 'h' ? (
+        <>
+          Under <span className="conn-setting-name">“{setting.text}”</span>
+        </>
+      ) : (
+        <span className="conn-setting-name">{setting.text}</span>
+      )}
+      {source && <span className="conn-setting-source"> · Berean Standard Bible</span>}
+    </p>
+  )
+}
+
 /** One row: the reference, the reason, and the sentence — whole or one line. */
 function Row({
   row,
@@ -91,6 +145,7 @@ function Row({
         </button>
         <span className="conn-why">{why(row)}</span>
       </div>
+      <SettingLineRow setting={row.setting} />
       {row.text !== null && (
         <p className={`conn-text${full ? '' : ' one-line'}`} onClick={onOpen}>
           <Lit text={row.text} run={full ? row.shared : null} />
@@ -141,7 +196,7 @@ function Stacked({
     return <p className="word-door-state">This passage could not be loaded just now.</p>
   }
   return (
-    <div className="conn-passage">
+    <div className={`conn-passage${row.setting ? ' has-setting' : ''}`}>
       {lines.map(line => {
         const here = line.verse >= row.verse && line.verse <= last
         return (
@@ -214,11 +269,17 @@ function Door({
             breadcrumb rides along inside the same block, so it settles into
             place with the passage rather than popping in ahead of it. */}
         <div className={`conn-stack${stackLeaving ? ' is-leaving' : ''}`}>
-          {/* The breadcrumb: one tappable line that says why you are here and
-              takes you back. "Romans 4:3 quotes Genesis 15:6". */}
-          <button type="button" className="conn-crumb" onClick={closeStack}>
-            <strong>{row.label}</strong> {row.kind} {address.reference}
-          </button>
+          {/* The head, sticky as one block: the breadcrumb — one tappable
+              line that says why you are here and takes you back, "Romans 4:3
+              quotes Genesis 15:6" — and under it where this passage sits, so a
+              verse scrolled into view keeps both above it and the reader lands
+              knowing where they are. */}
+          <div className="conn-stack-head">
+            <button type="button" className="conn-crumb" onClick={closeStack}>
+              <strong>{row.label}</strong> {row.kind} {address.reference}
+            </button>
+            <SettingLineRow setting={row.setting} source />
+          </div>
           <Stacked row={row} translation={address.translation} />
         </div>
       </DeepDiveSheet>
@@ -258,7 +319,10 @@ function Door({
         />
       )}
 
-      <p className="word-prov">{PROVENANCE}</p>
+      <p className="word-prov">
+        {PROVENANCE}
+        {settingProvenance(rows) !== null && <> {settingProvenance(rows)}</>}
+      </p>
     </DeepDiveSheet>
   )
 }

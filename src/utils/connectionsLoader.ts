@@ -16,6 +16,11 @@
 //     from it share one load rather than racing two.
 //   - Offline: a cached chapter's door works; an uncached one resolves to
 //     "no door" — never an error, never a hint (§7).
+//   - THE SETTING LINE rides along (docs/proposals/setting-line.md §7.2): the
+//     static bundle of section headings is asked for only once a door has
+//     actually opened, in parallel with the verse texts, memoized for the app's
+//     lifetime, and it never throws — a row whose destination has no line just
+//     shows what it showed before.
 //
 // Nothing here may import a Node API — this file lives under src/ and obeys the
 // pure-web rule in CLAUDE.md.
@@ -30,6 +35,12 @@ import {
   type ConnectionKind,
   type RawConnection
 } from './connections'
+import {
+  loadSettingLines,
+  settingLineIn,
+  type SettingLine,
+  type SettingLineFile
+} from './settingLine'
 import { currentTranslation } from './useTranslation'
 
 /** One row of the door, ready to render. */
@@ -51,6 +62,13 @@ export interface ConnectionRow {
   shared: [number, number] | null
   /** The same run inside the held verse's text, so the source can show it too. */
   sharedInSource: [number, number] | null
+  /**
+   * Where this row lands: the destination's own section heading, gated by
+   * reach (docs/proposals/setting-line.md §4). Null where the file has nothing
+   * to say about the verse, or is not loaded — a row without a line is exactly
+   * the row we shipped before.
+   */
+  setting: SettingLine | null
 }
 
 export interface VerseConnections {
@@ -62,7 +80,7 @@ export interface VerseConnections {
   top: number
 }
 
-/** The two things the loader needs from outside. Injected so tests need no network. */
+/** What the loader needs from outside. Injected so tests need no network. */
 export interface ConnectionsSources {
   chapterConnections(book: number, chapter: number): Promise<ChapterConnections>
   chapterText(
@@ -70,6 +88,12 @@ export interface ConnectionsSources {
     chapter: number,
     translation: TranslationId
   ): Promise<BibleVerseLine[] | null>
+  /**
+   * The setting-line bundle. Lazy on purpose: it is asked for only once a door
+   * has actually opened (setting-line.md §7.2), never with the chapter, and it
+   * never throws — no lines is a quieter door, not an error.
+   */
+  settingLines?(): Promise<SettingLineFile | null>
 }
 
 const defaultSources: ConnectionsSources = {
@@ -79,7 +103,8 @@ const defaultSources: ConnectionsSources = {
     if (!name) return null
     const passage = await getBibleVerse(`${name} ${chapter}`, translation).catch(() => null)
     return passage?.verses ?? null
-  }
+  },
+  settingLines: () => loadSettingLines()
 }
 
 export function connectionLabel(c: RawConnection): string {
@@ -138,6 +163,12 @@ export function createConnectionsLoader(
     const raw = connectionsForVerse(all, verse)
     if (!doorOpens(raw)) return null
 
+    // Only now — the door is real. One static file, once per app lifetime,
+    // fetched alongside the verse texts rather than before them.
+    const settingsPromise = (sources.settingLines ?? defaultSources.settingLines!)().catch(
+      () => null
+    )
+
     // The held verse's own words, and each connected chapter once.
     const wanted = new Map<string, [number, number]>()
     wanted.set(`${book}/${chapter}`, [book, chapter])
@@ -156,6 +187,7 @@ export function createConnectionsLoader(
     const lineText = (b: number, ch: number, v: number): string | null =>
       texts.get(`${b}/${ch}`)?.find(line => line.verse === v)?.text ?? null
 
+    const settings = await settingsPromise
     const source = lineText(book, chapter, verse)
     let quotes = 0
     const rows: ConnectionRow[] = raw.map(c => {
@@ -171,7 +203,8 @@ export function createConnectionsLoader(
         kind: run ? 'quotes' : 'echoes',
         text,
         shared: run ? run.target : null,
-        sharedInSource: run ? run.source : null
+        sharedInSource: run ? run.source : null,
+        setting: settingLineIn(settings, c.book, c.chapter, c.verse)
       }
     })
     return { rows, quotes, echoes: rows.length - quotes, top: raw[0]?.score ?? 0 }
