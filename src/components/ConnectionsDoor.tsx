@@ -140,11 +140,14 @@ function ConnectionRow({
 function StackedPassage({
   row,
   origin,
+  sourceText,
   translation,
   onBack
 }: {
   row: LoadedRow
   origin: string
+  /** The held verse's own text — the other half of every quote claim. */
+  sourceText: string
   translation: TranslationId
   onBack: () => void
 }): React.ReactElement {
@@ -198,11 +201,15 @@ function StackedPassage({
               className={v.verse >= connection.verse && v.verse <= last ? 'conn-v here' : 'conn-v'}
             >
               <span className="verse-number">{v.verse}</span>
-              {v.verse === connection.verse && row.match?.span ? (
-                <Preview text={v.text} span={row.match.span} />
-              ) : (
-                v.text
-              )}
+              {/* RE-CLASSIFIED against THIS verse, never reused from the row.
+                  The row's span is an offset into the row's preview, and for a
+                  range ("Romans 4:3–6") that preview is four verses joined —
+                  reusing it here would light characters at that offset in a
+                  DIFFERENT string, which is precisely the fabricated-highlight
+                  failure the whole classifier is built to avoid. Recomputing is
+                  also more honest: only the verse that genuinely carries the
+                  shared phrase lights up. */}
+              <Preview text={v.text} span={classifyConnection(sourceText, v.text).span} />
             </p>
           ))}
         </div>
@@ -284,6 +291,7 @@ function Door({
         <StackedPassage
           row={stackedRow}
           origin={address.reference}
+          sourceText={address.verseText}
           translation={address.translation}
           onBack={() => setStacked(null)}
         />
