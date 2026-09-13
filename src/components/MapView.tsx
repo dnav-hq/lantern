@@ -48,6 +48,19 @@ import { usePrefersReducedMotion } from '../utils/useChapterNavigation'
 // that CSS scales by `--map-k` (artwork units per pixel), so a dot is 3 px at
 // every zoom and the coastline, with non-scaling strokes, never fattens.
 //
+// That still left one thing expensive: writing the `viewBox` ATTRIBUTE every
+// frame forces the browser to recompute the coordinate system for the whole
+// subtree underneath it (all 1,335 markers, their labels, the relief raster)
+// — a main-thread layout cost, not a compositor one, and it is what made a
+// drag or pinch janky on a phone regardless of how little else changed. The
+// fix: the `viewBox` attribute only changes once, when a gesture ENDS (React
+// commits it, same as before); while the gesture is live, the same visual
+// effect is produced instead by a `transform` on `.map-content` (one element,
+// not 1,335), which the browser can composite on the GPU with `will-change:
+// transform` and never re-lays-out the artwork underneath. `--map-k` is
+// unaffected — it already accounted for the true live viewBox, not the
+// committed one.
+//
 // Still NOT here, on purpose: how the map is reached from a verse (App.tsx's
 // temporary `?map` entry stands), tapping a verse count to go and read those
 // verses, clustering, and edge indicators for the ~65 out-of-frame places.
@@ -102,19 +115,39 @@ export function MapCanvas({
   const [size, setSize] = useState<{ width: number; height: number } | null>(null)
   const fit = useMemo(() => (size ? fitViewBox(extent, size) : extent), [extent, size])
 
-  // The committed viewBox — what React renders. The ref is the live one that
-  // gestures move; they are reconciled at the end of each gesture.
+  // The committed viewBox — what React renders (and what the `viewBox`
+  // attribute is set to). The ref is the live one that gestures move; they
+  // are reconciled at the end of each gesture.
   const [viewBox, setViewBox] = useState<ViewBox>(extent)
   const liveRef = useRef<ViewBox>(extent)
+  // The viewBox the `<svg>` is actually rendering right now — always equal to
+  // `viewBox` above. Frame-by-frame gesture updates fake the rest of the way
+  // there with a `.map-content` transform instead of touching the attribute.
+  const baseRef = useRef<ViewBox>(extent)
+  const contentRef = useRef<SVGGElement>(null)
   const rectRef = useRef<ScreenRect | null>(null)
   const fitRef = useRef(fit)
   fitRef.current = fit
 
+  // `.is-live` brackets a gesture: only while it is present does the browser
+  // promote `.map-content` to its own GPU layer. Scoped rather than always-on
+  // because Chrome drops text to grayscale AA on a promoted layer, which
+  // would otherwise make every at-rest screenshot a (harmless but real)
+  // pixel diff from the pre-gesture ones.
+  const setLive = useCallback((live: boolean) => {
+    contentRef.current?.classList.toggle('is-live', live)
+  }, [])
+
   const applyToDom = useCallback((vb: ViewBox) => {
     liveRef.current = vb
     const svg = svgRef.current
-    if (!svg) return
-    svg.setAttribute('viewBox', formatViewBox(vb))
+    const content = contentRef.current
+    if (!svg || !content) return
+    const base = baseRef.current
+    const scale = base.w / vb.w
+    const tx = base.x - scale * vb.x
+    const ty = base.y - scale * vb.y
+    content.setAttribute('transform', `matrix(${scale} 0 0 ${scale} ${tx} ${ty})`)
     const rect = rectRef.current ?? svg.getBoundingClientRect()
     svg.style.setProperty('--map-k', String(unitsPerPixel(vb, rect)))
   }, [])
@@ -160,13 +193,17 @@ export function MapCanvas({
         fit
       )
     }
+    baseRef.current = next
     applyToDom(next)
     setViewBox(next)
   }, [fit, size, extent, applyToDom])
 
-  // Keep the DOM in step with the committed state whenever React renders it
-  // (the attribute below is rendered from state, but `--map-k` is not).
+  // Keep the DOM in step with the committed state whenever React renders it:
+  // the `viewBox` attribute comes from state via JSX below, but `--map-k` and
+  // `.map-content`'s transform do not, and `baseRef` must land on the value
+  // the attribute now holds before any gesture measures a delta against it.
   useEffect(() => {
+    baseRef.current = viewBox
     applyToDom(viewBox)
   }, [viewBox, applyToDom])
 
@@ -188,12 +225,14 @@ export function MapCanvas({
   }, [])
 
   const commit = useCallback(() => {
+    setLive(false)
     setViewBox(liveRef.current)
-  }, [])
+  }, [setLive])
 
   const animateTo = useCallback(
     (target: ViewBox) => {
       cancelAnimation()
+      setLive(true)
       if (reducedMotion) {
         applyToDom(target)
         commit()
@@ -214,7 +253,7 @@ export function MapCanvas({
       }
       animation.current = requestAnimationFrame(step)
     },
-    [applyToDom, cancelAnimation, commit, reducedMotion]
+    [applyToDom, cancelAnimation, commit, reducedMotion, setLive]
   )
 
   const zoomBy = useCallback(
@@ -232,6 +271,7 @@ export function MapCanvas({
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>): void => {
     if (e.button !== 0 && e.pointerType === 'mouse') return
     cancelAnimation()
+    setLive(true)
     const svg = e.currentTarget
     try {
       svg.setPointerCapture(e.pointerId)
@@ -319,6 +359,7 @@ export function MapCanvas({
     const onWheel = (e: WheelEvent): void => {
       e.preventDefault()
       cancelAnimation()
+      setLive(true)
       const rect = svg.getBoundingClientRect()
       rectRef.current = rect
       const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
@@ -343,7 +384,7 @@ export function MapCanvas({
       svg.removeEventListener('wheel', onWheel)
       if (commitTimer !== null) window.clearTimeout(commitTimer)
     }
-  }, [applyToDom, cancelAnimation, commit, extent])
+  }, [applyToDom, cancelAnimation, commit, extent, setLive])
 
   /* ── Labels: decluttered in screen space at the committed zoom ── */
   const zoom = zoomLevel(viewBox, fit)
@@ -377,53 +418,58 @@ export function MapCanvas({
         onPointerUp={e => endPointer(e, false)}
         onPointerCancel={e => endPointer(e, true)}
       >
-        {/* The opt-in relief layer. Rendered ONLY in the relief view, which is
-            what makes the fetch lazy: with no <image> in the tree the browser
-            never asks for terrain.png, so the default paint is vectors only. */}
-        {view === 'relief' && terrain && (
-          <image
-            className="map-terrain"
-            href={terrain.url}
-            x={0}
-            y={0}
-            width={vbWidth}
-            height={vbHeight}
-            preserveAspectRatio="none"
-          />
-        )}
+        {/* Everything drawn moves together as one unit during a live gesture:
+            see the note at the top of this file for why this group, not the
+            `viewBox` attribute, is what a drag or pinch writes to per frame. */}
+        <g ref={contentRef} className="map-content">
+          {/* The opt-in relief layer. Rendered ONLY in the relief view, which is
+              what makes the fetch lazy: with no <image> in the tree the browser
+              never asks for terrain.png, so the default paint is vectors only. */}
+          {view === 'relief' && terrain && (
+            <image
+              className="map-terrain"
+              href={terrain.url}
+              x={0}
+              y={0}
+              width={vbWidth}
+              height={vbHeight}
+              preserveAspectRatio="none"
+            />
+          )}
 
-        <g className="map-layer map-layer-lakes" aria-hidden="true">
-          {artwork.layers.lakes.map((d, i) => (
-            <path key={i} d={d} vectorEffect="non-scaling-stroke" />
-          ))}
-        </g>
-        <g className="map-layer map-layer-rivers" aria-hidden="true">
-          {artwork.layers.rivers.map((d, i) => (
-            <path key={i} d={d} vectorEffect="non-scaling-stroke" />
-          ))}
-        </g>
-        <g className="map-layer map-layer-coast" aria-hidden="true">
-          {artwork.layers.coastline.map((d, i) => (
-            <path key={i} d={d} vectorEffect="non-scaling-stroke" />
-          ))}
-        </g>
+          <g className="map-layer map-layer-lakes" aria-hidden="true">
+            {artwork.layers.lakes.map((d, i) => (
+              <path key={i} d={d} vectorEffect="non-scaling-stroke" />
+            ))}
+          </g>
+          <g className="map-layer map-layer-rivers" aria-hidden="true">
+            {artwork.layers.rivers.map((d, i) => (
+              <path key={i} d={d} vectorEffect="non-scaling-stroke" />
+            ))}
+          </g>
+          <g className="map-layer map-layer-coast" aria-hidden="true">
+            {artwork.layers.coastline.map((d, i) => (
+              <path key={i} d={d} vectorEffect="non-scaling-stroke" />
+            ))}
+          </g>
 
-        <g className="map-markers">
-          {model.markers.map(marker => (
-            <PlaceGlyph key={marker.index} marker={marker} selected={marker.index === selected} />
-          ))}
-        </g>
+          <g className="map-markers">
+            {model.markers.map(marker => (
+              <PlaceGlyph key={marker.index} marker={marker} selected={marker.index === selected} />
+            ))}
+          </g>
 
-        <g className="map-labels" aria-hidden="true">
-          {labels.map(label => (
-            <g key={label.index} transform={`translate(${label.x} ${label.y})`}>
-              <g className="map-place-scale">
-                <text className="map-label" x={0} y={0}>
-                  {label.name}
-                </text>
+          <g className="map-labels" aria-hidden="true">
+            {labels.map(label => (
+              <g key={label.index} transform={`translate(${label.x} ${label.y})`}>
+                <g className="map-place-scale">
+                  <text className="map-label" x={0} y={0}>
+                    {label.name}
+                  </text>
+                </g>
               </g>
-            </g>
-          ))}
+            ))}
+          </g>
         </g>
       </svg>
 
@@ -470,8 +516,13 @@ export function MapCanvas({
  * Geometry is in PIXELS around each point: the `.map-place-scale` group is
  * scaled by `--map-k` in CSS, which is what keeps a marker the same size on
  * screen at every zoom. Only the tether lines live in artwork units.
+ *
+ * Memoized: MapCanvas re-renders once at the end of every gesture (the
+ * viewBox commit), and without this every one of the 1,335 markers would be
+ * re-invoked and reconciled at that instant even though only the viewBox
+ * changed — the exact one-time spike a smooth gesture end should not have.
  */
-function PlaceGlyph({
+const PlaceGlyph = React.memo(function PlaceGlyph({
   marker,
   selected
 }: {
@@ -511,7 +562,7 @@ function PlaceGlyph({
       </g>
     </g>
   )
-}
+})
 
 const BAND_ORDER = ['settled', 'high', 'moderate', 'low'] as const
 

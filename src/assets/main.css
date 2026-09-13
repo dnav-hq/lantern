@@ -8477,6 +8477,17 @@ body.dark .study-note-act .is-yes {
   cursor: default;
 }
 
+/* Everything the map draws moves as one GPU-composited layer during a live
+   gesture (the `<g>` MapView.tsx writes a `transform` to per frame instead of
+   the `viewBox` attribute) — `will-change` keeps the browser from re-laying
+   out 1,335 markers, their labels and the relief raster on every frame.
+   Scoped to `.is-live`, toggled only for the gesture's duration: applied at
+   rest, Chrome drops label text to grayscale AA to keep the layer promoted,
+   which is a real (if subtle) pixel diff from the pre-gesture screenshots. */
+.map-content.is-live {
+  will-change: transform;
+}
+
 /* The opt-in relief raster. Grayscale hillshade sits UNDER the ink rather than
    competing with it, so it is held back hard. */
 .map-terrain {
