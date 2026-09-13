@@ -73,14 +73,18 @@ const why = (row: ConnectionRow): string => (row.kind === 'quotes' ? 'quotes it'
 function Row({
   row,
   full,
-  onOpen
+  onOpen,
+  revealed = false
 }: {
   row: ConnectionRow
   full: boolean
   onOpen: () => void
+  /** True for a row the fold just uncovered — eases it open rather than
+   *  snapping (mounts fresh, so the entrance replays exactly once). */
+  revealed?: boolean
 }): React.ReactElement {
   return (
-    <div className="conn">
+    <div className={`conn${revealed ? ' deep-reveal' : ''}`}>
       <div className="conn-head">
         <button type="button" className="conn-ref" onClick={onOpen}>
           {row.label}
@@ -157,6 +161,10 @@ function Stacked({
   )
 }
 
+/** Matches --dur-3 — the stacked passage's own slide, independent of the
+ *  sheet's (DeepDiveSheet owns that one). */
+const STACK_EXIT_MS = 260
+
 function Door({
   address,
   found,
@@ -168,24 +176,51 @@ function Door({
 }): React.ReactElement {
   const [more, setMore] = useState(false)
   const [stacked, setStacked] = useState<ConnectionRow | null>(null)
+  // The stacked passage slides OUT on Back rather than vanishing, so it stays
+  // mounted (rendering the last row it held) for the length of that exit —
+  // same shape as MobileSelectionBar's own leaving state.
+  const [stackLeaving, setStackLeaving] = useState(false)
+  const lastStacked = useRef<ConnectionRow | null>(null)
+  if (stacked) lastStacked.current = stacked
   const rows = found.rows
   const rest = rows.length - GLANCE_ROWS
   const lead = rows[0]?.kind === 'quotes' ? rows[0].sharedInSource : null
 
-  if (stacked) {
+  const closeStack = (): void => {
+    const reduce =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduce) {
+      setStacked(null)
+      return
+    }
+    setStackLeaving(true)
+    window.setTimeout(() => {
+      setStacked(null)
+      setStackLeaving(false)
+    }, STACK_EXIT_MS)
+  }
+
+  if (stacked || stackLeaving) {
+    const row = stacked ?? lastStacked.current!
     return (
       <DeepDiveSheet
         reference={address.reference}
-        label={`${stacked.label}, from ${address.reference}`}
+        label={`${row.label}, from ${address.reference}`}
         onClose={onClose}
-        onBack={() => setStacked(null)}
+        onBack={closeStack}
       >
-        {/* The breadcrumb: one tappable line that says why you are here and
-            takes you back. "Romans 4:3 quotes Genesis 15:6". */}
-        <button type="button" className="conn-crumb" onClick={() => setStacked(null)}>
-          <strong>{stacked.label}</strong> {stacked.kind} {address.reference}
-        </button>
-        <Stacked row={stacked} translation={address.translation} />
+        {/* Slides in over the glance on open, and back out on Back — the
+            breadcrumb rides along inside the same block, so it settles into
+            place with the passage rather than popping in ahead of it. */}
+        <div className={`conn-stack${stackLeaving ? ' is-leaving' : ''}`}>
+          {/* The breadcrumb: one tappable line that says why you are here and
+              takes you back. "Romans 4:3 quotes Genesis 15:6". */}
+          <button type="button" className="conn-crumb" onClick={closeStack}>
+            <strong>{row.label}</strong> {row.kind} {address.reference}
+          </button>
+          <Stacked row={row} translation={address.translation} />
+        </div>
       </DeepDiveSheet>
     )
   }
@@ -209,6 +244,7 @@ function Door({
           row={row}
           full={i === 0}
           onOpen={() => setStacked(row)}
+          revealed={i >= GLANCE_ROWS}
         />
       ))}
 

@@ -145,6 +145,24 @@
     animation: fadeRise var(--dur-2) var(--ease-out) backwards;
   }
 
+  /* ── Fold reveal: the deep-dive doors' one quiet control (DeepDiveSheet's
+     `Fold`) mounts its extra content fresh rather than height-animating a
+     persistent block, so the reveal is an entrance, not a resize — the same
+     shape as the rail note/inline note entrances above. Applied to whichever
+     newly-revealed rows a door mounts on expand (WordDoor's grammar/lexicon
+     rows, ConnectionsDoor's rows past the glance). */
+  .deep-reveal {
+    animation: fadeRise var(--dur-3) var(--ease-out) both;
+  }
+
+  /* ── The doorways row (VerseDoorways.tsx) — the connections line under a
+     chosen verse. On the selection bar's own timing (--dur-3/--ease-out) so
+     it never pops in a frame after the verse highlights; it mounts fresh
+     per verse (key={verse}) so this replays on every selection. */
+  .verse-doorways {
+    animation: fadeRise var(--dur-3) var(--ease-out) both;
+  }
+
   /* ── Entrance: the floating verse-selection action bar — the single most
      repeated interaction surface in the app, so it gets the springier feel. */
   .verse-action-bar {

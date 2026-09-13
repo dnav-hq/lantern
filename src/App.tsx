@@ -465,7 +465,7 @@ export default function App({
   function renderMain(): React.ReactElement {
     // The map surface. First, so it can't be
     // reached by any ordinary navigation.
-    if (mapOpen) return <MapView />
+    if (mapOpen) return <MapView onClose={() => setMapOpen(false)} />
 
     if (destination === 'journal') {
       // The Journal is a history of NOTES now, not of saved study containers,

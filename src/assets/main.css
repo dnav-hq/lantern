@@ -8376,6 +8376,13 @@ body.dark .study-note-act .is-yes {
    screen at every zoom. One custom property per frame moves 1,300 markers.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* `flex: 1` + `overflow-y: auto` is the fix, not decoration: `.main-area`
+   (App.tsx) clips its content with `overflow: hidden` and expects whichever
+   surface it holds to own its own scrolling, the way `.journal-page` and
+   `.profile-page` already do. `.map-view` was the one surface that never
+   opted in, so a reader who opened it from a verse got a clipped page with
+   no way to reach the legend, the unlocated list or the attribution below
+   the fold — and no way back, either (see `.map-view-close` below). */
 .map-view {
   --map-ink: var(--text-muted);
   --map-coast: var(--text);
@@ -8383,7 +8390,11 @@ body.dark .study-note-act .is-yes {
   --map-water-fill: rgba(63, 123, 160, 0.14);
   --map-mark: var(--accent-ink);
   --map-canvas: var(--surface);
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   max-width: var(--shell-max);
+  width: 100%;
   margin: 0 auto;
   padding: var(--space-5) var(--space-4) var(--space-7);
   color: var(--text);
@@ -8396,6 +8407,12 @@ body.dark .study-note-act .is-yes {
   gap: var(--space-4);
   flex-wrap: wrap;
   margin-bottom: var(--space-4);
+}
+
+.map-view-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 .map-view-eyebrow {
   margin: 0;
@@ -8779,6 +8796,30 @@ body.dark .study-note-act .is-yes {
   margin: 0 0 var(--space-2);
 }
 
+/* Open: a calm rise-and-fade, the same shape every other surface in the app
+   enters with. Close: the mirror, held until MapView's own timer (matches
+   --dur-3) swaps it back out for whatever page opened it. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes mapViewIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+  .map-view {
+    animation: mapViewIn var(--dur-3) var(--ease-out);
+  }
+  @keyframes mapViewOut {
+    to {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+  .map-view.is-closing {
+    animation: mapViewOut var(--dur-3) cubic-bezier(0.7, 0, 0.84, 0) forwards;
+  }
+}
+
 /* ── Dark canvas ──
    The vectors carry over unchanged (they are token-coloured); the terrain
    raster does not — it is a light-on-dark hillshade, so it is inverted rather
@@ -8911,12 +8952,58 @@ body.dark .map-terrain {
   -webkit-overflow-scrolling: touch;
 }
 @media (prefers-reduced-motion: no-preference) {
+  @keyframes scrimIn {
+    from {
+      opacity: 0;
+    }
+  }
+  .word-scrim {
+    animation: scrimIn var(--dur-3) var(--ease-out);
+  }
   .word-sheet {
     animation: sheetUp var(--dur-3) var(--ease-out);
   }
+  /* Desktop's centred panel already carries its own base `transform:
+     translate(-50%, -50%)` (below) — springIn animates `translate`/`scale`
+     individually rather than the `transform` shorthand for exactly the
+     reason its own definition in motion.css documents, so the centring
+     survives the entrance instead of being clobbered by it. */
   @media (min-width: 700px) {
     .word-sheet {
-      animation: none;
+      animation: springIn var(--dur-2) var(--ease-spring) both;
+    }
+  }
+
+  /* Close: the mirror of the open, played by DeepDiveSheet before it tells
+     its caller to unmount (EXIT_MS there matches --dur-3 here). A DEDICATED
+     reverse keyframe, not `... reverse`, so the browser interpolates instead
+     of snapping between endpoints (see mobile-selbar-out's note). */
+  @keyframes scrimOut {
+    to {
+      opacity: 0;
+    }
+  }
+  .word-scrim.is-closing {
+    animation: scrimOut var(--dur-3) var(--ease-out) forwards;
+  }
+  @keyframes sheetDown {
+    to {
+      transform: translateY(100%);
+    }
+  }
+  .word-sheet.is-closing {
+    animation: sheetDown var(--dur-3) cubic-bezier(0.7, 0, 0.84, 0) forwards;
+  }
+  @media (min-width: 700px) {
+    @keyframes sheetFadeDown {
+      to {
+        opacity: 0;
+        translate: 0 6px;
+        scale: 0.97;
+      }
+    }
+    .word-sheet.is-closing {
+      animation: sheetFadeDown var(--dur-2) cubic-bezier(0.7, 0, 0.84, 0) forwards;
     }
   }
 }
@@ -9237,6 +9324,35 @@ body.dark .word-scrim {
   color: var(--accent-ink);
   font-weight: 600;
 }
+/* The stacked passage: slides in over the glance on open, and back out on
+   Back — the glance underneath is gone the instant it's covered (this is a
+   swap, not a real overlap), so what reads as "sliding over" is this block
+   arriving from the trailing edge rather than popping into an empty sheet.
+   The breadcrumb rides inside it, so it settles into place with the passage
+   instead of appearing a frame ahead of it. A DEDICATED reverse keyframe for
+   the exit, not `... reverse` (see mobile-selbar-out's note) — ConnectionsDoor
+   keeps this mounted for STACK_EXIT_MS (matches --dur-3) so it can play. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes connStackIn {
+    from {
+      opacity: 0;
+      transform: translateX(28px);
+    }
+  }
+  .conn-stack {
+    animation: connStackIn var(--dur-3) var(--ease-out);
+  }
+  @keyframes connStackOut {
+    to {
+      opacity: 0;
+      transform: translateX(28px);
+    }
+  }
+  .conn-stack.is-leaving {
+    animation: connStackOut var(--dur-3) cubic-bezier(0.7, 0, 0.84, 0) forwards;
+  }
+}
+
 .conn-passage {
   padding: 4px 0 8px;
 }

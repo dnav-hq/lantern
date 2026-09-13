@@ -10,9 +10,16 @@
  *
  * `Fold` is the one quiet control between a door's glance and the rest of it
  * (rule 4): the same words on every door, never an action.
+ *
+ * Close plays the mirror of the open (scrim fades, sheet slides/fades away)
+ * before telling the caller to unmount — the same own-the-exit shape as
+ * MobileSelectionBar, self-contained here so every door gets it for free.
+ * Matches --dur-3 in motion.css/main.css.
  */
-import React, { useEffect } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+
+const EXIT_MS = 260
 
 export function DeepDiveSheet({
   reference,
@@ -30,21 +37,46 @@ export function DeepDiveSheet({
   onBack?: () => void
   children: React.ReactNode
 }): React.ReactElement {
+  const [closing, setClosing] = useState(false)
+  const closingRef = useRef(false)
+  const timerRef = useRef<number | null>(null)
+
+  const requestClose = useCallback(() => {
+    if (closingRef.current) return
+    closingRef.current = true
+    const reduce =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduce) {
+      onClose()
+      return
+    }
+    setClosing(true)
+    timerRef.current = window.setTimeout(onClose, EXIT_MS)
+  }, [onClose])
+
+  useEffect(
+    () => () => {
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current)
+    },
+    []
+  )
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape') return
       if (onBack) onBack()
-      else onClose()
+      else requestClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, onBack])
+  }, [onBack, requestClose])
 
   return createPortal(
     <>
-      <div className="word-scrim" onClick={onClose} />
+      <div className={`word-scrim${closing ? ' is-closing' : ''}`} onClick={requestClose} />
       <div
-        className="word-sheet"
+        className={`word-sheet${closing ? ' is-closing' : ''}`}
         role="dialog"
         aria-label={label}
         onClick={e => e.stopPropagation()}
@@ -57,7 +89,7 @@ export function DeepDiveSheet({
           ) : (
             <span className="word-door-ref">{reference}</span>
           )}
-          <button type="button" className="word-close" onClick={onClose} aria-label="Close">
+          <button type="button" className="word-close" onClick={requestClose} aria-label="Close">
             ✕
           </button>
         </div>
