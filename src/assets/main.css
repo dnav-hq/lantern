@@ -1708,6 +1708,20 @@ body.dark .search-backdrop {
   background: var(--accent);
   border-color: var(--accent);
 }
+/* The discoverability-only row (CategoryMenu's scopePending): same shape,
+   greyed and inert, so it reads as "not yet" rather than a broken control. */
+.cat-menu-scope.is-pending {
+  cursor: default;
+  opacity: 0.55;
+}
+.cat-menu-scope.is-pending:hover {
+  background: none;
+}
+.cat-menu-scope-hint {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-faint);
+}
 
 .cat-menu-foot {
   border-top: 1px solid var(--border);

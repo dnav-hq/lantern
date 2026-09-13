@@ -40,6 +40,14 @@ interface MobileSelectionBarProps {
    */
   selectedWords?: string | null
   /**
+   * Discoverability only: a single verse is selected, no words are selected
+   * in it yet, and the reader has never used the words-scope row before. Shows
+   * the same row greyed out with a one-line hint instead of hiding it — see
+   * CategoryMenu's `scopePending`. False (or the reader having used it once)
+   * means the bar looks exactly as it did before word-level marks existed.
+   */
+  wordHintPending?: boolean
+  /**
    * The category the selection is ALREADY highlighted in, if any. With one set
    * the picker shows it checked and offers "Remove highlight" — the only way
    * to un-mark a verse on a phone, since a highlight has no card to open.
@@ -63,6 +71,7 @@ export default function MobileSelectionBar({
   onNote,
   onHighlight,
   selectedWords = null,
+  wordHintPending = false,
   highlightedAs = null,
   onRemoveHighlight,
   offerBsb = false,
@@ -164,6 +173,7 @@ export default function MobileSelectionBar({
               scopeQuote={selectedWords ?? undefined}
               scopeActive={wordScope}
               onToggleScope={selectedWords ? () => setWordScope(w => !w) : undefined}
+              scopePending={!selectedWords && wordHintPending}
               noneLabel={highlightedAs && onRemoveHighlight ? 'Remove highlight' : undefined}
               onPickNone={
                 highlightedAs && onRemoveHighlight

@@ -169,6 +169,27 @@ function markVerseHintSeen(): void {
   }
 }
 
+// Same pattern, for the words-scope row in the highlight picker: a reader has
+// no way to discover that a verse's own text can be selected to mark just
+// those words, since nothing on screen names the gesture. Seen is set the
+// first time a word selection actually lands — not merely the first time the
+// greyed hint row is shown — because "dismissed after one use" means used.
+const WORD_HINT_SEEN_KEY = 'berean.wordHighlightHintSeen'
+function wordHintAlreadySeen(): boolean {
+  try {
+    return localStorage.getItem(WORD_HINT_SEEN_KEY) === '1'
+  } catch {
+    return true
+  }
+}
+function markWordHintSeen(): void {
+  try {
+    localStorage.setItem(WORD_HINT_SEEN_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
 // Horizontal step (px) between overlapping rail-note lanes.
 const LANE_STEP = 14
 
@@ -943,6 +964,7 @@ function ChapterView({
      stored as a quote that can never match (brief §5.4). */
   const singleSelVerse = selStart !== null && selEnd === selStart ? selStart : null
   const [wordSel, setWordSel] = useState<{ verse: number; quote: string } | null>(null)
+  const [wordHintSeen, setWordHintSeen] = useState(() => wordHintAlreadySeen())
 
   // The latch belongs to ONE verse selection. Moving or clearing the selection
   // drops it, which is also what removes the picker's extra row again.
@@ -963,19 +985,36 @@ function ChapterView({
       const textEl = row?.querySelector('.verse-text')
       if (!textEl || !textEl.contains(sel.anchorNode) || !textEl.contains(sel.focusNode)) return
       const quote = trimToWordBoundaries(verseText, sel.toString())
-      if (quote) setWordSel({ verse: singleSelVerse, quote })
+      if (!quote) return
+      setWordSel({ verse: singleSelVerse, quote })
+      setWordHintSeen(seen => {
+        if (!seen) markWordHintSeen()
+        return true
+      })
     }
     document.addEventListener('selectionchange', onSelectionChange)
     return () => document.removeEventListener('selectionchange', onSelectionChange)
   }, [singleSelVerse, verseTexts])
 
-  // OFF in prod for now: the native word selection felt glitchy on Android and
-  // nothing tells a reader it exists (Dennis, 2026-09-13). The render path
-  // (a stored quote tints only its words) stays live; only capture is held
-  // until the fix-or-scrap decision. Flip this to re-enable.
+  // STILL OFF (2026-09-13 investigation): the latch/scope logic above was
+  // audited and is sound (scoped to the selected verse's own text, survives
+  // the collapse a tap on the bar causes, clears the moment the verse
+  // deselects — see docs/BACKLOG.md), and the discoverability gap now has a
+  // cue (the greyed "Highlight these words" row in the picker, above). What
+  // could NOT be re-verified here is the native gesture itself: this sandbox
+  // has no iOS Safari, and headless Chromium's touch emulation would not even
+  // start a native long-press text selection via synthetic touch input, so
+  // the original "glitchy on Android" finding is neither confirmed nor fixed
+  // by this change. Do one real on-device pass before flipping this — if it
+  // still feels rough there, the render path (a stored quote tints only its
+  // words) is the only part worth keeping.
   const WORD_CAPTURE_ENABLED = false
   const selectedWords =
     WORD_CAPTURE_ENABLED && wordSel && wordSel.verse === singleSelVerse ? wordSel.quote : null
+  // Discoverability cue (see the hint helpers above): only while there is a
+  // single verse selected, no words picked out of it yet, and the reader has
+  // never used the gesture before.
+  const wordHintPending = WORD_CAPTURE_ENABLED && singleSelVerse !== null && !wordHintSeen
 
   const handleHighlight = async (category: NoteCategory, words?: string): Promise<void> => {
     if (selRange === null || savingInline) return
@@ -1986,6 +2025,7 @@ function ChapterView({
         onNote={openComposerOnSelection}
         onHighlight={(key, words) => void handleHighlight(key as NoteCategory, words)}
         selectedWords={selectedWords}
+        wordHintPending={wordHintPending}
         highlightedAs={selectedHighlightCategory}
         onRemoveHighlight={() => void handleRemoveHighlight()}
         offerBsb={deepDiveElsewhere}
