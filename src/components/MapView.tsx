@@ -2,16 +2,24 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   chapterKey,
   loadMapArtwork,
+  loadMapJourneys,
   loadMapPlaces,
+  type JourneyBundle,
   type MapBaseArtwork,
   type MapPlaceBundle
 } from '../utils/mapData'
 import {
   BAND_LABEL,
+  buildJourneyRoute,
   buildViewModel,
   describeMarker,
+  findJourneyForChapter,
+  indexMarkersByPlaceId,
+  journeyBadges,
   pickMarker,
+  placeJourneyLabels,
   selectLabels,
+  type JourneyRoute,
   type PlaceMarker
 } from '../utils/mapDataLoader'
 import {
@@ -21,6 +29,7 @@ import {
   frameViewBox,
   interpolateViewBox,
   isAtViewBox,
+  journeyViewBox,
   labelBudget,
   panViewBox,
   pinchViewBox,
@@ -72,13 +81,22 @@ const CLOSE_EXIT_MS = 260
 // Slice 4 (docs/proposals/map-in-the-story.md) adds the chapter FRAME: given a
 // chapter address, the map opens already zoomed on that chapter's places
 // (`frameViewBox` in mapViewport.ts, fed the chapter index's markers) instead
-// of the whole world, everything outside the chapter is faded to a dot with
-// no label, and the home control returns to the frame rather than the world —
-// the world is still one zoom-out away, never removed. No journey line: that
-// is a separate, hand-authored data task (brief §2.2).
+// of the whole world, and the home control returns to the frame rather than
+// the world — the world is still one zoom-out away, never removed.
+//
+// Slice 5 draws the STORY. Where the chapter has a hand-authored journey
+// (mapDataLoader.ts's `buildJourneyRoute` over public/bible/map/journeys.json)
+// the map draws that route: legs in reading order, dotted where the text is
+// silent, stops numbered, and the frame fitted to the journey. And it draws
+// NOTHING ELSE — every place outside the story is HIDDEN, not faded, because
+// a thousand grey dots behind five numbered ones is the noise Dennis saw when
+// he looked at the framed map and found no story in it. The rest of the world
+// is one control away ("All", which shows every place at world zoom) and home
+// comes straight back to the story.
 //
 // Still NOT here, on purpose: tapping a verse count to go and read those
-// verses, clustering, and edge indicators for the ~65 out-of-frame places.
+// verses, clustering, edge indicators for the ~65 out-of-frame places, and
+// the atlas-style visual pass (brief §4).
 
 /** The two base layers. `relief` fetches terrain.png; `plain` never touches it. */
 export type MapBaseView = 'plain' | 'relief'
@@ -115,6 +133,12 @@ const ZOOM_ANIM_MS = 220
 /** The label collision box, in screen pixels (the label font is 11 px). */
 const LABEL_METRICS = { charWidth: 6.2, lineHeight: 14, offsetX: 9 }
 
+/** How long each leg of a journey takes to draw itself in, and how long after
+ *  the previous leg it starts. Stops land as their leg arrives. Ignored under
+ *  prefers-reduced-motion, where the whole route is simply there. */
+const LEG_DRAW_MS = 420
+const LEG_STAGGER_MS = 260
+
 interface MapCanvasProps {
   artwork: MapBaseArtwork
   places: MapPlaceBundle
@@ -128,6 +152,12 @@ interface MapCanvasProps {
    * behaves exactly as before slice 4, opening on the whole world.
    */
   chapterIndices?: number[] | null
+  /**
+   * The chapter's journey, already ordered and projected (slice 5). When
+   * present it REPLACES the chapter frame: the route is drawn and framed, and
+   * only its own stops are on the map.
+   */
+  journey?: JourneyRoute | null
 }
 
 /**
@@ -141,23 +171,29 @@ export function MapCanvas({
   view,
   selected = null,
   onSelect,
-  chapterIndices = null
+  chapterIndices = null,
+  journey = null
 }: MapCanvasProps): React.ReactElement {
   const extent = useMemo(() => toViewBox(artwork.viewBox), [artwork])
   const model = useMemo(() => buildViewModel(places), [places])
   const reducedMotion = usePrefersReducedMotion()
 
-  // The chapter's own markers, full opacity and eligible for a label; every
-  // other marker (below) is faded to a dot and never labelled. Null — not the
-  // whole-map fallback below — is what tells `home` there is nothing to frame.
-  const chapterSet = useMemo(
-    () => (chapterIndices && chapterIndices.length > 0 ? new Set(chapterIndices) : null),
-    [chapterIndices]
+  // The places this map is about: the journey's stops where there is one, the
+  // chapter's own places otherwise. Everything else is not drawn at all. Null —
+  // not an empty set — is what tells `home` there is nothing to frame.
+  const storySet = useMemo(() => {
+    if (journey) return new Set(journey.stops.map(stop => stop.index))
+    return chapterIndices && chapterIndices.length > 0 ? new Set(chapterIndices) : null
+  }, [journey, chapterIndices])
+  const storyMarkers = useMemo(
+    () => (storySet ? model.markers.filter(m => storySet.has(m.index)) : null),
+    [model, storySet]
   )
-  const chapterMarkers = useMemo(
-    () => (chapterSet ? model.markers.filter(m => chapterSet.has(m.index)) : null),
-    [model, chapterSet]
-  )
+  // The reader's way out to the whole dataset: every place, at world zoom. The
+  // home control (and this button again) comes back to the story.
+  const [showAll, setShowAll] = useState(false)
+  useEffect(() => setShowAll(false), [storySet])
+  const visibleMarkers = showAll || !storyMarkers ? model.markers : storyMarkers
 
   const svgRef = useRef<SVGSVGElement>(null)
   // The SVG's measured size. Null until mounted; the first render fits the
@@ -169,18 +205,21 @@ export function MapCanvas({
   // `home` is where the map opens and what the home control returns to: the
   // chapter frame when one was given and has geocoded places, the world
   // otherwise (slice 4's "with no chapter it behaves exactly as today").
-  const home = useMemo(
-    () =>
-      size && chapterMarkers && chapterMarkers.length > 0
-        ? frameViewBox(
-            chapterMarkers.map(m => m.point),
-            size,
-            extent,
-            fit
-          )
-        : fit,
-    [size, chapterMarkers, extent, fit]
-  )
+  const home = useMemo(() => {
+    if (!size) return fit
+    if (journey && journey.stops.length > 0) {
+      return journeyViewBox(journey.stops, size, extent, fit)
+    }
+    if (storyMarkers && storyMarkers.length > 0) {
+      return frameViewBox(
+        storyMarkers.map(m => m.point),
+        size,
+        extent,
+        fit
+      )
+    }
+    return fit
+  }, [size, journey, storyMarkers, extent, fit])
 
   // The committed viewBox — what React renders (and what the `viewBox`
   // attribute is set to). The ref is the live one that gestures move; they
@@ -409,7 +448,7 @@ export function MapCanvas({
     const live = liveRef.current
     const k = unitsPerPixel(live, rect)
     const hit = pickMarker(
-      model.markers,
+      visibleMarkers,
       screenToView(live, rect, point),
       TAP_RADIUS * k,
       TAP_TIE * k
@@ -462,7 +501,8 @@ export function MapCanvas({
   const homeZoom = zoomLevel(viewBox, home)
   const zoomStep = quantizeZoom(homeZoom)
   const width = size?.width ?? extent.w
-  const labelCandidates = chapterMarkers ?? model.markers
+  const labelCandidates = showAll ? model.markers : (storyMarkers ?? model.markers)
+  const framedLabels = !showAll && storyMarkers !== null
   const labels = useMemo(() => {
     // Units per pixel at the quantised zoom step, so a pan never relays out.
     const k = home.w / zoomStep / width
@@ -470,9 +510,24 @@ export function MapCanvas({
       charWidth: LABEL_METRICS.charWidth * k,
       lineHeight: LABEL_METRICS.lineHeight * k,
       offsetX: LABEL_METRICS.offsetX * k,
-      limit: labelBudget(zoomStep, chapterMarkers ? FRAME_LABEL_BASE : undefined)
+      limit: labelBudget(zoomStep, framedLabels ? FRAME_LABEL_BASE : undefined)
     })
-  }, [labelCandidates, chapterMarkers, home.w, zoomStep, width])
+  }, [labelCandidates, framedLabels, home.w, zoomStep, width])
+
+  /* The route's own labels never go through that budget: five stops the reader
+     is being asked to follow must ALL be named, so a collision moves the name
+     rather than dropping it (placeJourneyLabels). */
+  const routeLabels = useMemo(() => {
+    if (!journey || showAll) return null
+    const k = home.w / zoomStep / width
+    return placeJourneyLabels(journey.stops, {
+      charWidth: LABEL_METRICS.charWidth * k,
+      lineHeight: LABEL_METRICS.lineHeight * k,
+      offsetX: (LABEL_METRICS.offsetX + 4) * k,
+      lineGap: LABEL_METRICS.lineHeight * 1.2 * k
+    })
+  }, [journey, showAll, home.w, zoomStep, width])
+  const badges = useMemo(() => (journey ? journeyBadges(journey.stops) : null), [journey])
 
   const [, , vbWidth, vbHeight] = artwork.viewBox
   const terrain = artwork.terrain
@@ -484,9 +539,9 @@ export function MapCanvas({
   // that ratio BELOW 1, and a `<=` test reads that as "still at home" and
   // never re-enables the button — exactly backwards, since zoomed out past
   // the frame is the one moment the home control must work.
-  const atHome = isAtViewBox(viewBox, home)
+  const atHome = isAtViewBox(viewBox, home) && !showAll
   const atWorldEdge = isAtViewBox(viewBox, fit)
-  const framed = chapterMarkers !== null && chapterMarkers.length > 0
+  const framed = storyMarkers !== null && storyMarkers.length > 0
 
   return (
     <div className="map-stage">
@@ -496,9 +551,11 @@ export function MapCanvas({
         viewBox={formatViewBox(viewBox)}
         role="img"
         aria-label={
-          framed
-            ? `${chapterMarkers!.length} places in this chapter, framed on modern coastlines; the rest of the Bible world is faded out but still reachable by zooming out. Drag to pan, pinch or scroll to zoom, tap a place for details.`
-            : `The Bible world: ${model.markers.length} places from Genesis to Revelation, drawn on modern coastlines. Drag to pan, pinch or scroll to zoom, tap a place for details.`
+          journey && !showAll
+            ? `${journey.title}: ${journey.stops.length} stops in order — ${journey.stops.map(stop => stop.name).join(', ')}. Only this journey is drawn; the rest of the Bible world is one control away. Drag to pan, pinch or scroll to zoom, tap a place for details.`
+            : framed && !showAll
+              ? `${storyMarkers!.length} places in this chapter, framed on modern coastlines; the rest of the Bible world is not drawn, and is one control away. Drag to pan, pinch or scroll to zoom, tap a place for details.`
+              : `The Bible world: ${model.markers.length} places from Genesis to Revelation, drawn on modern coastlines. Drag to pan, pinch or scroll to zoom, tap a place for details.`
         }
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -540,27 +597,98 @@ export function MapCanvas({
             ))}
           </g>
 
+          {/* The journey, under its own stops: legs in reading order, a dotted
+              one where the text is silent about the course. Each draws itself
+              in after the one before (the CSS animation reads --leg-len, the
+              leg's own length in artwork units, so the stroke grows along the
+              line rather than fading in). */}
+          {journey && !showAll && (
+            <g className={`map-route${reducedMotion ? '' : ' is-drawing'}`} aria-hidden="true">
+              {journey.legs.map((leg, i) => (
+                <line
+                  key={`${leg.from.order}-${leg.to.order}`}
+                  className={`map-leg${leg.silent ? ' is-silent' : ''}`}
+                  x1={leg.from.x}
+                  y1={leg.from.y}
+                  x2={leg.to.x}
+                  y2={leg.to.y}
+                  style={
+                    {
+                      '--leg-len': Math.hypot(leg.to.x - leg.from.x, leg.to.y - leg.from.y),
+                      animationDelay: `${i * LEG_STAGGER_MS}ms`,
+                      animationDuration: `${LEG_DRAW_MS}ms`
+                    } as React.CSSProperties
+                  }
+                />
+              ))}
+            </g>
+          )}
+
           <g className="map-markers">
-            {model.markers.map(marker => (
-              <PlaceGlyph
-                key={marker.index}
-                marker={marker}
-                selected={marker.index === selected}
-                faded={chapterSet !== null && !chapterSet.has(marker.index)}
-              />
+            {visibleMarkers.map(marker => (
+              <PlaceGlyph key={marker.index} marker={marker} selected={marker.index === selected} />
             ))}
           </g>
 
+          {/* The numbered stops. One badge per PLACE, carrying every visit's
+              number, so a route that returns to Damascus says "1 · 3" there
+              rather than stacking two discs on one dot. */}
+          {badges && !showAll && (
+            <g
+              className={`map-route-stops${reducedMotion ? '' : ' is-drawing'}`}
+              aria-hidden="true"
+            >
+              {badges.map(badge => {
+                const text = badge.orders.join('·')
+                const width = Math.max(15, text.length * 5.4 + 9)
+                return (
+                  <g key={badge.index} transform={`translate(${badge.x} ${badge.y})`}>
+                    <g className="map-place-scale">
+                      <g
+                        transform={`translate(0 ${badge.offset})`}
+                        style={{
+                          animationDelay: `${(badge.orders[0] - 1) * LEG_STAGGER_MS}ms`
+                        }}
+                      >
+                        <rect
+                          className="map-stop"
+                          x={-width / 2}
+                          y={-7.5}
+                          width={width}
+                          height={15}
+                          rx={7.5}
+                        />
+                        <text className="map-stop-num" x={0} y={3.4} textAnchor="middle">
+                          {text}
+                        </text>
+                      </g>
+                    </g>
+                  </g>
+                )
+              })}
+            </g>
+          )}
+
           <g className="map-labels" aria-hidden="true">
-            {labels.map(label => (
-              <g key={label.index} transform={`translate(${label.x} ${label.y})`}>
-                <g className="map-place-scale">
-                  <text className="map-label" x={0} y={0}>
-                    {label.name}
-                  </text>
-                </g>
-              </g>
-            ))}
+            {routeLabels
+              ? routeLabels.map(label => (
+                  <g key={label.index} transform={`translate(${label.x} ${label.y})`}>
+                    <g className="map-place-scale">
+                      <text className="map-label is-route" x={0} y={0} textAnchor={label.anchor}>
+                        {label.name}
+                      </text>
+                    </g>
+                  </g>
+                ))
+              : labels.map(label => (
+                  <g key={label.index} transform={`translate(${label.x} ${label.y})`}>
+                    <g className="map-place-scale">
+                      <text className="map-label" x={0} y={0}>
+                        {label.name}
+                      </text>
+                    </g>
+                  </g>
+                ))}
           </g>
         </g>
       </svg>
@@ -586,12 +714,38 @@ export function MapCanvas({
         <button
           type="button"
           className="map-zoom-btn map-zoom-home"
-          aria-label={framed ? 'Return to this chapter' : 'Show the whole map'}
+          aria-label={
+            journey
+              ? 'Return to the journey'
+              : framed
+                ? 'Return to this chapter'
+                : 'Show the whole map'
+          }
           disabled={atHome}
-          onClick={() => animateTo(home)}
+          onClick={() => {
+            setShowAll(false)
+            animateTo(home)
+          }}
         >
           ⌂
         </button>
+        {/* Framed, the map draws the story and NOTHING else — so the whole
+            dataset needs a door of its own. One press shows every place at
+            world zoom; home (above) comes straight back to the story. */}
+        {framed && (
+          <button
+            type="button"
+            className="map-zoom-btn map-zoom-all"
+            aria-label="Show every place on the whole map"
+            aria-pressed={showAll}
+            onClick={() => {
+              setShowAll(true)
+              animateTo(fit)
+            }}
+          >
+            All
+          </button>
+        )}
       </div>
     </div>
   )
@@ -616,18 +770,15 @@ export function MapCanvas({
  */
 const PlaceGlyph = React.memo(function PlaceGlyph({
   marker,
-  selected,
-  faded = false
+  selected
 }: {
   marker: PlaceMarker
   selected: boolean
-  /** Outside the chapter frame: still drawn, for orientation, but de-emphasised. */
-  faded?: boolean
 }): React.ReactElement {
   const { point, band, contested, alternatives } = marker
   return (
     <g
-      className={`map-place is-${band}${contested ? ' is-contested' : ''}${selected ? ' is-selected' : ''}${faded ? ' is-faded' : ''}`}
+      className={`map-place is-${band}${contested ? ' is-contested' : ''}${selected ? ' is-selected' : ''}`}
     >
       <title>{describeMarker(marker)}</title>
       {alternatives.map((alt, i) => (
@@ -789,6 +940,7 @@ interface MapViewProps {
 export default function MapView({ chapter = null, onClose }: MapViewProps): React.ReactElement {
   const [artwork, setArtwork] = useState<MapBaseArtwork | null>(null)
   const [places, setPlaces] = useState<MapPlaceBundle | null>(null)
+  const [journeys, setJourneys] = useState<JourneyBundle | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<MapBaseView>('plain')
   const [selected, setSelected] = useState<number | null>(null)
@@ -814,6 +966,20 @@ export default function MapView({ chapter = null, onClose }: MapViewProps): Reac
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [requestClose])
+
+  // The journeys table: 18 KB of plain JSON, fetched only where a chapter
+  // could have one. A failure here is not a broken map — it is a map with no
+  // route on it, so it is swallowed rather than shown as an error.
+  useEffect(() => {
+    if (!chapter) return
+    let live = true
+    loadMapJourneys()
+      .then(bundle => live && setJourneys(bundle))
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [chapter])
 
   useEffect(() => {
     let live = true
@@ -844,13 +1010,25 @@ export default function MapView({ chapter = null, onClose }: MapViewProps): Reac
   const chapterBook = chapter ? BIBLE_BOOKS.find(b => b.number === chapter.book) : undefined
   const chapterLabel = chapterBook ? `${chapterBook.name} ${chapter!.chapter}` : null
 
+  // The chapter's journey, ordered into a drawable route. Everything fiddly
+  // here — splicing the gaps back into reading order, numbering the stops — is
+  // mapDataLoader's, under test; this is the lookup and nothing else.
+  const route = useMemo(() => {
+    if (!chapter || !journeys || !places || !model) return null
+    const journey = findJourneyForChapter(journeys, chapter.book, chapter.chapter)
+    if (!journey) return null
+    const byPlaceId = indexMarkersByPlaceId(model.markers, places)
+    return buildJourneyRoute(journey, journeys.gaps, id => byPlaceId.get(id))
+  }, [chapter, journeys, places, model])
+  const silentLegs = route ? route.legs.filter(leg => leg.silent && leg.note) : []
+
   return (
     <div className={`map-view${closing ? ' is-closing' : ''}`}>
       <header className="map-view-head">
         <div>
           <p className="map-view-eyebrow">{chapterLabel ?? 'Preview'}</p>
           <h1 className="map-view-title">
-            {chapterLabel ? 'This chapter’s places' : 'The Bible world'}
+            {route ? route.title : chapterLabel ? 'This chapter’s places' : 'The Bible world'}
           </h1>
         </div>
         <div className="map-view-head-actions">
@@ -892,6 +1070,7 @@ export default function MapView({ chapter = null, onClose }: MapViewProps): Reac
               selected={selected}
               onSelect={setSelected}
               chapterIndices={chapterIndices}
+              journey={route}
             />
             {selectedMarker && (
               <PlaceCard
@@ -901,6 +1080,35 @@ export default function MapView({ chapter = null, onClose }: MapViewProps): Reac
               />
             )}
           </div>
+
+          {route && (
+            <section className="map-route-key">
+              <h2 className="map-route-key-title">The route, in order, from {route.source}</h2>
+              <ol className="map-route-key-list">
+                {route.stops.map(stop => (
+                  <li key={stop.order}>
+                    <span className="map-route-key-num">{stop.order}</span>
+                    {stop.name}
+                  </li>
+                ))}
+              </ol>
+              {/* A dotted leg is a claim about the TEXT, not about the map, so
+                  the reason is on the page rather than behind a tap. */}
+              {silentLegs.map(leg => (
+                <p key={leg.to.order} className="map-route-key-gap">
+                  <strong>
+                    {leg.from.name} to {leg.to.name}
+                  </strong>{' '}
+                  is drawn dotted: {leg.note}
+                </p>
+              ))}
+              {route.unlocated.length > 0 && (
+                <p className="map-route-key-gap">
+                  Not drawn, because nobody can locate {route.unlocated.join(', ')}.
+                </p>
+              )}
+            </section>
+          )}
 
           <MapLegend
             counts={model.counts}

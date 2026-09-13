@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "generated": "2026-09-13T06:10:16.805Z",
+  "generated": "2026-09-13T11:32:44.788Z",
   "journeys": [
     {
       "id": "abram-ur-to-canaan",
@@ -695,6 +695,38 @@
       ]
     },
     {
+      "id": "paul-galatians-account",
+      "title": "Paul: Damascus, Arabia and Jerusalem",
+      "source": "Galatians 1:15-2:1",
+      "legs": [
+        {
+          "from": "damascus",
+          "to": "arabia-2",
+          "ref": "Galatians 1:17"
+        },
+        {
+          "from": "arabia-2",
+          "to": "damascus",
+          "ref": "Galatians 1:17"
+        },
+        {
+          "from": "damascus",
+          "to": "jerusalem",
+          "ref": "Galatians 1:17-18"
+        },
+        {
+          "from": "jerusalem",
+          "to": "syria-2",
+          "ref": "Galatians 1:18-21"
+        },
+        {
+          "from": "syria-2",
+          "to": "cilicia",
+          "ref": "Galatians 1:21"
+        }
+      ]
+    },
+    {
       "id": "pauls-voyage-to-rome",
       "title": "Paul's voyage to Rome",
       "source": "Acts 27:1-28:16",
@@ -769,6 +801,12 @@
       "from": "cauda",
       "to": "malta",
       "note": "Acts 27:17-28:1: the ship ran before a storm for fourteen days with no navigation and no place named until it wrecked off Malta -- the course itself is what the text withholds."
+    },
+    {
+      "journey": "paul-galatians-account",
+      "from": "cilicia",
+      "to": "jerusalem",
+      "note": "Galatians 2:1 gives the destination and the interval -- fourteen years later, up to Jerusalem again -- and names no starting point for that journey, so the return from Cilicia is drawn as silence rather than as a confident line."
     }
   ]
 }

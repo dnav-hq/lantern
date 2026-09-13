@@ -269,3 +269,27 @@ export function quantizeZoom(zoom: number): number {
 export function labelBudget(zoom: number, base = 40): number {
   return Math.round(base * zoom * zoom)
 }
+
+/**
+ * The journey frame (slice 5, docs/proposals/map-in-the-story.md §2.2): the
+ * same arithmetic as `frameViewBox`, with two different numbers.
+ *
+ * A journey is padded MORE than a chapter's places (0.5 against 0.35) because
+ * the route's labels and numbered stops sit around the outermost points rather
+ * than between them, and a frame tight on the dots crops the names off the
+ * screen. And a journey's `minSpan` is wider: a two-stop journey between
+ * neighbouring towns is a real route, not a reason to zoom to street level.
+ */
+export function journeyViewBox(
+  points: { x: number; y: number }[],
+  viewport: { width: number; height: number },
+  extent: ViewBox,
+  fit: ViewBox,
+  options: { padding?: number; minSpan?: number; maxZoom?: number } = {}
+): ViewBox {
+  return frameViewBox(points, viewport, extent, fit, {
+    padding: options.padding ?? 0.5,
+    minSpan: options.minSpan ?? 70,
+    maxZoom: options.maxZoom
+  })
+}
