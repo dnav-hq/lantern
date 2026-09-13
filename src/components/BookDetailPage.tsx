@@ -169,6 +169,27 @@ function markVerseHintSeen(): void {
   }
 }
 
+// Same pattern, for the words-scope row in the highlight picker: a reader has
+// no way to discover that a verse's own text can be selected to mark just
+// those words, since nothing on screen names the gesture. Seen is set the
+// first time a word selection actually lands — not merely the first time the
+// greyed hint row is shown — because "dismissed after one use" means used.
+const WORD_HINT_SEEN_KEY = 'berean.wordHighlightHintSeen'
+function wordHintAlreadySeen(): boolean {
+  try {
+    return localStorage.getItem(WORD_HINT_SEEN_KEY) === '1'
+  } catch {
+    return true
+  }
+}
+function markWordHintSeen(): void {
+  try {
+    localStorage.setItem(WORD_HINT_SEEN_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
 // Horizontal step (px) between overlapping rail-note lanes.
 const LANE_STEP = 14
 
@@ -943,6 +964,7 @@ function ChapterView({
      stored as a quote that can never match (brief §5.4). */
   const singleSelVerse = selStart !== null && selEnd === selStart ? selStart : null
   const [wordSel, setWordSel] = useState<{ verse: number; quote: string } | null>(null)
+  const [wordHintSeen, setWordHintSeen] = useState(() => wordHintAlreadySeen())
 
   // The latch belongs to ONE verse selection. Moving or clearing the selection
   // drops it, which is also what removes the picker's extra row again.
@@ -963,19 +985,42 @@ function ChapterView({
       const textEl = row?.querySelector('.verse-text')
       if (!textEl || !textEl.contains(sel.anchorNode) || !textEl.contains(sel.focusNode)) return
       const quote = trimToWordBoundaries(verseText, sel.toString())
-      if (quote) setWordSel({ verse: singleSelVerse, quote })
+      if (!quote) return
+      setWordSel({ verse: singleSelVerse, quote })
+      setWordHintSeen(seen => {
+        if (!seen) markWordHintSeen()
+        return true
+      })
     }
     document.addEventListener('selectionchange', onSelectionChange)
     return () => document.removeEventListener('selectionchange', onSelectionChange)
   }, [singleSelVerse, verseTexts])
 
-  // OFF in prod for now: the native word selection felt glitchy on Android and
-  // nothing tells a reader it exists (Dennis, 2026-09-13). The render path
-  // (a stored quote tints only its words) stays live; only capture is held
-  // until the fix-or-scrap decision. Flip this to re-enable.
+  // STILL OFF (2026-09-13 investigation, see docs/BACKLOG.md for the full
+  // finding). Confirmed and fixed: `.reading-verse-row.selected .verse-text`
+  // was selectable purely from the CSS class, regardless of this flag — the
+  // native long-press gesture (and its callout) was reachable in production
+  // the whole time this was "off". Now gated on `.word-select-armed` too,
+  // which this flag controls, so off genuinely means off. Also confirmed and
+  // fixed: tapping "Highlight" did not collapse the native selection on its
+  // own (Chromium, both mouse and touch input) — the selection, and whatever
+  // OS callout rides with it, was left to linger behind the picker that just
+  // opened on top of it; the button now clears it explicitly.
+  // The latch/scope logic (scoped to the selected verse's own text, survives
+  // the collapse a tap on the bar causes, clears the moment the verse
+  // deselects) was audited and is sound, and the discoverability gap now has
+  // a cue (the greyed "Highlight these words" row in the picker, above).
+  // STILL NOT verifiable here: how the native selection handles and callout
+  // actually feel and lay out on real Android Chrome / iOS Safari — that is
+  // OS chrome, not DOM, so no headless preview or screenshot could ever show
+  // it either way. Do one real on-device pass before flipping this.
   const WORD_CAPTURE_ENABLED = false
   const selectedWords =
     WORD_CAPTURE_ENABLED && wordSel && wordSel.verse === singleSelVerse ? wordSel.quote : null
+  // Discoverability cue (see the hint helpers above): only while there is a
+  // single verse selected, no words picked out of it yet, and the reader has
+  // never used the gesture before.
+  const wordHintPending = WORD_CAPTURE_ENABLED && singleSelVerse !== null && !wordHintSeen
 
   const handleHighlight = async (category: NoteCategory, words?: string): Promise<void> => {
     if (selRange === null || savingInline) return
@@ -1724,6 +1769,14 @@ function ChapterView({
           {verses.map((v, i) => {
             const isSelected = selRange !== null && v.verse >= selRange[0] && v.verse <= selRange[1]
             const isHighlighted = highlightedVerses.has(v.verse)
+            // Gates the touch-selectable CSS on the verse text (see main.css):
+            // without it, `.selected .verse-text` alone would make the verse
+            // long-press-selectable purely from the CSS class, regardless of
+            // WORD_CAPTURE_ENABLED — which is exactly how the native gesture
+            // stayed live in production even after the switch was flipped off
+            // (2026-09-13 investigation). Armed only for the one verse word
+            // capture can actually land on.
+            const wordSelectArmed = WORD_CAPTURE_ENABLED && v.verse === singleSelVerse
             // Read dims everything outside the highlight to make one passage
             // stand out for a moment. Study's highlight is a standing anchor,
             // not a moment — dimming the chapter for as long as a note is open
@@ -1791,7 +1844,7 @@ function ChapterView({
                     if (el) verseRowRefs.current.set(v.verse, el)
                     else verseRowRefs.current.delete(v.verse)
                   }}
-                  className={`reading-verse-row${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}${rowMark ? ` marked cat-${rowMark}` : ''}`}
+                  className={`reading-verse-row${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}${wordSelectArmed ? ' word-select-armed' : ''}${rowMark ? ` marked cat-${rowMark}` : ''}`}
                   onPointerDown={e => {
                     tapRef.current = { t: Date.now(), x: e.clientX, y: e.clientY, moved: false }
                   }}
@@ -1986,6 +2039,7 @@ function ChapterView({
         onNote={openComposerOnSelection}
         onHighlight={(key, words) => void handleHighlight(key as NoteCategory, words)}
         selectedWords={selectedWords}
+        wordHintPending={wordHintPending}
         highlightedAs={selectedHighlightCategory}
         onRemoveHighlight={() => void handleRemoveHighlight()}
         offerBsb={deepDiveElsewhere}

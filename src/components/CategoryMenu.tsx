@@ -68,6 +68,16 @@ export interface CategoryMenuProps {
   scopeQuote?: string
   scopeActive?: boolean
   onToggleScope?: () => void
+  /**
+   * Discoverability only: a verse is selected but the reader hasn't selected
+   * any words in it yet, and they've never used the words-scope row before.
+   * Renders the same row, greyed and inert, with a one-line hint that the
+   * gesture exists — the only way a reader who has never tried it would know
+   * to. Mutually exclusive with `scopeLabel`: once there are real words to
+   * offer, the live row takes over and this one stops rendering for good
+   * (the caller clears the "seen" flag the first time a selection lands).
+   */
+  scopePending?: boolean
 }
 
 /**
@@ -139,7 +149,8 @@ export default function CategoryMenu({
   scopeLabel,
   scopeQuote,
   scopeActive = false,
-  onToggleScope
+  onToggleScope,
+  scopePending = false
 }: CategoryMenuProps): React.ReactElement {
   const api = useApi()
   const categories = useNoteCategories()
@@ -338,6 +349,19 @@ export default function CategoryMenu({
           </span>
           {scopeActive && <span className="cat-menu-check">✓</span>}
         </button>
+      )}
+
+      {/* Discoverability only — see the prop doc. Greyed and inert: it teaches
+          that the row exists without letting a reader "pick" a scope with no
+          words behind it. */}
+      {!scopeLabel && scopePending && (
+        <div className="cat-menu-row cat-menu-scope is-pending" aria-disabled="true">
+          <span className="cat-menu-scope-mark" aria-hidden="true" />
+          <span className="cat-menu-label">
+            Highlight these words
+            <span className="cat-menu-scope-hint">Select words in the verse first</span>
+          </span>
+        </div>
       )}
 
       {noneLabel && onPickNone && (
