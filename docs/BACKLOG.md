@@ -611,8 +611,12 @@ belongs to and why that arc comes when it does.
   is 10%, e.g. 1 Samuel 15:29 under "Saul's Confession"); §8's D3 second slice
   (Theographic's right-sized-event template for the ~15% of rows a gated heading
   misses — deferred, and Theographic/TIPNR remain entirely unused, so no
-  share-alike obligation exists yet); the desktop workbench's own connection
-  rows, which do not show the line.
+  share-alike obligation exists yet); and offline reuse of the bundle, which
+  today rests on the browser's HTTP cache — it is deliberately outside the PWA
+  precache (§7.2) and there is no service-worker runtime rule for it, so a
+  reader who has fetched it once and then goes offline keeps the lines only as
+  long as the HTTP cache holds. §7.3 accepts that (a door needs the connection
+  list anyway), so this is a note, not a bug.
 
 - **Guest cleanup after the guest-is-the-App change (2026-08-27) — the two
   mechanical loose ends are DONE (2026-08-28, see Done); one optional item
