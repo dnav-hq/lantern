@@ -447,6 +447,14 @@ belongs to and why that arc comes when it does.
   independent of this mechanism), a journey line for the other twelve journeys'
   entry points beyond what the chapter lookup already gives for free, and
   drawing incidental places a journey passes without stopping at.
+  **The atlas visual pass now has a mockup and a recommendation (2026-09-13):**
+  `design/bible-map-atlas.html` (three treatments of the Galatians 1 frame at
+  390 px, both themes, plus a Genesis 12 desktop artboard, all on real shipped
+  geometry exported by `scripts/export-map-frame.mjs`) and
+  `docs/proposals/bible-map-atlas.md`, which recommends the vector "engraved
+  atlas" — sea mask + hachures derived at build time, 24 KB a frame against the
+  685 KB relief — and names the two decisions Dennis owes it. Needs a decision
+  before any of it is built.
   **Gestures were made smooth (2026-09-12).** The cause was writing the
   `viewBox` ATTRIBUTE to the DOM every frame during a drag/pinch: that forces
   the browser to recompute layout for the whole subtree underneath it (1,335
