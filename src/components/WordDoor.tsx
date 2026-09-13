@@ -408,6 +408,7 @@ function DoorBody({
 export function Door({
   address,
   openOn,
+  openOnPhrase,
   onClose
 }: {
   address: VerseAddress
@@ -418,6 +419,13 @@ export function Door({
    * named"). Absent or unknown, the verse's first content word leads.
    */
   openOn?: string
+  /**
+   * The English phrase the reader came from — the footnoted words, when the
+   * door is opened from inside a translators' note. The word whose BSB
+   * rendering sits inside that phrase (or contains it) leads. Used only when
+   * `openOn` is absent.
+   */
+  openOnPhrase?: string
   onClose: () => void
 }): React.ReactElement {
   const [words, setWords] = useState<SalientWord[] | null>(null)
@@ -436,14 +444,21 @@ export function Door({
         const salient = salientWords(verseWords, table)
         setParsing(table)
         setWords(salient)
-        const at = openOn ? salient.findIndex(w => w.strongs === openOn) : -1
+        let at = openOn ? salient.findIndex(w => w.strongs === openOn) : -1
+        if (at < 0 && openOnPhrase) {
+          const phrase = bare(openOnPhrase).toLowerCase()
+          at = salient.findIndex(w => {
+            const form = bare(w.english).toLowerCase()
+            return form.length > 0 && (phrase.includes(form) || form.includes(phrase))
+          })
+        }
         setChosen(at >= 0 ? at : 0)
       })
       .catch(() => live && setFailed(true))
     return () => {
       live = false
     }
-  }, [address.book, address.chapter, address.verse, openOn])
+  }, [address.book, address.chapter, address.verse, openOn, openOnPhrase])
 
   const word = words && words.length > 0 ? (words[chosen] ?? words[0]) : null
 

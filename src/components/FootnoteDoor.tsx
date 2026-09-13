@@ -3,7 +3,28 @@ import { createPortal } from 'react-dom'
 import type { BibleVerse } from '../types'
 import { footnoteSpans } from '../utils/footnoteSpan'
 import { isMobileViewport } from '../platform/install'
+import { findBookByAlias } from '../utils/bibleBooks'
 import CrossVersionPanel from './CrossVersionPanel'
+import { Door as WordDoor, type VerseAddress } from './WordDoor'
+
+/**
+ * "John 1:14" -> the address the word door needs, or null when the reference
+ * cannot be read. The word door is BSB-aligned, so the caller only offers it
+ * when the text on screen is the BSB (see the `bsbVerseText` prop).
+ */
+function wordDoorAddress(reference: string, verseText: string): VerseAddress | null {
+  const m = /^(.*?)\s+(\d+):(\d+)$/.exec(reference.trim())
+  if (!m) return null
+  const book = findBookByAlias(m[1])
+  if (!book) return null
+  return {
+    book: book.number,
+    chapter: Number(m[2]),
+    verse: Number(m[3]),
+    reference,
+    verseText
+  }
+}
 
 // The footnotes door: the translators' own "Or…" under the words they flagged.
 //
@@ -81,6 +102,12 @@ function Door({
   // §7.1) — NOT a third state of `open`/`sheet` above, which belong to rung 1
   // and stay exactly as they shipped.
   const [compareOpen, setCompareOpen] = useState(false)
+  // The word door's ONLY entrance (2026-09-13, with Dennis): inside the note
+  // a translator already left. Rare detail belongs where a reader is already
+  // wondering about a word, and nowhere else on the page.
+  const [wordOpen, setWordOpen] = useState(false)
+  const wordAddress =
+    verseReference && bsbVerseText ? wordDoorAddress(verseReference, bsbVerseText) : null
   const doorRef = useRef<HTMLSpanElement>(null)
   const cardRef = useRef<HTMLElement | null>(null)
 
@@ -171,6 +198,7 @@ function Door({
         >
           <NoteCard text={note} />
           {verseReference && <CompareTrigger onOpen={() => setCompareOpen(true)} />}
+          {wordAddress && <WordTrigger onOpen={() => setWordOpen(true)} />}
         </span>
       )}
       {open &&
@@ -193,10 +221,14 @@ function Door({
             >
               <NoteCard text={note} />
               {verseReference && <CompareTrigger onOpen={() => setCompareOpen(true)} />}
+              {wordAddress && <WordTrigger onOpen={() => setWordOpen(true)} />}
             </div>
           </>,
           document.body
         )}
+      {wordOpen && wordAddress && (
+        <WordDoor address={wordAddress} openOnPhrase={phrase} onClose={() => setWordOpen(false)} />
+      )}
       {compareOpen && verseReference && (
         <CrossVersionPanel
           reference={verseReference}
@@ -214,6 +246,23 @@ function Door({
 // docs/proposals/cross-version-renderings.md §5.2). It only ever appears
 // inside rung 1's ALREADY-OPEN popover/sheet (§5.1's placement decision), never
 // on the resting verse.
+// The word door's trigger, same costume as the compare button: a plain line
+// inside the already-open note, never on the resting verse.
+function WordTrigger({ onOpen }: { onOpen: () => void }): React.ReactElement {
+  return (
+    <button
+      type="button"
+      className="footnote-compare-btn"
+      onClick={e => {
+        e.stopPropagation()
+        onOpen()
+      }}
+    >
+      More about this word
+    </button>
+  )
+}
+
 function CompareTrigger({ onOpen }: { onOpen: () => void }): React.ReactElement {
   return (
     <button

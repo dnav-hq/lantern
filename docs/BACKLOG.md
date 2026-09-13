@@ -3263,3 +3263,8 @@ belongs to and why that arc comes when it does.
   Profile; workspace-selector stub ("Personal ▾"); avatar/profile menu absorbing
   the Settings entry point; Bible library is home. Journal is a placeholder
   until workstream 2.
+
+- **Deep dive entrance, revised 2026-09-13:** the doorways row was cut back to the
+  single connections line the same day it shipped (Dennis: a row of doors is a
+  menu). Word door now opens from inside the footnote popup; map entry moves to
+  the connections thread. See docs/proposals/deep-dive-doorways.md, 'Revised'.

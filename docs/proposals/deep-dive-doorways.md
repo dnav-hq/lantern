@@ -147,3 +147,28 @@ instances are Piel. It does **not** say what a Nifal *is* — that sentence woul
 not the data's, though it is method rather than meaning and the parse is unusable without
 it. **Recommendation: one plain line per stem/tense a reader meets**, written once and
 marked as ours — the same call as the honest-limits line.
+
+## Revised the same day (2026-09-13, with Dennis)
+
+The doorways row shipped, was tried on a phone, and was withdrawn as a menu.
+A row of doors under every chosen verse is a control panel, and a control
+panel across a chapter is exactly the cognitive load the deep dive exists to
+remove. What replaces it:
+
+- **One line, one door.** Under a chosen verse, only "Where Scripture picks
+  this up · N" appears, and only where the verse clears the salience line.
+  The connections are the deep dive; everything else hangs off them.
+- **The word door moves inside the footnote popup** as "More about this word".
+  It is rare detail, and the translators' underline is already where a reader
+  is most likely to wonder about a word. It appears nowhere else.
+- **The map is reached from the connections thread**, never from the verse.
+  Most passages get "this happens here": one framed place, the rest faded and
+  draggable, nothing to read. The map earns attention on movement passages,
+  drawn from the hand-authored journeys table in reading order.
+- **Every connection carries a setting line**: at most a dozen objective words
+  saying who is speaking and where or when ("James, on faith and deeds"), so
+  the reader can tell references apart. It never states significance or
+  meaning. Sources and rules are in `setting-line.md`.
+
+Artboards 1 and the presence-ordering logic in `src/utils/doorways.ts` are
+kept for reference; the component renders the single line.

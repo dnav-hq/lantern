@@ -22,11 +22,9 @@
  * sentence, where a translator's alternative belongs. One door, one costume.
  */
 import React, { useEffect, useState } from 'react'
-import { chapterPlaceCount } from '../utils/mapData'
 import { connectionsPresence } from '../utils/connectionsLoader'
-import { buildDoorways, leadWord, type PresenceReport } from '../utils/doorways'
-import { wordIndexLoader } from '../utils/wordIndexLoader'
-import { Door, type VerseAddress } from './WordDoor'
+import { buildDoorways, type PresenceReport } from '../utils/doorways'
+import type { VerseAddress } from './WordDoor'
 import { ConnectionsDoorFor } from './ConnectionsDoor'
 import { useReadingTranslation } from '../utils/useTranslation'
 import type { TranslationId } from '../bible/provider'
@@ -42,7 +40,9 @@ interface Props extends VerseAddress {
 }
 
 export default function VerseDoorways({
-  onOpenMap,
+  // Kept on the props so callers need not change; the map is no longer
+  // entered from here (it is reached from the connections thread).
+  onOpenMap: _onOpenMap,
   translation,
   ...address
 }: Props): React.ReactElement | null {
@@ -50,56 +50,38 @@ export default function VerseDoorways({
   const [preferred] = useReadingTranslation()
   const shownTranslation = translation ?? preferred
   const [report, setReport] = useState<PresenceReport>({})
-  const [wordOpen, setWordOpen] = useState(false)
   const [connectionsOpen, setConnectionsOpen] = useState(false)
 
   useEffect(() => {
     let live = true
     setReport({})
-    // Each presence check lands on its own; a failure is simply no door.
-    Promise.all([wordIndexLoader.verseWords(book, chapter, verse), wordIndexLoader.parsing()])
-      .then(
-        ([words, parsing]) => live && setReport(r => ({ ...r, word: leadWord(words, parsing) }))
-      )
-      .catch(() => live && setReport(r => ({ ...r, word: null })))
+    // ONE presence check: the connections are the deep dive (Dennis,
+    // 2026-09-13). The word door lives inside the footnote popup and the map
+    // is reached from the connections thread, so neither is asked here — a
+    // row of doors under every verse was a menu, and a menu is exactly the
+    // cognitive load this feature exists to remove.
     connectionsPresence(book, chapter, verse)
       .then(connections => live && setReport(r => ({ ...r, connections })))
       .catch(() => live && setReport(r => ({ ...r, connections: null })))
-    chapterPlaceCount(book, chapter)
-      .then(places => live && setReport(r => ({ ...r, map: { places } })))
-      .catch(() => live && setReport(r => ({ ...r, map: null })))
     return () => {
       live = false
     }
   }, [book, chapter, verse])
 
-  const doorways = buildDoorways(report)
+  const doorways = buildDoorways(report).filter(d => d.kind === 'connections')
   if (doorways.length === 0) return null
+  const count = report.connections?.count ?? 0
 
   return (
     <div className="verse-doorways" onClick={e => e.stopPropagation()}>
-      {doorways.map(d => (
-        <button
-          key={d.kind}
-          type="button"
-          className="verse-doorway"
-          data-door={d.kind}
-          onClick={() => {
-            if (d.kind === 'word') setWordOpen(true)
-            else if (d.kind === 'connections') setConnectionsOpen(true)
-            else onOpenMap?.()
-          }}
-        >
-          {d.label}
-        </button>
-      ))}
-      {wordOpen && (
-        <Door
-          address={address}
-          openOn={report.word?.lead.strongs}
-          onClose={() => setWordOpen(false)}
-        />
-      )}
+      <button
+        type="button"
+        className="verse-doorway"
+        data-door="connections"
+        onClick={() => setConnectionsOpen(true)}
+      >
+        Where Scripture picks this up · {count}
+      </button>
       {connectionsOpen && (
         <ConnectionsDoorFor
           {...address}
