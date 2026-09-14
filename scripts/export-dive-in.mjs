@@ -29,7 +29,7 @@ import {
   displayPlaceName
 } from '../src/utils/mapDataLoader.ts'
 import { toViewBox, fitViewBox, frameViewBox, journeyViewBox } from '../src/utils/mapViewport.ts'
-import { decodeGrayPng, cropRelief } from './lib/relief.mjs'
+import { decodeGrayPng, cropRelief, seaMaskPng } from './lib/relief.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
@@ -164,13 +164,12 @@ function clipPolyline(points, r) {
 
 function artworkIn(vb) {
   const r = { x: vb.x - 2, y: vb.y - 2, w: vb.w + 4, h: vb.h + 4 }
-  const land = []
+  // The coast is drawn as STROKES only. Land vs sea comes from the flood-filled
+  // sea mask, because the mainland coast in the bundle is an open line (only
+  // islands are closed polygons), so no polygon fill can recover it.
+  const coast = []
   for (const d of base.layers.coastline) {
-    const pts = parsePath(d)
-    const closed = pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]
-    if (!closed) continue // 16 of 216 are open fragments at the extent edge
-    const c = clipPolygon(pts, r)
-    if (c.length > 2) land.push(toPath(c, true))
+    for (const run of clipPolyline(parsePath(d), r)) coast.push(toPath(run))
   }
   const lakes = []
   for (const d of base.layers.lakes) {
@@ -181,7 +180,7 @@ function artworkIn(vb) {
   for (const d of base.layers.rivers) {
     for (const run of clipPolyline(parsePath(d), r)) rivers.push(toPath(run))
   }
-  return { land, lakes, rivers }
+  return { coast, lakes, rivers }
 }
 
 // ── one verse ──────────────────────────────────────────────────────────────
@@ -237,7 +236,7 @@ async function exportVerse(book, chapter, verse) {
   const vb = route
     ? journeyViewBox(framePoints, VIEWPORT, EXTENT, FIT, { padding: 0.28, minSpan: 60 })
     : frameViewBox(framePoints, VIEWPORT, EXTENT, FIT, { padding: 0.3, minSpan: 60 })
-  const inFrame = (p) => p.x >= vb.x && p.x <= vb.x + vb.w && p.y >= vb.y && p.y <= vb.y + vb.h
+  const inFrame = (p) => p.x >= vb.x - vb.w * 0.6 && p.x <= vb.x + vb.w * 1.6 && p.y >= vb.y - vb.h * 0.6 && p.y <= vb.y + vb.h * 1.6
   const versePlaces = new Set(places.vs[verseKey(book, chapter, verse)] ?? [])
   const legText = []
   if (route) {
@@ -253,7 +252,10 @@ async function exportVerse(book, chapter, verse) {
     }
   }
   const [gsx, gsy] = projectToView(31.6, 33.6)
-  const crop = cropRelief(relief, RELIEF_SCALE, vb, 720)
+  // the raster and artwork cover a margin around the frame, so the card can pan
+  const pan = { x: vb.x - vb.w * 0.6, y: vb.y - vb.h * 0.6, w: vb.w * 2.2, h: vb.h * 2.2 }
+  const crop = cropRelief(relief, RELIEF_SCALE, pan, 1400)
+  const mask = seaMaskPng(crop.image)
   // the destination chapter around the first row, for the follow-and-return state
   const first = rows[0]
   let around = null
@@ -275,9 +277,10 @@ async function exportVerse(book, chapter, verse) {
     rows,
     around,
     map: {
-      relief: { href: 'data:image/png;base64,' + crop.png.toString('base64'), ...crop.box, bytes: crop.png.length },
+      relief: { href: 'data:image/png;base64,' + crop.png.toString('base64'), mask: 'data:image/png;base64,' + mask.toString('base64'), ...crop.box, bytes: crop.png.length, maskBytes: mask.length },
+      pan: [round(pan.x, 2), round(pan.y, 2), round(pan.w, 2), round(pan.h, 2)],
       viewBox: [round(vb.x, 2), round(vb.y, 2), round(vb.w, 2), round(vb.h, 2)],
-      artwork: artworkIn(vb),
+      artwork: artworkIn(pan),
       places: myPlaces
         .filter((m) => inFrame(m.point))
         .map((m) => ({

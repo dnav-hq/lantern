@@ -90,8 +90,52 @@ export function cropRelief(relief, scale, frame, outWidth, seaValue = 206) {
   }
   return {
     png: encodeGrayPng(outWidth, outHeight, out),
+    image: { width: outWidth, height: outHeight, pixels: out },
     width: outWidth,
     height: outHeight,
     box: { x: x0 / scale, y: y0 / scale, w: rect.w / scale, h: rect.h / scale }
   }
+}
+
+/**
+ * Sea as a 1-bit mask, flood-filled inward from the frame edge so that flat
+ * LAND at the sea's exact value (desert, the Jordan valley floor) is never
+ * swallowed. White = sea, which is what an SVG <mask> wants. Same rule as
+ * scripts/export-map-frame.mjs; the shipped hillshade paints every sea 206.
+ */
+export function seaMaskPng(image, seaValue = 206) {
+  const { width, height, pixels } = image
+  const sea = new Uint8Array(width * height)
+  const stack = []
+  const push = (x, y) => {
+    const i = y * width + x
+    if (sea[i] || pixels[i] !== seaValue) return
+    sea[i] = 1
+    stack.push(i)
+  }
+  for (let x = 0; x < width; x++) {
+    push(x, 0)
+    push(x, height - 1)
+  }
+  for (let y = 0; y < height; y++) {
+    push(0, y)
+    push(width - 1, y)
+  }
+  while (stack.length) {
+    const i = stack.pop()
+    const x = i % width
+    const y = (i - x) / width
+    if (x > 0) push(x - 1, y)
+    if (x < width - 1) push(x + 1, y)
+    if (y > 0) push(x, y - 1)
+    if (y < height - 1) push(x, y + 1)
+  }
+  const stride = Math.ceil(width / 8)
+  const rows = Buffer.alloc(stride * height)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (sea[y * width + x]) rows[y * stride + (x >> 3)] |= 0x80 >> (x & 7)
+    }
+  }
+  return encodeGrayPng(width, height, rows, 1)
 }

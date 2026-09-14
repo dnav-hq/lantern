@@ -59,17 +59,27 @@ in place: the whole passage, marks kept, nothing else moves. The open row
 offers one more step, "Read it in James 2", which puts the chapter in the
 sheet with the passage lit and a Back that returns to exactly this view.
 
-**Journey control, two options in the mockup.** A: tap the map to step.
-B: a strip of the stops under the map; tapping a stop lights the leg that
-reaches it, and the strip itself shows the journey's shape (silent stretch
-dotted). Recommendation: B. It gives the reader the whole shape at a glance
-and random access, and it survives a route with ten legs where tapping
-through would not.
+**Journey control: the legs strip (Dennis chose it).** A strip of the stops
+on a rail under the map; tapping a stop lights the leg that reaches it, and
+the strip shows the journey's shape, silent stretch dotted. The caption keeps
+a fixed height across steps (two clamped lines of the leg's verse, places
+marked); tapping the verse opens it whole, the same gesture as a row, so the
+card never resizes on its own.
+
+**The map is a live viewport, not a door to a page.** Drag to pan, pinch or
+wheel to zoom, quiet zoom buttons, and a recentre mark that appears only once
+the reader has moved. The exporter ships a margin of relief and artwork
+around each frame (2.2x) so panning has somewhere to go; the shipped app
+would crop from the terrain raster it already has. No full-screen page in
+this design; the full map view stays only as the ALL/world entry.
 
 **The thumbnail is the parchment relief (treatment a).** The shipped
-hillshade, cropped per frame at build time, under a hypsometric ramp,
-multiplied onto the parchment land and clipped to the coast polygons, so
-relief never bleeds into the sea. Frames are tight on the chapter's places;
+hillshade, cropped per frame, under a hypsometric ramp, multiplied onto the
+parchment land, with the sea painted back over the raster's own water through
+the flood-filled sea mask (the same rule as the atlas exporter). The coast is
+strokes only. Lesson from the first attempt: the mainland coast in the base
+bundle is an open line, not a closed polygon (only islands close), so no
+polygon fill can recover land from it; the mask is the honest source. Frames are tight on the chapter's places;
 label sizes are relative to the frame width; labels are placed greedily
 (right, left, below, above) to stay inside the frame and clear of each
 other. Dark uses an inverted, sepia hillshade at lower opacity.
@@ -95,8 +105,9 @@ other. Dark uses an inverted, sepia hillshade at lower opacity.
 - **Ranged citations** show the arrival verse (Galatians 1:17-18 shows 1:18).
 - **Same-point places** collapse to one label; two regions join ("Chaldea,
   Ur"), a settlement wins over a region.
-- **Coastlines are clipped as polygons** (Sutherland-Hodgman against the
-  frame), so the fill closes along the frame edge.
+- **Land and sea come from the flood-filled sea mask**, never from filling
+  clipped coastline runs (the cause of the sea band). Lakes are the closed
+  polygons they are; coast and rivers are strokes.
 
 ## What this drops from the first design
 
