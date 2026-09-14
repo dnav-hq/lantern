@@ -52,7 +52,14 @@ const PLACES: MapPlaceBundle = {
         { ll: [35.2496, 31.9148], s: 75, m: 'Khirbet el Maqatir' }
       ]
     },
-    { n: 'Nod', t: 'region', sl: 'a000nod/nod', c: [] }
+    { n: 'Nod', t: 'region', sl: 'a000nod/nod', c: [] },
+    { n: 'Aram', t: 'region', sl: 'a3f21c9/aram', c: [{ ll: [37.1, 35.5], s: 900 }] },
+    {
+      n: 'Great Sea',
+      t: 'body of water',
+      sl: 'a4c1e07/great-sea',
+      c: [{ ll: [31.5, 33.8], s: 1000 }]
+    }
   ],
   ch: {},
   vs: {}
@@ -95,5 +102,25 @@ describe('MapCanvas', () => {
     const html = render('plain')
     expect(html).toContain('<title>Jerusalem — Undisputed (1000/1000); identified as Jerusalem')
     expect(html).toContain('1 competing location also proposed')
+  })
+
+  it('sets a region and a sea in their own atlas register, from the data’s own types', () => {
+    const html = render('plain')
+    expect(html).toContain('map-label is-region')
+    expect(html).toContain('map-label is-water')
+    // A settlement keeps the plain place-name voice.
+    expect(html).toContain('class="map-label" x="0" y="0">Jerusalem')
+  })
+
+  it('tints the relief with the parchment filter, and only in the relief view', () => {
+    expect(render('relief')).toContain('id="map-parchment"')
+    expect(render('plain')).not.toContain('map-parchment')
+  })
+
+  it('draws a measured scale bar and a north mark', () => {
+    const html = render('plain')
+    expect(html).toContain('map-scale-bar')
+    expect(html).toContain('1,000 km')
+    expect(html).toContain('map-north')
   })
 })

@@ -773,8 +773,10 @@ export function MapCanvas({
           </text>
         </svg>
         <div className="map-scale">
-          <span className="map-scale-zero">0</span>
-          <span className="map-scale-km">{formatKm(furniture.km)} km</span>
+          <div className="map-scale-legend" style={{ width: barPx }}>
+            <span>0</span>
+            <span>{formatKm(furniture.km)} km</span>
+          </div>
           <svg className="map-scale-bar" width={barPx} height={7} viewBox={`0 0 ${barPx} 7`}>
             <rect className="map-scale-fill" x={0} y={0} width={barPx} height={7} />
             <rect className="map-scale-step" x={0} y={0} width={barPx / 2} height={7} />

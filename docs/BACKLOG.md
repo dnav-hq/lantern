@@ -505,6 +505,43 @@ belongs to and why that arc comes when it does.
   atlas" — sea mask + hachures derived at build time, 24 KB a frame against the
   685 KB relief — and names the two decisions Dennis owes it. Needs a decision
   before any of it is built.
+  **Dennis answered both decisions and took treatment (a), the parchment
+  relief, and the FIRST PASS OF IT IS BUILT (2026-09-14).** The map now paints
+  its own parchment rather than the app's neutrals: six tones as tokens in the
+  map's own CSS block, re-solved once for dark as ink on night parchment (not
+  the light plate inverted, and the old `body.dark .map-view` block that used
+  to re-point four of them at app tokens is gone — dark is solved in one
+  place). The opt-in relief raster keeps shipping exactly as it was, lazily
+  fetched only in the relief view, with the parchment painted OVER it as an
+  SVG filter (`#map-parchment`, a plate's ramp: warm browns in the shadows,
+  the land tone where the raster goes flat, near-white on the tops) rather
+  than downloaded a second time — so treatment (a) costs no new raster at all.
+  On top of that: a hairline coast at full strength, water in its own ink,
+  place names in the app's serif with a halo that survives relief, regions and
+  seas in small caps keyed on the place data's own `type`, and a scale bar and
+  north mark COMPUTED for whatever is on screen (`mapFurniture` in
+  `src/utils/mapDataLoader.ts`, pure and unit-tested — the scale is true at the
+  view's centre latitude and north leans with the meridian, because on this
+  conic projection neither is constant across the frame). The legend, the zoom
+  cluster and the base-layer toggle take the plate's register. Routes, stop
+  badges and hidden-place behaviour are untouched, verified by comparing every
+  leg endpoint, stop badge and marker transform against `main` across nine
+  views — identical. Byte cost: +432 B of CSS and +1.0 KB of JS, gzipped, and
+  no new fetch.
+  **STILL OPEN, and it is the one thing the pass could not do in scope: the
+  SEA.** The mockup paints sea over land through a 1-bit sea mask that
+  `scripts/build-map-data.mjs` flood-fills from the relief raster at build
+  time — and `scripts/**` and `public/**` were out of scope for this pass,
+  which is also what "no new raster" asks for. There is no honest runtime
+  substitute: Natural Earth's coastline is 216 LINESTRINGS, not polygons (16
+  of them chain into open runs that dangle mid-frame), so it cannot be filled;
+  and thresholding the shipped hillshade at the sea's flat value (206) is
+  wrong for a quarter of its hits — 116k pixels of the Sahara and the Arabian
+  interior are flat at exactly that value and would paint as ocean. So the sea
+  is still the land tone, as it has been since slice 2 — not a regression, but
+  the last mile of the plate. The fix is a build-time derivation (the sea mask
+  the proposal already specs, or closed land polygons in `base.json.gz`),
+  which is its own task.
   **Gestures were made smooth (2026-09-12).** The cause was writing the
   `viewBox` ATTRIBUTE to the DOM every frame during a drag/pinch: that forces
   the browser to recompute layout for the whole subtree underneath it (1,335
