@@ -1,121 +1,120 @@
-# Dive in — one planned view for unpacking a verse
+# Dive in — the verse has depth
 
-*2026-09-14. Designed in session with Dennis's direction; mockup at
-`design/dive-in.html`, built from real data by a small generator (the rows,
-headings, coastlines, route legs and place positions are the shipped ones).*
+*2026-09-14, designed in session with Dennis; second pass after his review.
+Mockup at `design/dive-in.html`, generated from real data (the rows,
+headings, place positions, coastlines and route legs are the shipped ones).
+The page is interactive: tap the glimpse under Genesis 15:6.*
 
-## What Dennis said, and what it corrects
+## The idea in one line
 
-After using the connections door and the map on his own devices: the entrance
-is a plainly styled button, the doors open one at a time, the relation label is
-a bare "quotes it", and the map shows dots without a story. What he wants is
-that entering the dive feels **planned and beautiful**: one view that shows the
-key related verses, each with a small line saying how it relates and where it
-sits, then the map in a simplified form right there, so it follows how a
-person naturally unpacks a verse.
+A verse that has something behind it shows a glimpse of it. Touch the glimpse
+and the verse opens: it stays exactly where it is while the page gives way and
+the depth rises under it. You never leave the verse; the verse opens.
 
-This note replaces the "one line under the verse, doors open separately"
-shape from `deep-dive-doorways.md` (Revised) with a single composed view. The
-rules it inherits are unchanged: one entrance, nothing shown for a verse with
-nothing behind it, the word door stays inside the footnote popup, the setting
-line never states meaning.
+## What Dennis corrected, and why this shape
 
-## The entrance
+- Labels do not pull. Both entrance forms in the first pass were labels
+  ("Dive in") and neither felt like an invitation. A *glimpse* does: ghosted
+  fragments of what is beneath, fading to the right, and a small handle.
+- Separate doors that open one at a time are not a dive. One composed view,
+  in the order a person unpacks a verse, is.
+- "Quotes it" is too bare and "fulfils" is too much. The line has to say what
+  a friend would say: who is speaking, on what, and how it relates, with every
+  word a fact.
+- The map has to be clear about what it shows, keep a bearing, and make a
+  journey followable. Numbers alone do not survive a route that doubles back.
 
-Three forms are drawn on Genesis 15:6. **B is the recommendation**: the
-selected verse's tint continues downward into a soft strip carrying two lines
-in the verse's own serif, *Dive in* and a plain-words summary of what is behind
-it ("9 passages pick this up · the land it promises"). It reads as part of the
-verse, not a control placed under it, and its second line is honest about
-what the reader will get. It appears only when the verse has at least one
-section to show, and leaves with the selection.
+## The entrance: the glimpse
 
-A (a hairline rule and a serif line) is quieter but reads as a caption.
-The current pills are the thing being replaced.
+Under a chosen verse with depth: one strip, no border, no word for it. Ghosted
+serif fragments of what is beneath — the first references, who wrote them, a
+place — fading out to the right, and a short accent handle. Touching it, or
+pulling the verse down, opens the depth. A verse with nothing behind it shows
+nothing at all. The strip's content is built from the same presence data that
+decides whether the depth exists, so it never promises what it cannot show.
 
-## The view
+## The transition: the verse opens
 
-One sheet, fixed order, no tabs:
+The selected verse keeps its place. The verses above and below give way (they
+collapse and fade, ~320 ms on the app's calm easing), the selection bar leaves,
+and the depth rises into the space beneath the verse with a short delay so the
+page has moved before the new content arrives. "Back to the page" reverses it.
+Reduced motion: instant. The mockup runs this transition for real.
 
-1. **The verse, held.** Large serif, exactly as on the page.
-2. **Where Scripture picks this up.** The three strongest rows in the
-   cross-reference data's own order. Each row: reference, the *relation line*,
-   one sentence of the passage (the first sentence, not a six-verse dump), and
-   its *setting* — the BSB section heading, labelled "Under …". Tapping a row
-   stacks the passage over the view, as the connections door does today.
+On desktop the depth is a side panel beside the text; the glimpse is the same.
+
+## The view, in order
+
+1. **The verse, held.**
+2. **Where Scripture picks this up.** The three strongest passages in the
+   cross-reference data's own order. Each row: the reference, then one italic
+   *context line*. The first row also shows the passage's first sentence; the
+   others do not, so the block stays short.
 3. **Where this happens.** An engraved parchment thumbnail already framed on
-   the chapter's places (or its journey), labels only, no controls, with a
-   one-line caption. Tapping opens the full map, framed the same way. When the
-   chapter carries a journey, this section moves **above** the connections:
-   Galatians 1:17 leads with Paul's route because that is what the verse is
-   about.
+   the chapter's places, labels only, no controls, with a caption in plain
+   words and no dashes. Fixed bearings stay faintly present (Jerusalem, the
+   Great Sea, Egypt, the Jordan) even when the chapter never names them, so the
+   reader is never lost. When the chapter carries a journey this section moves
+   **above** the connections, because that is what the verse is about.
 4. **One fold** for the remaining connections.
 5. Provenance, once.
 
-Nothing else. The word door is reached from the translators' note only.
+The word door stays inside the translators' note only.
 
-### Simplicity check
-Genesis 15:6 answers "what else says this, and where does it happen" on one
-phone screen before scrolling: verse, three rows, the thumbnail's top edge.
-No icons beyond the map. Nothing needs explaining.
+## The context line
 
-## The relation line
+Three facts joined into one sentence; none of them a claim about meaning.
 
-A closed vocabulary, every phrase computed from facts we hold, none stating
-significance:
-
-| Part | Values | Computed from |
+| Part | Example | Source |
 | --- | --- | --- |
-| Direction | *later in Scripture* · *earlier in Scripture* · *in the same letter/book* | canonical order only — never "depends on" or "fulfils" |
-| Wording | *quotes it word for word* | a shared run of **4+ consecutive words** in the translation on screen |
-| | *names Damascus too* (etc.) | proper nouns shared by both verses |
-| | *picks up the same wording* | 3+ shared content words, no run |
-| | (nothing) | otherwise — silence is allowed |
-| Setting | *Under "Faith and Works"* | the BSB heading, gated to ten verses, per `setting-line.md` |
+| Who | *James* · *Paul, writing to the Galatians* · *the psalmist* · *the writer of Hebrews* · *Luke* | the book's traditional author and addressee, stated as attribution |
+| On | *on "Faith and Works"* | the BSB section heading, quoted, gated to ten verses per `setting-line.md` |
+| Relation | *quoting this word for word* (a shared run of 4+ words) · *naming Damascus too* (shared proper nouns) · *picking up the same wording* (3+ shared content words) · nothing | measured on the text on screen |
 
-On the real rows: Genesis 15:6 → James 2:23 is *later in Scripture · quotes it
-word for word*, and its run is the whole clause "and it was credited to him as
-righteousness"; Galatians 1:17 → Acts 9:20–25 is *earlier in Scripture · names
-Damascus too*, under "Saul Preaches at Damascus". The mockup's last section
-prints every row with the line it earns.
+So Genesis 15:6 → James 2:23 reads *James, on "Faith and Works", quoting this
+word for word*, and Galatians 1:17 → Acts 9:20 reads *Luke, on "Saul Preaches
+at Damascus", naming Jerusalem and Damascus too*. The mockup's last section
+prints every real row with its line and the measurement behind it. Dropped as
+interpretive: "fulfils", "the same promise, restated", "an earlier telling of
+the same event", "explains".
 
-Dropped as interpretive, deliberately: "fulfils", "the same promise,
-restated", "an earlier telling of the same event", "explains".
+## The journey
 
-## The map thumbnail
+Numbering alone fails on a route that doubles back. Four things together:
 
-Parchment (treatment *a* from `bible-map-atlas.md`), drawn engraved — sea
-mask, hairline coast, rivers, hachures — because the thumbnail has no relief
-raster and should not: it is a simplified view that opens into the full one.
-Dark mode is a night parchment (ink on dark sepia), not an inverted image.
+- Revisited legs are separate arcs, never stacked; a repeated stop shows its
+  visits ("1·3").
+- The legs run from indigo to warm ink, first to last, so direction reads
+  without looking for the arrowheads; the arrowheads are there too.
+- Silent stretches are dotted.
+- The route **draws itself in**, leg by leg in reading order, when the card
+  scrolls into view (about a second; instant under reduced motion).
 
-Routes: numbered stops, arrowheads mid-leg, revisited legs as separate arcs
-(the exporter already curves them), the silent years dotted, only the route's
-places labelled, everything else hidden. This absorbs the journey-clarity
-mockup that was queued and never delivered.
+Under the map, the journey in words with the same numbers as the stops and the
+verse for each leg, so a reader who cannot follow the line follows the list.
+In the full map that list becomes a step-through: next advances one leg,
+lights the stop, shows the verse. The full map keeps every place faintly for
+context and gives weight only to the chapter's places and the route.
 
 ## What changes in code
 
-- `VerseDoorways` becomes the entrance strip (form B) and opens one
-  `DiveInSheet` instead of separate doors. Presence = connections door **or**
-  chapter places/journey; the strip's second line is built from the same
-  presence data.
-- `DiveInSheet` (new) composes: held verse; the connections rows (reusing
-  `ConnectionsDoor`'s row, stack and fold) with the relation line; a
-  `MapThumb` (new, pure SVG from the shipped bundles, no raster) that opens
-  `MapView` framed; the fold; provenance.
-- `connections.ts` gains the relation-line classifier (run length, shared
-  proper nouns, shared content words), unit-tested, replacing the
-  quotes/echoes pair.
-- `MapView` gains the parchment treatment in its own pass (queued).
-- The connections door's own foot map line goes; `MapLine` stays only as the
-  thumbnail's tap target.
+- `VerseDoorways` becomes the glimpse strip; presence = connections door or
+  chapter places or journey, and the fragments are built from that data.
+- The verse-opens transition lives in the reading surface: the selected verse
+  row is pinned, sibling rows collapse, and a `DiveIn` panel mounts beneath it
+  (chapter surface and saved-passage surface; desktop renders it as a panel).
+- `DiveIn` composes the held verse, the connection rows with the context line
+  (reusing the connections door's stack and fold), a pure-SVG `MapThumb` from
+  the shipped bundles with the gradient route and draw-in, the fold, and the
+  provenance. Its map card opens `MapView` framed the same way.
+- `connections.ts` gains the context-line builder (who table, heading, run
+  length, shared proper nouns, shared content words), unit-tested, replacing
+  quotes/echoes.
+- The connections door's foot map line goes; `MapLine` stays as the card's
+  tap target. The parchment pass on the full map is queued separately.
 
-## Decisions for Dennis
+## Open
 
-1. **The strip's second line**: a factual summary ("9 passages pick this up ·
-   the land it promises") or just *Dive in*? Recommended: the summary — it is
-   the honest invitation and costs nothing.
-2. **Journey chapters lead with the map** (Galatians 1) while other chapters
-   lead with the connections (Genesis 15)? Recommended: yes — the order should
-   follow what the verse is about, and a journey is the one case we can tell.
+The "who" table needs completing for all 66 books (the mockup covers the
+books its rows touch) and a decision on Old Testament narrative books: the
+book's name ("Genesis, on …") is the honest default.
