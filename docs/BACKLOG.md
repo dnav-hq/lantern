@@ -3444,3 +3444,11 @@ belongs to and why that arc comes when it does.
   single connections line the same day it shipped (Dennis: a row of doors is a
   menu). Word door now opens from inside the footnote popup; map entry moves to
   the connections thread. See docs/proposals/deep-dive-doorways.md, 'Revised'.
+
+- **Dive in (2026-09-14, designed in session):** the single composed view that
+  replaces separate doors — verse held, the strongest connections each with a
+  computed relation line and its BSB heading, an engraved parchment map
+  thumbnail framed on the chapter (route first for journey chapters), one fold.
+  Entrance is the verse's tint continuing into a two-line strip. Mockup
+  `design/dive-in.html` (generated from real data), note
+  `docs/proposals/dive-in.md`. Build follows Dennis's review.
