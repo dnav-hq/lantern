@@ -14,6 +14,10 @@ const commitSha =
   process.env.CF_PAGES_COMMIT_SHA ?? process.env.GITHUB_SHA ?? process.env.COMMIT_SHA ?? ''
 
 export default defineConfig({
+  // Dev only: lets a quick Cloudflare tunnel (`cloudflared tunnel --url`) reach
+  // the dev server for on-device review when the phone cannot see the LAN.
+  // Vite refuses unknown Host headers otherwise. Never affects the build.
+  server: { allowedHosts: ['.trycloudflare.com'] },
   define: {
     'import.meta.env.VITE_COMMIT_SHA': JSON.stringify(commitSha.slice(0, 40)),
     // The app version (package.json), surfaced quietly in Profile so a user can

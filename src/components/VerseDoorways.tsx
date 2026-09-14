@@ -25,7 +25,7 @@ import React, { useEffect, useState } from 'react'
 import { connectionsPresence } from '../utils/connectionsLoader'
 import { buildDoorways, type PresenceReport } from '../utils/doorways'
 import type { VerseAddress } from './WordDoor'
-import { ConnectionsDoorFor } from './ConnectionsDoor'
+import { ConnectionsDoorFor, MapLine } from './ConnectionsDoor'
 import { useReadingTranslation } from '../utils/useTranslation'
 import type { TranslationId } from '../bible/provider'
 
@@ -69,19 +69,27 @@ export default function VerseDoorways({
   }, [book, chapter, verse])
 
   const doorways = buildDoorways(report).filter(d => d.kind === 'connections')
-  if (doorways.length === 0) return null
+  const hasConnections = doorways.length > 0
   const count = report.connections?.count ?? 0
 
+  // The map line stands on its own under the verse: a chapter like Galatians 1
+  // whose verses never clear the cross-reference threshold still has Paul's
+  // route to show (Dennis, 2026-09-14). MapLine renders nothing when the
+  // chapter has no journey and no places, so a verse with neither door still
+  // shows nothing at all.
   return (
     <div className="verse-doorways" onClick={e => e.stopPropagation()}>
-      <button
-        type="button"
-        className="verse-doorway"
-        data-door="connections"
-        onClick={() => setConnectionsOpen(true)}
-      >
-        Where Scripture picks this up · {count}
-      </button>
+      {hasConnections && (
+        <button
+          type="button"
+          className="verse-doorway"
+          data-door="connections"
+          onClick={() => setConnectionsOpen(true)}
+        >
+          Where Scripture picks this up · {count}
+        </button>
+      )}
+      <MapLine book={book} chapter={chapter} className="verse-doorway" />
       {connectionsOpen && (
         <ConnectionsDoorFor
           {...address}

@@ -3057,6 +3057,14 @@ body.dark .cross-version-sheet {
   position: relative;
   z-index: 5;
 }
+/* Same for an open translators' note: the entrance animation's retained
+   transform makes every block a stacking context, so without this the NEXT
+   verse paints over the popover (Dennis saw verse 12 through the note on
+   Galatians 1:11, 2026-09-14). */
+.reading-verse-block:has(.footnote-door.is-open) {
+  position: relative;
+  z-index: 5;
+}
 
 /* The rail column. A rail note is a grid item in column 2 spanning its verse
    rows; the bracket is an accent bar down the left of the note. */
@@ -9181,6 +9189,10 @@ body.dark .map-terrain {
   flex-wrap: wrap;
   gap: 6px;
   padding: 2px 0 8px 0;
+}
+/* A verse with neither door renders the container empty — and nothing else. */
+.verse-doorways:empty {
+  display: none;
 }
 .verse-doorway {
   font-family: var(--ui-font);

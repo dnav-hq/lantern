@@ -234,7 +234,16 @@ function Stacked({
  * only counted when there is no journey, and they are needed anyway the moment
  * the reader taps.
  */
-function MapLine({ book, chapter }: { book: number; chapter: number }): React.ReactElement | null {
+export function MapLine({
+  book,
+  chapter,
+  className = 'conn-map'
+}: {
+  book: number
+  chapter: number
+  /** Where it sits decides its costume: the door foot, or the line under a verse. */
+  className?: string
+}): React.ReactElement | null {
   const [label, setLabel] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
 
@@ -262,7 +271,7 @@ function MapLine({ book, chapter }: { book: number; chapter: number }): React.Re
   if (!label) return null
   return (
     <>
-      <button type="button" className="conn-map" onClick={() => setOpen(true)}>
+      <button type="button" className={className} onClick={() => setOpen(true)}>
         {label}
       </button>
       {/* The map is a whole surface, not a card inside a sheet, so it opens
