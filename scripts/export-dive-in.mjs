@@ -29,6 +29,7 @@ import {
   displayPlaceName
 } from '../src/utils/mapDataLoader.ts'
 import { toViewBox, fitViewBox, frameViewBox, journeyViewBox } from '../src/utils/mapViewport.ts'
+import { decodeGrayPng, cropRelief } from './lib/relief.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
@@ -41,6 +42,8 @@ const places = readGz('public/map/places.json.gz')
 const base = readGz('public/map/base.json.gz')
 const journeys = JSON.parse(readFileSync(resolve(ROOT, 'public/bible/map/journeys.json')).toString())
 const settings = readGz('public/bible/connections/settings.json.gz')
+const relief = decodeGrayPng(readFileSync(resolve(ROOT, 'public/map/terrain.png')))
+const RELIEF_SCALE = relief.width / MAP_VIEW_BOX[2]
 
 async function getJson(url) {
   const file = resolve(CACHE, url.replace(/[^a-z0-9]+/gi, '_') + '.json')
@@ -182,7 +185,7 @@ function artworkIn(vb) {
 }
 
 // ── one verse ──────────────────────────────────────────────────────────────
-const VIEWPORT = { width: 354, height: 200 }
+const VIEWPORT = { width: 354, height: 250 }
 const EXTENT = toViewBox(MAP_VIEW_BOX)
 const FIT = fitViewBox(EXTENT, VIEWPORT)
 
@@ -232,8 +235,8 @@ async function exportVerse(book, chapter, verse) {
   const route = journey ? buildJourneyRoute(journey, journeys.gaps, (id) => byId.get(id)) : null
   const framePoints = route ? route.stops : myPlaces.map((m) => m.point)
   const vb = route
-    ? journeyViewBox(framePoints, VIEWPORT, EXTENT, FIT)
-    : frameViewBox(framePoints, VIEWPORT, EXTENT, FIT, { padding: 0.45, minSpan: 90 })
+    ? journeyViewBox(framePoints, VIEWPORT, EXTENT, FIT, { padding: 0.28, minSpan: 60 })
+    : frameViewBox(framePoints, VIEWPORT, EXTENT, FIT, { padding: 0.3, minSpan: 60 })
   const inFrame = (p) => p.x >= vb.x && p.x <= vb.x + vb.w && p.y >= vb.y && p.y <= vb.y + vb.h
   const versePlaces = new Set(places.vs[verseKey(book, chapter, verse)] ?? [])
   const legText = []
@@ -250,6 +253,15 @@ async function exportVerse(book, chapter, verse) {
     }
   }
   const [gsx, gsy] = projectToView(31.6, 33.6)
+  const crop = cropRelief(relief, RELIEF_SCALE, vb, 720)
+  // the destination chapter around the first row, for the follow-and-return state
+  const first = rows[0]
+  let around = null
+  if (first) {
+    const chap = await chapterVerses(first.book, first.chapter)
+    const end = (connections[0].endVerse ?? first.verse)
+    around = [...chap.entries()].filter(([n]) => n >= first.verse - 4 && n <= end + 3).map(([n, t]) => [n, t])
+  }
   return {
     ref: refLabel(book, chapter, verse),
     book,
@@ -261,7 +273,9 @@ async function exportVerse(book, chapter, verse) {
     parallel,
     threshold: THRESHOLD,
     rows,
+    around,
     map: {
+      relief: { href: 'data:image/png;base64,' + crop.png.toString('base64'), ...crop.box, bytes: crop.png.length },
       viewBox: [round(vb.x, 2), round(vb.y, 2), round(vb.w, 2), round(vb.h, 2)],
       artwork: artworkIn(vb),
       places: myPlaces
