@@ -548,11 +548,15 @@ function stepTo(card, lit) {
 
 /** An arrowhead at the end of a path, pointing along it. */
 function arrowShape(svg, path, k = 70) {
+  const w = getVB(svg)[2]
+  const size = w / k
+  // the stop dot (r = w/110, plus its halo) is painted over the path's end, so the
+  // arrow sits just BEFORE the dot, tip touching it, or it would be hidden
+  const pull = w / 110 + w / 200 + size * 0.6
   const len = path.getTotalLength()
-  const end = path.getPointAtLength(len)
-  const back = path.getPointAtLength(Math.max(0, len - 1))
+  const end = path.getPointAtLength(Math.max(0, len - pull))
+  const back = path.getPointAtLength(Math.max(0, len - pull - 1))
   const ang = Math.atan2(end.y - back.y, end.x - back.x)
-  const size = getVB(svg)[2] / k
   const tip = (dx, dy) => `${(end.x + Math.cos(ang) * dx - Math.sin(ang) * dy).toFixed(1)},${(end.y + Math.sin(ang) * dx + Math.cos(ang) * dy).toFixed(1)}`
   return `M${tip(size * 0.6, 0)}L${tip(-size * 0.8, size * 0.55)}L${tip(-size * 0.45, 0)}L${tip(-size * 0.8, -size * 0.55)}Z`
 }
@@ -565,7 +569,7 @@ function placeArrows(svg) {
     const a = document.createElementNS('http://www.w3.org/2000/svg', 'path')
     a.setAttribute('class', 'arrow faint' + (path.classList.contains('done') ? ' done' : ''))
     a.dataset.leg = path.dataset.leg
-    a.setAttribute('d', arrowShape(svg, path, 85))
+    a.setAttribute('d', arrowShape(svg, path, 62))
     group.appendChild(a)
   }
 }
@@ -578,7 +582,7 @@ function drawLit(svg, instant = false) {
   if (!path) return
   const len = path.getTotalLength()
   const vb = getVB(svg)
-  arrow.setAttribute('d', arrowShape(svg, path, 70))
+  arrow.setAttribute('d', arrowShape(svg, path, 48))
   if (instant) { path.style.transition = 'none'; path.style.strokeDasharray = ''; path.style.strokeDashoffset = ''; arrow.style.opacity = '1'; return }
   // the stroke does not scale with the map, so dash lengths are in screen pixels, not map units
   const px = len * (svg.getBoundingClientRect().width / vb[2])
