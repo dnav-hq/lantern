@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Lantern — dive in, second design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&display=swap" rel="stylesheet" />
+<style>
+/* ── The app's real tokens (src/assets/tokens.css), only what this page touches ── */
+:root {
+  --ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --scripture-font: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --bg: #f4f0e8; --surface: #fbf9f4; --surface-2: #ece6da; --border: #e2dccf; --border-strong: #d8d0c0;
+  --text: #201e1a; --text-muted: #6a6353; --text-faint: #938a77;
+  --accent: #6b62d6; --accent-ink: #594fd1; --accent-weak: rgba(107, 98, 214, 0.11); --accent-soft: rgba(107, 98, 214, 0.18);
+  --elev-3: 0 6px 16px -4px rgba(20, 16, 8, 0.12), 0 20px 40px -12px rgba(20, 16, 8, 0.18);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-calm: cubic-bezier(0.45, 0, 0.15, 1);
+  --dur-2: 200ms; --dur-3: 260ms; --dur-4: 600ms;
+  /* parchment (treatment a, docs/proposals/bible-map-atlas.md) */
+  --atlas-land: #efe5cd; --atlas-sea: #c8d6db; --atlas-sea-ink: #6d8792; --atlas-coast: #9c8f72; --atlas-ink: #3a3427; --atlas-muted: #7c7159; --atlas-route: #5b52c8; --atlas-route-faint: rgba(91, 82, 200, 0.28);
+}
+.dark {
+  --bg: #17140f; --surface: #211d17; --surface-2: #2b2620; --border: #38322a; --border-strong: #473f34;
+  --text: #ece4d6; --text-muted: #a99f8e; --text-faint: #7a7264;
+  --accent: #a49cf0; --accent-ink: #a49cf0; --accent-weak: rgba(164, 156, 240, 0.15); --accent-soft: rgba(164, 156, 240, 0.22);
+  --elev-3: 0 8px 20px -6px rgba(0, 0, 0, 0.5), 0 24px 46px -14px rgba(0, 0, 0, 0.6);
+  --atlas-land: #2d2618; --atlas-sea: #1d2529; --atlas-sea-ink: #7e929b; --atlas-coast: #7d7054; --atlas-ink: #ece4d6; --atlas-muted: #b3a88f; --atlas-route: #a49cf0; --atlas-route-faint: rgba(164, 156, 240, 0.3);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #e9e4da; color: var(--text); font-family: var(--ui-font); -webkit-font-smoothing: antialiased; }
+.page { max-width: 1280px; margin: 0 auto; padding: 40px 24px 120px; }
+h1 { font-family: var(--scripture-font); font-weight: 600; font-size: 30px; margin: 0 0 8px; }
+h2 { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; margin: 56px 0 10px; padding-bottom: 8px; border-bottom: 0.5px solid #d3cbbb; }
+.sub, .cap { font-size: 14.5px; line-height: 1.6; color: var(--text-muted); max-width: 760px; margin: 0 0 18px; }
+.cap b { color: var(--text); font-weight: 600; }
+.lab { font-size: 12px; color: var(--text-faint); margin: 0 0 8px; }
+.grid { display: flex; gap: 22px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px; }
+.cut { columns: 2; column-gap: 40px; max-width: 900px; font-size: 14px; line-height: 1.6; color: var(--text-muted); }
+.cut li { break-inside: avoid; margin-bottom: 6px; }
+.cut b { color: var(--text); }
+
+/* ── phone ── */
+.phone { width: 390px; flex: none; height: 720px; background: var(--bg); color: var(--text); border-radius: 26px; box-shadow: 0 2px 4px rgba(0,0,0,.06), 0 18px 40px -16px rgba(0,0,0,.35); overflow: hidden; position: relative; }
+.reading { padding: 26px 18px 100px; height: 100%; overflow: hidden; }
+.verse { display: flex; gap: 10px; align-items: baseline; padding: 4px 6px; margin: 0 -6px 6px; border-radius: 6px; flex-wrap: wrap; }
+.vnum { font-size: 11px; color: var(--text-faint); flex: none; width: 14px; text-align: right; font-variant-numeric: tabular-nums; }
+.vtext { font-family: var(--scripture-font); font-size: 19px; line-height: 1.72; flex: 1 1 300px; }
+.verse.selected { background: var(--accent-weak); box-shadow: inset 2px 0 0 var(--accent); }
+.selbar { position: absolute; left: 12px; right: 12px; bottom: 16px; display: flex; align-items: center; gap: 8px; background: var(--surface); border: 0.5px solid var(--border-strong); border-radius: 14px; padding: 9px 12px; box-shadow: var(--elev-3); font-size: 13.5px; }
+.selref { font-family: var(--scripture-font); font-weight: 600; color: var(--accent-ink); flex: 1; }
+.selbar .x { color: var(--text-faint); padding: 0 6px; }
+.selbar .btn { border: 0.5px solid var(--border-strong); border-radius: 8px; padding: 7px 12px; background: var(--surface-2); }
+.selbar .btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
+.dark .selbar .btn.primary { color: #17140f; }
+
+/* ── the entrance: one line of what is beneath ── */
+.entry { flex-basis: 100%; display: flex; align-items: baseline; gap: 8px; margin: 4px -6px -4px; padding: 5px 10px 7px 30px; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; position: relative; overflow: hidden; }
+.entry .e-ref { flex: none; font-family: var(--scripture-font); font-weight: 600; font-size: 14px; color: var(--accent-ink); }
+.entry .e-text { flex: 1 1 0; min-width: 0; font-family: var(--scripture-font); font-size: 14px; color: var(--text-muted); white-space: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, #000 78%, transparent); mask-image: linear-gradient(90deg, #000 78%, transparent); }
+.entry .e-count { flex: none; font-size: 12px; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
+.entry .glyph { flex: none; width: 18px; height: 10px; align-self: center; }
+.entry .glyph path { fill: none; stroke: var(--accent-ink); stroke-width: 1.4; stroke-linecap: round; }
+.entry .glyph circle { fill: var(--accent-ink); }
+mark { background: var(--accent-weak); color: inherit; border-radius: 3px; padding: 0 2px; margin: 0 -1px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.entry mark { background: var(--accent-soft); }
+
+/* ── the sheet ── */
+.scrim { position: absolute; inset: 0; background: rgba(20, 16, 8, 0.32); opacity: 0; pointer-events: none; }
+.dark .scrim { background: rgba(0,0,0,.55); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 64px; background: var(--surface); border-radius: 22px 22px 0 0; box-shadow: var(--elev-3); padding: 14px 18px 22px; overflow-y: auto; scrollbar-width: none; transform: translateY(104%); }
+.sheet::-webkit-scrollbar { display: none; }
+.phone.static .sheet { transform: none; }
+.phone.static .scrim { opacity: 1; }
+.phone.is-open .sheet { transform: none; }
+.phone.is-open .scrim { opacity: 1; pointer-events: auto; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sheet-ref { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
+.close { color: var(--text-faint); font-size: 16px; background: none; border: 0; cursor: pointer; }
+.held { font-family: var(--scripture-font); font-size: 20px; line-height: 1.6; margin: 0 0 18px; }
+.eyebrow { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; margin: 0 0 4px; }
+.row { padding: 10px 0; border-top: 0.5px solid var(--border); }
+.row-head { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ref { font-family: var(--scripture-font); font-weight: 600; font-size: 15px; color: var(--accent-ink); white-space: nowrap; }
+.heading { font-family: var(--scripture-font); font-style: italic; font-size: 13px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.row-text { font-family: var(--scripture-font); font-size: 15.5px; line-height: 1.5; margin: 3px 0 0; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.row-text.muted { color: var(--text-muted); }
+.fold { display: block; width: 100%; margin-top: 2px; padding: 10px 0; font: inherit; font-size: 13px; text-align: left; background: none; border: 0; border-top: 0.5px solid var(--border); color: var(--accent-ink); cursor: pointer; }
+.fold .chev { float: right; color: var(--text-faint); }
+.prov { font-size: 11px; color: var(--text-faint); line-height: 1.5; margin: 14px 0 0; }
+
+/* ── the map card ── */
+.map-card { display: block; width: 100%; padding: 0; margin-top: 16px; border: 0.5px solid var(--border-strong); border-radius: 12px; overflow: hidden; background: var(--atlas-land); text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.thumb { display: block; width: 100%; height: 200px; font-family: var(--scripture-font); }
+.thumb .sea { fill: var(--atlas-sea); }
+.thumb .land { fill: var(--atlas-land); stroke: var(--atlas-coast); stroke-width: 0.8; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.thumb .lake { fill: var(--atlas-sea); stroke: var(--atlas-coast); stroke-width: 0.5; vector-effect: non-scaling-stroke; }
+.thumb .river { fill: none; stroke: var(--atlas-sea-ink); stroke-width: 0.6; opacity: .6; vector-effect: non-scaling-stroke; }
+.thumb .sealabel { fill: var(--atlas-sea-ink); font-size: 7.5px; letter-spacing: 0.2em; text-transform: uppercase; font-style: italic; opacity: .9; }
+.thumb .bearing text { fill: var(--atlas-muted); font-size: 8.5px; font-style: italic; paint-order: stroke; stroke: var(--atlas-land); stroke-width: 2.5px; }
+.thumb .bearing circle { fill: var(--atlas-muted); opacity: .7; }
+.thumb .place text { fill: var(--atlas-ink); font-size: 10.5px; font-weight: 600; paint-order: stroke; stroke: var(--atlas-land); stroke-width: 3px; stroke-linejoin: round; }
+.thumb .place circle { fill: var(--atlas-ink); stroke: var(--atlas-land); stroke-width: 1; }
+.thumb .place.in-verse circle { fill: var(--atlas-route); r: 3.2; }
+.thumb .place.in-verse text { fill: var(--atlas-route); }
+.thumb .route-faint path { fill: none; stroke: var(--atlas-route-faint); stroke-width: 1.4; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.thumb .route-faint path.silent { stroke-dasharray: 2 3; }
+.thumb .lit { fill: none; stroke: var(--atlas-route); stroke-width: 2.2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.thumb .lit.silent { stroke-dasharray: 2 4; }
+.thumb .arrow { fill: var(--atlas-route); }
+.thumb .stop circle { fill: var(--atlas-land); stroke: var(--atlas-route-faint); stroke-width: 1.2; }
+.thumb .stop.on circle { fill: var(--atlas-route); stroke: var(--atlas-land); }
+.thumb .stop text { fill: var(--atlas-muted); font-size: 10px; font-weight: 600; paint-order: stroke; stroke: var(--atlas-land); stroke-width: 3px; stroke-linejoin: round; }
+.thumb .stop.on text { fill: var(--atlas-ink); }
+.map-caption { display: flex; flex-direction: column; gap: 3px; padding: 9px 12px 10px; background: var(--surface); border-top: 0.5px solid var(--border); }
+.cap-head { display: flex; align-items: baseline; gap: 8px; font-size: 12px; color: var(--text-faint); white-space: nowrap; min-width: 0; }
+.cap-head > span:first-child { flex: none; font-variant-numeric: tabular-nums; }
+.cap-head b { color: var(--text); font-weight: 600; font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cap-head .cap-ref { flex: none; margin-left: auto; font-family: var(--scripture-font); color: var(--accent-ink); font-weight: 600; font-size: 12.5px; }
+.cap-text { font-family: var(--scripture-font); font-size: 14px; line-height: 1.45; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 0; }
+.cap-text mark { background: var(--accent-weak); }
+.cap-hint { font-size: 11px; color: var(--text-faint); }
+
+/* ── desktop ── */
+.desk { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 400px); background: var(--bg); border-radius: 16px; overflow: hidden; box-shadow: 0 18px 40px -16px rgba(0,0,0,.35); min-height: 620px; }
+.desk-read { padding: 40px 48px; max-width: 700px; }
+.desk-panel { min-width: 0; border-left: 0.5px solid var(--border-strong); background: var(--surface); padding: 20px 22px; }
+.desk .verse { margin: 0 -6px 4px; }
+
+/* ── motion, guarded exactly as motion.css does ── */
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { transition: transform var(--dur-3) var(--ease-out); }
+  .scrim { transition: opacity var(--dur-2) ease; }
+  .thumb .lit { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: draw var(--dur-4) var(--ease-calm) forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .cap-swap { animation: fadeUp var(--dur-2) var(--ease-out); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Dive in, second design</h1>
+  <p class="sub">One sheet, three things, nothing new to read. Every row, heading, marked word, place, coastline and route leg on this page is what the shipped data draws for these two verses; nothing is hand-placed except the sea label. Generated by <code>scripts/export-dive-in.mjs</code>.</p>
+
+  <h2>1 · The entrance</h2>
+  <p class="cap"><b>One line under the chosen verse, and it is real content.</b> The strongest passage, with the words the two verses share already marked, and how many more there are. A journey chapter leads with the route instead. A verse with nothing beneath shows nothing. <b>Tap the line in the first phone</b>: the sheet rises exactly as the shipped one does, and the chapter stays where it was.</p>
+  <div class="grid" id="entrances"></div>
+
+  <h2>2 · The view</h2>
+  <p class="cap"><b>Verse held, the passages that pick it up, where it happens.</b> A row is the reference, the BSB heading it sits under in grey, and two lines of the passage with the shared words marked. No author, no relation words: the marks say "quotes" and "names Damascus too" without saying it, and they make no claim about direction. The map is the chapter's own places on parchment, with a bearing or two kept faint so the reader is never lost.</p>
+  <div class="grid" id="views"></div>
+
+  <h2>3 · The journey</h2>
+  <p class="cap"><b>One leg at a time, with its verse.</b> The whole route stays faint; one leg is lit, with the only arrowhead on the map; the caption is that leg's verse with the two places marked. <b>Tap the card</b> to step. No numbers, no gradient, no list: a route that doubles back is no harder than one that does not, because only one leg is ever lit. The silent fourteen years are the dotted leg, with the note the data carries for it.</p>
+  <div class="grid" id="journeys"></div>
+
+  <h2>4 · Desktop</h2>
+  <p class="cap">The same sheet as a panel beside the text. The entrance line is identical.</p>
+  <div id="desktop"></div>
+
+  <h2>5 · Bounded by the data</h2>
+  <p class="cap"><b>The gate.</b> Galatians 1:17's strongest connection scores 4 against a line of 30, so the live app shows no connections there at all. This design opens the door when the top passage is a <em>parallel account</em>: it names a place this chapter names (Acts 9 names Damascus and Jerusalem). That is measured on the shipped place list, not guessed. Rows below show each connection with its score, the words shared, and the places shared.</p>
+  <div id="evidence"></div>
+  <p class="cap" style="margin-top:22px"><b>What this drops from the first design.</b></p>
+  <ul class="cut">
+    <li><b>The context-line classifier and the 66-book "who" table.</b> The marks carry the relation; the reference carries the who.</li>
+    <li><b>The glimpse strip.</b> Replaced by one line of real content with a count.</li>
+    <li><b>The verse-opens transition.</b> The chapter never leaves; the shipped sheet motion stays.</li>
+    <li><b>Numbers, visit pairs, gradient, draw-in and the step list.</b> Replaced by one lit leg and its verse.</li>
+    <li><b>The sea band.</b> Coastlines are clipped as polygons, so the fill closes along the frame edge instead of a chord across the land.</li>
+    <li><b>Region stops that sit on a city.</b> OpenBible places "Syria" on Damascus and "Judea" on Jerusalem; a region stop at a city's exact point is drawn as a label on the next leg, never as a return to the city.</li>
+  </ul>
+  <p class="prov" id="gen"></p>
+</div>
+
+<script id="dive-data" type="application/json">/* data:start */
+{"generated":"2026-09-14T03:36:47.407Z","verses":[{"ref":"Genesis 15:6","book":1,"chapter":15,"verse":6,"text":"Abram believed the LORD, and it was credited to him as righteousness.","door":true,"top":85,"parallel":false,"threshold":30,"rows":[{"ref":"James 2:23","book":59,"chapter":2,"verse":23,"score":85,"text":"And the Scripture was fulfilled that says, “Abraham believed God, and it was credited to him as righteousness,” and he was called a friend of God.","run":{"source":[29,68],"target":[70,109],"words":5},"places":[],"heading":"Faith and Works"},{"ref":"Galatians 3:6-14","book":48,"chapter":3,"verse":6,"score":59,"text":"So also, “Abraham believed God, and it was credited to him as righteousness.” Understand, then, that those who have faith are sons of Abraham. The Scripture foresaw that God would justify the Gentiles by faith, and foretold the gospel to Abraham: “All nations will be blessed through you.” So those who have faith are blessed along with Abraham, the man of faith. All who rely on works of the law are under a curse. For it is written: “Cursed is everyone who does not continue to do everything written in the Book of the Law.” Now it is clear that no one is justified before God by the law, because, “The righteous will live by faith.” The law, however, is not based on faith; on the contrary, “The man who does these things will live by them.” Christ redeemed us from the curse of the law by becoming a curse for us. For it is written: “Cursed is everyone who is hung on a tree.” He redeemed us in order that the blessing promised to Abraham would come to the Gentiles in Christ Jesus, so that by faith we might receive the promise of the Spirit.","run":{"source":[29,68],"target":[36,75],"words":5},"places":[],"heading":"Faith and Belief"},{"ref":"Romans 4:9","book":45,"chapter":4,"verse":9,"score":56,"text":"Is this blessing only on the circumcised, or also on the uncircumcised? We have been saying that Abraham’s faith was credited to him as righteousness.","run":{"source":[36,68],"target":[117,149],"words":4},"places":[],"heading":"Abraham Justified by Faith"},{"ref":"Romans 4:20-25","book":45,"chapter":4,"verse":20,"score":49,"text":"Yet he did not waver through disbelief in the promise of God, but was strengthened in his faith and gave glory to God, being fully persuaded that God was able to do what He had promised. This is why “it was credited to him as righteousness.” Now the words “it was credited to him” were written not only for Abraham, but also for us, to whom righteousness will be credited—for us who believe in Him who raised Jesus our Lord from the dead. He was delivered over to death for our trespasses and was raised to life for our justification.","run":{"source":[29,68],"target":[200,239],"words":5},"places":[],"heading":"Abraham Receives the Promise"},{"ref":"Romans 4:3-6","book":45,"chapter":4,"verse":3,"score":48,"text":"For what does the Scripture say? “Abraham believed God, and it was credited to him as righteousness.” Now the wages of the worker are not credited as a gift, but as an obligation. However, to the one who does not work, but believes in Him who justifies the ungodly, his faith is credited as righteousness. And David speaks likewise of the blessedness of the man to whom God credits righteousness apart from works:","run":{"source":[29,68],"target":[60,99],"words":5},"places":[],"heading":"Abraham Justified by Faith"},{"ref":"Psalms 106:31","book":19,"chapter":106,"verse":31,"score":31,"text":"It was credited to him as righteousness for endless generations to come.","run":{"source":[29,68],"target":[0,39],"words":5},"places":[],"heading":null},{"ref":"Hebrews 11:8","book":58,"chapter":11,"verse":8,"score":31,"text":"By faith Abraham, when called to go to a place he would later receive as his inheritance, obeyed and went, without knowing where he was going.","run":null,"places":[],"heading":"The Faith of Abraham and Sarah"},{"ref":"Romans 4:11","book":45,"chapter":4,"verse":11,"score":26,"text":"And he received the sign of circumcision as a seal of the righteousness that he had by faith while he was still uncircumcised. So then, he is the father of all who believe but are not circumcised, in order that righteousness might be credited to them.","run":null,"places":[],"heading":"Abraham Justified by Faith"}],"map":{"viewBox":[367.91,203.41,420.05,237.32],"artwork":{"land":["M480.4,428.2L481.3,429.9L480.7,428.2L480.4,428.2Z","M481.5,413L480.7,412.5L479.7,412.7L480.1,413.3L480.5,413.1L481.9,414.3L482.3,414.2L481.9,413.2L481.5,413Z","M492.3,403.7L492,403.3L490.9,403.5L490.9,403.1L491.5,402.9L491.1,402.4L490.5,402.9L490.6,403.7L491.1,404.3L492.9,404.5L492.3,403.7Z","M463.8,337.8L463.9,338L463.8,337.7L463.6,337.7L463.8,337.8Z","M470.9,335.7L469,335.1L472.7,336.7L470.9,335.7Z","M465.6,334.8L463,336.4L466,334.8L468.9,334.9L466.1,334.6L465.6,334.8Z","M492.3,242L488.4,243.9L486.1,244.5L485.2,245.4L483.6,246.3L480.1,247.5L479.3,247.3L477.1,248.5L473.1,249.1L468.3,248.3L467.1,248.4L464.5,247.5L464.8,248.8L464.6,251L463.5,252.5L462.8,252.7L461.4,252.1L459.8,251.8L458.5,252.1L458.2,252L456.9,253.9L455.7,254.7L454.7,254.6L453.6,253.6L453.4,253.7L453.3,254.6L454.2,257.2L454.2,258L455,258.8L455.5,260.8L456.6,261.7L458,262L460.5,263.2L462.7,262.7L464.1,263L464.6,264.3L464.5,264.9L466.1,264.9L465.7,263.7L467.1,262.3L470.1,262.2L472.5,261.3L472.5,260.7L472.8,261L473.2,260.9L474.4,260.5L475,259.9L476.1,259.8L476.5,259.1L476.8,257.5L477.4,256.8L478.8,256.5L479.5,256.6L480.5,257.4L481.3,256.7L482.1,256.5L483.1,256.4L483.4,256.7L484.6,256.9L483.7,255.4L481.2,252.7L481.4,250.7L482.1,249.6L482.4,249.4L483.7,249.5L485.3,247.4L492.7,242.7L493.1,241.7L492.3,242Z","M367.4,240.3L367.4,240L367.6,239.7L366.7,238.3L366.7,237.9L367.9,236L367.9,234.9L368.3,234L368.1,233.9L367.4,234.4L366.9,234.4L366.8,236.1L365.9,237.5L365.9,242.1L366.1,242.3L366,242.7L366.5,242.3L366.5,241.7L366.8,241.3L367.7,241.3L367.8,240.7L367.4,240.3Z","M386.2,222.5L385.8,222L385.2,222.6L384.1,222.4L380.3,224L379.2,225.2L378.6,225.4L377.9,226.9L376.4,227.6L376.9,227.9L376.8,228.3L377.5,229.2L377.4,230.2L376.6,231.9L376.9,232.7L377.6,233.3L378.5,232.9L380.4,230.7L381.5,230L382.3,229.9L383.1,230.2L382.9,229.8L383.3,229.2L382.7,228.9L383.2,227.9L383.5,227.5L384,227.5L384.6,226.5L385.6,224L386,223.7L385.9,222.8L386.2,222.5Z","M372,221.4L371.4,220.5L370.6,220.9L370.4,220.5L370.3,221.5L370.6,221.8L371,221.5L371.4,221.6L371.6,222.5L372.2,222.6L372.8,222.2L372.7,221.9L372,222L371.8,221.7L372,221.4Z","M380.2,218.8L380.2,218.1L379.6,218.5L379.3,218.3L380.1,217.8L379.8,217.6L378.8,218.1L378.3,218.9L379.1,219L378.8,219.2L379.8,219.6L379.4,219.9L379.6,220.1L380.2,219.8L380,219.5L380.2,219.4L380.2,218.8Z","M370.8,211.4L368.8,211.6L367,212.6L365.9,213.7L365.9,214.2L366.7,213.9L368,214.3L369.5,213.1L372,212.4L370.8,211.4Z","M365.9,210.5L366.1,210.1L366.8,210.3L367,209.3L366.8,208.9L366.4,209.2L365.9,208.3L365.9,208.2L366.1,208.1L365.9,208Z","M771.3,397.3L770.6,397.1L770.1,397.3L769.3,398.4L769.5,398.9L769.9,397.9L770.7,397.5L771.2,397.9L770.9,398.3L771.5,398.5L772.2,397.8L773.7,397.7L771.3,397.3Z","M779.1,355.5L778.7,355.6L779.3,356.6L779.6,356.7L779.6,355.6L779.1,355.5Z","M742.9,356.4L741.8,356.4L741.7,357.3L742.6,357.2L744.2,357.9L743.9,357.1L742.9,356.4Z","M742.5,351.3L742.5,350.3L742.1,349.6L738.8,346L738.3,345.8L737.8,346L737.5,346.3L738,346.4L738.2,347.1L738.8,347L739.1,347.4L738.5,347.7L738.5,348.2L737.3,348L737.2,348.4L737.8,348.4L737.8,349.1L736.7,350.1L737.5,350.7L739.2,353.4L739.8,353.9L740.5,353.9L741.8,352.7L742.5,351.3Z","M736.8,345.8L737.2,345.2L736.3,345.4L735.6,346.4L736,346.6L736.8,345.8Z","M495,403.7L495,404.5L494.5,404.7L493.7,404.3L494.1,403.7L495,403.7Z","M374.6,225.6L373.9,225.7L373.7,226.2L375.3,226.3L375.4,225.7L374.6,225.6Z","M368.7,217.4L367.9,217.7L367.7,218.3L368.9,218.4L369,218L368.7,217.4Z"],"lakes":["M511.2,301.1L511.2,303.2L510.2,303.9L509.2,301.1L510.4,300.1L511.2,301.1Z","M647.6,286.7L644.7,285.5L645.8,284.3L646,282.8L648.1,285.1L648.9,284.5L650.1,285.7L649.7,287.1L648.4,288L647.4,287.8L647.6,286.7Z","M644.3,277.1L642.9,276.6L640,272.8L639.1,266.4L639.5,264.4L640,265.2L640,264.4L640.7,265L640.7,266.3L642.2,268.5L643.6,269.9L644,269.3L644.9,271L645.7,270.4L647.4,272.6L647.6,273.6L646.6,273.7L647.8,274.2L647,274.3L647.2,277.3L644.3,277.1Z","M560.1,201.8L559.9,203L558.6,203.4L558.9,204.6L555.5,203.3L554.5,201.4L555.1,201.4L555.2,201.6L555.2,201.4L556.1,201.4L556.3,203L558.2,201.4L560.3,201.4L560.1,201.8Z","M560.3,236.5L560.4,237.3L558.7,238.4L557.6,237.5L557.1,239.1L556.1,238.8L556.3,237.3L552.1,234.6L551,232.2L552.3,229.4L553.3,228.9L553.6,227.3L554.5,229.1L552.8,230.4L552.8,233L557.2,236L558,235L559,236.6L560.3,236.5Z","M655.2,297.2L656.5,297.5L656.5,299.3L654.5,301.8L653.8,300.7L652.9,300.7L652.7,301.4L652.5,300.3L649.6,300L648.5,298.7L647.8,296.1L648.4,295.4L647.5,294.6L648.7,294.6L649,293.1L648.2,292.3L649.4,291.2L649.4,289.5L653.4,296.3L655.2,297.2Z","M509.9,323.8L510.5,324.6L510.2,330.1L509.2,333.5L509.1,332.2L507.4,333L507,329.1L508.5,324.6L509.9,323.8Z","M676.7,201.4L676.3,202.7L674.6,202.9L672.8,201.4Z","M509.1,335.7L509.3,337.6L507.2,337.8L506.6,334.9L507.5,334.6L509.1,335.7Z","M710.2,333.2L711.4,333.2L710.2,333.2Z","M726.4,332.1L727,332.7L723.4,333.8L722.6,332.8L719,333.1L717.2,332.7L717.2,332.1L715.3,333.3L713.8,331.8L712.7,332.6L714,333.2L712.5,333.7L711.8,333.2L712.8,332.2L711.8,332.3L711.8,331.4L709.9,331.8L710.5,331.2L709.5,330.4L711.5,329.3L711.7,330L712.1,329.2L715.8,331.3L717.3,330.6L717,331L718.8,331L719.2,332L721.1,332.1L722.5,330.3L724.4,330.3L724.1,331.1L722.3,331.7L722.7,332.1L726.4,332.1Z","M455.8,356.6L454.6,354.7L454,355.2L451.7,353.7L451.3,351.8L452.8,351.4L454,354.2L455.9,355.1L455.8,356.6Z"],"rivers":["M532.6,196.7L529.6,201.8L528,201.6L527.5,203L524.6,204.6L524.5,206.2L521.4,206.9L520.4,210.8L516.5,209.6L514.1,210.4L513.4,211.8L514,212.5L513.1,213.2L513.5,213.8L512.8,213.6L510.2,215.3L509.6,217.5L508,218L508,221.5L509.6,221.6L509.6,222.9","M707.6,225L709.8,223.8L710.5,222.3L717.8,221.7L722.3,220.2L721.6,218.5L719.1,218.1L717.8,217.1L717.9,215.6L715.6,211.2L710.7,204L712.6,199.7","M728.6,197.8L735,202.2L738,203.1L740.3,202.7L742.1,199.8","M700.1,232.3L699.5,230.8L700.5,226.9L707.6,225","M616.9,201.3L619.8,202.8L620.4,204.1L621.5,204.1L622.6,205.2L623.3,208.6","M623.3,208.6L624.7,210.6L625.6,210.3L625.9,213L627.6,214L628.9,213.7L630.5,214.8L630.1,215.5L632.4,215.4L632.7,216.7L631.5,216.8L630.4,219.8L633.5,219.9L634.7,221.5L636.8,221.6L641,228.9L641.7,232L640.9,232.5L640.9,233.9","M640.9,233.9L641.3,236L640,237.1L640.9,241.9L642.6,243.2L642.5,244.6L643.8,244.8L643.4,246.2L646.9,249.5L646,251.6L647.2,254.5L649,256L650,259.2L651,259.6L652.5,265.9L655.2,268.6L660.9,269L663.8,271L663,274.3L663.8,275.4L662.1,279.2L663.8,284.4L665,284.5L667.6,288.8L669.3,289.8L670.6,289.5L670.5,290.6L672.4,290.4L674.9,292.2L676.4,291.7L676,292.7L677.4,293.8L680.3,293.8L680.3,295.5L682.5,296.2L683.5,297.7L685,297.1L685.4,298.4L687.6,297.5L690.4,298.5","M640.9,233.9L640.9,233.9","M690.3,298.3L695.2,294.8L697.7,296.4L705.6,297.5L707.2,299.7L706.6,302.9L707.2,304.5L709.9,305.6L712.2,309.4L714.5,308.6L715.2,309.2L715.8,312.3L721.7,318.7L722.6,326.1","M690.4,298.5L690.6,299.5L692.7,300.3L692.8,302.8L694.6,304.5L694.2,309.9L696.5,311.3L698.3,318.7L700.4,322.3L704.2,325.2L703.7,329.5","M431.8,357L428.8,354.9L427.4,354.9L426.2,352.3L424.7,352.3L425.5,351.6L424.9,350.9L425.2,347.9L423.9,344.3L424.3,343.3L423.6,343.3L424.8,342L423.8,341.9L424.4,341.1L423.8,340.7L424,338.7L422.9,336.4L420.7,334L419.9,334.1L419.4,333.1L419.9,331.3L418.8,330.8L417.9,328.8","M455.8,356.5L455.4,355.2L453.5,354.2L452.3,351.3","M452.3,351.4L451.3,348.3L452.2,345.1L451.9,333.6","M455.8,356.5L456,360.1","M430.2,355.9L429.6,352.6L428.7,351.6L429.6,351.5L432,347.9L432.6,348.1L431.9,342.1L432.7,341.7L432.8,339.4L435.3,337.6L436.9,335L439.4,334.8L441.3,331L443,330.2L443.7,328","M431.8,357.1L432.9,356.9L435,352.9L440.8,348.7L451.4,347.8","M510.5,300.1L510.1,303.9","M507.6,333.1L508.6,326.4L509.9,323.8","M515,285.5L511.6,289.9L510.4,294.2L510.5,300.1","M510.1,303.9L509.6,310.4L510.1,313.9L509.3,317.7L509.9,323.8","M507.6,333.1L507.2,335.1","M674.5,321.9L675.8,323.1L678.7,323.5L681.8,325L682.7,324","M458,444.3L457.6,442.1L455.5,440.6L450.3,442.9","M450.3,442.9L449.3,442.5L448.2,443.6","M448.2,443.6L445.5,439.6L443.5,440.3L443.5,438.6L440.1,435.3L439.8,432.6L439.2,432L437.9,432.5L438.1,430.8L436.7,430.2L430.3,419.3L428.2,417.9L427.3,418.2L427.3,416.8L425.9,416.5L422.5,412.6L423.7,408.1L423.5,405.5L422.8,404.4L422.8,400.5L421.2,398.4L421.3,394.4L423.1,391.9L423.3,388.1L424.8,383.9L430.8,375.7L430.9,371.6L432.7,366.6L432.1,365.2L432.6,362L431.4,359.4L431.8,357","M665.3,306.4L666.1,308.5L668.8,310.1L671,314L670.2,319.2","M662.9,296.4L664.3,298.4L665.5,298.6L667.3,302.3L671.6,302.3L673.4,304.9L673.7,309.3L676.8,311L676.5,313.6L677.7,316.4L683.6,321.2L684,322.3L682.1,322.8","M603.4,265.2L606.3,266.1L607.3,265.6L606.6,265.1L607.3,264.5L608.1,265.1L608.6,264.3L610.9,264.8L610.7,263.8L611.3,264.7L612.6,264.7L613.7,263.5L615.7,263.8L616.8,262.4L617.9,263.3L620.1,263.2L623.4,267L625.1,266.1L625.7,267L625.9,265.4L626.6,265.3L627.5,266.5L626.4,267.9L627.7,268.6L627.6,270.7L628.6,272.1L629.8,271.4L631,272.9L630.6,275.1L631.6,275.5L632.6,274.3L634.2,274.7L634.6,277.4L634.1,278L636.6,279.6L638.2,281.7L640.6,282.2L641.4,281.3L644.1,282.9L645.7,282.3L648.2,283.5L649.2,283L650.6,283.9L650.8,283.4L652.4,284.6L652.8,284.3L655,287.6L655.7,286.9L656.7,288L658.7,288.1L658.1,288.4L660.4,290.3L660.9,292.3L663.1,294.9L662.4,299.8L665.3,305.7L665.6,309L668.1,312.6L668.9,318.3L674.3,321.9L675.6,321.3L677.2,322.4L680.7,322.1L682,322.5L682.8,324","M682.8,324L686.9,324.1","M682.8,324L682.8,324","M686.8,324.1L688.1,324.3L688.9,326L697.5,326.7L706.5,330.8L710.5,328.7L720.3,327.8L722.6,326.2L723.3,327.1","M423.6,343.3L422.5,340.9L417.7,336L413.4,335L409.8,332.5","M560.5,200.2L558.1,202.8L555.3,203.2","M555.3,203.2L553,204.9L551.5,204L549.8,204.3L547.5,207.3L548,212.3L549.8,212.6L550.7,217","M560.4,237.1L558.7,237.2L556,236.1L552.2,233.3L551.8,231.6L553.9,228.9L553.7,227.3","M550.7,217L551.5,219.6L554,220.8L555.4,223.3L554,225.2L553.7,227.3","M560.4,237.1L563.1,237.3L563.5,236L564.6,235.5L568.4,235.4L572.7,237.3L574.6,236.8L575,237.8L577.9,237.9L578,238.6L578.5,237.8L581.6,238.9L582.2,241.2L583.7,243.2L586.2,244.4L588.2,247.2L589.3,247.9L589.9,247.5L589.7,248.3L590.4,248L592.6,249.3L593,252L593.7,252.3L593.2,253L595.4,254.5L596.8,257.8L599.1,259.3L599.8,259.1L599.9,260.3L601,260.2L602,261.3L602.2,264.4L603.4,265.2","M741.9,261.9L739.9,259.4L738.7,256.2L735.6,254.3L731,254.9L727.2,256.7L723,255.4L718.9,255.7L717,254.2L714.2,256.4L713,260.3L716.3,265.1L716.7,267.3L714.5,269.8L709.4,270.9L708.9,273.5L705.9,273.4L705.8,274.7L709.2,276.8L709.7,278.2L716.7,281L720.5,283.8L724,284.6L728.4,287.2L729.7,289.2L727.8,291L727,293L731.4,294.3L732,297.4L733.5,300.1L733.8,302.9L734.9,303.9L734.9,306.2L736.4,306.4L741.5,310.6L739.4,312.5L739.5,313.6L738.5,314.5L734.6,313.2L733.3,314.9L729.3,314.5L728.1,315.1L725.8,317.5L725.2,319.1L725.6,320.8L723.3,326.9","M727,332.7L728,334.2L729.6,334.7","M723.3,327.1L726.5,330.6L728.5,331.2L729.4,334.4L731.8,336.2L736.5,336.4L738.1,338.9L740,338.8L742.1,340.9L741.8,342.1L743.5,345L745,345.6"]},"places":[{"name":"Chaldea","x":699,"y":330,"inVerse":false,"band":"settled","type":"region"},{"name":"Damascus","x":522.8,"y":287.2,"inVerse":false,"band":"settled","type":"settlement"},{"name":"Egypt","x":433.1,"y":356.9,"inVerse":false,"band":"settled","type":"region"},{"name":"Euphrates","x":722.8,"y":326.4,"inVerse":false,"band":"settled","type":"river"},{"name":"Ur","x":699,"y":330,"inVerse":false,"band":"moderate","type":"region"}],"bearings":[{"name":"Jerusalem","x":504.2,"y":323.6},{"name":"Nineveh","x":637.4,"y":222.3},{"name":"Antioch","x":519.8,"y":230.4}],"sea":{"x":440.8,"y":284.5},"route":null}},{"ref":"Galatians 1:17","book":48,"chapter":1,"verse":17,"text":"nor did I go up to Jerusalem to the apostles who came before me, but I went into Arabia and later returned to Damascus.","door":true,"top":4,"parallel":true,"threshold":30,"rows":[{"ref":"Acts 9:20-25","book":44,"chapter":9,"verse":20,"score":4,"text":"Saul promptly began to proclaim Jesus in the synagogues, declaring, “He is the Son of God.” All who heard him were astounded and asked, “Isn’t this the man who wreaked havoc in Jerusalem on those who call on this name? And hasn’t he come here to take them as prisoners to the chief priests?” But Saul was empowered all the more, and he confounded the Jews living in Damascus by proving that Jesus is the Christ. After many days had passed, the Jews conspired to kill him, but Saul learned of their plot. Day and night they watched the city gates in order to kill him. One night, however, his disciples took him and lowered him in a basket through a window in the wall.","run":null,"places":["Damascus","Jerusalem"],"heading":"Saul Preaches at Damascus"},{"ref":"2 Corinthians 11:32-33","book":47,"chapter":11,"verse":32,"score":3,"text":"In Damascus, the governor under King Aretas secured the city of the Damascenes in order to arrest me. But I was lowered in a basket through a window in the wall and escaped his grasp.","run":null,"places":["Damascus"],"heading":null},{"ref":"Galatians 1:18","book":48,"chapter":1,"verse":18,"score":2,"text":"Only after three years did I go up to Jerusalem to confer with Cephas, and I stayed with him fifteen days.","run":{"source":[4,28],"target":[23,47],"words":5},"places":["Jerusalem"],"heading":null}],"map":{"viewBox":[320.36,180.33,380.26,214.84],"artwork":{"land":["M463.8,337.8L463.9,338L463.8,337.7L463.6,337.7L463.8,337.8Z","M470.9,335.7L469,335.1L472.7,336.7L470.9,335.7Z","M465.6,334.8L463,336.4L466,334.8L468.9,334.9L466.1,334.6L465.6,334.8Z","M363.3,241.9L362.4,242.1L362,241.9L361,242.9L361.1,243.1L361.5,243.4L362.9,242.7L363.8,242.6L363.7,242L363.9,241.8L363.3,241.9Z","M352,243.4L351.5,243.3L351.4,243.9L350.9,243.9L349.7,245.2L348.9,245.6L348.5,245.6L348.1,245.4L348.4,245.2L347.4,244.7L345.9,245.4L344.5,245.5L343.3,246.7L342.6,246.8L341.5,246.3L341.4,245.3L341.8,244L342.3,243.7L342.2,243.2L341.9,243.7L341.8,243.6L341.8,242.9L342.6,242.2L340.8,241.7L337.2,242.5L336.7,242.4L335.9,241.4L330.9,240.9L330.5,240.6L330.6,239.6L329.2,239L328.9,239.4L327.9,238.9L327,239.3L325,238.6L320.5,239.5L319.9,239.3L318.4,239.5L318.4,242.9L319.1,242.9L319.1,243.3L320,243.9L320.7,243.9L321.6,245L324.1,245.4L324.6,245.9L324.8,246.9L324.6,248.4L324.3,248.9L329,249.4L329.8,249.2L330.6,249.4L331.3,249.1L332.6,249.2L334.8,248.7L337.5,249.1L339.1,248.6L342.7,249.1L345.7,248.7L346.3,249.1L347.4,249.2L347.7,249.7L348.4,249.7L350,249.1L350.8,247.8L351.2,247.1L351.1,246.8L351.8,245.8L351.4,246.1L350.9,244.5L352,243.4Z","M492.3,242L488.4,243.9L486.1,244.5L485.2,245.4L483.6,246.3L480.1,247.5L479.3,247.3L477.1,248.5L473.1,249.1L468.3,248.3L467.1,248.4L464.5,247.5L464.8,248.8L464.6,251L463.5,252.5L462.8,252.7L461.4,252.1L459.8,251.8L458.5,252.1L458.2,252L456.9,253.9L455.7,254.7L454.7,254.6L453.6,253.6L453.4,253.7L453.3,254.6L454.2,257.2L454.2,258L455,258.8L455.5,260.8L456.6,261.7L458,262L460.5,263.2L462.7,262.7L464.1,263L464.6,264.3L464.5,264.9L466.1,264.9L465.7,263.7L467.1,262.3L470.1,262.2L472.5,261.3L472.5,260.7L472.8,261L473.2,260.9L474.4,260.5L475,259.9L476.1,259.8L476.5,259.1L476.8,257.5L477.4,256.8L478.8,256.5L479.5,256.6L480.5,257.4L481.3,256.7L482.1,256.5L483.1,256.4L483.4,256.7L484.6,256.9L483.7,255.4L481.2,252.7L481.4,250.7L482.1,249.6L482.4,249.4L483.7,249.5L485.3,247.4L492.7,242.7L493.1,241.7L492.3,242Z","M367.4,240.3L367.4,240L367.6,239.7L366.7,238.3L366.7,237.9L367.9,236L367.9,234.9L368.3,234L368.1,233.9L367.4,234.4L366.9,234.4L366.8,236.1L365.1,238.7L365.8,239.6L365.8,241L365.5,241L365.6,241.3L365.3,241.6L366.1,242.3L366,242.7L366.5,242.3L366.5,241.7L366.8,241.3L367.7,241.3L367.8,240.7L367.4,240.3Z","M344,220.3L344.1,220.8L345.3,220.8L345.8,221.1L346,220.8L344.6,219.9L344,220.3Z","M386.2,222.5L385.8,222L385.2,222.6L384.1,222.4L380.3,224L379.2,225.2L378.6,225.4L377.9,226.9L376.4,227.6L376.9,227.9L376.8,228.3L377.5,229.2L377.4,230.2L376.6,231.9L376.9,232.7L377.6,233.3L378.5,232.9L380.4,230.7L381.5,230L382.3,229.9L383.1,230.2L382.9,229.8L383.3,229.2L382.7,228.9L383.2,227.9L383.5,227.5L384,227.5L384.6,226.5L385.6,224L386,223.7L385.9,222.8L386.2,222.5Z","M338.3,217.7L338,217.9L338.9,218.4L339,219.6L338.5,220.2L337.7,220.2L338.7,220.7L339.4,220.7L339.9,220L339.8,219L338.8,217.9L338.3,217.7Z","M372,221.4L371.4,220.5L370.6,220.9L370.4,220.5L370.3,221.5L370.6,221.8L371,221.5L371.4,221.6L371.6,222.5L372.2,222.6L372.8,222.2L372.7,221.9L372,222L371.8,221.7L372,221.4Z","M355,215.8L355.6,216.9L354.9,216.9L354.5,217.3L353.8,216.6L353.2,216.8L353.2,217.6L354,218.5L354.5,218.4L354.6,217.8L355,217.2L356.3,217L356.4,217.3L356.6,217.2L356.1,216.3L355,215.8Z","M380.2,218.8L380.2,218.1L379.6,218.5L379.3,218.3L380.1,217.8L379.8,217.6L378.8,218.1L378.3,218.9L379.1,219L378.8,219.2L379.8,219.6L379.4,219.9L379.6,220.1L380.2,219.8L380,219.5L380.2,219.4L380.2,218.8Z","M330,213L329.6,213L329.7,213.4L330.8,214.4L331.5,214.6L331.3,214L330,213Z","M334.8,212.3L334,212.7L333.3,213.9L333.7,214L335.4,212.7L335.4,212.4L334.8,212.3Z","M323.6,210.6L322.8,210.1L322.5,210.3L322.8,210.8L323.2,210.9L323.4,211.3L323.3,211.6L322.7,211.6L322.3,210.7L321.6,210.3L321.1,211L321.3,211.1L320.9,212.4L324.5,212.1L324.8,210.6L324.6,210.3L323.6,210.6Z","M326.5,210.1L326.2,209.9L325.9,210.2L326.4,210.9L326.9,210.6L326.5,210.1Z","M336.9,212.5L338.4,214.1L338.9,213.6L338.8,213L339.2,212.9L338.2,212.1L337.6,211L336.8,211.5L336.6,212.3L336.9,212.5Z","M326,209L325.3,208.7L324.8,208.9L324.5,209.3L324.8,210L325.3,210.1L326,209Z","M339.6,210.4L339.8,210.6L340.5,210.4L340.6,209.7L339.6,210.4Z","M370.8,211.4L368.8,211.6L367,212.6L365.6,214L365.2,213.7L364.8,214.1L364.6,213.9L364.5,215.2L365.3,215.8L365.2,215.3L365.6,215L365.4,214.5L365.7,214.3L366.7,213.9L368,214.3L369.5,213.1L372,212.4L370.8,211.4Z","M342.8,209.6L343.9,209.8L344.1,209.6L343.6,209.1L342.8,209.6Z","M349.5,209.1L348.6,209.4L348.9,209.9L346.7,210.7L346.8,211.1L347,211L346.6,211.5L344.8,211.7L345.1,212.2L347.2,211.9L348,211L349.5,210.1L350.6,210.1L349.5,209.1Z","M334.1,207.4L333.8,206.9L334.4,205.5L334.2,205.5L333.3,206.1L333.6,207L334.1,207.4Z","M328,205L327.8,205.1L327,204.6L327,205.1L327.5,205.7L327.3,206.2L327.9,207.8L328.9,206.9L328,205Z","M364.7,210.2L365.2,210.6L365.9,210.6L366.1,210.1L366.8,210.3L367,209.3L366.8,208.9L366.4,209.2L365.9,208.2L366.1,208.1L364.6,207.1L364.4,207.4L364.9,208.2L365.5,208.5L364.7,210.2Z","M346.5,205.3L347,205.4L347.1,204.7L346.1,204.9L346.4,205.5L346.5,205.3Z","M337.6,205.7L337.4,204.8L338.1,203.5L337.6,203.5L337.5,204.1L336.9,203.8L337.2,203.4L335.6,204.2L335.3,204.5L335.7,204.6L334.9,205.1L334.6,206.1L335.4,206.8L336,206.8L337.6,205.7Z","M342,203L341.5,203.1L339.3,205L338.8,205.1L339.3,206.1L339.4,207.1L339.9,207.6L340.2,208.7L342,207.8L342.6,206.8L343,204.2L342.8,203.4L342,203Z","M324,201.6L323.6,202.1L323.5,202.7L324.2,202.5L324.2,202.8L324.8,202.8L324.8,203.1L325.2,202.4L325.4,202.8L325.3,201.2L324.5,201.2L323.9,201.4L324,201.6Z","M323.3,196.6L323.7,196.7L323.5,197.2L323.7,197.5L323,198.7L324.4,198L325.1,196.8L324.4,196L324.5,195.2L323.4,196.1L323.3,196.6Z","M340.3,198.1L340.5,197.8L341.4,197.7L341.5,197.2L340.4,196.6L340.1,197.1L339.7,196.2L339.1,196.6L338.9,196.9L339.2,197.1L338.8,198.1L340.3,198.1Z","M332.8,197.1L333.1,196.6L333,196L332.8,195.5L332.2,195.4L332.1,196.7L331.6,197L331.8,197.2L331.4,197.7L331.9,197.8L331.7,198.5L333.1,197.8L332.8,197.1Z","M335.6,194.2L336.1,194.8L337.5,195.5L338.4,194.3L338.2,193.6L336.9,193L336.6,193.3L336.2,192.8L335.6,192.9L335.2,192.6L335.2,192.2L334.2,192L333.9,192.2L334.1,192.9L335.6,194.2Z","M323.9,190.9L323.2,190.9L323.1,191.3L322.4,191.6L322,193.9L322.3,194.1L322.6,193.9L324.2,192.2L324.4,191.6L323.9,190.9Z","M356.8,193.9L355.4,194.1L354,194.8L351.9,194.6L350.2,196.3L350.1,197L351.5,197L352.7,196.3L354.4,196.2L356,195L356.8,193.9Z","M368.2,194L368,193.3L368.6,193.1L367.4,192.8L367.4,192.5L366.6,192.6L366.9,193.5L364.4,191.9L361.9,192.1L360.5,193.1L360.7,194.5L362.6,193.8L363.4,194.4L363.9,195.4L365.1,195.5L365.9,194.9L367.4,194.4L368.4,194.4L368.5,194L368.2,194Z","M334.3,190.2L333.8,190L334.3,189.2L333.7,188.6L334.1,187.5L334,187.3L332.2,186.9L332,185.9L331.5,185.5L331.3,185L329.8,185.6L329.6,186.3L330.1,187L330,187.4L330.4,187.2L330.9,187.9L331.2,188.9L331.5,188.8L332.2,189.9L332.7,190L333,191.1L333.6,191.8L334.3,190.2Z","M351.3,178.3L351.7,178.8L351.9,178.7L351.9,179.7L351.3,180.5L350.9,180.5L349.9,180.9L349.6,181.6L350,181.5L350,182.1L350.3,182L351.3,183.4L352,183.6L352.4,182.8L353.6,182.4L353.8,181.1L354.6,180.8L354.4,178.3Z","M328.5,181.4L326.6,181.6L325.3,180.9L324.5,181L324.2,180.4L323.1,179.4L323.2,178.3L320.9,178.3L320.8,178.5L321.2,178.3L321.7,178.3L321.7,178.4L321,179.4L321.4,179.5L321.3,179.2L321.6,179.2L322,179.5L322.3,180.6L321.8,181.2L322.2,181.5L322,182.2L322.8,182.1L323.4,182.4L323.9,183.4L323.7,183.6L324.5,184.9L325,184.8L324.8,184.4L325.6,184L326.2,185.3L326.8,185.3L327.8,184.9L328.4,183.4L328.2,182.9L328.5,181.4Z","M374.6,225.6L373.9,225.7L373.7,226.2L375.3,226.3L375.4,225.7L374.6,225.6Z","M368.7,217.4L367.9,217.7L367.7,218.3L368.9,218.4L369,218L368.7,217.4Z","M364.3,206.2L363.9,205.6L364,205L363.4,204.7L362.8,205L363.4,205.8L363.4,206.4L364,206.3L363.7,206.6L363.9,206.9L364.5,206.8L364.3,206.2Z","M360.1,201.2L359.7,200.8L359.1,200.8L358.9,202.2L359.3,202.9L359.5,202.1L359.3,201.7L359.7,201.3L360.2,201.5L360.1,201.2Z","M329.8,193L329.8,192.6L329.5,192.6L328.5,193L329.4,193.4L329.8,193.4L329.8,193Z"],"lakes":["M431,186.3L432.3,186.2L431.6,188.8L432.7,189.5L433.3,192.3L431.7,195.1L430.1,192.8L431.5,190.4L430,188.3L431,186.3Z","M441.6,200.5L439.2,194L439.1,193.3L440.8,192.8L443.1,195.1L443.7,197L444.4,196.7L445.3,198.7L445.3,199.3L441.6,200.5Z","M511.2,301.1L511.2,303.2L510.2,303.9L509.2,301.1L510.4,300.1L511.2,301.1Z","M647.6,286.7L644.7,285.5L645.8,284.3L646,282.8L648.1,285.1L648.9,284.5L650.1,285.7L649.7,287.1L648.4,288L647.4,287.8L647.6,286.7Z","M644.3,277.1L642.9,276.6L640,272.8L639.1,266.4L639.5,264.4L640,265.2L640,264.4L640.7,265L640.7,266.3L642.2,268.5L643.6,269.9L644,269.3L644.9,271L645.7,270.4L647.4,272.6L647.6,273.6L646.6,273.7L647.8,274.2L647,274.3L647.2,277.3L644.3,277.1Z","M555.5,181.7L554.8,179.9L555.8,178.3L556.6,178.3L555.3,179.8L555.4,180.8L560.3,182.9L563.1,182.4L563.8,184L565.3,184.9L567,184.7L564.3,186.1L564.6,184.9L562.6,183.3L560.9,183.8L555.5,181.7Z","M560.1,201.8L559.9,203L558.6,203.4L558.9,204.6L555.5,203.3L554.1,200.6L555.2,201.6L555.4,199.2L557.1,199.7L557.4,200.3L556.1,201.3L556.3,203L560.3,199.6L562,199.4L560.8,196.5L561.8,198.6L563.2,199.3L562.9,198.6L565.2,196.7L564.4,196.9L564.3,196.1L565.9,194.2L565.9,197.3L564.9,198.5L565.6,198.6L563.8,198.7L564.4,199.7L560.8,200.4L560.1,201.8Z","M560.3,236.5L560.4,237.3L558.7,238.4L557.6,237.5L557.1,239.1L556.1,238.8L556.3,237.3L552.1,234.6L551,232.2L552.3,229.4L553.3,228.9L553.6,227.3L554.5,229.1L552.8,230.4L552.8,233L557.2,236L558,235L559,236.6L560.3,236.5Z","M579.1,178.3L578.5,178.7L577.8,178.3L574.3,178.3L571.7,179.4L572.5,178.3Z","M655.2,297.2L656.5,297.5L656.5,299.3L654.5,301.8L653.8,300.7L652.9,300.7L652.7,301.4L652.5,300.3L649.6,300L648.5,298.7L647.8,296.1L648.4,295.4L647.5,294.6L648.7,294.6L649,293.1L648.2,292.3L649.4,291.2L649.4,289.5L653.4,296.3L655.2,297.2Z","M509.9,323.8L510.5,324.6L510.2,330.1L509.2,333.5L509.1,332.2L507.4,333L507,329.1L508.5,324.6L509.9,323.8Z","M681.3,196.4L681.4,197.2L680.2,197.4L679,199.1L678.1,198.3L677.4,198.7L676.3,202.7L674.6,202.9L672.6,201.3L671.1,198.2L671.7,197.6L670.4,195.3L669.8,190L668.2,188.5L666.4,188.3L666.1,185.5L668,184.3L668.1,182.7L667.6,181.6L667.1,182.4L666.6,181.9L664.9,182.5L665.4,180.1L670.5,179.2L672.7,181.1L673.1,184.8L672,186.8L672.5,188.9L673.8,190.3L674.2,189.5L676.2,189.2L678.1,189.8L678.9,191.6L676.7,191.8L681.3,196.4Z","M675.4,198.2L675.2,196.6L674.5,196.3L675.4,198.2Z","M676.9,195L675.5,194.6L676.3,195.6L676.9,195Z","M478.1,178.3L478.4,179.4L479.4,179.8L477,180.7L476,183L470.4,178.3Z","M633.8,181.4L630.5,181.1L630.8,180.4L629.8,179.9L630.4,179.3L629.3,178.9L629.3,178.3L628.8,178.3L627.7,179.3L626.4,179.4L624.7,178.3L624.1,178.3L623.2,179L622.6,178.3L621.7,178.3L620,178.9L620.5,178.3L636.5,178.3L636.5,178.6L634,180.2L633.8,181.4Z","M509.1,335.7L509.3,337.6L507.2,337.8L506.6,334.9L507.5,334.6L509.1,335.7Z","M455.8,356.6L454.6,354.7L454,355.2L451.7,353.7L451.3,351.8L452.8,351.4L454,354.2L455.9,355.1L455.8,356.6Z"],"rivers":["M528.3,179.7L530.6,179.4L531.2,180.2L530.3,183.1L531.5,183.7L532.2,185.9L534.7,187.4L532.7,190.8L532.9,191.6L534.6,191.7L534.6,192.5L532.8,193.6L532.6,196.7L529.6,201.8L528,201.6L527.5,203L524.6,204.6L524.5,206.2L521.4,206.9L520.4,210.8L516.5,209.6L514.1,210.4L513.4,211.8L514,212.5L513.1,213.2L513.5,213.8L512.8,213.6L510.2,215.3L509.6,217.5L508,218L508,221.5L509.6,221.6L509.6,222.9","M700.1,232.3L699.5,230.8L700.5,226.9L707.6,225","M568.6,183.1L574.1,180.9L575.9,181.9L577.1,183.7L582,183.5L582.8,185.2L585.6,187L584.8,188.8L587,189.4L587,194.5L589.7,195L596.8,194.2L603.1,195.6L612.1,194.8L613.9,198.1L613.7,201.3L616.9,201.3L619.8,202.8L620.4,204.1L621.5,204.1L622.6,205.2L623.3,208.6","M623.3,208.6L624.7,210.6L625.6,210.3L625.9,213L627.6,214L628.9,213.7L630.5,214.8L630.1,215.5L632.4,215.4L632.7,216.7L631.5,216.8L630.4,219.8L633.5,219.9L634.7,221.5L636.8,221.6L641,228.9L641.7,232L640.9,232.5L640.9,233.9","M640.9,233.9L641.3,236L640,237.1L640.9,241.9L642.6,243.2L642.5,244.6L643.8,244.8L643.4,246.2L646.9,249.5L646,251.6L647.2,254.5L649,256L650,259.2L651,259.6L652.5,265.9L655.2,268.6L660.9,269L663.8,271L663,274.3L663.8,275.4L662.1,279.2L663.8,284.4L665,284.5L667.6,288.8L669.3,289.8L670.6,289.5L670.5,290.6L672.4,290.4L674.9,292.2L676.4,291.7L676,292.7L677.4,293.8L680.3,293.8L680.3,295.5L682.5,296.2L683.5,297.7L685,297.1L685.4,298.4L687.6,297.5L690.4,298.5","M640.9,233.9L640.9,233.9","M690.3,298.3L695.2,294.8L697.7,296.4L705.6,297.5","M690.4,298.5L690.6,299.5L692.7,300.3L692.8,302.8L694.6,304.5L694.2,309.9L696.5,311.3L698.3,318.7L700.4,322.3L704.2,325.2","M431.8,357L428.8,354.9L427.4,354.9L426.2,352.3L424.7,352.3L425.5,351.6L424.9,350.9L425.2,347.9L423.9,344.3L424.3,343.3L423.6,343.3L424.8,342L423.8,341.9L424.4,341.1L423.8,340.7L424,338.7L422.9,336.4L420.7,334L419.9,334.1L419.4,333.1L419.9,331.3L418.8,330.8L417.9,328.8","M455.8,356.5L455.4,355.2L453.5,354.2L452.3,351.3","M452.3,351.4L451.3,348.3L452.2,345.1L451.9,333.6","M455.8,356.5L456,360.1","M430.2,355.9L429.6,352.6L428.7,351.6L429.6,351.5L432,347.9L432.6,348.1L431.9,342.1L432.7,341.7L432.8,339.4L435.3,337.6L436.9,335L439.4,334.8L441.3,331L443,330.2L443.7,328","M431.8,357.1L432.9,356.9L435,352.9L440.8,348.7L451.4,347.8","M510.5,300.1L510.1,303.9","M507.6,333.1L508.6,326.4L509.9,323.8","M515,285.5L511.6,289.9L510.4,294.2L510.5,300.1","M510.1,303.9L509.6,310.4L510.1,313.9L509.3,317.7L509.9,323.8","M507.6,333.1L507.2,335.1","M674.5,321.9L675.8,323.1L678.7,323.5L681.8,325L682.7,324","M421.2,398.4L421.3,394.4L423.1,391.9L423.3,388.1L424.8,383.9L430.8,375.7L430.9,371.6L432.7,366.6L432.1,365.2L432.6,362L431.4,359.4L431.8,357","M665.3,306.4L666.1,308.5L668.8,310.1L671,314L670.2,319.2","M662.9,296.4L664.3,298.4L665.5,298.6L667.3,302.3L671.6,302.3L673.4,304.9L673.7,309.3L676.8,311L676.5,313.6L677.7,316.4L683.6,321.2L684,322.3L682.1,322.8","M603.4,265.2L606.3,266.1L607.3,265.6L606.6,265.1L607.3,264.5L608.1,265.1L608.6,264.3L610.9,264.8L610.7,263.8L611.3,264.7L612.6,264.7L613.7,263.5L615.7,263.8L616.8,262.4L617.9,263.3L620.1,263.2L623.4,267L625.1,266.1L625.7,267L625.9,265.4L626.6,265.3L627.5,266.5L626.4,267.9L627.7,268.6L627.6,270.7L628.6,272.1L629.8,271.4L631,272.9L630.6,275.1L631.6,275.5L632.6,274.3L634.2,274.7L634.6,277.4L634.1,278L636.6,279.6L638.2,281.7L640.6,282.2L641.4,281.3L644.1,282.9L645.7,282.3L648.2,283.5L649.2,283L650.6,283.9L650.8,283.4L652.4,284.6L652.8,284.3L655,287.6L655.7,286.9L656.7,288L658.7,288.1L658.1,288.4L660.4,290.3L660.9,292.3L663.1,294.9L662.4,299.8L665.3,305.7L665.6,309L668.1,312.6L668.9,318.3L674.3,321.9L675.6,321.3L677.2,322.4L680.7,322.1L682,322.5L682.8,324","M682.8,324L686.9,324.1","M682.8,324L682.8,324","M686.8,324.1L688.1,324.3L688.9,326L697.5,326.7L706.5,330.8","M423.6,343.3L422.5,340.9L417.7,336L413.4,335L409.8,332.5","M556.9,176.8L555,179.9L555.9,181.8L560.7,183.4L562.6,182.9L565.1,185.2L567,184.7","M565.9,194.2L565.9,195.6L564.5,196.6L565.5,196.3L565.7,197.1L564.5,197.6L565.1,198.1L563.1,198.5L564.2,199.5L560.5,200.2L558.1,202.8L555.3,203.2","M567,184.7L568.3,185.5L567.9,187.9L569.6,187.6L570.2,188.7L569.8,190.6L567.3,192L565.9,194.2","M555.3,203.2L553,204.9L551.5,204L549.8,204.3L547.5,207.3L548,212.3L549.8,212.6L550.7,217","M560.4,237.1L558.7,237.2L556,236.1L552.2,233.3L551.8,231.6L553.9,228.9L553.7,227.3","M550.7,217L551.5,219.6L554,220.8L555.4,223.3L554,225.2L553.7,227.3","M560.4,237.1L563.1,237.3L563.5,236L564.6,235.5L568.4,235.4L572.7,237.3L574.6,236.8L575,237.8L577.9,237.9L578,238.6L578.5,237.8L581.6,238.9L582.2,241.2L583.7,243.2L586.2,244.4L588.2,247.2L589.3,247.9L589.9,247.5L589.7,248.3L590.4,248L592.6,249.3L593,252L593.7,252.3L593.2,253L595.4,254.5L596.8,257.8L599.1,259.3L599.8,259.1L599.9,260.3L601,260.2L602,261.3L602.2,264.4L603.4,265.2","M678.1,189.8L679.2,187.6L680.8,186.8L680.3,185.3L685.5,180.5L687,181.3L690.8,179.4L696.4,178.4L697.8,180.3L706,183.5","M425.6,184.2L424.7,187.2L420.1,189.7L418.2,187.3L415,186.3L412.4,186.7L408.5,189.4L407.8,187.2L406.3,185.9L401.2,188.3L399.9,191.4L396.5,190.9L394.6,191.8L383.4,192.3L380.6,193.7L376.6,193.1L375.5,193.6L375.3,196.5L373.3,198.2L370.1,197.9","M371.8,198.1L370.2,199.3"]},"places":[{"name":"Arabia","x":506.3,"y":359.4,"inVerse":true,"band":"settled","type":"region"},{"name":"Cilicia","x":498.2,"y":216.1,"inVerse":false,"band":"settled","type":"region"},{"name":"Damascus","x":522.8,"y":287.2,"inVerse":true,"band":"settled","type":"settlement"},{"name":"Jerusalem","x":504.2,"y":323.6,"inVerse":true,"band":"settled","type":"settlement"},{"name":"Judea","x":504.2,"y":323.6,"inVerse":false,"band":"settled","type":"region"},{"name":"Syria","x":522.8,"y":287.2,"inVerse":false,"band":"settled","type":"region"}],"bearings":[{"name":"Egypt","x":433.1,"y":356.9},{"name":"Nineveh","x":637.4,"y":222.3},{"name":"Antioch","x":519.8,"y":230.4}],"sea":{"x":440.8,"y":284.5},"route":{"title":"Paul: Damascus, Arabia and Jerusalem","stops":[{"order":1,"name":"Damascus","type":"settlement","x":522.8,"y":287.2},{"order":2,"name":"Arabia","type":"region","x":506.3,"y":359.4},{"order":3,"name":"Damascus","type":"settlement","x":522.8,"y":287.2},{"order":4,"name":"Jerusalem","type":"settlement","x":504.2,"y":323.6},{"order":5,"name":"Syria","type":"region","x":522.8,"y":287.2},{"order":6,"name":"Cilicia","type":"region","x":498.2,"y":216.1},{"order":7,"name":"Jerusalem","type":"settlement","x":504.2,"y":323.6}],"legs":[{"from":1,"to":2,"ref":"Galatians 1:17","note":null,"silent":false,"text":"nor did I go up to Jerusalem to the apostles who came before me, but I went into Arabia and later returned to Damascus."},{"from":2,"to":3,"ref":"Galatians 1:17","note":null,"silent":false,"text":"nor did I go up to Jerusalem to the apostles who came before me, but I went into Arabia and later returned to Damascus."},{"from":3,"to":4,"ref":"Galatians 1:17-18","note":null,"silent":false,"text":"Only after three years did I go up to Jerusalem to confer with Cephas, and I stayed with him fifteen days."},{"from":4,"to":5,"ref":"Galatians 1:18-21","note":null,"silent":false,"text":"Later I went to the regions of Syria and Cilicia."},{"from":5,"to":6,"ref":"Galatians 1:21","note":null,"silent":false,"text":"Later I went to the regions of Syria and Cilicia."},{"from":6,"to":7,"ref":null,"note":"Galatians 2:1 gives the destination and the interval -- fourteen years later, up to Jerusalem again -- and names no starting point for that journey, so the return from Cilicia is drawn as silence rather than as a confident line.","silent":true,"text":null}]}}}]}
+/* data:end */</script>
+<script>
+const DATA = JSON.parse(document.getElementById('dive-data').textContent.replace(/\/\* data:(start|end) \*\//g, ''))
+const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const wrap = (t, a, b) => (b - a > 1 ? esc(t.slice(0, a)) + '<mark>' + esc(t.slice(a, b)) + '</mark>' + esc(t.slice(b)) : esc(t))
+/** Text with the shared run and the shared places marked. Offsets first, names second. */
+function marked(text, run, places = [], which = 'target') {
+  let html
+  if (!run && which === 'target' && places.length) {
+    // no shared run, but a shared place: window on its first mention
+    const first = Math.min(...places.map((p) => text.search(new RegExp(`\\b${escRe(p)}\\b`))).filter((i) => i >= 0))
+    if (Number.isFinite(first)) run = { target: [first, first + 1] }
+  }
+  if (run) {
+    let [a, b] = run[which]
+    // Start near the shared words when they sit deep in the passage, so a
+    // clipped row still shows the thing that makes it a connection.
+    if (which === 'target' && a > 48) {
+      const before = text.slice(0, a)
+      // an opening quote wins, then a sentence, then a clause; each only if near enough
+      const q = before.lastIndexOf('“')
+      const s = Math.max(before.lastIndexOf('. '), before.lastIndexOf('? ')) + 2
+      const c = Math.max(before.lastIndexOf(', '), before.lastIndexOf('; ')) + 2
+      const start = q >= 0 && a - q < 75 ? q : s > 1 && a - s < 60 ? s : c > 1 && a - c < 40 ? c : before.lastIndexOf(' ', a - 30) + 1
+      text = text.slice(start)
+      a -= start
+      b -= start
+      html = '…' + wrap(text, a, b)
+    } else html = wrap(text, a, b)
+  } else html = esc(text)
+  for (const p of places) html = html.replace(new RegExp(`\\b${escRe(esc(p))}\\b`, 'g'), '<mark>$&</mark>')
+  return html
+}
+
+const GLYPH = '<svg class="glyph" viewBox="0 0 18 10"><path d="M2 8 C6 8 6 2 9 2 S12 8 16 8"/><circle cx="2" cy="8" r="1.6"/><circle cx="16" cy="8" r="1.6"/></svg>'
+
+/** The one line beneath a verse. Journey first, else the strongest passage. */
+function entryLine(v) {
+  const r = v.map.route
+  const count = v.door ? v.rows.length : 0
+  if (r) {
+    const names = [...new Set(r.stops.map((s) => s.name))]
+    return `<button class="entry" type="button">${GLYPH}<span class="e-text">${esc(r.title)}</span>${count ? `<span class="e-count">+${count}</span>` : ''}</button>`
+  }
+  if (v.door) {
+    const first = v.rows[0]
+    return `<button class="entry" type="button"><span class="e-ref">${esc(first.ref)}</span><span class="e-text">${marked(first.text, first.run, first.places)}</span>${count > 1 ? `<span class="e-count">+${count - 1}</span>` : ''}</button>`
+  }
+  if (v.map.places.length) {
+    const names = [...new Set(v.map.places.map((p) => p.name))]
+    return `<button class="entry" type="button">${GLYPH}<span class="e-text">${esc(names.join(' · '))}</span></button>`
+  }
+  return ''
+}
+
+// ── the chapter around each verse (real text, from the same feed) ──────────
+const CONTEXT = {
+  'Genesis 15:6': [
+    [4, 'Then the word of the LORD came to Abram, saying, “This one will not be your heir, but one who comes from your own body will be your heir.”'],
+    [5, 'And the LORD took him outside and said, “Now look to the heavens and count the stars, if you are able.” Then He told him, “So shall your offspring be.”'],
+    [6, null],
+    [7, 'The LORD also told him, “I am the LORD, who brought you out of Ur of the Chaldeans to give you this land to possess.”'],
+    [8, 'But Abram replied, “Lord GOD, how can I know that I will possess it?”']
+  ],
+  'Galatians 1:17': [
+    [16, 'to reveal His Son in me so that I might preach Him among the Gentiles, I did not rush to consult with flesh and blood,'],
+    [17, null],
+    [18, 'Only after three years did I go up to Jerusalem to confer with Cephas, and I stayed with him fifteen days.'],
+    [19, 'But I saw none of the other apostles except James, the Lord’s brother.'],
+    [21, 'Later I went to the regions of Syria and Cilicia.']
+  ]
+}
+
+function readingHtml(v, entry = true) {
+  return CONTEXT[v.ref].map(([n, t]) => {
+    const sel = t === null
+    return `<div class="verse${sel ? ' selected' : ''}"><span class="vnum">${n}</span><span class="vtext">${esc(sel ? v.text : t)}</span>${sel && entry ? entryLine(v) : ''}</div>`
+  }).join('')
+}
+
+// ── the map thumbnail ──────────────────────────────────────────────────────
+function dedupePlaces(places) {
+  const byPoint = new Map()
+  for (const p of places) {
+    const k = `${p.x},${p.y}`
+    const cur = byPoint.get(k)
+    // a region at a settlement's exact point is the settlement, labelled once
+    if (!cur) byPoint.set(k, { ...p })
+    else if (cur.type === 'region' && p.type !== 'region') byPoint.set(k, { ...p, inVerse: cur.inVerse || p.inVerse })
+    else if (cur.type === 'region' && p.type === 'region') byPoint.set(k, { ...cur, name: `${cur.name}, ${p.name}`, inVerse: cur.inVerse || p.inVerse })
+    else if (p.inVerse) cur.inVerse = true
+  }
+  return [...byPoint.values()]
+}
+
+/** Route stops with region stops on a city's point folded into the leg that follows. */
+function foldRoute(route) {
+  if (!route) return null
+  const stops = route.stops
+  const cityAt = new Map()
+  for (const s of stops) if (s.type !== 'region') cityAt.set(`${s.x},${s.y}`, s)
+  const fold = new Set(stops.filter((s) => s.type === 'region' && cityAt.has(`${s.x},${s.y}`)).map((s) => s.order))
+  const legs = []
+  for (const l of route.legs) {
+    if (fold.has(l.to.order ?? l.to)) { legs.push({ ...l, pending: true }); continue }
+    const prev = legs.length && legs[legs.length - 1].pending ? legs.pop() : null
+    // the folded leg keeps the LATER citation: it is the one that names the destination
+    legs.push(prev ? { from: prev.from, to: l.to, ref: l.ref ?? prev.ref, note: l.note, silent: l.silent || prev.silent, text: l.text ?? prev.text, via: stops.find((s) => s.order === prev.to).name } : { ...l })
+  }
+  const byOrder = new Map(stops.map((s) => [s.order, s]))
+  return { ...route, legs: legs.map((l) => ({ ...l, a: byOrder.get(l.from), b: byOrder.get(l.to) })), stops: stops.filter((s) => !fold.has(s.order)) }
+}
+
+function legPath(a, b, bow = 0) {
+  if (!bow) return `M${a.x},${a.y}L${b.x},${b.y}`
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2
+  const dx = b.x - a.x, dy = b.y - a.y
+  return `M${a.x},${a.y}Q${mx - dy * bow},${my + dx * bow} ${b.x},${b.y}`
+}
+
+function thumbSvg(v, lit = -1) {
+  const m = v.map
+  const [x, y, w, h] = m.viewBox
+  const art = m.artwork
+  const route = foldRoute(m.route)
+  const places = dedupePlaces(m.places)
+  const routeNames = new Set(route ? route.stops.map((s) => s.name) : [])
+  let s = `<svg class="thumb" viewBox="${x} ${y} ${w} ${h}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">`
+  s += `<rect class="sea" x="${x - 5}" y="${y - 5}" width="${w + 10}" height="${h + 10}"/>`
+  s += art.land.map((d) => `<path class="land" d="${d}"/>`).join('')
+  s += art.lakes.map((d) => `<path class="lake" d="${d}"/>`).join('')
+  s += art.rivers.map((d) => `<path class="river" d="${d}"/>`).join('')
+  if (m.sea) s += `<text class="sealabel" x="${m.sea.x}" y="${m.sea.y}" text-anchor="middle" transform="rotate(-8 ${m.sea.x} ${m.sea.y})">The Great Sea</text>`
+  for (const b of m.bearings) s += `<g class="bearing"><circle cx="${b.x}" cy="${b.y}" r="1.4"/><text x="${b.x + 4}" y="${b.y - 3}">${esc(b.name)}</text></g>`
+  if (route) {
+    // the whole route, faint; a return over an earlier leg bows a little so the loop reads
+    const seen = new Set()
+    s += '<g class="route-faint">'
+    route.legs.forEach((l, i) => {
+      const k = `${l.a.order}-${l.b.order}`; const rev = `${l.b.x},${l.b.y}>${l.a.x},${l.a.y}`
+      const bow = seen.has(rev) ? 0.14 : 0
+      seen.add(`${l.a.x},${l.a.y}>${l.b.x},${l.b.y}`)
+      l.bow = bow
+      s += `<path class="${l.silent ? 'silent' : ''}" d="${legPath(l.a, l.b, bow)}"/>`
+    })
+    s += '</g>'
+    if (lit >= 0 && route.legs[lit]) {
+      const l = route.legs[lit]
+      s += `<defs><marker id="ah-${v.book}-${lit}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="3.6" markerHeight="3.6" orient="auto-start-reverse"><path class="arrow" d="M0,0.5 L10,5 L0,9.5 z"/></marker></defs>`
+      s += `<path class="lit${l.silent ? ' silent' : ''}" d="${legPath(l.a, l.b, l.bow)}" marker-end="url(#ah-${v.book}-${lit})"/>`
+    }
+    const on = lit >= 0 && route.legs[lit] ? new Set([route.legs[lit].a.order, route.legs[lit].b.order]) : new Set()
+    const drawn = new Set()
+    for (const st of route.stops) {
+      const k = `${st.x},${st.y}`
+      if (drawn.has(k)) continue
+      drawn.add(k)
+      const isOn = route.stops.some((o) => `${o.x},${o.y}` === k && on.has(o.order))
+      s += `<g class="stop${isOn ? ' on' : ''}"><circle cx="${st.x}" cy="${st.y}" r="2.6"/><text x="${st.x + 5}" y="${st.y + 3.5}">${esc(st.name)}</text></g>`
+    }
+    // chapter places that are not on the route stay as plain labels
+    for (const p of places) if (!routeNames.has(p.name) && !drawn.has(`${p.x},${p.y}`)) s += `<g class="place"><circle cx="${p.x}" cy="${p.y}" r="2.2"/><text x="${p.x + 5}" y="${p.y + 3.5}">${esc(p.name)}</text></g>`
+  } else {
+    // label placement: alternate sides for points that share a row, so nothing collides
+    const sorted = [...places].sort((a, b) => a.y - b.y || a.x - b.x)
+    sorted.forEach((p, i) => {
+      const left = sorted.some((o, j) => j !== i && Math.abs(o.y - p.y) < 8 && o.x > p.x && o.x - p.x < 70)
+      s += `<g class="place${p.inVerse ? ' in-verse' : ''}"><circle cx="${p.x}" cy="${p.y}" r="2.4"/><text x="${p.x + (left ? -5 : 5)}" y="${p.y + 3.5}" text-anchor="${left ? 'end' : 'start'}">${esc(p.name)}</text></g>`
+    })
+  }
+  return s + '</svg>'
+}
+
+function placesCaption(v) {
+  const names = [...new Set(dedupePlaces(v.map.places).map((p) => p.name))]
+  const last = names.pop()
+  return names.length ? `${names.join(', ')} and ${last}` : last
+}
+
+function mapCard(v, lit = 0) {
+  const route = foldRoute(v.map.route)
+  if (route) {
+    const l = route.legs[lit]
+    const n = route.legs.length
+    const head = `<span>${lit + 1} of ${n}</span><b>${esc(l.a.name)} to ${esc(l.b.name)}${l.via ? `, through ${esc(l.via)}` : ''}</b>${l.ref ? `<span class="cap-ref">${esc(l.ref)}</span>` : ''}`
+    const body = l.silent
+      ? `<p class="cap-text muted">${esc(l.note || 'The text is silent here.')}</p>`
+      : `<p class="cap-text">${marked(l.text || '', null, [l.a.name, l.b.name, l.via].filter(Boolean))}</p>`
+    return `<button class="map-card journey" type="button" data-ref="${esc(v.ref)}" data-lit="${lit}">${thumbSvg(v, lit)}<span class="map-caption"><span class="cap-head cap-swap">${head}</span><span class="cap-swap">${body}</span><span class="cap-hint">Tap to follow the next leg</span></span></button>`
+  }
+  return `<button class="map-card" type="button">${thumbSvg(v)}<span class="map-caption"><span class="cap-head"><b>Where this chapter happens</b></span><p class="cap-text">${esc(placesCaption(v))}</p></span></button>`
+}
+
+// ── the sheet ──────────────────────────────────────────────────────────────
+const SHOWN = 3
+function rowsHtml(v) {
+  if (!v.door) return ''
+  const rows = v.rows.slice(0, SHOWN).map((r) => `<div class="row"><div class="row-head"><span class="ref">${esc(r.ref)}</span>${r.heading ? `<span class="heading">${esc(r.heading)}</span>` : ''}</div><p class="row-text${r.run || r.places.length ? '' : ' muted'}">${marked(r.text, r.run, r.places)}</p></div>`).join('')
+  const more = v.rows.length - SHOWN
+  return `<p class="eyebrow">Where Scripture picks this up</p>${rows}${more > 0 ? `<button class="fold" type="button">${more} more<span class="chev">↓</span></button>` : ''}`
+}
+
+function sheetBody(v) {
+  const route = v.map.route
+  const held = `<p class="held">${marked(v.text, v.rows[0]?.run, [], 'source')}</p>`
+  const map = v.map.places.length || route ? mapCard(v) : ''
+  const order = route ? map + rowsHtml(v) : rowsHtml(v) + map
+  return held + order + `<p class="prov">OpenBible cross-references (CC BY 4.0) · BSB section headings · Natural Earth, OpenBible geocoding</p>`
+}
+
+function phone(v, { dark = false, open = false, static_ = false, entry = true, id = '' } = {}) {
+  return `<div class="phone${dark ? ' dark' : ''}${open ? ' is-open' : ''}${static_ ? ' static' : ''}" ${id ? `id="${id}"` : ''}>
+    <div class="reading">${readingHtml(v, entry)}</div>
+    <div class="selbar"><span class="selref">${esc(v.ref)}</span><span class="x">✕</span><span class="btn">Highlight</span><span class="btn primary">Note</span></div>
+    <div class="scrim"></div>
+    <div class="sheet"><div class="sheet-head"><span class="sheet-ref">${esc(v.ref)}</span><button class="close" type="button" aria-label="Close">✕</button></div>${sheetBody(v)}</div>
+  </div>`
+}
+
+const gen = DATA.verses[0], gal = DATA.verses[1]
+const galNoDoor = { ...gal, door: false }
+
+document.getElementById('entrances').innerHTML = [
+  `<div><p class="lab">Interactive · a verse Scripture picks up</p>${phone(gen, { id: 'p-int' })}</div>`,
+  `<div><p class="lab">Dark · the same line</p>${phone(gen, { dark: true })}</div>`,
+  `<div><p class="lab">A journey chapter leads with the route</p>${phone(gal)}</div>`,
+  `<div><p class="lab">Only places, nothing else beneath</p>${phone({ ...gen, door: false, map: { ...gen.map, route: null } })}</div>`
+].join('')
+
+document.getElementById('views').innerHTML = [
+  `<div><p class="lab">Genesis 15:6, light</p>${phone(gen, { static_: true })}</div>`,
+  `<div><p class="lab">Genesis 15:6, dark</p>${phone(gen, { static_: true, dark: true })}</div>`
+].join('')
+
+document.getElementById('journeys').innerHTML = [
+  `<div><p class="lab">Galatians 1:17 · tap the map to step</p>${phone(gal, { static_: true })}</div>`,
+  `<div><p class="lab">Dark</p>${phone(gal, { static_: true, dark: true })}</div>`
+].join('')
+
+document.getElementById('desktop').innerHTML = `<div class="desk"><div class="desk-read">${readingHtml(gen)}</div><div class="desk-panel"><div class="sheet-head"><span class="sheet-ref">${esc(gen.ref)}</span><button class="close" type="button">✕</button></div>${sheetBody(gen)}</div></div>`
+
+document.getElementById('evidence').innerHTML = DATA.verses.map((v) => `<p class="lab" style="margin-top:14px">${esc(v.ref)} · top score ${v.top}, line ${v.threshold}${v.parallel ? ', opened as a parallel account' : ''} · door ${v.door ? 'open' : 'closed'}</p><table class="vocab" style="border-collapse:collapse;font-size:13px;background:var(--surface);border-radius:10px;overflow:hidden;max-width:900px;width:100%"><tr><th style="text-align:left;padding:7px 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint)">Row</th><th style="text-align:left;padding:7px 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint)">Score</th><th style="text-align:left;padding:7px 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint)">Heading</th><th style="text-align:left;padding:7px 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint)">Shared words</th><th style="text-align:left;padding:7px 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint)">Shared places</th></tr>${v.rows.map((r) => `<tr><td style="padding:7px 10px;border-top:.5px solid var(--border)">${esc(r.ref)}</td><td style="padding:7px 10px;border-top:.5px solid var(--border)">${r.score}</td><td style="padding:7px 10px;border-top:.5px solid var(--border);color:var(--text-muted)">${r.heading ? esc(r.heading) : '<span style="color:var(--text-faint)">none within reach</span>'}</td><td style="padding:7px 10px;border-top:.5px solid var(--border);font-family:var(--scripture-font)">${r.run ? '“' + esc(r.text.slice(r.run.target[0], r.run.target[1])) + '”' : '<span style="color:var(--text-faint)">none</span>'}</td><td style="padding:7px 10px;border-top:.5px solid var(--border)">${r.places.length ? esc(r.places.join(', ')) : '<span style="color:var(--text-faint)">none</span>'}</td></tr>`).join('')}</table>`).join('')
+
+document.getElementById('gen').textContent = `Data generated ${DATA.generated.slice(0, 16).replace('T', ' ')} from the shipped bundles and bible.helloao.org.`
+
+// ── interaction ────────────────────────────────────────────────────────────
+document.addEventListener('click', (e) => {
+  const entry = e.target.closest('.entry')
+  if (entry) { entry.closest('.phone')?.classList.add('is-open'); return }
+  if (e.target.closest('.close') || (e.target.classList.contains('scrim'))) {
+    const p = e.target.closest('.phone'); if (p && !p.classList.contains('static')) p.classList.remove('is-open'); return
+  }
+  const card = e.target.closest('.map-card.journey')
+  if (card) {
+    const v = DATA.verses.find((x) => x.ref === card.dataset.ref)
+    const n = foldRoute(v.map.route).legs.length
+    const next = (Number(card.dataset.lit) + 1) % n
+    card.outerHTML = mapCard(v, next)
+  }
+})
+</script>
+</body>
+</html>

@@ -3452,3 +3452,11 @@ belongs to and why that arc comes when it does.
   Entrance is the verse's tint continuing into a two-line strip. Mockup
   `design/dive-in.html` (generated from real data), note
   `docs/proposals/dive-in.md`. Build follows Dennis's review.
+  **Second design (2026-09-14, same day):** a cold critique found the first
+  mockup text-heavy, promising rows the gate would never show, and filling
+  open coastline runs (the sea band). Counter-design at `design/dive-in-2.html`
+  (`scripts/export-dive-in.mjs`, real data, polygon-clipped coasts) with note
+  `docs/proposals/dive-in-2.md`: one entrance line of real content, rows as
+  reference + heading + marked words (no author, no relation words), map card
+  with one lit leg and its verse, parallel-account gate. Dennis chooses between
+  the two before anything is built.
