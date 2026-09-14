@@ -558,6 +558,10 @@ function drawLit(svg, instant = false) {
   void path.getBoundingClientRect()
   path.style.transition = ''
   path.style.strokeDashoffset = '0'
+  // the dash exists only for the draw-in: its length is in screen pixels, so it must
+  // go the moment the line is complete (and on any pan or zoom, see setVB)
+  clearTimeout(path._solid)
+  path._solid = setTimeout(() => { path.style.strokeDasharray = ''; path.style.strokeDashoffset = '' }, 960)
   setTimeout(() => { arrow.style.opacity = '1' }, 780)
 }
 
@@ -760,6 +764,8 @@ function setVB(svg, vb) {
   x = Math.min(Math.max(x, px), px + pw - w)
   y = Math.min(Math.max(y, py), py + ph - h)
   svg.setAttribute('viewBox', `${x} ${y} ${w} ${h}`)
+  const lit = svg.querySelector('[data-role="lit"]')
+  if (lit) { clearTimeout(lit._solid); lit.style.transition = 'none'; lit.style.strokeDasharray = ''; lit.style.strokeDashoffset = ''; svg.querySelector('[data-role="arrow"]').style.opacity = '1' }
   const moved = Math.abs(x - home[0]) > 0.5 || Math.abs(y - home[1]) > 0.5 || Math.abs(w - home[2]) > 0.5
   svg.closest('.map-card').classList.toggle('moved', moved)
 }
