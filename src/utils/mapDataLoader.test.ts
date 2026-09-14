@@ -9,13 +9,21 @@ import {
   indexMarkersByPlaceId,
   journeyBadges,
   journeyDoorLabel,
+  mapFurniture,
   pickMarker,
   placeJourneyLabels,
   referenceChapters,
   selectLabels,
+  viewToLonLat,
   type PlaceMarker
 } from './mapDataLoader'
-import { projectToView, type Journey, type JourneyGap, type MapPlace } from './mapData'
+import {
+  MAP_VIEW_BOX,
+  projectToView,
+  type Journey,
+  type JourneyGap,
+  type MapPlace
+} from './mapData'
 
 // Real records out of public/map/places.json.gz, pasted rather than invented so
 // the honesty rules are tested against places that really are settled, really
@@ -478,5 +486,64 @@ describe('indexMarkersByPlaceId', () => {
     expect(byId.get('ai-1')?.name).toBe('Ai 1')
     // Nod has no location, so it is not a marker and cannot be a stop.
     expect(byId.get('nod')).toBeUndefined()
+  })
+})
+
+describe('map furniture', () => {
+  const view = (
+    x: number,
+    y: number,
+    w: number,
+    h: number
+  ): { x: number; y: number; w: number; h: number } => ({ x, y, w, h })
+
+  it('inverts the projection it is measured against', () => {
+    for (const [lon, lat] of [
+      [35, 32.5],
+      [12.4, 41.9],
+      [44.4, 33.3],
+      [58, 22]
+    ]) {
+      const [x, y] = projectToView(lon, lat)
+      const [backLon, backLat] = viewToLonLat(x, y)
+      expect(backLon).toBeCloseTo(lon, 6)
+      expect(backLat).toBeCloseTo(lat, 6)
+    }
+  })
+
+  it('measures the scale bar at the centre latitude, and rounds it to a readable number', () => {
+    const [, , w, h] = MAP_VIEW_BOX
+    const world = mapFurniture(view(0, 0, w, h))
+    // A third of the world frame is ~1,700 km at these latitudes, which rounds
+    // DOWN to the nearest readable number: a 1,000 km bar, 19% of the width.
+    expect(world.km).toBe(1000)
+    expect(world.bar).toBeGreaterThan(w * 0.15)
+    expect(world.bar).toBeLessThan(w * 0.34)
+    expect(world.atLat).toBeGreaterThan(20)
+    expect(world.atLat).toBeLessThan(45)
+  })
+
+  it('shortens the bar as the reader zooms in', () => {
+    const [, , w, h] = MAP_VIEW_BOX
+    const close = mapFurniture(view(w / 2 - 12, h / 2 - 7, 25, 14))
+    expect(close.km).toBeLessThan(100)
+    expect(close.km).toBeGreaterThan(0)
+    // Still a 1/2/5 × 10ⁿ number, whatever the zoom.
+    expect([1, 2, 5]).toContain(Number(String(close.km).replace(/0+$/, '')) || close.km)
+  })
+
+  it('tilts north with the meridian, and leaves it upright on the central one', () => {
+    const [, , w, h] = MAP_VIEW_BOX
+    const [cx] = projectToView(35, 32.5)
+    const middle = mapFurniture(view(cx - 50, h / 2 - 30, 100, 60))
+    expect(Math.abs(middle.north)).toBeLessThan(0.5)
+
+    const [ex] = projectToView(55, 32.5)
+    const east = mapFurniture(view(ex - 50, h / 2 - 30, 100, 60))
+    expect(east.north).toBeLessThan(-4)
+    const [wx] = projectToView(15, 32.5)
+    const west = mapFurniture(view(wx - 50, h / 2 - 30, 100, 60))
+    expect(west.north).toBeGreaterThan(4)
+    expect(w).toBe(1000)
   })
 })

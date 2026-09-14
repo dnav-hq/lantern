@@ -12,6 +12,9 @@ import {
   confidenceBand,
   isContested,
   projectToView,
+  LCC_CONSTANTS,
+  MAP_PROJECTION,
+  MAP_VIEW_TRANSFORM,
   type ChapterKey,
   type ConfidenceBand,
   type Journey,
@@ -616,4 +619,86 @@ export function journeyBadges(stops: JourneyStop[], spacing = 17): JourneyBadge[
     byIndex.set(stop.index, badge)
   }
   return badges
+}
+
+/* ── The map's furniture: a scale bar and a north mark ──
+   Both are COMPUTED from whatever the reader is looking at, never drawn once
+   and reused, because on a conic projection neither is constant: the scale is
+   only true near the standard parallels, and grid north leans away from screen
+   up as you move off the central meridian. Getting those two right is most of
+   the difference between a map and a picture of one, which is why they live
+   here, pure and under test, rather than as numbers in JSX.               */
+
+const DEG = Math.PI / 180
+/** Kilometres in one degree of longitude at the equator. */
+const KM_PER_DEGREE = 111.32
+/** The lengths a scale bar is allowed to be, per power of ten. */
+const NICE_STEPS = [1, 2, 5]
+
+export interface MapFurniture {
+  /** The bar's length in view-box units — what the SVG draws. */
+  bar: number
+  /** The round number of kilometres that length stands for. */
+  km: number
+  /** The latitude the scale is true at: the centre of what is on screen. */
+  atLat: number
+  /** Degrees the meridian leans from screen-up, for the north mark. */
+  north: number
+}
+
+/** View-box coordinates back to lon/lat — the inverse of `projectToView`. */
+export function viewToLonLat(x: number, y: number): [number, number] {
+  const { scale, minX, maxY } = MAP_VIEW_TRANSFORM
+  const { n, F, rho0 } = LCC_CONSTANTS
+  const px = minX + x / scale
+  const py = maxY - y / scale
+  const rho = Math.hypot(px, rho0 - py)
+  const theta = Math.atan2(px, rho0 - py)
+  const lat = (2 * Math.atan(Math.pow(F / rho, 1 / n)) - Math.PI / 2) / DEG
+  return [MAP_PROJECTION.lon0 + theta / n / DEG, lat]
+}
+
+/** The largest 1/2/5 × 10ⁿ that is not longer than `value`. */
+function niceLength(value: number): number {
+  if (!(value > 0)) return 1
+  const power = Math.pow(10, Math.floor(Math.log10(value)))
+  let best = NICE_STEPS[0] * power
+  for (const step of NICE_STEPS) {
+    if (step * power <= value) best = step * power
+  }
+  return best
+}
+
+/**
+ * The scale bar and north mark for one view. `fraction` is how much of the
+ * frame's width the bar may take before it is rounded down to a readable
+ * number — a third, so it reads as a measurement and not as a ruler laid
+ * across the map.
+ */
+export function mapFurniture(
+  view: { x: number; y: number; w: number; h: number },
+  fraction = 0.32
+): MapFurniture {
+  const cx = view.x + view.w / 2
+  const cy = view.y + view.h / 2
+  const [lon, lat] = viewToLonLat(cx, cy)
+
+  // Kilometres per view unit, measured along the parallel the reader is on.
+  const half = 0.25
+  const [ax] = projectToView(lon - half, lat)
+  const [bx] = projectToView(lon + half, lat)
+  const span = Math.abs(bx - ax)
+  const kmPerUnit = span > 0 ? (2 * half * KM_PER_DEGREE * Math.cos(lat * DEG)) / span : 0
+  const km = niceLength(view.w * fraction * kmPerUnit)
+
+  // Which way the meridian through the centre actually points on screen.
+  const [nx, ny] = projectToView(lon, Math.min(lat + 0.5, 89))
+  const north = Math.atan2(nx - cx, cy - ny) / DEG
+
+  return {
+    bar: kmPerUnit > 0 ? km / kmPerUnit : 0,
+    km,
+    atLat: Math.round(lat * 10) / 10,
+    north: Math.round(north * 10) / 10
+  }
 }

@@ -8547,12 +8547,22 @@ body.dark .study-note-act .is-yes {
    no way to reach the legend, the unlocated list or the attribution below
    the fold — and no way back, either (see `.map-view-close` below). */
 .map-view {
-  --map-ink: var(--text-muted);
-  --map-coast: var(--text);
-  --map-water: rgba(63, 123, 160, 0.5);
-  --map-water-fill: rgba(63, 123, 160, 0.14);
+  /* ── The atlas palette — docs/proposals/bible-map-atlas.md, treatment (a) ──
+     The map paints its OWN parchment rather than the app's neutrals. That was
+     the first of the proposal's two decisions and Dennis took it the map's
+     way: a plate in the back of a study Bible looks like a plate wherever it
+     is bound, and the map is the one surface in Lantern that is allowed to.
+     Six tones, derived once, and nothing below hard-codes a colour — the
+     route is the single exception, because the route is the app speaking. */
+  --map-land: #efe5cd;
+  --map-sea: #c8d6db;
+  --map-sea-ink: #6d8792;
+  --map-coast: #9c8f72;
+  --map-ink: #3a3427;
+  --map-muted: #7c7159;
+  /* How loud the opt-in relief raster is under the ink. */
+  --map-relief: 0.85;
   --map-mark: var(--accent-ink);
-  --map-canvas: var(--surface);
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -8561,6 +8571,23 @@ body.dark .study-note-act .is-yes {
   margin: 0 auto;
   padding: var(--space-5) var(--space-4) var(--space-7);
   color: var(--text);
+}
+
+/* Night parchment, not the light plate inverted: ink on dark sepia, solved
+   once here as the same six names. `--map-relief-post` exists only in dark and
+   is deliberately UNSET in light (`var(--map-relief-post, )` falls back to
+   nothing) — a hillshade lit from the north-west glows on a dark canvas unless
+   its own lighting is turned over, and that inversion has no business running
+   in a light theme. */
+body.dark .map-view {
+  --map-land: #2d2618;
+  --map-sea: #1d2529;
+  --map-sea-ink: #7e929b;
+  --map-coast: #7d7054;
+  --map-ink: #ece4d6;
+  --map-muted: #b3a88f;
+  --map-relief: 0.75;
+  --map-relief-post: invert(1) sepia(0.45) saturate(0.9) brightness(0.85);
 }
 
 .map-view-head {
@@ -8602,7 +8629,9 @@ body.dark .study-note-act .is-yes {
   background: transparent;
   color: var(--text-muted);
   font: inherit;
-  font-size: var(--text-base);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
   padding: var(--space-1) var(--space-4);
   border-radius: var(--radius-xl);
   cursor: pointer;
@@ -8623,11 +8652,22 @@ body.dark .study-note-act .is-yes {
    inside the viewBox (mapViewport.fitViewBox), never by SVG's own centring. */
 .map-canvas {
   position: relative;
-  background: var(--map-canvas);
+  background: var(--map-land);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
   height: clamp(320px, 62vh, 680px);
+}
+/* The neatline — the hairline an engraved plate is framed by. Drawn on the
+   stage rather than inside the SVG so it stays put while the map moves. */
+.map-canvas::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid var(--map-coast);
+  border-radius: 2px;
+  opacity: 0.5;
+  pointer-events: none;
 }
 .map-stage {
   position: absolute;
@@ -8662,33 +8702,41 @@ body.dark .study-note-act .is-yes {
   will-change: transform;
 }
 
-/* The opt-in relief raster. Grayscale hillshade sits UNDER the ink rather than
-   competing with it, so it is held back hard. */
+/* The opt-in relief raster, tinted to parchment. The raster itself is
+   UNCHANGED — the same grayscale hillshade, fetched only in the relief view,
+   no new bytes at the reader — and the plate colour is a filter over it
+   (`#map-parchment`, defined in MapView's own defs). That was the proposal's
+   second decision: the relief keeps shipping as the opt-in it already is, and
+   the parchment is painted over it rather than downloaded again. */
 .map-terrain {
-  opacity: 0.5;
+  opacity: var(--map-relief);
+  filter: url(#map-parchment) var(--map-relief-post,);
 }
 
 .map-layer path {
   pointer-events: none;
 }
+/* A hairline coast at full strength, water in its own ink: the coast is the
+   line the whole plate hangs off, so it is the one thing not held back. */
 .map-layer-coast path {
   fill: none;
   stroke: var(--map-coast);
   stroke-width: 0.9;
   stroke-linejoin: round;
   stroke-linecap: round;
-  opacity: 0.75;
 }
 .map-layer-lakes path {
-  fill: var(--map-water-fill);
-  stroke: var(--map-water);
-  stroke-width: 0.7;
+  fill: var(--map-sea);
+  stroke: var(--map-sea-ink);
+  stroke-width: 0.6;
+  opacity: 0.9;
 }
 .map-layer-rivers path {
   fill: none;
-  stroke: var(--map-water);
+  stroke: var(--map-sea-ink);
   stroke-width: 0.7;
   stroke-linecap: round;
+  opacity: 0.6;
 }
 
 /* ── Confidence, as geometry ──
@@ -8702,7 +8750,7 @@ body.dark .study-note-act .is-yes {
 }
 .map-place .map-place-dot {
   fill: var(--map-mark);
-  stroke: var(--map-canvas);
+  stroke: var(--map-land);
   stroke-width: 0.8;
   pointer-events: none;
 }
@@ -8808,11 +8856,11 @@ body.dark .study-note-act .is-yes {
 }
 .map-stop {
   fill: var(--map-mark);
-  stroke: var(--map-canvas);
+  stroke: var(--map-land);
   stroke-width: 1.2;
 }
 .map-stop-num {
-  fill: var(--map-canvas);
+  fill: var(--map-land);
   font-family: var(--ui-font);
   font-size: 10px;
   font-weight: 600;
@@ -8843,15 +8891,38 @@ body.dark .study-note-act .is-yes {
 .map-labels {
   pointer-events: none;
 }
+/* ── The atlas voice ──
+   Place names in the app's own serif, haloed in the land tone so they survive
+   relief underneath them (`paint-order: stroke` paints the halo first, which
+   is the whole trick). Regions and seas are the two registers an atlas sets in
+   small caps, and they are drawn from the place data's own types — `region`
+   and `body of water` — so nothing is labelled that the map does not already
+   know about. */
 .map-label {
-  fill: var(--text);
-  font-family: var(--ui-font);
-  font-size: 11px;
+  fill: var(--map-ink);
+  font-family: var(--scripture-font);
+  font-weight: 600;
+  font-size: 11.5px;
   dominant-baseline: middle;
   paint-order: stroke;
-  stroke: var(--map-canvas);
+  stroke: var(--map-land);
   stroke-width: 3;
   stroke-linejoin: round;
+}
+.map-label.is-region {
+  fill: var(--map-muted);
+  font-weight: 500;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.16em;
+  stroke-width: 2.6;
+}
+.map-label.is-water {
+  fill: var(--map-sea-ink);
+  font-weight: 500;
+  font-style: italic;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.18em;
+  stroke-width: 2.2;
 }
 
 /* A route label. Every stop is named (placeJourneyLabels moves a collision
@@ -8861,6 +8932,78 @@ body.dark .study-note-act .is-yes {
   font-weight: 600;
 }
 
+/* ── Furniture: the scale bar and the north mark ──
+   Both sit on the STAGE, not inside the SVG, so they hold their corner while
+   the map moves under them. What they say is recomputed for whatever is on
+   screen (mapDataLoader.mapFurniture) — on a conic projection the scale is
+   only true near its standard parallels and north leans off screen-up as you
+   travel east or west, and an atlas that lied about either would be decoration.
+*/
+.map-furniture {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  pointer-events: none;
+  color: var(--map-muted);
+  font-family: var(--ui-font);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+.map-scale {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0 4px;
+}
+.map-scale-bar {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: block;
+  overflow: visible;
+}
+.map-scale-zero {
+  grid-column: 1;
+  grid-row: 1;
+}
+.map-scale-km {
+  grid-column: 3;
+  grid-row: 1;
+  text-align: right;
+}
+.map-scale-fill {
+  fill: var(--map-muted);
+  opacity: 0.2;
+}
+.map-scale-step {
+  fill: var(--map-muted);
+  opacity: 0.55;
+}
+.map-scale-frame {
+  fill: none;
+  stroke: var(--map-muted);
+  stroke-width: 1;
+}
+.map-north {
+  display: block;
+  overflow: visible;
+}
+.map-north-shaft {
+  stroke: var(--map-muted);
+  stroke-width: 1.1;
+  fill: none;
+}
+.map-north-head {
+  fill: var(--map-muted);
+}
+.map-north-n {
+  fill: var(--map-muted);
+  font-family: var(--ui-font);
+  font-size: 9px;
+}
+
 /* ── Zoom buttons: the mouse-and-keyboard route to what a pinch does ── */
 .map-zoom {
   position: absolute;
@@ -8868,16 +9011,19 @@ body.dark .study-note-act .is-yes {
   right: var(--space-3);
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--border);
+  /* Standing ON the plate, these take the plate's register: land, a coast
+     hairline and map ink, rather than the app's surface floating over it. */
+  border: 1px solid var(--map-coast);
   border-radius: var(--radius-md);
-  background: var(--surface);
+  background: var(--map-land);
+  color: var(--map-ink);
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 .map-zoom-btn {
   border: 0;
   background: transparent;
-  color: var(--text);
+  color: inherit;
   font: inherit;
   font-size: 18px;
   line-height: 1;
@@ -8886,10 +9032,11 @@ body.dark .study-note-act .is-yes {
   cursor: pointer;
 }
 .map-zoom-btn + .map-zoom-btn {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--map-coast);
 }
 .map-zoom-btn:disabled {
-  color: var(--text-faint);
+  color: var(--map-muted);
+  opacity: 0.6;
   cursor: default;
 }
 .map-zoom-home {
@@ -9042,8 +9189,32 @@ body.dark .study-note-act .is-yes {
 .map-legend-title,
 .map-unlocated-title {
   margin: 0 0 var(--space-2);
+  font-family: var(--scripture-font);
   font-size: var(--text-lg);
   font-weight: 600;
+}
+/* The plate's own key: the swatches are drawn in map ink on map land, so the
+   legend reads as part of the map and not as a caption beside it. */
+.map-legend-list {
+  background: var(--map-land);
+  border: 1px solid var(--map-coast);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+.map-legend-row {
+  color: var(--map-ink);
+}
+.map-legend-row + .map-legend-row {
+  border-top: 1px solid var(--map-coast);
+  padding-top: var(--space-1);
+}
+.map-legend-name {
+  font-family: var(--scripture-font);
+}
+.map-legend-scale {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-faint);
 }
 .map-legend-list {
   list-style: none;
@@ -9071,7 +9242,7 @@ body.dark .study-note-act .is-yes {
 }
 .map-legend-count {
   font-variant-numeric: tabular-nums;
-  color: var(--text-faint);
+  color: var(--map-muted);
 }
 
 /* ── The seven places nobody can locate ── */

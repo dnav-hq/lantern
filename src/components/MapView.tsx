@@ -16,6 +16,7 @@ import {
   findJourneyForChapter,
   indexMarkersByPlaceId,
   journeyBadges,
+  mapFurniture,
   pickMarker,
   placeJourneyLabels,
   selectLabels,
@@ -117,6 +118,10 @@ export interface MapChapterAddress {
  */
 const FRAME_LABEL_BASE = 20
 
+/** Thousands, grouped by hand: `toLocaleString` would say 1.000 in a German
+ *  locale and 1,000 here, and a map's scale bar must read the same everywhere. */
+const formatKm = (km: number): string => String(km).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+
 /** Pixels a pointer may wander and still count as a tap, not a drag. */
 const TAP_SLOP = 8
 /** How far (px) from a marker's centre a tap still means that marker. */
@@ -132,6 +137,19 @@ const ZOOM_ANIM_MS = 220
 
 /** The label collision box, in screen pixels (the label font is 11 px). */
 const LABEL_METRICS = { charWidth: 6.2, lineHeight: 14, offsetX: 9 }
+
+/**
+ * The two registers an atlas sets in small caps, keyed on the place data's own
+ * `type` — so the map labels a region as a region because OpenBible says it is
+ * one, not because someone typed a list of names here. Everything else is a
+ * place name in the app's serif. (The polygons that would give a region its
+ * true extent are ODbL and deliberately excluded, so a region is still one
+ * point with a name beside it — see docs/proposals/bible-map-atlas.md.)
+ */
+const LABEL_REGISTER: Record<string, string> = {
+  region: 'is-region',
+  'body of water': 'is-water'
+}
 
 /** How long each leg of a journey takes to draw itself in, and how long after
  *  the previous leg it starts. Stops land as their leg arrives. Ignored under
@@ -514,6 +532,17 @@ export function MapCanvas({
     })
   }, [labelCandidates, framedLabels, home.w, zoomStep, width])
 
+  /* Which voice each label is set in. Built from the whole model, not the
+     visible slice, so it costs nothing to look up per frame. */
+  const labelRegister = useMemo(() => {
+    const byIndex = new Map<number, string>()
+    for (const marker of model.markers) {
+      const register = LABEL_REGISTER[marker.type]
+      if (register) byIndex.set(marker.index, register)
+    }
+    return byIndex
+  }, [model])
+
   /* The route's own labels never go through that budget: five stops the reader
      is being asked to follow must ALL be named, so a collision moves the name
      rather than dropping it (placeJourneyLabels). */
@@ -543,6 +572,12 @@ export function MapCanvas({
   const atWorldEdge = isAtViewBox(viewBox, fit)
   const framed = storyMarkers !== null && storyMarkers.length > 0
 
+  /* The scale bar and the north mark, for the view as COMMITTED — they settle
+     with the gesture rather than counting along with it, which is both what a
+     reader wants of a measurement and one fewer thing recomputed per frame. */
+  const furniture = useMemo(() => mapFurniture(viewBox), [viewBox])
+  const barPx = Math.round((furniture.bar / viewBox.w) * width)
+
   return (
     <div className="map-stage">
       <svg
@@ -569,6 +604,30 @@ export function MapCanvas({
           {/* The opt-in relief layer. Rendered ONLY in the relief view, which is
               what makes the fetch lazy: with no <image> in the tree the browser
               never asks for terrain.png, so the default paint is vectors only. */}
+          {/* The parchment tint, as a filter over the grayscale hillshade the
+              app already ships — treatment (a) of the atlas proposal, minus
+              its second download. The ramp is a plate's, not a photograph's:
+              warm browns in the shadows, the land tone where the raster goes
+              flat, near-white on the tops. `.map-terrain` in main.css chains
+              the theme's own post-filter after it. */}
+          {view === 'relief' && terrain && (
+            <defs>
+              <filter
+                id="map-parchment"
+                x="0%"
+                y="0%"
+                width="100%"
+                height="100%"
+                colorInterpolationFilters="sRGB"
+              >
+                <feComponentTransfer>
+                  <feFuncR type="table" tableValues="0.42 0.54 0.67 0.81 0.937 0.99" />
+                  <feFuncG type="table" tableValues="0.35 0.45 0.58 0.75 0.898 0.976" />
+                  <feFuncB type="table" tableValues="0.22 0.28 0.39 0.58 0.804 0.933" />
+                </feComponentTransfer>
+              </filter>
+            </defs>
+          )}
           {view === 'relief' && terrain && (
             <image
               className="map-terrain"
@@ -683,7 +742,11 @@ export function MapCanvas({
               : labels.map(label => (
                   <g key={label.index} transform={`translate(${label.x} ${label.y})`}>
                     <g className="map-place-scale">
-                      <text className="map-label" x={0} y={0}>
+                      <text
+                        className={`map-label${labelRegister.has(label.index) ? ` ${labelRegister.get(label.index)}` : ''}`}
+                        x={0}
+                        y={0}
+                      >
                         {label.name}
                       </text>
                     </g>
@@ -692,6 +755,39 @@ export function MapCanvas({
           </g>
         </g>
       </svg>
+
+      {/* The furniture, on the stage rather than in the artwork so it keeps
+          its corner while the map travels under it. */}
+      <div className="map-furniture" aria-hidden="true">
+        <svg
+          className="map-north"
+          width={22}
+          height={34}
+          viewBox="0 0 22 34"
+          style={{ transform: `rotate(${furniture.north}deg)` }}
+        >
+          <path className="map-north-shaft" d="M11,24 L11,9" />
+          <path className="map-north-head" d="M11,3 L7.4,11.5 L14.6,11.5 Z" />
+          <text className="map-north-n" x={11} y={33} textAnchor="middle">
+            N
+          </text>
+        </svg>
+        <div className="map-scale">
+          <span className="map-scale-zero">0</span>
+          <span className="map-scale-km">{formatKm(furniture.km)} km</span>
+          <svg className="map-scale-bar" width={barPx} height={7} viewBox={`0 0 ${barPx} 7`}>
+            <rect className="map-scale-fill" x={0} y={0} width={barPx} height={7} />
+            <rect className="map-scale-step" x={0} y={0} width={barPx / 2} height={7} />
+            <rect
+              className="map-scale-frame"
+              x={0.5}
+              y={0.5}
+              width={Math.max(barPx - 1, 0)}
+              height={6}
+            />
+          </svg>
+        </div>
+      </div>
 
       <div className="map-zoom" role="group" aria-label="Zoom">
         <button
@@ -860,6 +956,10 @@ function MapLegend({
           <span className="map-legend-count">{unlocatedCount}</span>
         </li>
       </ul>
+      <p className="map-legend-scale">
+        The scale bar is measured at the centre of what you are looking at, and north tilts with the
+        meridian — on this projection neither is the same across the whole frame.
+      </p>
     </div>
   )
 }
