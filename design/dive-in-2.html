@@ -157,12 +157,12 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
 .thumb .place.in-verse text { fill: var(--atlas-route); }
 .thumb .route-faint path:not(.arrow) { fill: none; stroke: var(--atlas-route-faint); stroke-width: 1.4; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .thumb .route-faint path.done:not(.arrow) { stroke: var(--atlas-route); opacity: .55; }
-.thumb .arrow { fill: var(--atlas-route); opacity: 1; }
-.thumb .arrow.faint { fill: var(--atlas-route-faint); }
-.thumb .arrow.faint.done { fill: var(--atlas-route); opacity: .55; }
+/* the arrowhead is an open chevron in the leg's own stroke, not a filled marker */
+.thumb .arrow { fill: none; stroke: var(--atlas-route); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.thumb .arrow.faint { stroke: var(--atlas-route-faint); stroke-width: 1.4; }
+.thumb .arrow.faint.done { stroke: var(--atlas-route); opacity: .55; }
 .thumb .stop.done circle { fill: var(--atlas-muted); stroke: var(--atlas-land); }
 .thumb .lit { fill: none; stroke: var(--atlas-route); stroke-width: 2.2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.thumb .arrow { fill: var(--atlas-route); }
 .thumb .stop circle { fill: var(--atlas-land); stroke: var(--atlas-route-faint); stroke-width: 1.2; }
 .thumb .stop.on circle { fill: var(--atlas-route); stroke: var(--atlas-land); }
 .thumb .stop text { fill: var(--atlas-muted); font-weight: 600; paint-order: stroke; stroke: var(--atlas-land); stroke-width: 3px; stroke-linejoin: round; }
@@ -192,8 +192,6 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
   .legs .stop-node .node { transition-delay: var(--delay, 0ms); }
   .legs .stop-node .node { transition: background var(--dur-3) ease, border-color var(--dur-3) ease, transform var(--dur-4) var(--ease-calm); }
   .legs .stop-node { transition: color var(--dur-3) ease; }
-  .thumb .lit { transition: stroke-dashoffset var(--dur-5) var(--ease-calm); }
-  .thumb .arrow { transition: opacity var(--dur-3) ease; }
   .thumb .route-faint path { transition: stroke var(--dur-4) ease, fill var(--dur-4) ease, opacity var(--dur-4) ease; }
   .thumb .stop circle { transition: fill var(--dur-4) ease, stroke var(--dur-4) ease; }
   .thumb .stop text { transition: fill var(--dur-4) ease; }
@@ -226,7 +224,7 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
   <div class="grid" id="follow"></div>
 
   <h2>3 · The journey</h2>
-  <p class="cap"><b>One leg at a time, with its verse.</b> The whole route stays faint; one leg is lit, with the only arrowhead on the map. The strip of stops under the map is the control: tap a stop and the leg that reaches it lights; the strip shows the journey's shape, silent stretch dotted. The caption keeps a fixed height across steps (two lines of verse, the places marked); <b>tap the verse</b> to read it whole, the same gesture as a row. <b>The map itself is a live viewport</b>: drag to pan, pinch or wheel to zoom, plus quiet zoom buttons and a recentre mark that appears only once you have moved. No full-screen page; the card is the map. <b>Stepping:</b> tap a stop, use the chevrons, or swipe the caption. On the strip the past is ink, the present is accent, the future a hairline. <b>Motion:</b> each segment of the strip changes state where it stands, settling one after another in the direction of travel on a jump; the lit leg draws itself over 950 ms and the arrowhead lands last; the caption is a carousel and slides sideways with the step; rows open in place by growing, and the chapter slides in beside the view and back again. All of it on the app's own tokens, none of it under reduced motion. No numbers, no gradient, no list: a route that doubles back is no harder than one that does not, because only one leg is ever lit. Every leg is a solid line; the silent fourteen years read as such in the caption, which carries the note the data holds, not as a different kind of line.</p>
+  <p class="cap"><b>One leg at a time, with its verse.</b> The whole route stays faint; one leg is lit. Every leg ends in an open chevron in its own stroke, the lit one strongest. The strip of stops under the map is the control: tap a stop and the leg that reaches it lights; the strip shows the journey's shape, silent stretch dotted. The caption keeps a fixed height across steps (two lines of verse, the places marked); <b>tap the verse</b> to read it whole, the same gesture as a row. <b>The map itself is a live viewport</b>: drag to pan, pinch or wheel to zoom, plus quiet zoom buttons and a recentre mark that appears only once you have moved. No full-screen page; the card is the map. <b>Stepping:</b> tap a stop, use the chevrons, or swipe the caption. On the strip the past is ink, the present is accent, the future a hairline. <b>Motion:</b> each segment of the strip changes state where it stands, settling one after another in the direction of travel on a jump; the lit leg draws itself over 950 ms with the chevron riding its tip; the caption is a carousel and slides sideways with the step; rows open in place by growing, and the chapter slides in beside the view and back again. All of it on the app's own tokens, none of it under reduced motion. No numbers, no gradient, no list: a route that doubles back is no harder than one that does not, because only one leg is ever lit. Every leg is a solid line; the silent fourteen years read as such in the caption, which carries the note the data holds, not as a different kind of line.</p>
   <div class="grid" id="journeys"></div>
 
   <h2>4 · Desktop</h2>
@@ -547,18 +545,32 @@ function stepTo(card, lit) {
 }
 
 /** An arrowhead at the end of a path, pointing along it. */
-function arrowShape(svg, path, k = 70) {
+/** How far before the path's end the arrow tip stops: clear of the stop dot and its halo. */
+function arrowPull(svg) { const w = getVB(svg)[2]; return w / 110 + w / 220 }
+
+/** An open chevron whose tip is at distance `at` along the path, pointing along it. */
+function chevronAt(svg, path, at, k = 70) {
   const w = getVB(svg)[2]
   const size = w / k
-  // the stop dot (r = w/110, plus its halo) is painted over the path's end, so the
-  // arrow sits just BEFORE the dot, tip touching it, or it would be hidden
-  const pull = w / 110 + w / 200 + size * 0.6
   const len = path.getTotalLength()
-  const end = path.getPointAtLength(Math.max(0, len - pull))
-  const back = path.getPointAtLength(Math.max(0, len - pull - 1))
-  const ang = Math.atan2(end.y - back.y, end.x - back.x)
-  const tip = (dx, dy) => `${(end.x + Math.cos(ang) * dx - Math.sin(ang) * dy).toFixed(1)},${(end.y + Math.sin(ang) * dx + Math.cos(ang) * dy).toFixed(1)}`
-  return `M${tip(size * 0.6, 0)}L${tip(-size * 0.8, size * 0.55)}L${tip(-size * 0.45, 0)}L${tip(-size * 0.8, -size * 0.55)}Z`
+  const p = path.getPointAtLength(Math.max(0, Math.min(len, at)))
+  const b = path.getPointAtLength(Math.max(0, Math.min(len, at) - 1))
+  const ang = Math.atan2(p.y - b.y, p.x - b.x)
+  const pt = (dx, dy) => `${(p.x + Math.cos(ang) * dx - Math.sin(ang) * dy).toFixed(2)},${(p.y + Math.sin(ang) * dx + Math.cos(ang) * dy).toFixed(2)}`
+  return `M${pt(-size, -size * 0.62)}L${pt(0, 0)}L${pt(-size, size * 0.62)}`
+}
+function arrowShape(svg, path, k = 70) {
+  return chevronAt(svg, path, path.getTotalLength() - arrowPull(svg), k)
+}
+
+/** The app's calm curve, cubic-bezier(0.45, 0, 0.15, 1), solved for a time t. */
+function easeCalm(t) {
+  const [x1, y1, x2, y2] = [0.45, 0, 0.15, 1]
+  const bx = (u) => 3 * x1 * u * (1 - u) ** 2 + 3 * x2 * u * u * (1 - u) + u ** 3
+  const by = (u) => 3 * y1 * u * (1 - u) ** 2 + 3 * y2 * u * u * (1 - u) + u ** 3
+  let lo = 0, hi = 1, u = t
+  for (let i = 0; i < 24; i++) { u = (lo + hi) / 2; if (bx(u) < t) lo = u; else hi = u }
+  return by(u)
 }
 
 /** Every leg carries a small arrowhead so direction reads at rest, not only on the lit leg. */
@@ -569,7 +581,7 @@ function placeArrows(svg) {
     const a = document.createElementNS('http://www.w3.org/2000/svg', 'path')
     a.setAttribute('class', 'arrow faint' + (path.classList.contains('done') ? ' done' : ''))
     a.dataset.leg = path.dataset.leg
-    a.setAttribute('d', arrowShape(svg, path, 62))
+    a.setAttribute('d', arrowShape(svg, path, 70))
     group.appendChild(a)
   }
 }
@@ -581,22 +593,31 @@ function drawLit(svg, instant = false) {
   const arrow = svg.querySelector('[data-role="arrow"]')
   if (!path) return
   const len = path.getTotalLength()
-  const vb = getVB(svg)
-  arrow.setAttribute('d', arrowShape(svg, path, 48))
-  if (instant) { path.style.transition = 'none'; path.style.strokeDasharray = ''; path.style.strokeDashoffset = ''; arrow.style.opacity = '1'; return }
-  // the stroke does not scale with the map, so dash lengths are in screen pixels, not map units
-  const px = len * (svg.getBoundingClientRect().width / vb[2])
+  const endAt = len - arrowPull(svg)
+  const settle = () => { path.style.strokeDasharray = ''; path.style.strokeDashoffset = ''; arrow.setAttribute('d', chevronAt(svg, path, endAt, 52)); arrow.style.opacity = '1' }
+  cancelAnimationFrame(svg._draw)
+  if (instant) { settle(); return }
+  // One motion, driven per frame on the calm curve: the line extends from its start and
+  // the chevron rides its tip, so the arrow is the front of the line rather than a marker
+  // that appears once the line is done. The reveal uses a dash in screen pixels (the
+  // stroke does not scale with the map), cleared the moment the leg is complete.
+  const scale = svg.getBoundingClientRect().width / getVB(svg)[2]
+  const px = len * scale
   path.style.transition = 'none'
   path.style.strokeDasharray = `${px}`
   path.style.strokeDashoffset = `${px}`
-  void path.getBoundingClientRect()
-  path.style.transition = ''
-  path.style.strokeDashoffset = '0'
-  // the dash exists only for the draw-in: its length is in screen pixels, so it must
-  // go the moment the line is complete (and on any pan or zoom, see setVB)
-  clearTimeout(path._solid)
-  path._solid = setTimeout(() => { path.style.strokeDasharray = ''; path.style.strokeDashoffset = '' }, 960)
-  setTimeout(() => { arrow.style.opacity = '1' }, 780)
+  arrow.style.opacity = '1'
+  const t0 = performance.now()
+  const dur = 950
+  const frame = (now) => {
+    const t = Math.min(1, (now - t0) / dur)
+    const e = easeCalm(t)
+    path.style.strokeDashoffset = `${px * (1 - e)}`
+    arrow.setAttribute('d', chevronAt(svg, path, Math.max(arrowPull(svg), endAt * e), 52))
+    if (t < 1) svg._draw = requestAnimationFrame(frame)
+    else settle()
+  }
+  svg._draw = requestAnimationFrame(frame)
 }
 
 const TOOLS = '<span class="map-tools"><button type="button" data-zoom="in" aria-label="Zoom in">+</button><button type="button" data-zoom="out" aria-label="Zoom out">−</button><button type="button" class="home" data-zoom="home" aria-label="Recentre">⌖</button></span>'
@@ -799,7 +820,7 @@ function setVB(svg, vb) {
   y = Math.min(Math.max(y, py), py + ph - h)
   svg.setAttribute('viewBox', `${x} ${y} ${w} ${h}`)
   const lit = svg.querySelector('[data-role="lit"]')
-  if (lit) { clearTimeout(lit._solid); lit.style.transition = 'none'; lit.style.strokeDasharray = ''; lit.style.strokeDashoffset = ''; svg.querySelector('[data-role="arrow"]').style.opacity = '1' }
+  if (lit && svg._draw) { cancelAnimationFrame(svg._draw); svg._draw = null; drawLit(svg, true) }
   const moved = Math.abs(x - home[0]) > 0.5 || Math.abs(y - home[1]) > 0.5 || Math.abs(w - home[2]) > 0.5
   svg.closest('.map-card').classList.toggle('moved', moved)
 }
