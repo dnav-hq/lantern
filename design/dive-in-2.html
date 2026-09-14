@@ -115,7 +115,9 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
 .legs .seg { position: absolute; top: 20px; height: 2px; margin-top: -1px; background: var(--border-strong); border-radius: 2px; }
 .legs .seg.done { background: var(--text-faint); }
 .legs .seg.cur { height: 4px; margin-top: -2px; background: var(--accent); z-index: 1; }
-.legs .stop-node { position: absolute; top: 0; width: 56px; height: 100%; margin-left: -28px; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: var(--text-faint); z-index: 2; }
+.legs .stop-node { position: absolute; top: 0; width: 56px; height: 100%; margin-left: -28px; background: none; border: 0; padding: 0; pointer-events: none; font: inherit; color: var(--text-faint); z-index: 2; }
+/* a leg is chosen by its own segment or the dot it arrives at, never by the dot it leaves */
+.legs .hit { position: absolute; top: 0; height: 100%; background: none; border: 0; padding: 0; cursor: pointer; z-index: 3; }
 .legs .stop-node .node { position: absolute; left: 50%; top: 20px; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--border-strong); box-sizing: border-box; }
 .legs .stop-node.done .node { background: var(--text-faint); border-color: var(--text-faint); }
 .legs .stop-node.on .node { background: var(--accent); border-color: var(--accent); transform: scale(1.35); }
@@ -153,9 +155,11 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
 .thumb .place circle { fill: var(--atlas-ink); stroke: var(--atlas-land); stroke-width: 1; }
 .thumb .place.in-verse circle { fill: var(--atlas-route); }
 .thumb .place.in-verse text { fill: var(--atlas-route); }
-.thumb .route-faint path { fill: none; stroke: var(--atlas-route-faint); stroke-width: 1.4; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.thumb .route-faint path.done { stroke: var(--atlas-route); opacity: .55; }
+.thumb .route-faint path:not(.arrow) { fill: none; stroke: var(--atlas-route-faint); stroke-width: 1.4; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.thumb .route-faint path.done:not(.arrow) { stroke: var(--atlas-route); opacity: .55; }
 .thumb .arrow { fill: var(--atlas-route); opacity: 1; }
+.thumb .arrow.faint { fill: var(--atlas-route-faint); }
+.thumb .arrow.faint.done { fill: var(--atlas-route); opacity: .55; }
 .thumb .stop.done circle { fill: var(--atlas-muted); stroke: var(--atlas-land); }
 .thumb .lit { fill: none; stroke: var(--atlas-route); stroke-width: 2.2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .thumb .arrow { fill: var(--atlas-route); }
@@ -190,7 +194,7 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
   .legs .stop-node { transition: color var(--dur-3) ease; }
   .thumb .lit { transition: stroke-dashoffset var(--dur-5) var(--ease-calm); }
   .thumb .arrow { transition: opacity var(--dur-3) ease; }
-  .thumb .route-faint path { transition: stroke var(--dur-4) ease, opacity var(--dur-4) ease; }
+  .thumb .route-faint path { transition: stroke var(--dur-4) ease, fill var(--dur-4) ease, opacity var(--dur-4) ease; }
   .thumb .stop circle { transition: fill var(--dur-4) ease, stroke var(--dur-4) ease; }
   .thumb .stop text { transition: fill var(--dur-4) ease; }
   /* rows open in place; the chapter slides in beside the view and back again */
@@ -468,8 +472,14 @@ function legsStrip(route, lit) {
   for (let i = 0; i <= n; i++) {
     const name = i === 0 ? legs[0].a.name : legs[i - 1].b.name
     const cls = i === lit || i === lit + 1 ? 'on' : i < lit ? 'done' : ''
-    s += `<button class="stop-node ${cls}${i % 2 ? ' low' : ''}" type="button" data-leg="${Math.max(0, i - 1)}" data-i="${i}" style="left:${at(i)}"><i class="node"></i><span class="name">${esc(name)}</span></button>`
+    s += `<span class="stop-node ${cls}${i % 2 ? ' low' : ''}" data-i="${i}" style="left:${at(i)}"><i class="node"></i><span class="name">${esc(name)}</span></span>`
   }
+  legs.forEach((l, i) => {
+    // from just past the departure dot to just past the arrival dot; leg 0 also owns the start dot
+    const left = i === 0 ? `calc(${at(0)} - 28px)` : `calc(${at(i)} + 10px)`
+    const width = i === 0 ? `calc(${wOf(1)} + 38px)` : `calc(${wOf(1)})`
+    s += `<button class="hit" type="button" data-leg="${i}" aria-label="${esc(l.a.name)} to ${esc(l.b.name)}" style="left:${left};width:${width}"></button>`
+  })
   return s + '</div>'
 }
 
@@ -536,19 +546,39 @@ function stepTo(card, lit) {
   card.querySelector('.cap-nav.next').disabled = lit === n - 1
 }
 
-/** Draw the lit leg from its start, then land the arrowhead at its end. */
-function drawLit(svg, instant = false) {
-  const path = svg.querySelector('[data-role="lit"]')
-  const arrow = svg.querySelector('[data-role="arrow"]')
-  if (!path) return
+/** An arrowhead at the end of a path, pointing along it. */
+function arrowShape(svg, path, k = 70) {
   const len = path.getTotalLength()
   const end = path.getPointAtLength(len)
   const back = path.getPointAtLength(Math.max(0, len - 1))
   const ang = Math.atan2(end.y - back.y, end.x - back.x)
-  const vb = getVB(svg)
-  const size = vb[2] / 70
+  const size = getVB(svg)[2] / k
   const tip = (dx, dy) => `${(end.x + Math.cos(ang) * dx - Math.sin(ang) * dy).toFixed(1)},${(end.y + Math.sin(ang) * dx + Math.cos(ang) * dy).toFixed(1)}`
-  arrow.setAttribute('d', `M${tip(size * 0.6, 0)}L${tip(-size * 0.8, size * 0.55)}L${tip(-size * 0.45, 0)}L${tip(-size * 0.8, -size * 0.55)}Z`)
+  return `M${tip(size * 0.6, 0)}L${tip(-size * 0.8, size * 0.55)}L${tip(-size * 0.45, 0)}L${tip(-size * 0.8, -size * 0.55)}Z`
+}
+
+/** Every leg carries a small arrowhead so direction reads at rest, not only on the lit leg. */
+function placeArrows(svg) {
+  const group = svg.querySelector('.route-faint')
+  if (!group || group.querySelector('.arrow')) return
+  for (const path of [...group.querySelectorAll('path')]) {
+    const a = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    a.setAttribute('class', 'arrow faint' + (path.classList.contains('done') ? ' done' : ''))
+    a.dataset.leg = path.dataset.leg
+    a.setAttribute('d', arrowShape(svg, path, 85))
+    group.appendChild(a)
+  }
+}
+
+/** Draw the lit leg from its start, then land the arrowhead at its end. */
+function drawLit(svg, instant = false) {
+  placeArrows(svg)
+  const path = svg.querySelector('[data-role="lit"]')
+  const arrow = svg.querySelector('[data-role="arrow"]')
+  if (!path) return
+  const len = path.getTotalLength()
+  const vb = getVB(svg)
+  arrow.setAttribute('d', arrowShape(svg, path, 70))
   if (instant) { path.style.transition = 'none'; path.style.strokeDasharray = ''; path.style.strokeDashoffset = ''; arrow.style.opacity = '1'; return }
   // the stroke does not scale with the map, so dash lengths are in screen pixels, not map units
   const px = len * (svg.getBoundingClientRect().width / vb[2])
@@ -659,8 +689,8 @@ document.addEventListener('click', (e) => {
   if (zoom) { zoomBy(zoom.closest('.map-card').querySelector('.thumb'), zoom.dataset.zoom); return }
   const cap = e.target.closest('.cap-text')
   if (cap) { if (cap.classList.contains('open')) collapseText(cap, true); else expandText(cap); return }
-  const node = e.target.closest('.stop-node')
-  if (node) { stepTo(node.closest('.map-card'), Number(node.dataset.leg)); return }
+  const hit = e.target.closest('.legs .hit')
+  if (hit) { stepTo(hit.closest('.map-card'), Number(hit.dataset.leg)); return }
   const nav = e.target.closest('.cap-nav')
   if (nav) { const card = nav.closest('.map-card'); stepTo(card, Number(card.dataset.lit) + (nav.classList.contains('next') ? 1 : -1)); return }
   const row = e.target.closest('.row')
