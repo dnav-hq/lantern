@@ -84,7 +84,8 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
 .row-head { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .ref { font-family: var(--scripture-font); font-weight: 600; font-size: 15px; color: var(--accent-ink); white-space: nowrap; }
 .heading { font-family: var(--scripture-font); font-style: italic; font-size: 13px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.row-text { font-family: var(--scripture-font); font-size: 15.5px; line-height: 1.5; margin: 3px 0 0; color: var(--text); max-height: 3em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 calc(100% - 1.2em), rgba(0,0,0,.25)); mask-image: linear-gradient(#000 calc(100% - 1.2em), rgba(0,0,0,.25)); }
+.row-text { font-family: var(--scripture-font); font-size: 15.5px; line-height: 1.5; margin: 3px 0 0; color: var(--text); overflow: hidden; }
+.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .row-text.muted { color: var(--text-muted); }
 .fold { display: block; width: 100%; margin-top: 2px; padding: 10px 0; font: inherit; font-size: 13px; text-align: left; background: none; border: 0; border-top: 0.5px solid var(--border); color: var(--accent-ink); cursor: pointer; }
 .fold .chev { float: right; color: var(--text-faint); }
@@ -105,19 +106,15 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
 .map-card.moved .map-tools .home { display: grid; }
 .map-caption { min-height: 78px; }
 .cap-text { cursor: pointer; }
-.cap-text.open { -webkit-mask-image: none; mask-image: none; }
+
 .after-map { margin-top: 4px; }
 .dark .thumb .relief { opacity: 0.6; mix-blend-mode: normal; filter: url(#hyp) invert(1) sepia(0.5) saturate(0.8) brightness(0.55); }
 .thumb .place text, .thumb .stop text { letter-spacing: 0.01em; }
 /* the legs strip: past is ink, present is accent, future is a hairline */
 .legs { position: relative; display: block; width: 100%; height: 58px; background: var(--surface); border-top: 0.5px solid var(--border); font-family: var(--ui-font); --pad: 30px; }
-.legs .rail { position: absolute; top: 19px; height: 2px; left: var(--pad); right: var(--pad); background: var(--border-strong); border-radius: 2px; }
-.legs .rail.seg { left: auto; right: auto; }
-.legs .rail.silent { background: repeating-linear-gradient(90deg, var(--border-strong) 0 3px, transparent 3px 7px); }
-.legs .rail.done { background: var(--text-faint); }
-.legs .rail.done.silent { background: repeating-linear-gradient(90deg, var(--text-faint) 0 3px, transparent 3px 7px); }
-.legs .rail.cur { top: 18px; height: 4px; background: var(--accent); z-index: 1; }
-.legs .rail.cur.silent { background: repeating-linear-gradient(90deg, var(--accent) 0 3px, transparent 3px 7px); }
+.legs .seg { position: absolute; top: 20px; height: 2px; margin-top: -1px; background: var(--border-strong); border-radius: 2px; }
+.legs .seg.done { background: var(--text-faint); }
+.legs .seg.cur { height: 4px; margin-top: -2px; background: var(--accent); z-index: 1; }
 .legs .stop-node { position: absolute; top: 0; width: 56px; height: 100%; margin-left: -28px; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: var(--text-faint); z-index: 2; }
 .legs .stop-node .node { position: absolute; left: 50%; top: 20px; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--surface); border: 1.5px solid var(--border-strong); box-sizing: border-box; }
 .legs .stop-node.done .node { background: var(--text-faint); border-color: var(--text-faint); }
@@ -126,19 +123,21 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
 .legs .stop-node.low .name { top: 41px; }
 .legs .stop-node.done { color: var(--text-muted); }
 .legs .stop-node.on { color: var(--text); }
-.cap-inner { display: flex; flex-direction: column; gap: 3px; }
+.cap-viewport { display: block; overflow: hidden; }
+.cap-track { display: flex; align-items: flex-start; }
+.cap-slide { flex: 0 0 100%; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .cap-nav { position: absolute; top: 50%; width: 28px; height: 28px; margin-top: -14px; border-radius: 50%; border: 0.5px solid var(--border); background: var(--surface); color: var(--text-faint); font: inherit; font-size: 18px; line-height: 1; display: grid; place-items: center; cursor: pointer; padding: 0 0 2px; }
 .cap-nav.prev { left: 6px; } .cap-nav.next { right: 6px; }
 .cap-nav[disabled] { opacity: .3; cursor: default; }
-.map-caption.journey { position: relative; padding-left: 40px; padding-right: 40px; touch-action: pan-y; user-select: none; }
+.map-caption.journey { position: relative; padding-left: 40px; padding-right: 40px; touch-action: pan-y; user-select: none; display: block; }
 .row { cursor: pointer; }
-.row.open .row-text { max-height: 40em; -webkit-mask-image: none; mask-image: none; }
+
 .row .open-chapter { opacity: 0; }
 .row.open .open-chapter { opacity: 1; }
 .pane { will-change: transform, opacity; }
 .row .open-chapter { display: none; margin: 8px 0 2px; font-size: 12.5px; color: var(--accent-ink); }
 .row.open .open-chapter { display: block; }
-.cap-text.open { max-height: 40em; }
+
 .back { font: inherit; font-size: 13px; color: var(--accent-ink); background: none; border: 0; padding: 0; cursor: pointer; }
 .chap-ref { font-family: var(--scripture-font); font-weight: 600; color: var(--accent-ink); font-size: 15px; margin: 6px 0 2px; }
 .chap-heading { font-family: var(--scripture-font); font-style: italic; font-size: 13px; color: var(--text-faint); margin: 0 0 10px; }
@@ -158,9 +157,7 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
 .thumb .route-faint path.done { stroke: var(--atlas-route); opacity: .55; }
 .thumb .arrow { fill: var(--atlas-route); opacity: 1; }
 .thumb .stop.done circle { fill: var(--atlas-muted); stroke: var(--atlas-land); }
-.thumb .route-faint path.silent { stroke-dasharray: 2 3; }
 .thumb .lit { fill: none; stroke: var(--atlas-route); stroke-width: 2.2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.thumb .lit.silent { stroke-dasharray: 2 4; }
 .thumb .arrow { fill: var(--atlas-route); }
 .thumb .stop circle { fill: var(--atlas-land); stroke: var(--atlas-route-faint); stroke-width: 1.2; }
 .thumb .stop.on circle { fill: var(--atlas-route); stroke: var(--atlas-land); }
@@ -171,7 +168,7 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
 .cap-head > span:first-child { flex: none; font-variant-numeric: tabular-nums; }
 .cap-head b { color: var(--text); font-weight: 600; font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .cap-head .cap-ref { flex: none; margin-left: auto; font-family: var(--scripture-font); color: var(--accent-ink); font-weight: 600; font-size: 12.5px; }
-.cap-text { font-family: var(--scripture-font); font-size: 14px; line-height: 1.45; color: var(--text-muted); max-height: 2.9em; overflow: hidden; margin: 0; -webkit-mask-image: linear-gradient(#000 calc(100% - 1.1em), rgba(0,0,0,.25)); mask-image: linear-gradient(#000 calc(100% - 1.1em), rgba(0,0,0,.25)); }
+.cap-text { font-family: var(--scripture-font); font-size: 14px; line-height: 1.45; color: var(--text-muted); overflow: hidden; margin: 0; }
 .cap-text mark { background: var(--accent-weak); }
 .cap-hint { font-size: 11px; color: var(--text-faint); }
 
@@ -186,7 +183,9 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
   .sheet { transition: transform var(--dur-3) var(--ease-out); }
   .scrim { transition: opacity var(--dur-2) ease; }
   /* the journey: rail and nodes glide, the lit leg draws, the arrow lands last */
-  .legs .rail.done, .legs .rail.cur { transition: left var(--dur-4) var(--ease-calm), width var(--dur-4) var(--ease-calm); }
+  .legs .seg { transition: background var(--dur-3) ease, height var(--dur-3) ease, margin-top var(--dur-3) ease; transition-delay: var(--delay, 0ms); }
+  .cap-track { transition: transform var(--dur-4) var(--ease-calm); }
+  .legs .stop-node .node { transition-delay: var(--delay, 0ms); }
   .legs .stop-node .node { transition: background var(--dur-3) ease, border-color var(--dur-3) ease, transform var(--dur-4) var(--ease-calm); }
   .legs .stop-node { transition: color var(--dur-3) ease; }
   .thumb .lit { transition: stroke-dashoffset var(--dur-5) var(--ease-calm); }
@@ -194,13 +193,8 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
   .thumb .route-faint path { transition: stroke var(--dur-4) ease, opacity var(--dur-4) ease; }
   .thumb .stop circle { transition: fill var(--dur-4) ease, stroke var(--dur-4) ease; }
   .thumb .stop text { transition: fill var(--dur-4) ease; }
-  .cap-inner { transition: opacity var(--dur-2) ease, transform var(--dur-2) ease; }
-  .cap-inner.leaving { opacity: 0; transform: translateY(-4px); }
-  .cap-inner.entering { opacity: 0; transform: translateY(8px); transition: none; }
-  .cap-inner.arrived { transition: opacity var(--dur-4) var(--ease-calm), transform var(--dur-4) var(--ease-calm); }
   /* rows open in place; the chapter slides in beside the view and back again */
-  .row-text { transition: max-height var(--dur-4) var(--ease-calm); }
-  .cap-text { transition: max-height var(--dur-4) var(--ease-calm); }
+  .row-text.animating, .cap-text.animating { transition: height var(--dur-4) var(--ease-calm); }
   .row .open-chapter { transition: opacity var(--dur-3) ease var(--dur-2); }
   .pane { transition: transform var(--dur-4) var(--ease-calm), opacity var(--dur-3) ease; }
   .pane.exit-left { transform: translateX(-24px); opacity: 0; }
@@ -228,7 +222,7 @@ mark { background: var(--accent-weak); color: inherit; border-radius: 3px; paddi
   <div class="grid" id="follow"></div>
 
   <h2>3 · The journey</h2>
-  <p class="cap"><b>One leg at a time, with its verse.</b> The whole route stays faint; one leg is lit, with the only arrowhead on the map. The strip of stops under the map is the control: tap a stop and the leg that reaches it lights; the strip shows the journey's shape, silent stretch dotted. The caption keeps a fixed height across steps (two lines of verse, the places marked); <b>tap the verse</b> to read it whole, the same gesture as a row. <b>The map itself is a live viewport</b>: drag to pan, pinch or wheel to zoom, plus quiet zoom buttons and a recentre mark that appears only once you have moved. No full-screen page; the card is the map. <b>Stepping:</b> tap a stop, use the chevrons, or swipe the caption. On the strip the past is ink, the present is accent, the future a hairline. <b>Motion:</b> the rail and its nodes glide (600 ms, calm easing), the lit leg draws itself over 950 ms and the arrowhead lands last, the caption leaves upward and arrives from below once the rail has moved; rows open in place by growing, and the chapter slides in beside the view and back again. All of it on the app's own tokens, none of it under reduced motion. No numbers, no gradient, no list: a route that doubles back is no harder than one that does not, because only one leg is ever lit. The silent fourteen years are the dotted leg, with the note the data carries for it.</p>
+  <p class="cap"><b>One leg at a time, with its verse.</b> The whole route stays faint; one leg is lit, with the only arrowhead on the map. The strip of stops under the map is the control: tap a stop and the leg that reaches it lights; the strip shows the journey's shape, silent stretch dotted. The caption keeps a fixed height across steps (two lines of verse, the places marked); <b>tap the verse</b> to read it whole, the same gesture as a row. <b>The map itself is a live viewport</b>: drag to pan, pinch or wheel to zoom, plus quiet zoom buttons and a recentre mark that appears only once you have moved. No full-screen page; the card is the map. <b>Stepping:</b> tap a stop, use the chevrons, or swipe the caption. On the strip the past is ink, the present is accent, the future a hairline. <b>Motion:</b> each segment of the strip changes state where it stands, settling one after another in the direction of travel on a jump; the lit leg draws itself over 950 ms and the arrowhead lands last; the caption is a carousel and slides sideways with the step; rows open in place by growing, and the chapter slides in beside the view and back again. All of it on the app's own tokens, none of it under reduced motion. No numbers, no gradient, no list: a route that doubles back is no harder than one that does not, because only one leg is ever lit. Every leg is a solid line; the silent fourteen years read as such in the caption, which carries the note the data holds, not as a different kind of line.</p>
   <div class="grid" id="journeys"></div>
 
   <h2>4 · Desktop</h2>
@@ -469,10 +463,8 @@ function legsStrip(route, lit) {
   // positions as a percentage of the rail, so the strip is fluid and CSS can glide them
   const at = (i) => `calc(var(--pad) + (100% - 2 * var(--pad)) * ${(i / n).toFixed(4)})`
   const wOf = (k) => `calc((100% - 2 * var(--pad)) * ${(k / n).toFixed(4)})`
-  let s = '<div class="legs"><div class="rail"></div>'
-  legs.forEach((l, i) => { if (l.silent) s += `<div class="rail seg silent" data-seg="${i}" style="left:${at(i)};width:${wOf(1)}"></div>` })
-  s += `<div class="rail done" data-role="done" style="left:var(--pad);width:${wOf(lit)}"></div>`
-  s += `<div class="rail cur${legs[lit].silent ? ' silent' : ''}" data-role="cur" style="left:${at(lit)};width:${wOf(1)}"></div>`
+  let s = '<div class="legs">'
+  legs.forEach((l, i) => { s += `<div class="seg${i < lit ? ' done' : i === lit ? ' cur' : ''}" data-seg="${i}" style="left:${at(i)};width:${wOf(1)}"></div>` })
   for (let i = 0; i <= n; i++) {
     const name = i === 0 ? legs[0].a.name : legs[i - 1].b.name
     const cls = i === lit || i === lit + 1 ? 'on' : i < lit ? 'done' : ''
@@ -487,8 +479,8 @@ function legCaption(route, lit) {
   const n = route.legs.length
   const head = `<span>${lit + 1} of ${n}</span><b>${esc(l.a.name)} to ${esc(l.b.name)}${l.via ? `, through ${esc(l.via)}` : ''}</b>${l.ref ? `<span class="cap-ref">${esc(l.ref)}</span>` : ''}`
   const body = l.silent
-    ? `<p class="cap-text muted">${esc(l.note || 'The text is silent here.')}</p>`
-    : `<p class="cap-text">${marked(l.text || '', null, [l.a.name, l.b.name, l.via].filter(Boolean))}</p>`
+    ? `<p class="cap-text clamp muted">${esc(l.note || 'The text is silent here.')}</p>`
+    : `<p class="cap-text clamp">${marked(l.text || '', null, [l.a.name, l.b.name, l.via].filter(Boolean))}</p>`
   return `<span class="cap-head">${head}</span>${body}`
 }
 
@@ -500,17 +492,25 @@ function stepTo(card, lit) {
   const route = foldRoute(v.map.route)
   const n = route.legs.length
   lit = Math.max(0, Math.min(n - 1, lit))
-  if (Number(card.dataset.lit) === lit) return
+  const was = Number(card.dataset.lit)
+  if (was === lit) return
   card.dataset.lit = lit
   const l = route.legs[lit]
-  // strip
+  // strip: each segment changes state where it is; a jump of several legs settles
+  // one segment after another (90 ms apart) in the direction of travel
   const strip = card.querySelector('.legs')
-  strip.querySelector('[data-role="done"]').style.width = `calc((100% - 2 * var(--pad)) * ${(lit / n).toFixed(4)})`
-  const cur = strip.querySelector('[data-role="cur"]')
-  cur.style.left = `calc(var(--pad) + (100% - 2 * var(--pad)) * ${(lit / n).toFixed(4)})`
-  cur.classList.toggle('silent', !!l.silent)
+  const step = 90
+  strip.querySelectorAll('.seg').forEach((seg) => {
+    const i = Number(seg.dataset.seg)
+    const dist = lit > was ? i - was : was - i
+    seg.style.setProperty('--delay', `${Math.max(0, Math.min(dist, Math.abs(lit - was))) * step}ms`)
+    seg.classList.toggle('done', i < lit)
+    seg.classList.toggle('cur', i === lit)
+  })
   strip.querySelectorAll('.stop-node').forEach((b) => {
     const i = Number(b.dataset.i)
+    const dist = lit > was ? i - was - 1 : was - i
+    b.style.setProperty('--delay', `${Math.max(0, Math.min(dist, Math.abs(lit - was))) * step}ms`)
     b.classList.toggle('on', i === lit || i === lit + 1)
     b.classList.toggle('done', i < lit)
   })
@@ -519,7 +519,6 @@ function stepTo(card, lit) {
   svg.querySelectorAll('.route-faint path').forEach((p) => p.classList.toggle('done', Number(p.dataset.leg) < lit))
   const litPath = svg.querySelector('[data-role="lit"]')
   const arrow = svg.querySelector('[data-role="arrow"]')
-  litPath.classList.toggle('silent', !!l.silent)
   litPath.setAttribute('d', legPath(l.a, l.b, l.bow))
   arrow.style.opacity = '0'
   drawLit(svg, REDUCED)
@@ -529,19 +528,10 @@ function stepTo(card, lit) {
     g.classList.toggle('on', on)
     g.classList.toggle('done', !on && orders.some((o) => o < l.a.order))
   })
-  // caption: the old words leave upward, the new arrive from below once the rail has moved
-  const inner = card.querySelector('.cap-inner')
-  const swap = () => {
-    inner.innerHTML = legCaption(route, lit)
-    inner.classList.remove('leaving')
-    inner.classList.add('entering')
-    void inner.offsetHeight
-    inner.classList.add('arrived')
-    inner.classList.remove('entering')
-    setTimeout(() => inner.classList.remove('arrived'), 700)
-  }
-  if (REDUCED) swap()
-  else { inner.classList.add('leaving'); setTimeout(swap, 220) }
+  // caption: a carousel; the track slides to the leg's slide
+  const track = card.querySelector('.cap-track')
+  track.querySelectorAll('.cap-text.open').forEach((t) => collapseText(t, true))
+  track.style.transform = `translateX(-${lit * 100}%)`
   card.querySelector('.cap-nav.prev').disabled = lit === 0
   card.querySelector('.cap-nav.next').disabled = lit === n - 1
 }
@@ -560,9 +550,11 @@ function drawLit(svg, instant = false) {
   const tip = (dx, dy) => `${(end.x + Math.cos(ang) * dx - Math.sin(ang) * dy).toFixed(1)},${(end.y + Math.sin(ang) * dx + Math.cos(ang) * dy).toFixed(1)}`
   arrow.setAttribute('d', `M${tip(size * 0.6, 0)}L${tip(-size * 0.8, size * 0.55)}L${tip(-size * 0.45, 0)}L${tip(-size * 0.8, -size * 0.55)}Z`)
   if (instant) { path.style.transition = 'none'; path.style.strokeDasharray = ''; path.style.strokeDashoffset = ''; arrow.style.opacity = '1'; return }
+  // the stroke does not scale with the map, so dash lengths are in screen pixels, not map units
+  const px = len * (svg.getBoundingClientRect().width / vb[2])
   path.style.transition = 'none'
-  path.style.strokeDasharray = `${len}`
-  path.style.strokeDashoffset = `${len}`
+  path.style.strokeDasharray = `${px}`
+  path.style.strokeDashoffset = `${px}`
   void path.getBoundingClientRect()
   path.style.transition = ''
   path.style.strokeDashoffset = '0'
@@ -575,7 +567,7 @@ function mapCard(v, lit = 0, control = 'strip') {
   if (route) {
     const n = route.legs.length
     const strip = legsStrip(route, lit)
-    return `<div class="map-card journey" data-ref="${esc(v.ref)}" data-lit="${lit}">${thumbSvg(v, lit)}${TOOLS}${strip}<span class="map-caption journey"><button class="cap-nav prev" type="button" aria-label="Previous leg" ${lit === 0 ? 'disabled' : ''}>‹</button><span class="cap-inner">${legCaption(route, lit)}</span><button class="cap-nav next" type="button" aria-label="Next leg" ${lit === n - 1 ? 'disabled' : ''}>›</button></span></div>`
+    return `<div class="map-card journey" data-ref="${esc(v.ref)}" data-lit="${lit}">${thumbSvg(v, lit)}${TOOLS}${strip}<span class="map-caption journey"><button class="cap-nav prev" type="button" aria-label="Previous leg" ${lit === 0 ? 'disabled' : ''}>‹</button><span class="cap-viewport"><span class="cap-track" style="transform:translateX(-${lit * 100}%)">${route.legs.map((_, i) => `<span class="cap-slide">${legCaption(route, i)}</span>`).join('')}</span></span><button class="cap-nav next" type="button" aria-label="Next leg" ${lit === n - 1 ? 'disabled' : ''}>›</button></span></div>`
   }
   return `<div class="map-card">${thumbSvg(v)}${TOOLS}<span class="map-caption"><span class="cap-head"><b>Where this chapter happens</b></span><p class="cap-text">${esc(placesCaption(v))}</p></span></div>`
 }
@@ -584,7 +576,7 @@ function mapCard(v, lit = 0, control = 'strip') {
 const SHOWN = 3
 function rowsHtml(v) {
   if (!v.door) return ''
-  const rows = v.rows.slice(0, SHOWN).map((r, i) => `<div class="row${v.openRow === i ? ' open' : ''}" data-row="${i}"><div class="row-head"><span class="ref">${esc(r.ref)}</span>${r.heading ? `<span class="heading">${esc(r.heading)}</span>` : ''}</div><p class="row-text${r.run || r.places.length ? '' : ' muted'}">${v.openRow === i ? marked(r.text, r.run, r.places, 'target', false) : marked(r.text, r.run, r.places)}</p><span class="open-chapter">Read it in ${esc(r.ref.replace(/:.*$/, ''))} →</span></div>`).join('')
+  const rows = v.rows.slice(0, SHOWN).map((r, i) => `<div class="row${v.openRow === i ? ' open' : ''}" data-row="${i}"><div class="row-head"><span class="ref">${esc(r.ref)}</span>${r.heading ? `<span class="heading">${esc(r.heading)}</span>` : ''}</div><p class="row-text${r.run || r.places.length ? '' : ' muted'}${v.openRow === i ? '' : ' clamp'}">${v.openRow === i ? marked(r.text, r.run, r.places, 'target', false) : marked(r.text, r.run, r.places)}</p><span class="open-chapter">Read it in ${esc(r.ref.replace(/:.*$/, ''))} →</span></div>`).join('')
   const more = v.rows.length - SHOWN
   return `<p class="eyebrow">Where Scripture picks this up</p>${rows}${more > 0 ? `<button class="fold" type="button">${more} more<span class="chev">↓</span></button>` : ''}`
 }
@@ -662,7 +654,7 @@ document.addEventListener('click', (e) => {
   const zoom = e.target.closest('[data-zoom]')
   if (zoom) { zoomBy(zoom.closest('.map-card').querySelector('.thumb'), zoom.dataset.zoom); return }
   const cap = e.target.closest('.cap-text')
-  if (cap) { cap.classList.toggle('open'); return }
+  if (cap) { if (cap.classList.contains('open')) collapseText(cap, true); else expandText(cap); return }
   const node = e.target.closest('.stop-node')
   if (node) { stepTo(node.closest('.map-card'), Number(node.dataset.leg)); return }
   const nav = e.target.closest('.cap-nav')
@@ -686,12 +678,48 @@ document.addEventListener('click', (e) => {
   }
 })
 
+/** Grow a clamped text to its full height, animating between MEASURED heights (a fixed max-height stalls). */
+function expandText(el, fullHtml) {
+  const from = el.getBoundingClientRect().height
+  el.classList.remove('clamp')
+  if (fullHtml !== undefined) el.innerHTML = fullHtml
+  el.classList.add('open')
+  if (REDUCED) return
+  const to = el.scrollHeight
+  el.style.height = `${from}px`
+  void el.offsetHeight
+  el.classList.add('animating')
+  el.style.height = `${to}px`
+  const done = () => { el.style.height = ''; el.classList.remove('animating'); el.removeEventListener('transitionend', done) }
+  el.addEventListener('transitionend', done)
+}
+function collapseText(el, clampHtml) {
+  const from = el.getBoundingClientRect().height
+  el.classList.remove('open')
+  const finish = () => {
+    el.classList.add('clamp')
+    if (typeof clampHtml === 'string') el.innerHTML = clampHtml
+    el.style.height = ''
+    el.classList.remove('animating')
+  }
+  if (REDUCED) { finish(); return }
+  // measure the clamped height without showing it
+  el.classList.add('clamp')
+  const to = el.getBoundingClientRect().height
+  el.classList.remove('clamp')
+  el.style.height = `${from}px`
+  void el.offsetHeight
+  el.classList.add('animating')
+  el.style.height = `${to}px`
+  const done = () => { finish(); el.removeEventListener('transitionend', done) }
+  el.addEventListener('transitionend', done)
+}
 function setRowOpen(row, v, open) {
   const r = v.rows[Number(row.dataset.row)]
   const text = row.querySelector('.row-text')
-  if (open) text.innerHTML = marked(r.text, r.run, r.places, 'target', false)
   row.classList.toggle('open', open)
-  if (!open) setTimeout(() => { if (!row.classList.contains('open')) text.innerHTML = marked(r.text, r.run, r.places) }, 600)
+  if (open) expandText(text, marked(r.text, r.run, r.places, 'target', false))
+  else collapseText(text, marked(r.text, r.run, r.places))
 }
 
 /** Replace the sheet's pane with a slide: forward goes right-to-left, back the reverse. */

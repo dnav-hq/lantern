@@ -90,16 +90,24 @@ nobody has to guess that the swipe is there. On the strip the past is ink,
 the present is accent, the future a hairline, on both the rail and the nodes.
 
 **Motion, on the app's own tokens.** Nothing re-renders on a step; every
-part moves in place. The rail's done and current segments and the nodes
-glide (600 ms, calm easing). Past legs on the map darken; the lit leg draws
-itself from its start over 950 ms and the arrowhead lands last; stops cross-
-fade. The caption leaves upward (200 ms) and the new words arrive from below
-once the rail has moved. Rows open in place by growing (600 ms, calm) with
-the chapter link fading in after; the chapter slides in beside the view and
-slides back on Back. All of it lives inside the reduced-motion guard, as
-`motion.css` requires. This is the register every dive-in surface should
-use; the shipped sheet and door open instantly today, which is the gap
-Dennis named.
+part changes state where it stands. The strip is discrete segments, one per
+leg; on a jump they settle one after another in the direction of travel
+(90 ms apart), and nothing slides along the rail. Past legs on the map
+darken; the lit leg draws itself from its start over 950 ms and the
+arrowhead lands last. The caption is a carousel and slides sideways with
+the step. Rows and captions open in place by growing to their measured
+height (600 ms, calm): a fixed max-height stalls halfway, so the height is
+measured both ways. The chapter slides in beside the view and back on Back.
+All legs are solid lines; the silent stretch is explained in its caption,
+not encoded in a dash. Text clamps are plain two-line ellipses, never a
+fade. All of it lives inside the reduced-motion guard, as `motion.css`
+requires. This is the register every dive-in surface should use; the
+shipped sheet and door open instantly today, which is the gap Dennis named.
+
+Two rendering facts worth keeping: strokes that do not scale with the map
+(`vector-effect: non-scaling-stroke`) take dash lengths in screen pixels,
+so a draw-in must convert path length by the current scale; and a max-height
+transition to a fixed cap only looks right if the cap equals the content.
 
 **Desktop.** The same sheet as a panel beside the text.
 
