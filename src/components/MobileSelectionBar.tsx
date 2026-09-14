@@ -159,6 +159,11 @@ export default function MobileSelectionBar({
             // on its own), OS callout and all, fighting the very menu that is
             // about to open on top of it.
             window.getSelection()?.removeAllRanges()
+            // Words selected means the colours mark the WORDS, straight away:
+            // one tap on a colour applies and closes, exactly like a whole-verse
+            // mark. The scope row stays as the way back to the whole verse.
+            // (Dennis, 2026-09-14: the row ticked and nothing happened.)
+            setWordScope(!!selectedWords)
             setPicking(p => !p)
           }}
           aria-expanded={picking}

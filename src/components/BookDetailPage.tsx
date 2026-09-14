@@ -1014,7 +1014,7 @@ function ChapterView({
   // actually feel and lay out on real Android Chrome / iOS Safari — that is
   // OS chrome, not DOM, so no headless preview or screenshot could ever show
   // it either way. Do one real on-device pass before flipping this.
-  const WORD_CAPTURE_ENABLED = false
+  const WORD_CAPTURE_ENABLED = true
   const selectedWords =
     WORD_CAPTURE_ENABLED && wordSel && wordSel.verse === singleSelVerse ? wordSel.quote : null
   // Discoverability cue (see the hint helpers above): only while there is a
