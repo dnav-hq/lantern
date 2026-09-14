@@ -256,13 +256,11 @@ async function exportVerse(book, chapter, verse) {
   const pan = { x: vb.x - vb.w * 0.6, y: vb.y - vb.h * 0.6, w: vb.w * 2.2, h: vb.h * 2.2 }
   const crop = cropRelief(relief, RELIEF_SCALE, pan, 1400)
   const mask = seaMaskPng(crop.image)
-  // the destination chapter around the first row, for the follow-and-return state
-  const first = rows[0]
-  let around = null
-  if (first) {
-    const chap = await chapterVerses(first.book, first.chapter)
-    const end = (connections[0].endVerse ?? first.verse)
-    around = [...chap.entries()].filter(([n]) => n >= first.verse - 4 && n <= end + 3).map(([n, t]) => [n, t])
+  // the destination chapter around each shown row, for the follow-and-return state
+  for (const [i, r] of rows.slice(0, 3).entries()) {
+    const chap = await chapterVerses(r.book, r.chapter)
+    const end = connections[i].endVerse ?? r.verse
+    r.around = [...chap.entries()].filter(([n]) => n >= r.verse - 4 && n <= end + 3).map(([n, t]) => [n, t])
   }
   return {
     ref: refLabel(book, chapter, verse),
@@ -275,7 +273,6 @@ async function exportVerse(book, chapter, verse) {
     parallel,
     threshold: THRESHOLD,
     rows,
-    around,
     map: {
       relief: { href: 'data:image/png;base64,' + crop.png.toString('base64'), mask: 'data:image/png;base64,' + mask.toString('base64'), ...crop.box, bytes: crop.png.length, maskBytes: mask.length },
       pan: [round(pan.x, 2), round(pan.y, 2), round(pan.w, 2), round(pan.h, 2)],

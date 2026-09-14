@@ -84,6 +84,23 @@ label sizes are relative to the frame width; labels are placed greedily
 (right, left, below, above) to stay inside the frame and clear of each
 other. Dark uses an inverted, sepia hillshade at lower opacity.
 
+**Stepping, three ways, all visible.** Tap a stop on the strip, use the
+chevrons flanking the caption, or swipe the caption. The chevrons exist so
+nobody has to guess that the swipe is there. On the strip the past is ink,
+the present is accent, the future a hairline, on both the rail and the nodes.
+
+**Motion, on the app's own tokens.** Nothing re-renders on a step; every
+part moves in place. The rail's done and current segments and the nodes
+glide (600 ms, calm easing). Past legs on the map darken; the lit leg draws
+itself from its start over 950 ms and the arrowhead lands last; stops cross-
+fade. The caption leaves upward (200 ms) and the new words arrive from below
+once the rail has moved. Rows open in place by growing (600 ms, calm) with
+the chapter link fading in after; the chapter slides in beside the view and
+slides back on Back. All of it lives inside the reduced-motion guard, as
+`motion.css` requires. This is the register every dive-in surface should
+use; the shipped sheet and door open instantly today, which is the gap
+Dennis named.
+
 **Desktop.** The same sheet as a panel beside the text.
 
 ## Bounded by the data
