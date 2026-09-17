@@ -169,6 +169,37 @@ export function loadChapterMap(book: number, chapter: number): Promise<ChapterMa
   return p
 }
 
+/**
+ * Does THIS verse earn the map? Not every verse of a chapter with places
+ * does (Dennis, 2026-09-17: Ecclesiastes 1 showed Jerusalem under all
+ * eighteen verses, and the one verse with a connection was lost among them).
+ * The map is on the page only where the verse itself names a geocoded place,
+ * or the verse is one a journey leg is cited from — both facts of the data,
+ * never a guess. A verse with connections but no place of its own gets its
+ * rows and no map.
+ */
+export function verseHasMap(map: ChapterMap, verse: number): boolean {
+  if ((map.versePlaces[verse]?.length ?? 0) > 0) return true
+  if (!map.route) return false
+  return map.route.legs.some(leg => {
+    if (!leg.ref) return false
+    const span = citationSpan(leg.ref)
+    return span !== null && span.chapter === map.chapter && verse >= span.from && verse <= span.to
+  })
+}
+
+/** "Galatians 1:17-18" → chapter 1, verses 17 to 18. Null where unreadable. */
+export function citationSpan(ref: string): { chapter: number; from: number; to: number } | null {
+  const m = /(\d+):(\d+)(?:-(\d+))?\s*$/.exec(ref)
+  if (!m) return null
+  const from = Number(m[2])
+  return {
+    chapter: Number(m[1]),
+    from,
+    to: Number(m[3] ?? m[2]) >= from ? Number(m[3] ?? m[2]) : from
+  }
+}
+
 /** The card's places with `inVerse` set for one verse. */
 export function placesForVerse(map: ChapterMap, verse: number): CardPlace[] {
   const here = new Set(map.versePlaces[verse] ?? [])

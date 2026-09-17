@@ -23,7 +23,12 @@ import React, { useEffect, useState } from 'react'
 import type { TranslationId } from '../bible/provider'
 import { windowAround } from '../utils/connections'
 import { connectionsLoader, type VerseConnections } from '../utils/connectionsLoader'
-import { loadChapterMap, type ChapterMap } from '../utils/diveMapLoader'
+import {
+  loadChapterMap,
+  placesForVerse,
+  verseHasMap,
+  type ChapterMap
+} from '../utils/diveMapLoader'
 import { useReadingTranslation } from '../utils/useTranslation'
 import DiveIn from './DiveIn'
 import Marked from './Marked'
@@ -78,8 +83,11 @@ export default function VerseDoorways({
   }, [book, chapter, verse, shownTranslation])
 
   const rows = found?.rows ?? []
-  const route = map?.route ?? null
-  const places = map?.places ?? []
+  // The chapter's map is on the page only where THIS verse earns it: a place
+  // it names, or a journey leg cited from it (diveMapLoader.ts, verseHasMap).
+  const verseMap = map && verseHasMap(map, verse) ? map : null
+  const route = verseMap?.route ?? null
+  const places = verseMap ? placesForVerse(verseMap, verse).filter(p => p.inVerse) : []
   const count = rows.length
 
   let line: React.ReactNode = null
@@ -142,7 +150,7 @@ export default function VerseDoorways({
         <DiveIn
           address={{ book, chapter, verse, reference, verseText, translation: shownTranslation }}
           found={found ?? null}
-          map={map ?? null}
+          map={verseMap}
           onClose={() => setOpen(false)}
         />
       )}

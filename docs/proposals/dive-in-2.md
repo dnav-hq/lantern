@@ -116,6 +116,12 @@ transition to a fixed cap only looks right if the cap equals the content.
 - **Gate.** Open the door when the top score clears 30 *or* the top passage
   is a parallel account: it names a place this chapter names, measured on the
   shipped place list. Galatians 1:17 opens on Acts 9:20-25 this way.
+- **The map only where the verse earns it** (Dennis, 2026-09-17: Ecclesiastes
+  1 showed Jerusalem under all eighteen verses). The card, and the map case of
+  the entrance, appear only where the verse itself names a geocoded place or a
+  journey leg is cited from it. A verse with connections but no place of its
+  own gets its rows and no map; Genesis 15:6 is rows only, 15:7 (Ur of the
+  Chaldeans) has the map.
 - **Shared places** are the chapter's own OpenBible places that appear in
   both texts. Nothing is inferred; a name not in the place bundle is never
   marked.

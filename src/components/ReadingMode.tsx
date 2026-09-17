@@ -133,6 +133,10 @@ function RenderedNoteContent({ content }: { content: string }): React.ReactEleme
   )
 }
 
+/** A touch screen, where a tap cannot carry Shift. */
+const coarsePointer = (): boolean =>
+  typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches
+
 export default function ReadingMode({
   passage,
   onStudy,
@@ -255,7 +259,7 @@ export default function ReadingMode({
     setSelFocus(null)
   }
 
-  const handleVerseClick = (verseNum: number): void => {
+  const handleVerseClick = (verseNum: number, extend = false): void => {
     // A drag that just ended (possibly folding back onto its own start verse)
     // already committed the range via onRangeSelected — don't let the click
     // event mouseup produces re-run tap logic and clobber it.
@@ -278,7 +282,12 @@ export default function ReadingMode({
       setSelFocus(verseNum)
     } else if (selFocus === verseNum && selAnchor === verseNum) {
       clearSelection()
+    } else if (extend || coarsePointer()) {
+      // A second tap extends on touch; with a mouse only Shift-click does
+      // (same rule as the Bible-home reader, Dennis 2026-09-17).
+      setSelFocus(verseNum)
     } else {
+      setSelAnchor(verseNum)
       setSelFocus(verseNum)
     }
   }
@@ -792,7 +801,7 @@ export default function ReadingMode({
                         else verseRowRefs.current.delete(v.verse)
                       }}
                       className={`reading-verse-row${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}`}
-                      onClick={() => handleVerseClick(v.verse)}
+                      onClick={e => handleVerseClick(v.verse, e.shiftKey)}
                       style={isDimmed ? { opacity: 0.35 } : undefined}
                     >
                       {bracketByVerse.has(v.verse) && (

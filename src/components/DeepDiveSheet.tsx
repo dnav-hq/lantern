@@ -79,7 +79,20 @@ export function DeepDiveSheet({
         className={`word-sheet${closing ? ' is-closing' : ''}`}
         role="dialog"
         aria-label={label}
+        // The sheet is portaled to <body>, but React events still bubble to
+        // its React ancestors — the reading surface, whose marquee selection
+        // listens for pointer events. A drag on the dive-in map would draw a
+        // selection box under the sheet, change the selection, and unmount
+        // the entrance (and this sheet with it). So every pointer and mouse
+        // event stops here, as the click already did.
         onClick={e => e.stopPropagation()}
+        onPointerDown={e => e.stopPropagation()}
+        onPointerMove={e => e.stopPropagation()}
+        onPointerUp={e => e.stopPropagation()}
+        onMouseDown={e => e.stopPropagation()}
+        onMouseUp={e => e.stopPropagation()}
+        onTouchStart={e => e.stopPropagation()}
+        onTouchEnd={e => e.stopPropagation()}
       >
         <div className="word-sheet-head">
           {onBack ? (

@@ -755,7 +755,7 @@ function ChapterView({
     setSelFocus(null)
   }
 
-  const handleVerseClick = (v: number): void => {
+  const handleVerseClick = (v: number, extend = false): void => {
     // Study: a click re-aims the draft at this one verse. No selection state, no
     // action bar — the note in the workbench is what the click is about.
     if (studyMode) {
@@ -803,8 +803,14 @@ function ChapterView({
     const insideSelection = selRange !== null && v >= selRange[0] && v <= selRange[1]
     if (isMobile ? insideSelection : selFocus === v && selAnchor === v) {
       clearSelection()
+    } else if (isMobile || extend) {
+      // Extend the range to the newly tapped verse. On touch that is what a
+      // second tap means (there is no Shift); with a mouse it needs Shift, the
+      // convention everywhere else, so a plain click moves on to a new verse
+      // instead of quietly growing the range (Dennis, 2026-09-17).
+      setSelFocus(v)
     } else {
-      // Extend the range to the newly tapped verse.
+      setSelAnchor(v)
       setSelFocus(v)
     }
   }
@@ -1857,7 +1863,7 @@ function ChapterView({
                   onPointerCancel={() => {
                     if (tapRef.current) tapRef.current.moved = true
                   }}
-                  onClick={() => handleVerseClick(v.verse)}
+                  onClick={e => handleVerseClick(v.verse, e.shiftKey)}
                   style={isDimmed ? { opacity: 0.35 } : undefined}
                 >
                   {bracketByVerse.has(v.verse) && (
