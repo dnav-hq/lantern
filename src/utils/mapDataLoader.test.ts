@@ -480,3 +480,54 @@ describe('indexMarkersByPlaceId', () => {
     expect(byId.get('nod')).toBeUndefined()
   })
 })
+
+// ── dive-in-2: region stops on a city's point fold into the next leg ─────────
+import { foldRegionStops, legArrivalVerse } from './mapDataLoader'
+
+describe('foldRegionStops', () => {
+  const typeOf = (stop: { id: string }): string => (stop.id === 'syria-2' ? 'region' : 'settlement')
+  it('folds Syria (on Damascus’s point) into one leg, Jerusalem to Cilicia through Syria', () => {
+    const route = foldRegionStops(buildJourneyRoute(GALATIANS, GAPS, lookup)!, typeOf)
+    expect(route.legs.map(leg => `${leg.from.id}→${leg.to.id}`)).toEqual([
+      'damascus→arabia-2',
+      'arabia-2→damascus',
+      'damascus→jerusalem',
+      'jerusalem→cilicia',
+      'cilicia→jerusalem'
+    ])
+    const through = route.legs[3]
+    expect(through.via).toBe('Syria')
+    // the LATER citation names the destination
+    expect(through.ref).toBe('Galatians 1:21')
+    expect(route.stops.map(s => [s.order, s.name])).toEqual([
+      [1, 'Damascus'],
+      [2, 'Arabia'],
+      [3, 'Damascus'],
+      [4, 'Jerusalem'],
+      [5, 'Cilicia'],
+      [6, 'Jerusalem']
+    ])
+    expect(route.legs[4].silent).toBe(true)
+  })
+  it('leaves a route without such a stop untouched', () => {
+    const route = buildJourneyRoute(GALATIANS, GAPS, lookup)!
+    expect(foldRegionStops(route, () => 'settlement')).toBe(route)
+  })
+  it('does not fold a region that stands on its own point', () => {
+    const route = foldRegionStops(buildJourneyRoute(GALATIANS, GAPS, lookup)!, stop =>
+      stop.id === 'arabia-2' ? 'region' : 'settlement'
+    )
+    expect(route.stops.map(s => s.name)).toContain('Arabia')
+  })
+})
+
+describe('legArrivalVerse', () => {
+  it('reads a single verse and the END of a range', () => {
+    expect(legArrivalVerse('Galatians 1:17')).toEqual({ chapter: 1, verse: 17 })
+    expect(legArrivalVerse('Galatians 1:17-18')).toEqual({ chapter: 1, verse: 18 })
+    expect(legArrivalVerse('Genesis 12:4-6')).toEqual({ chapter: 12, verse: 6 })
+  })
+  it('returns null for what it cannot read', () => {
+    expect(legArrivalVerse('somewhere')).toBeNull()
+  })
+})

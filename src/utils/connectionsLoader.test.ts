@@ -146,3 +146,72 @@ describe('connectionLabel', () => {
     )
   })
 })
+
+// ── dive-in-2: shared places on rows, and the parallel-account gate ──────────
+describe('shared places and the parallel-account gate (dive-in-2)', () => {
+  const GAL_1: ChapterConnections = {
+    17: [
+      { book: 44, chapter: 9, verse: 20, endVerse: 25, score: 4 },
+      { book: 47, chapter: 11, verse: 32, endVerse: 33, score: 3 }
+    ],
+    18: [{ book: 44, chapter: 15, verse: 4, score: 2 }]
+  }
+  const GAL_TEXT: Record<string, Record<number, string>> = {
+    '48/1': {
+      17: 'nor did I go up to Jerusalem to the apostles who came before me, but I went into Arabia and later returned to Damascus.',
+      18: 'Only after three years did I go up to Jerusalem to confer with Cephas, and I stayed with him fifteen days.'
+    },
+    '44/9': {
+      20: 'Saul promptly began to proclaim Jesus in the synagogues, declaring, “He is the Son of God.”',
+      21: 'All who heard him were astounded and asked, “Isn’t this the man who wreaked havoc in Jerusalem on those who call on this name?”',
+      22: 'But Saul was empowered all the more, and he confounded the Jews living in Damascus.',
+      23: 'After many days had passed, the Jews conspired to kill him,',
+      24: 'but Saul learned of their plot.',
+      25: 'One night, however, his disciples took him and lowered him in a basket through a window in the wall.'
+    },
+    '47/11': {
+      32: 'In Damascus, the governor under King Aretas secured the city of the Damascenes in order to arrest me.',
+      33: 'But I was lowered in a basket through a window in the wall and escaped his grasp.'
+    },
+    '44/15': { 4: 'On their arrival in Jerusalem, they were welcomed by the church.' }
+  }
+  function galSources(places: string[]): ConnectionsSources {
+    return {
+      chapterConnections: async (book, chapter) => (book === 48 && chapter === 1 ? GAL_1 : {}),
+      chapterText: async (book, chapter) => {
+        const lines = GAL_TEXT[`${book}/${chapter}`]
+        return lines ? Object.entries(lines).map(([v, t]) => ({ verse: Number(v), text: t })) : null
+      },
+      chapterPlaces: async () => places
+    }
+  }
+
+  it('opens Galatians 1:17 on Acts 9 as a parallel account, and marks the shared places', async () => {
+    const found = await createConnectionsLoader(
+      galSources(['Arabia', 'Cilicia', 'Damascus', 'Jerusalem', 'Syria'])
+    ).verse(48, 1, 17, 'BSB')
+    expect(found).not.toBeNull()
+    expect(found!.parallel).toBe(true)
+    expect(found!.rows[0].places).toEqual(['Damascus', 'Jerusalem'])
+    expect(found!.rows[1].places).toEqual(['Damascus'])
+    // a ranged row is compared against its whole range
+    expect(found!.rows[0].text!.startsWith('Saul promptly')).toBe(true)
+    expect(found!.rows[0].text!.includes('living in Damascus')).toBe(true)
+  })
+
+  it('stays shut below the line when the chapter has no places', async () => {
+    expect(await createConnectionsLoader(galSources([])).verse(48, 1, 17, 'BSB')).toBeNull()
+  })
+
+  it('stays shut when the strongest row shares no place', async () => {
+    expect(
+      await createConnectionsLoader(galSources(['Cilicia', 'Syria'])).verse(48, 1, 17, 'BSB')
+    ).toBeNull()
+  })
+
+  it('Genesis 15:6 opens on score as before, with no places marked and parallel false', async () => {
+    const found = await createConnectionsLoader(sources().sources).verse(1, 15, 6, 'BSB')
+    expect(found!.parallel).toBe(false)
+    expect(found!.rows.every(r => r.places.length === 0)).toBe(true)
+  })
+})

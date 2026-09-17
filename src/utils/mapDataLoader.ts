@@ -313,6 +313,12 @@ export interface RouteLeg {
   /** Why the text is silent here; null for a stated leg. */
   note: string | null
   silent: boolean
+  /**
+   * A region the leg passes through, folded out of the stops by
+   * `foldRegionStops` because the data places it on a city's exact point
+   * ("Jerusalem to Cilicia, through Syria"). Absent on an unfolded leg.
+   */
+  via?: string
 }
 
 export interface JourneyRoute {
@@ -450,6 +456,79 @@ export function buildJourneyRoute(
 
   if (legs.length === 0) return null
   return { id: journey.id, title: journey.title, source: journey.source, stops, legs, unlocated }
+}
+
+/** The leg held while a folded region is crossed: extended to the next arrival. */
+function holdArrival(pending: RouteLeg | null, leg: RouteLeg): RouteLeg {
+  if (!pending) return leg
+  return { ...pending, to: leg.to, silent: pending.silent || leg.silent }
+}
+
+/**
+ * Fold away region stops that sit on a city's exact point. OpenBible ships a
+ * point per region, and it is often literally the capital's coordinate:
+ * "Syria 2" IS Damascus, "Judea 1" IS Jerusalem. Drawn as a stop, such a leg
+ * reads as a return to the city the text never states. So a region stop whose
+ * point equals a settlement stop's point is not a stop: the leg arriving at it
+ * and the leg leaving it become ONE leg that names the region as `via`, and
+ * keeps the LATER citation, which is the one that names the destination
+ * (docs/proposals/dive-in-2.md, "Bounded by the data"). Stops are renumbered
+ * so the numbers still read in order. `types` says which stops are regions.
+ */
+export function foldRegionStops(
+  route: JourneyRoute,
+  typeOf: (stop: JourneyStop) => string | undefined
+): JourneyRoute {
+  const key = (s: { x: number; y: number }): string => `${s.x},${s.y}`
+  const cityPoints = new Set(route.stops.filter(s => typeOf(s) !== 'region').map(key))
+  const folded = new Set(
+    route.stops.filter(s => typeOf(s) === 'region' && cityPoints.has(key(s))).map(s => s.order)
+  )
+  if (folded.size === 0) return route
+
+  const legs: RouteLeg[] = []
+  let pending: RouteLeg | null = null
+  for (const leg of route.legs) {
+    if (folded.has(leg.to.order)) {
+      // the leg arrives at a folded region: hold it until the leg that leaves
+      pending = holdArrival(pending, leg)
+      continue
+    }
+    if (pending) {
+      legs.push({
+        from: pending.from,
+        to: leg.to,
+        ref: leg.ref ?? pending.ref,
+        note: leg.note ?? pending.note,
+        silent: pending.silent || leg.silent,
+        via: pending.to.name
+      })
+      pending = null
+    } else legs.push(leg)
+  }
+  if (pending) legs.push(pending)
+
+  const stops = route.stops.filter(s => !folded.has(s.order))
+  const renumber = new Map(stops.map((s, i) => [s.order, i + 1]))
+  const renumbered = stops.map(s => ({ ...s, order: renumber.get(s.order)! }))
+  const byOrder = new Map(renumbered.map(s => [s.order, s]))
+  const stopFor = (s: JourneyStop): JourneyStop => byOrder.get(renumber.get(s.order)!) ?? s
+  return {
+    ...route,
+    stops: renumbered,
+    legs: legs.map(l => ({ ...l, from: stopFor(l.from), to: stopFor(l.to) }))
+  }
+}
+
+/**
+ * The verse a leg's citation ARRIVES at: for "Galatians 1:17-18" that is 18,
+ * because a ranged citation ends where the traveller does, and that is the
+ * line to show for the leg. Null for a citation the parser cannot read.
+ */
+export function legArrivalVerse(ref: string): { chapter: number; verse: number } | null {
+  const m = /(\d+):(\d+)(?:-(\d+))?\s*$/.exec(ref)
+  if (!m) return null
+  return { chapter: Number(m[1]), verse: Number(m[3] ?? m[2]) }
 }
 
 /** A route label, already placed. `anchor` is the SVG `text-anchor`. */

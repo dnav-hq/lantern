@@ -76,10 +76,78 @@ export function topScore(connections: RawConnection[]): number | null {
   return connections.reduce((best, c) => Math.max(best, c.score), -Infinity)
 }
 
-/** Brief §8 step 2: the door exists only where the best connection clears the line. */
-export function doorOpens(connections: RawConnection[]): boolean {
+/**
+ * Brief §8 step 2: the door exists only where the best connection clears the
+ * line — or, since the dive-in redesign (docs/proposals/dive-in-2.md), where
+ * the strongest row is a PARALLEL ACCOUNT of the same events. A narrative
+ * verse like Galatians 1:17 scores 4 (votes are a doctrinal measure) yet its
+ * top row, Acts 9:20-25, names Damascus and Jerusalem as this chapter does,
+ * which is exactly the row a reader of the verse wants. `parallel` is that
+ * fact, measured by `sharedPlaces` on the shipped place list, never guessed.
+ */
+export function doorOpens(connections: RawConnection[], parallel = false): boolean {
   const top = topScore(connections)
-  return top !== null && top >= THRESHOLD
+  if (top === null) return false
+  return top >= THRESHOLD || parallel
+}
+
+/**
+ * The place names two texts share, bounded to the names the chapter's own
+ * place list carries (OpenBible geocoding, via the map bundle). A name that is
+ * not a geocoded place of THIS chapter is never marked, so the marks can only
+ * ever say "this passage names a place this chapter names" — a fact about the
+ * two texts, not a claim about their relationship (dive-in-2.md, "Bounded by
+ * the data"). Order follows `placeNames`; each name at most once.
+ */
+export function sharedPlaces(
+  placeNames: readonly string[],
+  source: string,
+  target: string
+): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const name of placeNames) {
+    if (!name || seen.has(name)) continue
+    seen.add(name)
+    const re = new RegExp(`(^|[^\\p{L}])${escapeRegExp(name)}(?![\\p{L}])`, 'u')
+    if (re.test(source) && re.test(target)) out.push(name)
+  }
+  return out
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** A window of a passage: the text to show and where it starts in the whole. */
+export interface TextWindow {
+  text: string
+  /** Offset of `text[0]` in the original, so runs and marks can be shifted. */
+  offset: number
+}
+
+/**
+ * Where a clipped row should START so its two lines still show the words
+ * that make it a connection. When the shared run (or the first shared place)
+ * sits deeper than `deep` characters in, the window opens at the nearest
+ * opening quote, sentence or clause boundary before it — whichever is closest
+ * within its own reach — and the caller prefixes an ellipsis. Otherwise the
+ * whole text, from the start.
+ */
+export function windowAround(text: string, at: number, deep = 48): TextWindow {
+  if (at <= deep) return { text, offset: 0 }
+  const before = text.slice(0, at)
+  const quote = before.lastIndexOf('“')
+  const sentence =
+    Math.max(before.lastIndexOf('. '), before.lastIndexOf('? '), before.lastIndexOf('! ')) + 2
+  const clause =
+    Math.max(before.lastIndexOf(', '), before.lastIndexOf('; '), before.lastIndexOf(': ')) + 2
+  let start: number
+  if (quote >= 0 && at - quote < 75) start = quote
+  else if (sentence > 1 && at - sentence < 60) start = sentence
+  else if (clause > 1 && at - clause < 40) start = clause
+  else start = before.lastIndexOf(' ', Math.max(0, at - 30)) + 1
+  return { text: text.slice(start), offset: start }
 }
 
 interface Token {
