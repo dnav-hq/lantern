@@ -9800,3 +9800,588 @@ body.dark .conn-crumb {
   color: var(--text-faint);
   padding-top: 5px;
 }
+
+/* ── The dive-in ─────────────────────────────────────────────────────────────
+   docs/proposals/dive-in-2.md; design/dive-in-2.html for the look. One sheet,
+   three things, nothing new to read: the verse held, the passages that pick
+   it up (reference, heading, two marked lines), and where it happens (the map
+   card). Rides in the word door's sheet (DeepDiveSheet.tsx). The map paints
+   its OWN parchment palette (Dennis, 2026-09-13: the map is a plate, not a
+   panel), stated once here as tokens with a night-parchment for dark. */
+
+/* The entrance: one line under the chosen verse, made of real content. */
+.dive-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  margin: 2px 0 0;
+  padding: 4px 4px 6px 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+.dive-entry-ref {
+  flex: none;
+  font-family: var(--scripture-font);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--accent-ink);
+}
+.dive-entry-text {
+  flex: 1 1 0;
+  min-width: 0;
+  font-family: var(--scripture-font);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, #000 78%, transparent);
+  mask-image: linear-gradient(90deg, #000 78%, transparent);
+}
+.dive-entry-count {
+  flex: none;
+  font-family: var(--ui-font);
+  font-size: var(--text-xs);
+  color: var(--accent-ink);
+  font-variant-numeric: tabular-nums;
+}
+.dive-entry-glyph {
+  flex: none;
+  width: 18px;
+  height: 10px;
+  align-self: center;
+}
+.dive-entry-glyph path {
+  fill: none;
+  stroke: var(--accent-ink);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.dive-entry-glyph circle {
+  fill: var(--accent-ink);
+}
+
+/* The marks: the whole relation vocabulary. */
+.dive-mark {
+  background: var(--accent-weak);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+  margin: 0 -1px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.dive-entry .dive-mark {
+  background: var(--accent-soft);
+}
+
+/* Rows: reference, heading, two marked lines. Tap opens in place. */
+.dive-rows {
+  margin-top: 4px;
+}
+.dive-eyebrow {
+  font-family: var(--ui-font);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 4px;
+}
+.dive-row {
+  padding: 10px 0 8px;
+  border-top: 0.5px solid var(--border);
+  cursor: pointer;
+}
+.dive-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.dive-row-ref {
+  font-family: var(--scripture-font);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--accent-ink);
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.dive-row-heading {
+  font-family: var(--scripture-font);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.dive-row-text {
+  font-family: var(--scripture-font);
+  font-size: 15.5px;
+  line-height: 1.5;
+  margin: 3px 0 0;
+  color: var(--text);
+  overflow: hidden;
+}
+.dive-row-text.is-muted {
+  color: var(--text-muted);
+}
+/* A two-line ellipsis, on rows and captions alike; released by the measured
+   grow (measuredHeight.ts) rather than by a fade. */
+.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dive-row-open {
+  display: none;
+  margin: 8px 0 2px;
+  font-family: var(--ui-font);
+  font-size: var(--text-sm);
+  color: var(--accent-ink);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.dive-row.is-open .dive-row-open {
+  display: block;
+}
+.dive-prov {
+  font-family: var(--ui-font);
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  line-height: 1.5;
+  margin: 16px 0 0;
+}
+
+/* ── The map card ── */
+.dive-map {
+  --atlas-land: #efe5cd;
+  --atlas-sea: #c8d6db;
+  --atlas-sea-ink: #6d8792;
+  --atlas-coast: #9c8f72;
+  --atlas-ink: #3a3427;
+  --atlas-muted: #7c7159;
+  --atlas-route: #5b52c8;
+  --atlas-route-faint: rgba(91, 82, 200, 0.28);
+  --pad: 30px;
+  margin: 16px 0 24px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--atlas-land);
+}
+body.dark .dive-map {
+  --atlas-land: #2d2618;
+  --atlas-sea: #1d2529;
+  --atlas-sea-ink: #7e929b;
+  --atlas-coast: #7d7054;
+  --atlas-ink: #ece4d6;
+  --atlas-muted: #b3a88f;
+  --atlas-route: #a49cf0;
+  --atlas-route-faint: rgba(164, 156, 240, 0.3);
+}
+.dive-map-stage {
+  position: relative;
+  height: 250px;
+  background: var(--atlas-land);
+}
+@media (min-width: 700px) {
+  .dive-map-stage {
+    height: 300px;
+  }
+}
+.dive-map-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  font-family: var(--scripture-font);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.dive-map-svg:active {
+  cursor: grabbing;
+}
+.dive-land {
+  fill: var(--atlas-land);
+}
+.dive-relief {
+  opacity: 0;
+  mix-blend-mode: multiply;
+}
+.dive-relief.is-ready {
+  opacity: 0.95;
+}
+body.dark .dive-relief {
+  mix-blend-mode: normal;
+  filter: url(#dive-hyp) invert(1) sepia(0.5) saturate(0.8) brightness(0.55);
+}
+body.dark .dive-relief.is-ready {
+  opacity: 0.6;
+}
+.dive-sea,
+.dive-lake {
+  fill: var(--atlas-sea);
+}
+.dive-lake {
+  stroke: var(--atlas-coast);
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+.dive-river {
+  fill: none;
+  stroke: var(--atlas-sea-ink);
+  stroke-width: 0.6;
+  opacity: 0.6;
+  vector-effect: non-scaling-stroke;
+}
+.dive-coast {
+  fill: none;
+  stroke: var(--atlas-coast);
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.dive-sea-label {
+  fill: var(--atlas-sea-ink);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-style: italic;
+  opacity: 0.9;
+}
+.dive-bearing text {
+  fill: var(--atlas-muted);
+  font-style: italic;
+  paint-order: stroke;
+  stroke: var(--atlas-land);
+  stroke-width: 2.5px;
+}
+.dive-bearing circle {
+  fill: var(--atlas-muted);
+  opacity: 0.7;
+}
+.dive-place text,
+.dive-stop text {
+  fill: var(--atlas-ink);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  paint-order: stroke;
+  stroke: var(--atlas-land);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.dive-place circle {
+  fill: var(--atlas-ink);
+  stroke: var(--atlas-land);
+  stroke-width: 1;
+}
+.dive-place.in-verse circle {
+  fill: var(--atlas-route);
+}
+.dive-place.in-verse text {
+  fill: var(--atlas-route);
+}
+/* The route: every leg faint, past legs ink, one lit; chevrons in the leg's own stroke. */
+.dive-leg {
+  fill: none;
+  stroke: var(--atlas-route-faint);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.dive-leg.is-done {
+  stroke: var(--atlas-route);
+  opacity: 0.55;
+}
+.dive-leg-lit {
+  fill: none;
+  stroke: var(--atlas-route);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.dive-chevron {
+  fill: none;
+  stroke: var(--atlas-route);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.dive-chevron.is-faint {
+  stroke: var(--atlas-route-faint);
+  stroke-width: 1.4;
+}
+.dive-chevron.is-faint.is-done {
+  stroke: var(--atlas-route);
+  opacity: 0.55;
+}
+.dive-stop circle {
+  fill: var(--atlas-land);
+  stroke: var(--atlas-route-faint);
+  stroke-width: 1.2;
+}
+.dive-stop text {
+  fill: var(--atlas-muted);
+}
+.dive-stop.is-done circle {
+  fill: var(--atlas-muted);
+  stroke: var(--atlas-land);
+}
+.dive-stop.is-on circle {
+  fill: var(--atlas-route);
+  stroke: var(--atlas-land);
+}
+.dive-stop.is-on text {
+  fill: var(--atlas-ink);
+}
+.dive-map-tools {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dive-map-tools button {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 0.5px solid var(--atlas-coast);
+  background: color-mix(in srgb, var(--atlas-land) 82%, transparent);
+  color: var(--atlas-ink);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+.dive-map-tools .dive-map-home {
+  display: none;
+}
+.dive-map.is-moved .dive-map-tools .dive-map-home {
+  display: grid;
+}
+
+/* The legs strip: past is ink, present is accent, future a hairline. */
+.dive-legs {
+  position: relative;
+  height: 58px;
+  background: var(--surface);
+  border-top: 0.5px solid var(--border);
+}
+.dive-seg {
+  position: absolute;
+  top: 20px;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--border-strong);
+  border-radius: 2px;
+}
+.dive-seg.is-done {
+  background: var(--text-faint);
+}
+.dive-seg.is-cur {
+  height: 4px;
+  margin-top: -2px;
+  background: var(--accent);
+  z-index: 1;
+}
+.dive-node {
+  position: absolute;
+  top: 0;
+  width: 56px;
+  height: 100%;
+  margin-left: -28px;
+  color: var(--text-faint);
+  z-index: 2;
+  pointer-events: none;
+}
+.dive-node-dot {
+  position: absolute;
+  left: 50%;
+  top: 20px;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1.5px solid var(--border-strong);
+  box-sizing: border-box;
+}
+.dive-node.is-done .dive-node-dot {
+  background: var(--text-faint);
+  border-color: var(--text-faint);
+}
+.dive-node.is-on .dive-node-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.35);
+}
+.dive-node-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 30px;
+  font-family: var(--ui-font);
+  font-size: 9.5px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+.dive-node.is-low .dive-node-name {
+  top: 41px;
+}
+.dive-node.is-done {
+  color: var(--text-muted);
+}
+.dive-node.is-on {
+  color: var(--text);
+}
+/* A leg is chosen by its own segment or the dot it arrives at, never the dot it leaves. */
+.dive-hit {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  z-index: 3;
+}
+
+/* The caption: a carousel of the legs' verses, chevrons at its sides. */
+.dive-cap {
+  position: relative;
+  padding: 9px 40px 10px;
+  min-height: 78px;
+  background: var(--surface);
+  border-top: 0.5px solid var(--border);
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.dive-cap-nav {
+  position: absolute;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  margin-top: -14px;
+  border-radius: 50%;
+  border: 0.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0 0 2px;
+}
+.dive-cap-nav.is-prev {
+  left: 6px;
+}
+.dive-cap-nav.is-next {
+  right: 6px;
+}
+.dive-cap-nav[disabled] {
+  opacity: 0.3;
+  cursor: default;
+}
+.dive-cap-viewport {
+  overflow: hidden;
+}
+.dive-cap-track {
+  display: flex;
+  align-items: flex-start;
+}
+.dive-cap-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.dive-cap-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--ui-font);
+  font-size: 12px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  min-width: 0;
+}
+.dive-cap-n {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.dive-cap-head b {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 12.5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dive-cap-ref {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--scripture-font);
+  color: var(--accent-ink);
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.dive-cap-text {
+  font-family: var(--scripture-font);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  margin: 0;
+  overflow: hidden;
+  cursor: pointer;
+  min-height: 1.45em;
+}
+.dive-cap-text.is-muted {
+  font-family: var(--ui-font);
+  font-size: 13px;
+}
+.dive-cap-places {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 9px 12px 10px;
+  background: var(--surface);
+  border-top: 0.5px solid var(--border);
+}
+.dive-cap-places b {
+  font-family: var(--ui-font);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.dive-cap-places span {
+  font-family: var(--scripture-font);
+  font-size: 14px;
+  color: var(--text-muted);
+}

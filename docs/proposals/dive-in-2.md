@@ -140,7 +140,15 @@ The context-line classifier and the 66-book "who" table; the glimpse strip;
 the verse-opens transition; numbers, visit pairs, gradient, draw-in and the
 step list; the hand-authored thumbnail frames.
 
-## What changes in code, if approved
+## What shipped (2026-09-17)
+
+Everything below, built in session on main. Two things differ from the plan
+as first written: the sea mask ships as one 12 KB PNG for the whole map
+(`scripts/build-sea-mask.mjs`, derived from the relief) rather than per
+frame, and the full map (`MapView.tsx`) was left as it was, now without an
+entrance, pending a decision to retire or restyle it (docs/BACKLOG.md).
+
+## What changes in code, as approved
 
 - `VerseDoorways` becomes the one entrance line (journey, else strongest row,
   else places). Presence and content come from the loaders already shipped.

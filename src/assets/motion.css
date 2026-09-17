@@ -839,3 +839,63 @@
     transform: scale(0.985);
   }
 }
+
+/* ── The dive-in (DiveIn.tsx, DiveMap.tsx) — docs/proposals/dive-in-2.md,
+   "Motion". Nothing re-renders on a step; every part changes state where it
+   stands. The rail's segments and nodes settle one after another in the
+   direction of travel (the delay is set inline per segment); the caption is
+   a carousel that slides sideways; past legs on the map darken and stops
+   cross-fade; the lit leg's draw-in is driven per frame in DiveMap.tsx on the
+   same calm curve, and simply draws the finished leg under reduced motion.
+   Rows and captions open in place by growing between MEASURED heights
+   (measuredHeight.ts) — a fixed cap stalls halfway, which is why the height
+   is measured both ways. */
+@media (prefers-reduced-motion: no-preference) {
+  .dive-seg {
+    transition:
+      background var(--dur-3) ease,
+      height var(--dur-3) ease,
+      margin-top var(--dur-3) ease;
+  }
+  .dive-node {
+    transition: color var(--dur-3) ease;
+  }
+  .dive-node-dot {
+    transition:
+      background var(--dur-3) ease,
+      border-color var(--dur-3) ease,
+      transform var(--dur-4) var(--ease-calm);
+    transition-delay: inherit;
+  }
+  .dive-cap-track {
+    transition: transform var(--dur-4) var(--ease-calm);
+  }
+  .dive-leg,
+  .dive-chevron.is-faint {
+    transition:
+      stroke var(--dur-4) ease,
+      opacity var(--dur-4) ease;
+  }
+  .dive-stop circle {
+    transition:
+      fill var(--dur-4) ease,
+      stroke var(--dur-4) ease;
+  }
+  .dive-stop text {
+    transition: fill var(--dur-4) ease;
+  }
+  .dive-relief {
+    transition: opacity var(--dur-5) var(--ease-calm);
+  }
+  .dive-row-text.is-growing,
+  .dive-cap-text.is-growing {
+    transition: height var(--dur-4) var(--ease-calm);
+  }
+  .dive-row.is-open .dive-row-open {
+    animation: fadeRise var(--dur-3) var(--ease-out) var(--dur-2) both;
+  }
+  /* The entrance line rides in with the doorways row's own timing. */
+  .dive-entry {
+    animation: fadeRise var(--dur-3) var(--ease-out) both;
+  }
+}

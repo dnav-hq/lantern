@@ -3445,18 +3445,25 @@ belongs to and why that arc comes when it does.
   menu). Word door now opens from inside the footnote popup; map entry moves to
   the connections thread. See docs/proposals/deep-dive-doorways.md, 'Revised'.
 
-- **Dive in (2026-09-14, designed in session):** the single composed view that
-  replaces separate doors — verse held, the strongest connections each with a
-  computed relation line and its BSB heading, an engraved parchment map
-  thumbnail framed on the chapter (route first for journey chapters), one fold.
-  Entrance is the verse's tint continuing into a two-line strip. Mockup
-  `design/dive-in.html` (generated from real data), note
-  `docs/proposals/dive-in.md`. Build follows Dennis's review.
-  **Second design (2026-09-14, same day):** a cold critique found the first
-  mockup text-heavy, promising rows the gate would never show, and filling
-  open coastline runs (the sea band). Counter-design at `design/dive-in-2.html`
-  (`scripts/export-dive-in.mjs`, real data, polygon-clipped coasts) with note
-  `docs/proposals/dive-in-2.md`: one entrance line of real content, rows as
-  reference + heading + marked words (no author, no relation words), map card
-  with one lit leg and its verse, parallel-account gate. Dennis chooses between
-  the two before anything is built.
+- **Dive in — SHIPPED 2026-09-17** (docs/proposals/dive-in-2.md, mockup
+  `design/dive-in-2.html`). Built in session: the one entrance line
+  (`VerseDoorways.tsx`), the sheet (`DiveIn.tsx`: verse held, rows as
+  reference + BSB heading + two marked lines, open in place at measured
+  height, "Read it in James 2" as a sliding pane), the map card
+  (`DiveMap.tsx`: parchment relief through the shipped sea mask, live
+  pan/zoom, the legs strip, the caption carousel, the lit leg drawn on the
+  calm curve with the chevron riding its tip), the parallel-account gate and
+  shared-place marks (`connections.ts`, `connectionsLoader.ts`), region stops
+  folded into the next leg (`mapDataLoader.ts`), and `public/map/sea.png`
+  (`scripts/build-sea-mask.mjs`). `ConnectionsDoor.tsx` is gone. Left open,
+  deliberately:
+  - **The full map (`MapView.tsx`) has no entrance any more.** The card is
+    the map (design 2: no full-screen step), so the old surface is reachable
+    only by `?map=` / `#map`. Decide: retire it, or restyle it to the card's
+    paint and step model and give it one quiet way in. The parked HQ task
+    cf9a983e (parchment atlas pass on the full map) is superseded by the
+    card's paint and should be closed or reshaped with that decision.
+  - `src/utils/doorways.ts` (`buildDoorways`) is no longer used by the
+    entrance; it stays tested until the word door's presence row is decided.
+  - `scripts/data/journeys.yml` gap notes contain "--"; replace with plain
+    punctuation when the file is next touched (they show in the caption).

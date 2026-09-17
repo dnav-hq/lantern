@@ -1,100 +1,149 @@
 /**
- * The doorways row — the ONE entrance to the deep dive on the reading page.
+ * The entrance to the dive-in — the ONE line under the verse the reader chose.
  *
- * docs/proposals/deep-dive-doorways.md, item 2, and Dennis's rule for it:
- * simplicity over feature creep. Under the one verse the reader deliberately
- * chose, the row names only the doors that verse actually has — the word
- * behind it, where Scripture picks it up, where the chapter happens — each as
- * a fact in the reader's words, tokens only, no icons. A verse with nothing
- * behind it gets no row at all. It replaced the word door's single
- * "The words behind this verse" line (2026-09-13); it is that line generalised,
- * in the same place, under the same conditions.
+ * docs/proposals/dive-in-2.md, "The entrance": one line, and it is real
+ * content. A journey chapter leads with the route; otherwise the strongest
+ * passage that picks the verse up, with the words the two verses share
+ * already marked, and how many more there are; otherwise the places the
+ * chapter names. A verse with nothing beneath shows nothing at all. No label,
+ * no button costume, no menu: the line IS what is behind the verse, and the
+ * count is the only promise it makes.
  *
- * Cost discipline: selecting a verse asks each layer only "do you have
- * anything here?" — the book's verse shard plus the parsing table for the
- * word index (both memoized, both the door's own first two files), the place
- * bundle's chapter index for the map, and the connections loader's presence
- * call. No door's full data (a lemma shard, the map artwork, a reference list)
- * loads before its doorway is tapped. The checks run in parallel and the row
- * fills in as each resolves; a door that has appeared never leaves.
+ * Cost discipline is the loaders': selecting a verse asks the connections
+ * loader (one cross-reference chapter, cached forever, plus the chapter's
+ * texts only once a door is real) and the chapter-map loader (the journeys
+ * table and the place bundle, once per app lifetime). Nothing heavier — no
+ * artwork, no relief — until the line is tapped. The word door stays inside
+ * the translators' note, where a translator's alternative belongs.
  *
- * The footnotes door is NOT here: it owns the dotted underline inside the
- * sentence, where a translator's alternative belongs. One door, one costume.
+ * This replaced the two-pill doorways row (2026-09-17); the file keeps its
+ * name because every reading surface mounts it by that name.
  */
 import React, { useEffect, useState } from 'react'
-import { connectionsPresence } from '../utils/connectionsLoader'
-import { buildDoorways, type PresenceReport } from '../utils/doorways'
-import type { VerseAddress } from './WordDoor'
-import { ConnectionsDoorFor, MapLine } from './ConnectionsDoor'
-import { useReadingTranslation } from '../utils/useTranslation'
 import type { TranslationId } from '../bible/provider'
+import { windowAround } from '../utils/connections'
+import { connectionsLoader, type VerseConnections } from '../utils/connectionsLoader'
+import { loadChapterMap, type ChapterMap } from '../utils/diveMapLoader'
+import { useReadingTranslation } from '../utils/useTranslation'
+import DiveIn from './DiveIn'
+import Marked from './Marked'
 
-interface Props extends VerseAddress {
-  /** Opens the map (a plain open; chapter framing is the map door's own slice). */
+interface Props {
+  book: number
+  chapter: number
+  verse: number
+  /** "Genesis 15:6" — the label this verse already carries on the page. */
+  reference: string
+  verseText: string
+  /** Kept on the props so callers need not change; the map is on the card now. */
   onOpenMap?: () => void
-  /**
-   * The translation whose text is on screen: the connections door lights
-   * quoted words against it. Falls back to the reading preference.
-   */
+  /** The translation whose text is on screen. Falls back to the reading preference. */
   translation?: TranslationId
 }
 
+/** The route glyph: a small rise-and-fall between two stops. */
+const GLYPH = (
+  <svg className="dive-entry-glyph" viewBox="0 0 18 10" aria-hidden="true">
+    <path d="M2 8 C6 8 6 2 9 2 S12 8 16 8" />
+    <circle cx="2" cy="8" r="1.6" />
+    <circle cx="16" cy="8" r="1.6" />
+  </svg>
+)
+
 export default function VerseDoorways({
-  // Kept on the props so callers need not change; the map is no longer
-  // entered from here (it is reached from the connections thread).
   onOpenMap: _onOpenMap,
   translation,
   ...address
 }: Props): React.ReactElement | null {
-  const { book, chapter, verse } = address
+  const { book, chapter, verse, reference, verseText } = address
   const [preferred] = useReadingTranslation()
   const shownTranslation = translation ?? preferred
-  const [report, setReport] = useState<PresenceReport>({})
-  const [connectionsOpen, setConnectionsOpen] = useState(false)
+  const [found, setFound] = useState<VerseConnections | null | undefined>(undefined)
+  const [map, setMap] = useState<ChapterMap | null | undefined>(undefined)
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     let live = true
-    setReport({})
-    // ONE presence check: the connections are the deep dive (Dennis,
-    // 2026-09-13). The word door lives inside the footnote popup and the map
-    // is reached from the connections thread, so neither is asked here — a
-    // row of doors under every verse was a menu, and a menu is exactly the
-    // cognitive load this feature exists to remove.
-    connectionsPresence(book, chapter, verse)
-      .then(connections => live && setReport(r => ({ ...r, connections })))
-      .catch(() => live && setReport(r => ({ ...r, connections: null })))
+    setFound(undefined)
+    setMap(undefined)
+    setOpen(false)
+    connectionsLoader
+      .verse(book, chapter, verse, shownTranslation)
+      .then(result => live && setFound(result))
+      .catch(() => live && setFound(null))
+    loadChapterMap(book, chapter).then(result => live && setMap(result))
     return () => {
       live = false
     }
-  }, [book, chapter, verse])
+  }, [book, chapter, verse, shownTranslation])
 
-  const doorways = buildDoorways(report).filter(d => d.kind === 'connections')
-  const hasConnections = doorways.length > 0
-  const count = report.connections?.count ?? 0
+  const rows = found?.rows ?? []
+  const route = map?.route ?? null
+  const places = map?.places ?? []
+  const count = rows.length
 
-  // The map line stands on its own under the verse: a chapter like Galatians 1
-  // whose verses never clear the cross-reference threshold still has Paul's
-  // route to show (Dennis, 2026-09-14). MapLine renders nothing when the
-  // chapter has no journey and no places, so a verse with neither door still
-  // shows nothing at all.
+  let line: React.ReactNode = null
+  if (route) {
+    line = (
+      <>
+        {GLYPH}
+        <span className="dive-entry-text">{route.title}</span>
+        {count > 0 && <span className="dive-entry-count">+{count}</span>}
+      </>
+    )
+  } else if (rows.length > 0 && rows[0].text !== null) {
+    const first = rows[0]
+    const text: string = rows[0].text
+    const anchor = first.shared ? first.shared[0] : 0
+    const win = windowAround(text, anchor)
+    line = (
+      <>
+        <span className="dive-entry-ref">{first.label}</span>
+        <span className="dive-entry-text">
+          <Marked
+            text={win.text}
+            run={first.shared}
+            names={first.places}
+            from={win.offset}
+            ellipsis={win.offset > 0}
+          />
+        </span>
+        {count > 1 && <span className="dive-entry-count">+{count - 1}</span>}
+      </>
+    )
+  } else if (rows.length > 0) {
+    line = (
+      <>
+        <span className="dive-entry-ref">{rows[0].label}</span>
+        {count > 1 && <span className="dive-entry-count">+{count - 1}</span>}
+      </>
+    )
+  } else if (places.length > 0) {
+    line = (
+      <>
+        {GLYPH}
+        <span className="dive-entry-text">{[...new Set(places.map(p => p.name))].join(' · ')}</span>
+      </>
+    )
+  }
+
+  if (!line) return null
   return (
     <div className="verse-doorways" onClick={e => e.stopPropagation()}>
-      {hasConnections && (
-        <button
-          type="button"
-          className="verse-doorway"
-          data-door="connections"
-          onClick={() => setConnectionsOpen(true)}
-        >
-          Where Scripture picks this up · {count}
-        </button>
-      )}
-      <MapLine book={book} chapter={chapter} className="verse-doorway" />
-      {connectionsOpen && (
-        <ConnectionsDoorFor
-          {...address}
-          translation={shownTranslation}
-          onClose={() => setConnectionsOpen(false)}
+      <button
+        type="button"
+        className="dive-entry"
+        aria-label={`Dive into ${reference}`}
+        onClick={() => setOpen(true)}
+      >
+        {line}
+      </button>
+      {open && (
+        <DiveIn
+          address={{ book, chapter, verse, reference, verseText, translation: shownTranslation }}
+          found={found ?? null}
+          map={map ?? null}
+          onClose={() => setOpen(false)}
         />
       )}
     </div>
