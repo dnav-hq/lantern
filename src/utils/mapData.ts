@@ -78,6 +78,21 @@ export interface MapBaseArtwork {
   layers: { coastline: string[]; lakes: string[]; rivers: string[] }
   /** The opt-in terrain layer, or null when the build shipped vectors only. */
   terrain: MapTerrain | null
+  /**
+   * The 1-bit sea mask derived from the terrain (white = sea), the same size
+   * as the raster. Absent on a bundle built before it existed. It is what
+   * paints land and sea on the dive-in map card: the coastline layer is open
+   * lines, so no polygon fill can tell the two apart (dive-in-2.md).
+   */
+  sea?: MapSeaMask | null
+}
+
+/** public/map/sea.png — built by scripts/build-sea-mask.mjs. */
+export interface MapSeaMask {
+  url: string
+  width: number
+  height: number
+  bytes: number
 }
 
 /** The lazily-fetched shaded-relief layer. Never part of the default payload. */

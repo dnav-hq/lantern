@@ -39,6 +39,7 @@ import { createInterface } from 'node:readline'
 import { crc32, deflateSync, gzipSync } from 'node:zlib'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { seaMaskFromPng } from './lib/relief.mjs'
 import {
   LCC_CONSTANTS,
   MAP_EXTENT,
@@ -530,6 +531,19 @@ if (wantTerrain) {
   console.error('TERRAIN skipped (--no-terrain)')
 }
 
+// The sea mask rides with the relief: 1 bit per pixel, flood-filled from the
+// frame edge (see scripts/build-sea-mask.mjs, which can rebuild it alone from
+// the shipped PNG). Built from whichever terrain.png is on disk, so a
+// --no-terrain rebuild of the vectors keeps the mask the raster already has.
+let sea = null
+const terrainPath = resolve(OUT_DIR, 'terrain.png')
+if (existsSync(terrainPath)) {
+  const mask = seaMaskFromPng(readFileSync(terrainPath))
+  writeFileSync(resolve(OUT_DIR, 'sea.png'), mask.png)
+  sea = { url: '/map/sea.png', width: mask.width, height: mask.height, bytes: mask.png.length }
+  console.error(`  sea mask            public/map/sea.png ${mask.width}x${mask.height}, ${kb(mask.png.length)}`)
+}
+
 const baseBundle = {
   v: 1,
   attribution: NE_ATTRIBUTION,
@@ -538,7 +552,8 @@ const baseBundle = {
   extent: MAP_EXTENT,
   viewBox: MAP_VIEW_BOX.map((v) => Number(v.toFixed(2))),
   layers,
-  terrain
+  terrain,
+  sea
 }
 const baseJson = JSON.stringify(baseBundle)
 const baseGz = gzipSync(Buffer.from(baseJson), { level: 9 })

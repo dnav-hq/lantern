@@ -139,3 +139,9 @@ export function seaMaskPng(image, seaValue = 206) {
   }
   return encodeGrayPng(width, height, rows, 1)
 }
+
+/** The sea mask of a whole shipped relief PNG: same pixels, 1 bit each. */
+export function seaMaskFromPng(pngBytes, seaValue = 206) {
+  const image = decodeGrayPng(pngBytes)
+  return { png: seaMaskPng(image, seaValue), width: image.width, height: image.height }
+}
