@@ -601,7 +601,12 @@ function ChapterView({
   const rangeGroups = anchoredGroups.filter(isRangeGroup)
   // Lane per range note so overlapping brackets sit side-by-side in the rail.
   const railLanes = assignRailLanes(rangeGroups)
-  const inlineGroups = anchoredGroups.filter(g => !isRangeGroup(g))
+  // A bare highlight is the verse's own tint and label; an inline row for it
+  // would repeat the label under the verse with nothing to say (world-class
+  // pass 2026-09-18, finding 3). A highlight with sub-notes still has a row.
+  const inlineGroups = anchoredGroups.filter(
+    g => !isRangeGroup(g) && !(isHighlight(g.main) && g.subnotes.length === 0)
+  )
   // Inline notes indexed by their anchor start verse (single-verse only).
   const inlineGroupsByVerse = new Map<number, NoteGroup[]>()
   for (const g of inlineGroups) {
@@ -1209,6 +1214,12 @@ function ChapterView({
       <MobileNoteComposer
         key={composing.noteId ?? `new-${composing.start}-${composing.end}`}
         reference={verseRefLabel(composing.start, composing.end)}
+        anchorText={
+          bibleData?.verses
+            .filter(v => v.verse >= composing.start && v.verse <= composing.end)
+            .map(v => v.text)
+            .join(' ') || undefined
+        }
         mode={composing.mode}
         initialText={
           restoredCompose
@@ -2059,6 +2070,31 @@ function ChapterView({
         onClear={clearSelection}
         onNote={openComposerOnSelection}
         onHighlight={(key, words) => void handleHighlight(key as NoteCategory, words)}
+        onPickerOpen={() => {
+          // The picker takes the lower half of the screen; the verse being
+          // coloured must stay above it (world-class pass 2026-09-18, finding 4).
+          if (selRange === null) return
+          const row = verseRowRefs.current.get(selRange[1])
+          if (!row) return
+          const bottom = row.getBoundingClientRect().bottom
+          const limit = window.innerHeight * 0.42
+          if (bottom <= limit) return
+          // The reading surface scrolls inside its own container on some
+          // layouts and on the window on others; move whichever one scrolls.
+          let scroller: HTMLElement | null = row.parentElement
+          while (scroller && scroller !== document.body) {
+            const style = getComputedStyle(scroller)
+            if (
+              /(auto|scroll)/.test(style.overflowY) &&
+              scroller.scrollHeight > scroller.clientHeight
+            )
+              break
+            scroller = scroller.parentElement
+          }
+          const target: { scrollBy: Window['scrollBy'] } =
+            scroller && scroller !== document.body ? scroller : window
+          target.scrollBy({ top: bottom - limit, behavior: 'smooth' })
+        }}
         selectedWords={selectedWords}
         wordHintPending={wordHintPending}
         highlightedAs={selectedHighlightCategory}
@@ -2352,6 +2388,14 @@ export default function BookDetailPage({
   const chapterCategories = useMemo(() => chapterNoteCategories(allNotes), [allNotes])
   const chaptersWithNotes = chapterCategories
 
+  // A resize (or a viewport change) re-runs the pill-in-view effect below.
+  const [stripTick, setStripTick] = useState(0)
+  useEffect(() => {
+    const onResize = (): void => setStripTick(t => t + 1)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   // Keep the active pill in view along the STRIP'S OWN axis, and only that axis.
   // This used to be scrollIntoView({ inline: 'nearest' }) — whose `block`
   // silently defaults to 'start', so it also scrolled the reading surface until
@@ -2375,7 +2419,7 @@ export default function BookDetailPage({
     else if (right + margin > from + strip.clientWidth) to = right + margin - strip.clientWidth
     to = Math.min(Math.max(to, 0), max)
     if (to !== from) strip.scrollTo({ left: to, behavior: 'smooth' })
-  }, [selectedChapter])
+  }, [selectedChapter, stripTick])
 
   const scrollChapters = (dir: number): void => {
     const el = chapterSelectorRef.current

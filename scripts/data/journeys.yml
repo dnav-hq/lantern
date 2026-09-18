@@ -224,6 +224,6 @@ journeys:
       - { from: three-taverns, to: rome, ref: "Acts 28:15-16" }
 
 gaps:
-  - { journey: jesus-last-journey-to-jerusalem, from: samaria-2, to: jericho-2, note: "Luke's travel narrative (17:11-18:35) names no waypoint between the Samaria/Galilee border and Jericho -- teaching stops fill the chapters but no place is pinned to the route between them." }
-  - { journey: pauls-voyage-to-rome, from: cauda, to: malta, note: "Acts 27:17-28:1: the ship ran before a storm for fourteen days with no navigation and no place named until it wrecked off Malta -- the course itself is what the text withholds." }
-  - { journey: paul-galatians-account, from: cilicia, to: jerusalem, note: "Galatians 2:1 gives the destination and the interval -- fourteen years later, up to Jerusalem again -- and names no starting point for that journey, so the return from Cilicia is drawn as silence rather than as a confident line." }
+  - { journey: jesus-last-journey-to-jerusalem, from: samaria-2, to: jericho-2, note: "Luke's travel narrative (17:11-18:35) names no waypoint between the Samaria/Galilee border and Jericho. Teaching stops fill the chapters, but no place is pinned to the route between them." }
+  - { journey: pauls-voyage-to-rome, from: cauda, to: malta, note: "Acts 27:17-28:1: the ship ran before a storm for fourteen days with no navigation and no place named until it wrecked off Malta. The course itself is what the text withholds." }
+  - { journey: paul-galatians-account, from: cilicia, to: jerusalem, note: "Galatians 2:1 gives the destination and the interval, fourteen years later, up to Jerusalem again, and names no starting point for that journey, so the return from Cilicia is drawn as silence rather than as a confident line." }

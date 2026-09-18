@@ -7,10 +7,9 @@ Walked as a guest on a 390×844 phone viewport and on desktop, through every
 reachable flow: landing, library, chapter, select, dive in, highlight, note,
 journal, profile, search, study.
 
-**Fixed in this pass** (same day, on main): the dead "+ Study" tab now appears
-only on the reading page with a book open; search's empty state says what it
-searches. Everything else below is a finding, ranked by how much it costs a
-first-time reader, with the recommended change and where it lives.
+**Every finding below was fixed the same day, on main** (see docs/BACKLOG.md
+for the list). The findings stay here as they were written, ranked by how
+much each cost a first-time reader, so the reasoning survives the fixes.
 
 ---
 

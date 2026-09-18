@@ -337,11 +337,11 @@ export default function NavBar({
           )}
 
           <div className="topnav-trail">
-            {guestSignIn ? (
-              <button type="button" className="guest-signin-btn" onClick={guestSignIn}>
-                Sign in
-              </button>
-            ) : (
+            {/* One menu for everyone. A guest used to get only a "Sign in"
+                button here, and since the bottom nav is hidden on desktop that
+                left Profile, Settings and Export unreachable above 768px
+                (world-class pass 2026-09-18, finding 5). */}
+            {
               <div className="profile-menu-host" ref={profileRef}>
                 <button
                   className="avatar-btn"
@@ -358,7 +358,9 @@ export default function NavBar({
                   role="menu"
                   aria-hidden={!profileOpen}
                 >
-                  <div className="nav-menu-name">{displayName || 'Studying locally'}</div>
+                  <div className="nav-menu-name">
+                    {guestSignIn ? 'Trying Lantern' : displayName || 'Studying locally'}
+                  </div>
                   <div className="nav-menu-divider" />
                   {/* The Profile page's only other entry point is the mobile
                       bottom nav, which is display:none on desktop — so without
@@ -408,21 +410,37 @@ export default function NavBar({
                       Install app
                     </button>
                   )}
-                  {onSignOut && (
+                  {guestSignIn ? (
                     <>
                       <div className="nav-menu-divider" />
                       <button
                         className="nav-menu-item"
                         role="menuitem"
-                        onClick={() => void onSignOut()}
+                        onClick={() => {
+                          setProfileOpen(false)
+                          guestSignIn()
+                        }}
                       >
-                        Sign out
+                        Sign in to keep your notes
                       </button>
                     </>
+                  ) : (
+                    onSignOut && (
+                      <>
+                        <div className="nav-menu-divider" />
+                        <button
+                          className="nav-menu-item"
+                          role="menuitem"
+                          onClick={() => void onSignOut()}
+                        >
+                          Sign out
+                        </button>
+                      </>
+                    )
                   )}
                 </div>
               </div>
-            )}
+            }
           </div>
         </div>
       </header>

@@ -67,6 +67,7 @@ interface Props {
   onClose: () => void
   /** Open straight onto this row's chapter (the inline body's "Read it in"). */
   initialStacked?: ConnectionRow | null
+  onOpenMap?: () => void
 }
 
 /** Where the row's marks start: the shared run, else the first shared place. */
@@ -252,12 +253,14 @@ export function DiveBody({
   address,
   found,
   map,
-  onRead
+  onRead,
+  onOpenMap
 }: {
   address: DiveAddress
   found: VerseConnections | null
   map: ChapterMap | null
   onRead: (row: ConnectionRow) => void
+  onOpenMap?: () => void
 }): React.ReactElement {
   const [more, setMore] = useState(false)
   const [openRow, setOpenRow] = useState<number | null>(null)
@@ -299,7 +302,12 @@ export function DiveBody({
     </div>
   )
   const mapBlock = map && (
-    <DiveMap map={map} verse={address.verse} translation={address.translation} />
+    <DiveMap
+      map={map}
+      verse={address.verse}
+      translation={address.translation}
+      onOpenWhole={onOpenMap}
+    />
   )
 
   return (
@@ -328,7 +336,8 @@ export default function DiveIn({
   found,
   map,
   onClose,
-  initialStacked = null
+  initialStacked = null,
+  onOpenMap
 }: Props): React.ReactElement {
   const [stacked, setStacked] = useState<ConnectionRow | null>(initialStacked)
   const [stackLeaving, setStackLeaving] = useState(false)
@@ -383,7 +392,13 @@ export default function DiveIn({
       label={`Dive into ${address.reference}`}
       onClose={onClose}
     >
-      <DiveBody address={address} found={found} map={map} onRead={setStacked} />
+      <DiveBody
+        address={address}
+        found={found}
+        map={map}
+        onRead={setStacked}
+        onOpenMap={onOpenMap}
+      />
     </DeepDiveSheet>
   )
 }

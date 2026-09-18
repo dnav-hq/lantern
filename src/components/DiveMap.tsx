@@ -69,6 +69,8 @@ interface Props {
   verse: number
   /** The translation on screen, for each leg's verse in the caption. */
   translation: TranslationId
+  /** Opens the whole map (MapView) framed on this chapter, when the app offers it. */
+  onOpenWhole?: () => void
 }
 
 /** Matches --dur-5: how long the lit leg takes to draw itself in. */
@@ -119,7 +121,12 @@ function legTitle(leg: RouteLeg): string {
   return `${leg.from.name} to ${leg.to.name}${leg.via ? `, through ${leg.via}` : ''}`
 }
 
-export default function DiveMap({ map, verse, translation }: Props): React.ReactElement {
+export default function DiveMap({
+  map,
+  verse,
+  translation,
+  onOpenWhole
+}: Props): React.ReactElement {
   const reduced = usePrefersReducedMotion()
   const route = map.route
   const legs = useMemo(() => route?.legs ?? [], [route])
@@ -748,6 +755,11 @@ export default function DiveMap({ map, verse, translation }: Props): React.React
           <b>Where this chapter happens</b>
           <span>{placeList(places.map(p => p.name))}</span>
         </p>
+      )}
+      {onOpenWhole && (
+        <button type="button" className="dive-map-whole" onClick={onOpenWhole}>
+          The whole map →
+        </button>
       )}
     </div>
   )

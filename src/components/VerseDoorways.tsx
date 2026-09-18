@@ -41,7 +41,7 @@ interface Props {
   /** "Genesis 15:6" — the label this verse already carries on the page. */
   reference: string
   verseText: string
-  /** Kept on the props so callers need not change; the map is on the card now. */
+  /** Opens the whole map framed on this chapter; the card offers it as one quiet line. */
   onOpenMap?: () => void
   /** The translation whose text is on screen. Falls back to the reading preference. */
   translation?: TranslationId
@@ -63,7 +63,7 @@ const GLYPH = (
 )
 
 export default function VerseDoorways({
-  onOpenMap: _onOpenMap,
+  onOpenMap,
   translation,
   inline = false,
   ...address
@@ -157,7 +157,13 @@ export default function VerseDoorways({
     }
     return (
       <div className="verse-doorways is-inline" onClick={e => e.stopPropagation()}>
-        <DiveBody address={diveAddress} found={found ?? null} map={verseMap} onRead={setReadRow} />
+        <DiveBody
+          address={diveAddress}
+          found={found ?? null}
+          map={verseMap}
+          onRead={setReadRow}
+          onOpenMap={onOpenMap}
+        />
         {readRow && (
           <DiveIn
             address={diveAddress}
@@ -185,6 +191,7 @@ export default function VerseDoorways({
           address={{ book, chapter, verse, reference, verseText, translation: shownTranslation }}
           found={found ?? null}
           map={verseMap}
+          onOpenMap={onOpenMap}
           onClose={() => setOpen(false)}
         />
       )}

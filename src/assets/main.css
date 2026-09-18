@@ -991,6 +991,24 @@ body.dark .search-backdrop {
 }
 
 .search-note-loading,
+.search-result--text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.search-result-text {
+  font-family: var(--scripture-font);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  text-align: left;
+}
+.search-section-note {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
 .search-empty {
   padding: 8px;
   font-size: 12px;
@@ -1830,6 +1848,8 @@ body.dark .search-backdrop {
   z-index: 30;
 }
 .mobile-selbar-menu {
+  max-height: 50vh;
+  overflow-y: auto;
   position: absolute;
   bottom: calc(100% + 10px);
   right: 0;
@@ -3311,6 +3331,17 @@ html body.dark .verse-span-bracket[class] {
   padding: 11px 12px 12px 13px;
 }
 .composer-head,
+.mobile-composer-quote {
+  font-family: var(--scripture-font);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: -2px 0 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .mobile-composer-head {
   display: flex;
   align-items: center;
@@ -4838,6 +4869,16 @@ body.dark .chapter-pill.active.has-notes {
 .translation-chip-menu {
   right: 0;
   min-width: 224px;
+}
+.translation-chip-tag {
+  margin-left: 8px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border: 0.5px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 1px 6px;
 }
 .translation-chip-menu-abbr {
   display: inline-flex;
@@ -10398,6 +10439,19 @@ body.dark .dive-relief.is-ready {
   padding: 9px 12px 10px;
   background: var(--surface);
   border-top: 0.5px solid var(--border);
+}
+.dive-map-whole {
+  display: block;
+  width: 100%;
+  padding: 8px 12px 9px;
+  background: var(--surface);
+  border: 0;
+  border-top: 0.5px solid var(--border);
+  font-family: var(--ui-font);
+  font-size: var(--text-sm);
+  color: var(--accent-ink);
+  text-align: left;
+  cursor: pointer;
 }
 .dive-cap-places b {
   font-family: var(--ui-font);

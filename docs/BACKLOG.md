@@ -14,17 +14,19 @@ belongs to and why that arc comes when it does.
 
 ## Deferred
 
-- **World-class pass findings (2026-09-18, `docs/audits/world-class-pass-2026-09-18.md`).**
-  Fixed the same day: the dead "+ Study" tab from the library; search's empty
-  state now says what it searches. Open, in order of cost to a first-time
-  reader: (1) scripture full-text search (BSB ships complete, so an in-browser
-  index is possible); (2) mobile note composer hides the verse being written
-  about; (3) a bare highlight renders an empty note row under the verse;
-  (4) the highlight menu covers the verse on mobile; (5) desktop guests cannot
-  reach Profile or Settings; (6) the full map has no entrance (retire or
-  restyle to the card's paint); (7) chapter strip recentre after resize, the
-  tap-to-select hint once per session, "--" in journeys.yml gap notes, delete
-  `utils/doorways.ts`. ESV: keep, add an "online only" tag in the selector.
+- **World-class pass (2026-09-18, `docs/audits/world-class-pass-2026-09-18.md`) — ALL FIXED the same day.**
+  Scripture full-text search (in-browser scan of the shipped BSB bundle,
+  `utils/scriptureSearch.ts`, third section of search); the mobile composer
+  carries the verse it is about; a bare highlight renders no empty inline row;
+  the highlight picker is capped at half the screen and the verse scrolls
+  clear of it; guests get the same top-bar menu as members (Profile, Settings,
+  Export, Sign in); the dead Study tab from the library; search's empty state;
+  the chapter strip recentres on resize; "--" removed from journey gap notes;
+  `utils/doorways.ts` deleted; ESV carries an "online only" tag in the
+  switcher. The full map keeps one quiet way in ("The whole map" under the
+  card) and no longer shows the dataset-wide confidence legend when framed on
+  a chapter. Still a choice for Dennis: whether the full map should adopt the
+  card's parchment paint (the parked atlas task) or stay the plain line map.
 
 - **DONE 2026-09-12: the PWA update pill no longer reaches desktop.** The
   2026-09-01 fix (`isStandalone()` instead of a width check) closed the

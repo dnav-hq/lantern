@@ -1110,11 +1110,16 @@ export default function MapView({ chapter = null, onClose }: MapViewProps): Reac
             </section>
           )}
 
-          <MapLegend
-            counts={model.counts}
-            unlocatedCount={model.unlocated.length}
-            contestedCount={model.markers.filter(m => m.contested).length}
-          />
+          {/* The confidence tallies are about the whole dataset; under a
+              chapter frame they answered a question nobody asked (world-class
+              pass 2026-09-18). World view only. */}
+          {!chapter && (
+            <MapLegend
+              counts={model.counts}
+              unlocatedCount={model.unlocated.length}
+              contestedCount={model.markers.filter(m => m.contested).length}
+            />
+          )}
 
           <section className="map-unlocated">
             <h2 className="map-unlocated-title">Places nobody can locate</h2>

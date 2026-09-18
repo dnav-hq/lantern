@@ -20,6 +20,8 @@ const HEADER_SELECTOR = '.book-detail-chrome'
 interface MobileNoteComposerProps {
   // Human reference for the verses this note is anchored to ("John 15:9-10").
   reference: string
+  /** The verses' own words, so the reader never writes about a sentence they cannot see. */
+  anchorText?: string
   mode: 'create' | 'edit'
   initialText?: string
   initialCategory?: NoteCategory | null
@@ -42,6 +44,7 @@ interface MobileNoteComposerProps {
 
 export default function MobileNoteComposer({
   reference,
+  anchorText,
   mode,
   initialText = '',
   initialCategory = null,
@@ -182,6 +185,7 @@ export default function MobileNoteComposer({
           Cancel
         </button>
       </div>
+      {anchorText && <p className="mobile-composer-quote">{anchorText}</p>}
 
       {guest && (
         <div className="mobile-composer-notice" role="status">

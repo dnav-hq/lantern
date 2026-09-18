@@ -1,3 +1,4 @@
+import { searchScripture, MIN_QUERY, type ScriptureSearch } from '../utils/scriptureSearch'
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { NoteSearchResult } from '../types'
 import { parseScriptureQuery, parseNoteLine } from '../utils/noteParser'
@@ -113,6 +114,33 @@ export default function GlobalSearch({
   // ranked results; see parseScriptureQuery for the ordering/cap rule.
   const scriptureResults = useMemo(() => parseScriptureQuery(query), [query])
 
+  // Section 3: the text of Scripture (the BSB, whatever is on screen) — only
+  // when the query is not itself a reference, three characters or more,
+  // debounced a touch longer because the first search downloads the bundle.
+  const [textHits, setTextHits] = useState<ScriptureSearch>({ hits: [], truncated: false })
+  const [textLoading, setTextLoading] = useState(false)
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < MIN_QUERY || scriptureResults.length > 0) {
+      setTextHits({ hits: [], truncated: false })
+      setTextLoading(false)
+      return
+    }
+    setTextLoading(true)
+    let cancelled = false
+    const t = window.setTimeout(() => {
+      searchScripture(q).then(r => {
+        if (cancelled) return
+        setTextHits(r)
+        setTextLoading(false)
+      })
+    }, 220)
+    return () => {
+      cancelled = true
+      window.clearTimeout(t)
+    }
+  }, [query, scriptureResults.length])
+
   // Section 2: notes — async, debounced; lands independently of section 1.
   useEffect(() => {
     const q = query.trim()
@@ -219,7 +247,12 @@ export default function GlobalSearch({
   const hasQuery = query.trim().length > 0
   const showResults = hasQuery
   const nothing =
-    hasQuery && scriptureResults.length === 0 && !notesLoading && noteResults.length === 0
+    hasQuery &&
+    scriptureResults.length === 0 &&
+    !notesLoading &&
+    noteResults.length === 0 &&
+    !textLoading &&
+    textHits.hits.length === 0
 
   // A note result lands you at the VERSE it is anchored to, not at the passage
   // container. Falls back to opening the study only when the anchor cannot be
@@ -246,16 +279,19 @@ export default function GlobalSearch({
       })),
       ...noteResults.map(r => ({
         onSelect: () => choose(() => openNote(r))
+      })),
+      ...textHits.hits.map(h => ({
+        onSelect: () => choose(() => onJumpToChapter(h.bookName, h.chapter, h.verse))
       }))
     ],
-    [scriptureResults, noteResults, choose, onJumpToChapter, openNote]
+    [scriptureResults, noteResults, textHits, choose, onJumpToChapter, openNote]
   )
 
   // A fresh query (or the results it produced) invalidates whatever was
   // previously highlighted.
   useEffect(() => {
     setActiveIndex(-1)
-  }, [query, scriptureResults, noteResults])
+  }, [query, scriptureResults, noteResults, textHits])
 
   const restStyle =
     variant === 'bar' && restRect
@@ -347,10 +383,56 @@ export default function GlobalSearch({
         </div>
       )}
 
+      {/* Section 3 — the words of Scripture. */}
+      {(textLoading || textHits.hits.length > 0) && (
+        <div className="search-section" data-section="text">
+          <div className="search-section-label">
+            In Scripture
+            {!textLoading ? ` · ${textHits.hits.length}${textHits.truncated ? '+' : ''}` : ''}
+            <span className="search-section-note"> · Berean Standard Bible</span>
+          </div>
+          {textLoading && textHits.hits.length === 0 ? (
+            <div className="search-note-loading">Searching Scripture…</div>
+          ) : (
+            textHits.hits.map((h, i) => {
+              const flatIndex = scriptureResults.length + noteResults.length + i
+              const before = h.text.slice(Math.max(0, h.at[0] - 60), h.at[0])
+              const after = h.text.slice(h.at[1], h.at[1] + 90)
+              return (
+                <button
+                  key={`${h.bookNumber}-${h.chapter}-${h.verse}`}
+                  className={`search-result search-result--text${flatIndex === activeIndex ? ' active' : ''}`}
+                  role="option"
+                  aria-selected={flatIndex === activeIndex}
+                  onMouseEnter={() => setActiveIndex(flatIndex)}
+                  onClick={() => choose(() => onJumpToChapter(h.bookName, h.chapter, h.verse))}
+                >
+                  <span className="search-result-ref">
+                    {h.bookName} {h.chapter}:{h.verse}
+                  </span>
+                  <span className="search-result-text">
+                    {h.at[0] > 60 ? '…' : ''}
+                    {before}
+                    <mark className="dive-mark">{h.text.slice(h.at[0], h.at[1])}</mark>
+                    {after}
+                    {h.at[1] + 90 < h.text.length ? '…' : ''}
+                  </span>
+                </button>
+              )
+            })
+          )}
+          {textHits.truncated && (
+            <p className="search-truncated">
+              Showing the first {textHits.hits.length} verses. Add a word to narrow it.
+            </p>
+          )}
+        </div>
+      )}
+
       {nothing && (
         <div className="search-empty">
-          Nothing matches “{query.trim()}”. Search finds a reference, like Romans 4:3 or John 3, and
-          the words of your own notes. It does not yet search the text of Scripture.
+          Nothing matches “{query.trim()}”. Search finds a reference like Romans 4:3, a word or
+          phrase in Scripture, and the words of your own notes.
         </div>
       )}
     </div>

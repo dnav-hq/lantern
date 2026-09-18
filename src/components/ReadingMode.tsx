@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Passage, Note, BiblePassage, NoteCategory } from '../types'
 import { parseNoteLine } from '../utils/noteParser'
+import { isHighlight } from '../utils/noteKind'
 import { useApi } from '../api/context'
 import { getBibleVerse } from '../bible/service'
 import { useReadingTranslation } from '../utils/useTranslation'
@@ -473,7 +474,12 @@ export default function ReadingMode({
   const rangeGroups = anchoredGroups.filter(isRangeGroup)
   // Lane per range note so overlapping brackets sit side-by-side in the rail.
   const railLanes = assignRailLanes(rangeGroups)
-  const inlineGroups = anchoredGroups.filter(g => !isRangeGroup(g))
+  // A bare highlight is the verse's own tint and label; an inline row for it
+  // would repeat the label under the verse with nothing to say (world-class
+  // pass 2026-09-18, finding 3). A highlight with sub-notes still has a row.
+  const inlineGroups = anchoredGroups.filter(
+    g => !isRangeGroup(g) && !(isHighlight(g.main) && g.subnotes.length === 0)
+  )
   const inlineGroupsByVerse = new Map<number, NoteGroup[]>()
   for (const g of inlineGroups) {
     const v = g.main.anchor_start_verse!

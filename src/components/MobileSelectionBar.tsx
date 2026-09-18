@@ -30,6 +30,8 @@ interface MobileSelectionBarProps {
    * whole verse, which is what every call meant before word-level marks.
    */
   onHighlight: (category: string, words?: string) => void
+  /** The picker is opening: the caller keeps the selected verse clear of it. */
+  onPickerOpen?: () => void
   /**
    * The words the reader has selected INSIDE the selected verse, trimmed to
    * word boundaries, or null when they have selected none.
@@ -70,6 +72,7 @@ export default function MobileSelectionBar({
   onClear,
   onNote,
   onHighlight,
+  onPickerOpen,
   selectedWords = null,
   wordHintPending = false,
   highlightedAs = null,
@@ -164,6 +167,7 @@ export default function MobileSelectionBar({
             // mark. The scope row stays as the way back to the whole verse.
             // (Dennis, 2026-09-14: the row ticked and nothing happened.)
             setWordScope(!!selectedWords)
+            if (!picking) onPickerOpen?.()
             setPicking(p => !p)
           }}
           aria-expanded={picking}
