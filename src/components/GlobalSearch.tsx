@@ -348,7 +348,10 @@ export default function GlobalSearch({
       )}
 
       {nothing && (
-        <div className="search-empty">No scripture reference or notes match “{query.trim()}”.</div>
+        <div className="search-empty">
+          Nothing matches “{query.trim()}”. Search finds a reference, like Romans 4:3 or John 3, and
+          the words of your own notes. It does not yet search the text of Scripture.
+        </div>
       )}
     </div>
   )

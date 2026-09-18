@@ -600,7 +600,10 @@ export default function App({
           onSignOut={onSignOut}
           guestSignIn={guestSignIn}
           onOpenSearch={() => setSearchOpen(true)}
-          canStudy={canStudy}
+          // The Study tab only where there is something to study: on the
+          // reading page with a book open. From the library it used to be a
+          // dead tab (desktop sweep 2026-08-31, finding confirmed 2026-09-18).
+          canStudy={canStudy && state.destination === 'bible' && state.selectedBookName !== null}
           canInstall={install.capability !== 'none'}
           onInstall={install.openInstall}
           searchSlot={
