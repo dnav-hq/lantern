@@ -65,6 +65,8 @@ interface Props {
   /** The chapter's map, or null where it has neither places nor a journey. */
   map: ChapterMap | null
   onClose: () => void
+  /** Open straight onto this row's chapter (the inline body's "Read it in"). */
+  initialStacked?: ConnectionRow | null
 }
 
 /** Where the row's marks start: the shared run, else the first shared place. */
@@ -240,14 +242,25 @@ function provenance(found: VerseConnections | null, map: ChapterMap | null): str
   return parts.join(' · ') + '.'
 }
 
-export default function DiveIn({ address, found, map, onClose }: Props): React.ReactElement {
+/**
+ * The dive-in's body — the verse held, the rows, the map, provenance. On its
+ * own it is what Study renders inline beside the note (the grammar in
+ * docs/ARCHITECTURE.md: choosing a verse always shows what is beneath it, in
+ * every mode); inside `DiveIn` it is the sheet's content.
+ */
+export function DiveBody({
+  address,
+  found,
+  map,
+  onRead
+}: {
+  address: DiveAddress
+  found: VerseConnections | null
+  map: ChapterMap | null
+  onRead: (row: ConnectionRow) => void
+}): React.ReactElement {
   const [more, setMore] = useState(false)
   const [openRow, setOpenRow] = useState<number | null>(null)
-  const [stacked, setStacked] = useState<ConnectionRow | null>(null)
-  const [stackLeaving, setStackLeaving] = useState(false)
-  const lastStacked = useRef<ConnectionRow | null>(null)
-  if (stacked) lastStacked.current = stacked
-
   const rows = found?.rows ?? []
   const rest = rows.length - GLANCE_ROWS
   const lead = rows[0]?.shared ? rows[0].sharedInSource : null
@@ -262,6 +275,65 @@ export default function DiveIn({ address, found, map, onClose }: Props): React.R
     // the reader's attention; the motion belongs to the row they touched).
     growOpen(el, () => flushSync(() => setOpenRow(i)))
   }
+
+  const rowsBlock = rows.length > 0 && (
+    <div className="dive-rows">
+      <p className="dive-eyebrow">Where Scripture picks this up</p>
+      {rows.slice(0, more ? rows.length : GLANCE_ROWS).map((row, i) => (
+        <Row
+          key={`${row.book}/${row.chapter}/${row.verse}`}
+          row={row}
+          open={openRow === i}
+          onToggle={el => toggleRow(i, el)}
+          onRead={() => onRead(row)}
+        />
+      ))}
+      {rest > 0 && (
+        <Fold
+          expanded={more}
+          onToggle={() => setMore(m => !m)}
+          open="Fewer"
+          closed={`${rest} more`}
+        />
+      )}
+    </div>
+  )
+  const mapBlock = map && (
+    <DiveMap map={map} verse={address.verse} translation={address.translation} />
+  )
+
+  return (
+    <>
+      <p className="word-door-verse">
+        <Marked text={address.verseText} run={lead} />
+      </p>
+      {journeyFirst ? (
+        <>
+          {mapBlock}
+          {rowsBlock}
+        </>
+      ) : (
+        <>
+          {rowsBlock}
+          {mapBlock}
+        </>
+      )}
+      <p className="dive-prov">{provenance(found, map)}</p>
+    </>
+  )
+}
+
+export default function DiveIn({
+  address,
+  found,
+  map,
+  onClose,
+  initialStacked = null
+}: Props): React.ReactElement {
+  const [stacked, setStacked] = useState<ConnectionRow | null>(initialStacked)
+  const [stackLeaving, setStackLeaving] = useState(false)
+  const lastStacked = useRef<ConnectionRow | null>(null)
+  if (stacked) lastStacked.current = stacked
 
   const closeStack = (): void => {
     const reduce =
@@ -305,53 +377,13 @@ export default function DiveIn({ address, found, map, onClose }: Props): React.R
     )
   }
 
-  const rowsBlock = rows.length > 0 && (
-    <div className="dive-rows">
-      <p className="dive-eyebrow">Where Scripture picks this up</p>
-      {rows.slice(0, more ? rows.length : GLANCE_ROWS).map((row, i) => (
-        <Row
-          key={`${row.book}/${row.chapter}/${row.verse}`}
-          row={row}
-          open={openRow === i}
-          onToggle={el => toggleRow(i, el)}
-          onRead={() => setStacked(row)}
-        />
-      ))}
-      {rest > 0 && (
-        <Fold
-          expanded={more}
-          onToggle={() => setMore(m => !m)}
-          open="Fewer"
-          closed={`${rest} more`}
-        />
-      )}
-    </div>
-  )
-  const mapBlock = map && (
-    <DiveMap map={map} verse={address.verse} translation={address.translation} />
-  )
-
   return (
     <DeepDiveSheet
       reference={address.reference}
       label={`Dive into ${address.reference}`}
       onClose={onClose}
     >
-      <p className="word-door-verse">
-        <Marked text={address.verseText} run={lead} />
-      </p>
-      {journeyFirst ? (
-        <>
-          {mapBlock}
-          {rowsBlock}
-        </>
-      ) : (
-        <>
-          {rowsBlock}
-          {mapBlock}
-        </>
-      )}
-      <p className="dive-prov">{provenance(found, map)}</p>
+      <DiveBody address={address} found={found} map={map} onRead={setStacked} />
     </DeepDiveSheet>
   )
 }

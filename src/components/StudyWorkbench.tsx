@@ -360,11 +360,6 @@ export default function StudyWorkbench({
             </>
           )}
         </div>
-        {/* Reached from the Study side, never from a mark in the scripture
-            beside it. One verse only: a door is about a word in a sentence. */}
-        {wordDoor && activeRange && activeRange.start === activeRange.end && (
-          <div className="study-editor-words">{wordDoor(activeRange.start)}</div>
-        )}
         <div className="study-editor-foot">
           {!confirming && (
             <div className="study-chips">
@@ -424,6 +419,13 @@ export default function StudyWorkbench({
               </>
             )}
           </div>
+          {/* What is beneath the aimed verse — the dive-in body, open, under
+              the note rather than between the reader and their writing. One
+              verse only, the grammar in docs/ARCHITECTURE.md: choosing a verse
+              always shows what is beneath it, in every mode. */}
+          {wordDoor && activeRange && activeRange.start === activeRange.end && (
+            <div className="study-editor-words">{wordDoor(activeRange.start)}</div>
+          )}
         </div>
       </div>
     </div>

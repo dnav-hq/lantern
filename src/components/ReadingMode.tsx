@@ -9,6 +9,7 @@ import InlineDeleteConfirm from './InlineDeleteConfirm'
 import CrossRefPill from './CrossRefPill'
 import FootnoteVerseText from './FootnoteDoor'
 import VerseDoorways from './VerseDoorways'
+import { loadChapterDepth } from '../utils/chapterDepth'
 import ScriptureSkeleton from './ScriptureSkeleton'
 import QuickEditCard from './QuickEditCard'
 import ReadingControls from './ReadingControls'
@@ -156,6 +157,16 @@ export default function ReadingMode({
   const [translation] = useReadingTranslation()
   const [biblePassage, setBiblePassage] = useState<BiblePassage | null>(null)
   const [notes, setNotes] = useState<Note[]>([])
+  // The gutter mark's facts for this chapter (see BookDetailPage; same rule).
+  const [depth, setDepth] = useState<ReadonlySet<number>>(() => new Set())
+  useEffect(() => {
+    let live = true
+    setDepth(new Set())
+    loadChapterDepth(passage.book_number, passage.chapter_start).then(set => live && setDepth(set))
+    return () => {
+      live = false
+    }
+  }, [passage.book_number, passage.chapter_start])
   const [loading, setLoading] = useState(true)
   const [highlightedNoteIds, setHighlightedNoteIds] = useState<Set<string>>(new Set())
   const [highlightedVerses, setHighlightedVerses] = useState<Set<number>>(new Set())
@@ -811,7 +822,9 @@ export default function ReadingMode({
                           aria-hidden="true"
                         />
                       )}
-                      <span className="verse-number">{v.verse}</span>
+                      <span className={`verse-number${depth.has(v.verse) ? ' has-depth' : ''}`}>
+                        {v.verse}
+                      </span>
                       <FootnoteVerseText
                         verse={v}
                         doors={selRange === null}

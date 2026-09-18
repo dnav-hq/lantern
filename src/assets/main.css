@@ -9563,7 +9563,9 @@ body.dark .map-terrain {
   padding: 18px 0;
 }
 .study-editor-words {
-  padding: 0 2px;
+  padding: 10px 2px 0;
+  margin-top: 10px;
+  border-top: 0.5px solid var(--border);
 }
 
 body.dark .word-sheet {
@@ -9865,6 +9867,29 @@ body.dark .conn-crumb {
 }
 .dive-entry-glyph circle {
   fill: var(--accent-ink);
+}
+
+/* The gutter mark: a verse with depth carries a small accent dot under its
+   number. Presence only — it is on the same facts the entrance opens on
+   (utils/chapterDepth.ts), so it promises exactly what a tap delivers. */
+.verse-number {
+  position: relative;
+}
+.verse-number.has-depth::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.55;
+}
+.verse-doorways.is-inline {
+  display: block;
+  padding: 6px 0 0;
 }
 
 /* The marks: the whole relation vocabulary. */

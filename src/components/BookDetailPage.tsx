@@ -43,6 +43,7 @@ import {
 } from '../utils/useChapterNavigation'
 import FootnoteVerseText from './FootnoteDoor'
 import VerseDoorways from './VerseDoorways'
+import { loadChapterDepth } from '../utils/chapterDepth'
 import { chapterDoorCount } from '../utils/footnotes'
 import { markInstallEngagement } from '../utils/installNudge'
 import { formatRelativeTime } from '../utils/relativeTime'
@@ -319,6 +320,18 @@ function ChapterView({
   // animation mid-life.
   const entranceSuppressed = useRef(suppressEntrance).current
   const [bibleData, setBibleData] = useState<BiblePassage | null>(preloaded ?? null)
+  // The verses of this chapter with depth, for the gutter mark beside the
+  // number (utils/chapterDepth.ts): presence only, the same facts the dive-in
+  // opens on, so the mark promises exactly what a tap delivers.
+  const [depth, setDepth] = useState<ReadonlySet<number>>(() => new Set())
+  useEffect(() => {
+    let live = true
+    setDepth(new Set())
+    loadChapterDepth(bookNumber, chapter).then(set => live && setDepth(set))
+    return () => {
+      live = false
+    }
+  }, [bookNumber, chapter])
   const [loading, setLoading] = useState(!preloaded)
   // A translation switch on a chapter that is ALREADY on screen. The text stays
   // put (dimmed) until the new one lands, instead of collapsing to a skeleton:
@@ -1873,7 +1886,9 @@ function ChapterView({
                       aria-hidden="true"
                     />
                   )}
-                  <span className="verse-number">{v.verse}</span>
+                  <span className={`verse-number${depth.has(v.verse) ? ' has-depth' : ''}`}>
+                    {v.verse}
+                  </span>
                   {/* The doors are REMOVED while a selection is live, not left
                       inert (§10a.3): capture owns the verse, and a door you
                       have turned off is worse than no door. */}
@@ -2148,6 +2163,7 @@ function ChapterView({
                 reference={`${bookName} ${chapter}:${verse}`}
                 verseText={line.text}
                 onOpenMap={onOpenMap}
+                inline
               />
             )
           }}

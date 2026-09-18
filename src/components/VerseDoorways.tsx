@@ -30,7 +30,8 @@ import {
   type ChapterMap
 } from '../utils/diveMapLoader'
 import { useReadingTranslation } from '../utils/useTranslation'
-import DiveIn from './DiveIn'
+import DiveIn, { DiveBody } from './DiveIn'
+import type { ConnectionRow } from '../utils/connectionsLoader'
 import Marked from './Marked'
 
 interface Props {
@@ -44,6 +45,12 @@ interface Props {
   onOpenMap?: () => void
   /** The translation whose text is on screen. Falls back to the reading preference. */
   translation?: TranslationId
+  /**
+   * Study (desktop): the whole dive-in body, open, beside the note — not the
+   * one-line entrance. Same content, same rules; only the costume differs,
+   * because the workbench already has the room (Dennis, 2026-09-18).
+   */
+  inline?: boolean
 }
 
 /** The route glyph: a small rise-and-fall between two stops. */
@@ -58,6 +65,7 @@ const GLYPH = (
 export default function VerseDoorways({
   onOpenMap: _onOpenMap,
   translation,
+  inline = false,
   ...address
 }: Props): React.ReactElement | null {
   const { book, chapter, verse, reference, verseText } = address
@@ -66,12 +74,14 @@ export default function VerseDoorways({
   const [found, setFound] = useState<VerseConnections | null | undefined>(undefined)
   const [map, setMap] = useState<ChapterMap | null | undefined>(undefined)
   const [open, setOpen] = useState(false)
+  const [readRow, setReadRow] = useState<ConnectionRow | null>(null)
 
   useEffect(() => {
     let live = true
     setFound(undefined)
     setMap(undefined)
     setOpen(false)
+    setReadRow(null)
     connectionsLoader
       .verse(book, chapter, verse, shownTranslation)
       .then(result => live && setFound(result))
@@ -136,6 +146,30 @@ export default function VerseDoorways({
   }
 
   if (!line) return null
+  if (inline) {
+    const diveAddress = {
+      book,
+      chapter,
+      verse,
+      reference,
+      verseText,
+      translation: shownTranslation
+    }
+    return (
+      <div className="verse-doorways is-inline" onClick={e => e.stopPropagation()}>
+        <DiveBody address={diveAddress} found={found ?? null} map={verseMap} onRead={setReadRow} />
+        {readRow && (
+          <DiveIn
+            address={diveAddress}
+            found={found ?? null}
+            map={verseMap}
+            initialStacked={readRow}
+            onClose={() => setReadRow(null)}
+          />
+        )}
+      </div>
+    )
+  }
   return (
     <div className="verse-doorways" onClick={e => e.stopPropagation()}>
       <button
