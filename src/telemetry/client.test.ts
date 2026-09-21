@@ -3,8 +3,52 @@ import {
   isWithinChunkLoadErrorWindow,
   markChunkLoadErrorReported,
   shouldSuppressAsChunkLoadTail,
-  CHUNK_ERROR_SUPPRESS_WINDOW_MS
+  CHUNK_ERROR_SUPPRESS_WINDOW_MS,
+  shouldReportTelemetry,
+  isLocalDevHost
 } from './client'
+
+// Dev/local guard: either the production-build flag or the local-host check
+// is enough on its own to suppress a report. See client.ts's "Dev/local
+// guard" section for why neither subsumes the other.
+describe('shouldReportTelemetry', () => {
+  it('reports in production, with backend keys, from a remote origin', () => {
+    expect(
+      shouldReportTelemetry({ isProductionBuild: true, hasBackendKeys: true, hostname: 'lanternword.com' })
+    ).toBe(true)
+  })
+
+  it('does NOT report in a development build, even from a remote origin', () => {
+    expect(
+      shouldReportTelemetry({ isProductionBuild: false, hasBackendKeys: true, hostname: 'lanternword.com' })
+    ).toBe(false)
+  })
+
+  it('does NOT report a production build served from localhost', () => {
+    expect(
+      shouldReportTelemetry({ isProductionBuild: true, hasBackendKeys: true, hostname: 'localhost' })
+    ).toBe(false)
+  })
+
+  it('does NOT report when backend keys are missing', () => {
+    expect(
+      shouldReportTelemetry({ isProductionBuild: true, hasBackendKeys: false, hostname: 'lanternword.com' })
+    ).toBe(false)
+  })
+})
+
+describe('isLocalDevHost', () => {
+  it('recognizes localhost, 127.0.0.1, ::1, and .local hostnames', () => {
+    expect(isLocalDevHost('localhost')).toBe(true)
+    expect(isLocalDevHost('127.0.0.1')).toBe(true)
+    expect(isLocalDevHost('::1')).toBe(true)
+    expect(isLocalDevHost('my-machine.local')).toBe(true)
+  })
+
+  it('does not flag a real remote hostname', () => {
+    expect(isLocalDevHost('lanternword.com')).toBe(false)
+  })
+})
 
 // The de-dup flag behind chunk-load-error suppression. A stale-chunk failure's
 // TypeError reaches window.onerror and the error boundary moments after

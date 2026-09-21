@@ -14,6 +14,18 @@ belongs to and why that arc comes when it does.
 
 ## Deferred
 
+- **DONE 2026-09-21: telemetry no longer reports from development.** Four of
+  six alerts in the production inbox were Dennis's own dev-server errors,
+  burying real reports in noise. `src/telemetry/client.ts` gained
+  `shouldReportTelemetry()`, a pure exported predicate evaluated on every
+  report attempt (not cached at module load): it requires the bundler's own
+  `import.meta.env.PROD` flag AND the existing backend-keys check, and
+  independently drops any report whose page origin is a local dev host
+  (`isLocalDevHost` — localhost, 127.0.0.1, ::1, or `.local`), so a
+  production build served locally for manual testing still doesn't report.
+  Either guard alone is enough to suppress. Payload, batching and transport
+  are unchanged; reporting from the real deployed site is unaffected.
+
 - **World-class pass (2026-09-18, `docs/audits/world-class-pass-2026-09-18.md`) — ALL FIXED the same day.**
   Scripture full-text search (in-browser scan of the shipped BSB bundle,
   `utils/scriptureSearch.ts`, third section of search); the mobile composer

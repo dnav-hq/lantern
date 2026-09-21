@@ -53,6 +53,34 @@ export type TelemetryKind = 'error' | 'scripture_fallback_serve' | 'draft_recove
 
 const enabled = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
 
+// ─── Dev/local guard ─────────────────────────────────────────────────────────
+//
+// Two independent gates, either one enough on its own to suppress a report:
+// the bundler's own production flag (so a `vite dev` session never reports,
+// even before this module's other checks run), and the page's own origin (so
+// a production BUILD served locally for manual testing — `vite preview`, a
+// static server on localhost — still doesn't report). Neither subsumes the
+// other: a dev build can be served from a non-local hostname (rare, but the
+// prod flag alone catches it), and a prod build is routinely opened at
+// localhost while testing a release. Exported and evaluated per-attempt
+// (never cached at module load) so a test can drive both branches directly.
+
+/** localhost, 127.0.0.1, ::1, or any `.local` mDNS hostname. */
+export function isLocalDevHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.endsWith('.local')
+}
+
+export function shouldReportTelemetry(params: {
+  isProductionBuild: boolean
+  hasBackendKeys: boolean
+  hostname: string
+}): boolean {
+  if (!params.isProductionBuild) return false
+  if (!params.hasBackendKeys) return false
+  if (isLocalDevHost(params.hostname)) return false
+  return true
+}
+
 // ─── User opt-out ────────────────────────────────────────────────────────────
 
 const OPTOUT_KEY = 'berean.telemetry-optout'
@@ -152,7 +180,15 @@ function send(
   code: string,
   extra: { errorClass?: string; stack?: string; boundary?: string } = {}
 ): void {
-  if (!enabled) return
+  if (
+    !shouldReportTelemetry({
+      isProductionBuild: import.meta.env.PROD,
+      hasBackendKeys: enabled,
+      hostname: window.location.hostname
+    })
+  ) {
+    return
+  }
   if (isTelemetryOptedOut()) return
   const installId = getInstallId()
   if (!installId) return
