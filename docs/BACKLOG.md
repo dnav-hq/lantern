@@ -351,16 +351,17 @@ belongs to and why that arc comes when it does.
   (derek@harvous.com) and ask how he licensed his 11 translations; add a
   comment in `src/bible/esv.ts` pointing at the tripwire.
 
-- **ESV performance: persist the cache + prefetch neighbours (2026-08-30,
-  compliant, unblocked).** ESV refetches on every reload because
-  `src/bible/esv-cache.ts` is in-memory only — a deliberately conservative
-  choice its own comment admits is "stricter than the letter of the license
-  requires." Two wins inside Crossway's 500-verse cap: (a) persist the cache to
-  IndexedDB so reloads stop refetching (tradeoff: writes licensed text to disk,
-  which the original author avoided on purpose — Dennis's call); (b) prefetch
-  the next/previous chapter on idle, which is where most of the perceived
-  slowness actually lives. Neither removes new-chapter latency beyond the cap;
-  only a Crossway licence could.
+- **ESV performance: half done.** Two wins were identified inside Crossway's
+  500-verse cap. **(a) Persisting the cache SHIPPED 2026-08-31** — Dennis
+  approved writing the capped text to disk, and `src/bible/esv-store.ts` holds
+  it in its OWN IndexedDB database precisely so `purgeEsvStore()` can remove
+  every byte of licensed text in one call if the licence ever changes. Reloads
+  no longer refetch, which also makes Lantern a lighter consumer of a quota
+  that is per-application and therefore shared across every user. **(b)
+  Prefetching the next and previous chapter on idle is QUEUED** (HQ task
+  96b370b4) — that is where most of the perceived slowness actually lives.
+  Neither removes new-chapter latency beyond the cap; only a Crossway licence
+  could. Note the cap is a licence term, not a tuning knob.
 
 - **Distribution / discoverability — the gap that is actually costing us
   (2026-08-30).** Harvous is not beating Lantern on product; it is beating it
@@ -1030,12 +1031,18 @@ belongs to and why that arc comes when it does.
   already served, so the remaining work is caching one file on purpose plus the
   UI to trigger and report it.
 
-- **Scripture full-text search (verse-text search).** Search v1 (UX overhaul,
-  workstream 6) only *parses* a query into a reference jump ("mat 2:13" →
-  Matthew 2) via `parseScriptureQuery`; it does NOT search the words of
-  scripture. Searching verse text depends on having the full BSB available to
-  index (the Full-Bible offline prefetch item above) plus a client-side index
-  strategy. Deferred deliberately.
+- **Scripture full-text search (verse-text search) — SHIPPED 2026-09-18.**
+  This entry said the feature depended on a full-Bible prefetch plus a
+  client-side index strategy. Both turned out to be unnecessary: the complete
+  BSB already ships as `public/bible/bsb.json.gz` for the read-path fallback,
+  and scanning its 31,102 verses for a case-folded substring is fast enough
+  that an inverted index would save nothing a reader could feel while costing
+  a second download. `src/utils/scriptureSearch.ts` fetches that bundle once on
+  the first word query and scans it; `GlobalSearch` gained a third section, "In
+  Scripture", marking the match, in canonical order, capped at 40 with the cap
+  stated. It runs only when the query is not already a reference and is at
+  least three characters. Still deferred: search across translations other than
+  the BSB, and using a word span as a Journal search key.
 
 - **Multiple study instances over the same verses — UI-only follow-up shipped
   in `BookDetailPage`; ReadingMode's equivalent secondary affordance still
