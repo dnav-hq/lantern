@@ -1966,6 +1966,29 @@ body.dark .search-backdrop {
   color: var(--text-faint);
 }
 
+/* Same faint register as the version line above it — a control, not a call
+   to action. The dot means "something changed since you last opened this",
+   never "you haven't looked yet" (see hasUnreadChangelog). */
+.profile-page-whatsnew {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: 4px auto 0;
+  padding: 2px 4px;
+  background: none;
+  border: none;
+  font-size: 11.5px;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.profile-page-whatsnew:hover {
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+
 .profile-page-btn {
   width: 100%;
   padding: 11px 14px;
@@ -6299,6 +6322,21 @@ body.dark .smodal-checkbox-label {
   left: 3px;
   color: var(--accent-ink);
   font-weight: 700;
+}
+
+/* Dark mode — this modal shipped with the Electron app and was never wired
+   up until now, so it never got a dark pass; its borders/shadow were tuned
+   for a light backdrop only. */
+body.dark .wn-modal {
+  border-color: var(--border);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+}
+body.dark .wn-header {
+  border-color: var(--border);
+}
+body.dark .wn-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-faint);
 }
 
 /* ─── Update indicator (sidebar footer) ─────────────────────────────────────── */

@@ -1097,6 +1097,23 @@ belongs to and why that arc comes when it does.
 
 ## Done
 
+- **A readable changelog under the version line (DONE 2026-09-21).** Lantern
+  had real users with no way to tell it was improving. Profile now carries a
+  quiet "What's new" control right under the version line, in the same faint
+  register — tapping it opens the app's existing modal shape (the Electron
+  app's `.wn-*` CSS, never wired up in the web rewrite until now) with a
+  hand-written, reverse-chronological list: `src/content/changelog.ts`. It is
+  NOT generated from git log; an entry is a version tag, an ISO date and one
+  to four plain-English lines, added by hand when something user-visible
+  ships. A quiet unread dot (`hasUnreadChangelog`, `src/utils/changelog.ts`)
+  appears on the control only when the newest entry's version differs from
+  what's stored at `berean.changelogSeenVersion` — absent for a first-time
+  reader, appears once a stored version falls behind, and clears for good the
+  moment the list is opened. Nothing else on the page gained a badge; the PWA
+  update pill is untouched. Seeded with the last few weeks' user-visible
+  ships: the dive-in (cross-references + map under a verse), scripture text
+  search, guest access to Profile/Settings on desktop, and Tamil.
+
 - **Note capture: ONE editor for writing a note and editing it (DONE
   2026-09-03).** Writing a new note used `InlineTagInput`, a form control, while
   editing one used `RichEditInput`, a contenteditable. That split was why `v2-5`

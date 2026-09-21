@@ -1,5 +1,7 @@
-import React from 'react'
+import React, { useCallback, useState } from 'react'
 import { useNotesExport } from '../utils/useNotesExport'
+import { CHANGELOG } from '../content/changelog'
+import { getSeenChangelogVersion, hasUnreadChangelog, markChangelogSeen } from '../utils/changelog'
 
 interface ProfilePageProps {
   displayName: string | null
@@ -27,6 +29,18 @@ export default function ProfilePage({
   onInstall
 }: ProfilePageProps): React.ReactElement {
   const { state: exportState, run: runExport } = useNotesExport()
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false)
+  const [hasUnread, setHasUnread] = useState(() => hasUnreadChangelog(getSeenChangelogVersion()))
+
+  const openWhatsNew = useCallback(() => {
+    setWhatsNewOpen(true)
+    setHasUnread(false)
+    markChangelogSeen()
+  }, [])
+  const closeWhatsNew = useCallback(() => setWhatsNewOpen(false), [])
+  const handleWhatsNewKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') setWhatsNewOpen(false)
+  }, [])
 
   const initial = (displayName || '?').trim().charAt(0).toUpperCase() || '?'
 
@@ -102,6 +116,59 @@ export default function ProfilePage({
           <> · {import.meta.env.VITE_COMMIT_SHA.slice(0, 7)}</>
         ) : null}
       </div>
+      <button type="button" className="profile-page-whatsnew" onClick={openWhatsNew}>
+        What's new
+        {hasUnread && <span className="wn-dot" aria-hidden="true" />}
+      </button>
+
+      {whatsNewOpen && (
+        <div className="wn-backdrop" onClick={closeWhatsNew} onKeyDown={handleWhatsNewKeyDown}>
+          <div
+            className="wn-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="What's new"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="wn-header">
+              <span className="wn-title">What's new</span>
+              <button
+                type="button"
+                className="wn-close"
+                onClick={closeWhatsNew}
+                aria-label="Close"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="wn-body">
+              {CHANGELOG.map(entry => (
+                <div key={entry.version} className="wn-entry">
+                  <div className="wn-entry-header">
+                    <span className="wn-date">{entry.date}</span>
+                  </div>
+                  <ul className="wn-notes">
+                    {entry.lines.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
