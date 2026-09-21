@@ -58,6 +58,12 @@ export class EsvCachedBibleProvider implements BibleProvider {
   // Hydration runs at most once per instance, lazily on the first read, so
   // constructing the provider costs nothing at module load.
   private hydrated: Promise<void> | null = null
+  // A chapter fetch already under way, keyed the same as `entries`. Shared by
+  // every caller of getChapter — the on-demand read AND the idle-time
+  // neighbour prefetch — so two requests for the same not-yet-cached chapter
+  // (a prefetch racing the reader who just turned to it) collapse into one
+  // network call instead of stampeding the shared per-application ESV quota.
+  private readonly inFlight = new Map<string, Promise<BibleVerseLine[]>>()
 
   constructor(
     private readonly inner: BibleProvider,
@@ -114,12 +120,40 @@ export class EsvCachedBibleProvider implements BibleProvider {
       return cached.verses
     }
 
-    const verses = await this.inner.getChapter(bookNumber, chapter)
-    this.entries.set(key, { key, verses })
-    this.totalVerses += verses.length
-    this.evict()
-    this.persist()
+    const pending = this.inFlight.get(key)
+    if (pending) return pending
 
-    return verses
+    const fetching = this.inner
+      .getChapter(bookNumber, chapter)
+      .then(verses => {
+        this.entries.set(key, { key, verses })
+        this.totalVerses += verses.length
+        this.evict()
+        this.persist()
+        return verses
+      })
+      .finally(() => this.inFlight.delete(key))
+    this.inFlight.set(key, fetching)
+
+    return fetching
+  }
+
+  /**
+   * Quietly warm the cache for a chapter the reader isn't asking for yet.
+   * Goes through the exact same cached/capped/deduplicated getChapter path
+   * above, so a prefetched chapter is indistinguishable from one the reader
+   * fetched themselves — same cache, same 500-verse cap, same LRU eviction.
+   *
+   * A failure here is invisible on purpose: no throw, no retry, no log. The
+   * reader never asked for this chapter yet, so nothing should tell them
+   * anything went wrong; if they do turn to it, their own request runs this
+   * same path again and behaves exactly as it does today.
+   */
+  async prefetch(bookNumber: number, chapter: number): Promise<void> {
+    try {
+      await this.getChapter(bookNumber, chapter)
+    } catch {
+      // Silent by design — see doc comment above.
+    }
   }
 }

@@ -2,11 +2,14 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { EsvBibleProvider } from './esv'
 import { EsvCachedBibleProvider } from './esv-cache'
 import type { EsvStore, PersistedState } from './esv-store'
+import { esvNeighbourChapters, scheduleEsvNeighbourPrefetch } from './service'
+import { bookByNumber } from '../utils/bibleBooks'
 import { CodedError } from '../errors'
 import type { BibleProvider, BibleVerseLine } from './provider'
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.useRealTimers()
 })
 
 function fakeJsonResponse(status: number, body: unknown): Response {
@@ -314,5 +317,197 @@ describe('EsvCachedBibleProvider persistence', () => {
     const cached = new EsvCachedBibleProvider(inner.provider, failing)
     // Hydration rejecting must not take the read down with it.
     await expect(cached.getChapter(43, 1)).rejects.toThrow('storage blocked')
+  })
+})
+
+describe('EsvCachedBibleProvider.prefetch (neighbour prefetch)', () => {
+  function makeInner(versesPerChapter: number): {
+    provider: BibleProvider
+    calls: [number, number][]
+  } {
+    const calls: [number, number][] = []
+    const provider: BibleProvider = {
+      async getChapter(bookNumber, chapter) {
+        calls.push([bookNumber, chapter])
+        return Array.from({ length: versesPerChapter }, (_, i) => ({
+          verse: i + 1,
+          text: `book${bookNumber} ch${chapter} v${i + 1}`
+        }))
+      }
+    }
+    return { provider, calls }
+  }
+
+  it('writes through the same cache a normal read would, respecting the cap', async () => {
+    const { provider, calls } = makeInner(100)
+    const cached = new EsvCachedBibleProvider(provider)
+
+    for (let ch = 1; ch <= 5; ch++) await cached.prefetch(43, ch)
+    expect(calls).toHaveLength(5)
+
+    // A prefetched chapter is a real cache entry: the reader's own request
+    // for it causes no further fetch.
+    await cached.getChapter(43, 3)
+    expect(calls).toHaveLength(5)
+
+    // A sixth prefetch pushes the cap and must evict, exactly like an
+    // on-demand read does.
+    await cached.prefetch(43, 6)
+    expect(calls).toHaveLength(6)
+    await cached.getChapter(43, 1) // evicted, re-fetches
+    expect(calls).toHaveLength(7)
+  })
+
+  it('does not refetch a chapter already in the cache', async () => {
+    const { provider, calls } = makeInner(10)
+    const cached = new EsvCachedBibleProvider(provider)
+
+    await cached.getChapter(43, 2) // the reader's own read
+    await cached.prefetch(43, 2) // scheduled prefetch of the same chapter
+    expect(calls).toHaveLength(1)
+  })
+
+  it('deduplicates two concurrent prefetches of the same chapter into one fetch', async () => {
+    let resolveInner: ((verses: BibleVerseLine[]) => void) | null = null
+    const calls: [number, number][] = []
+    const provider: BibleProvider = {
+      getChapter(bookNumber, chapter) {
+        calls.push([bookNumber, chapter])
+        return new Promise(resolve => {
+          resolveInner = resolve
+        })
+      }
+    }
+    const cached = new EsvCachedBibleProvider(provider)
+
+    const first = cached.prefetch(43, 5)
+    const second = cached.prefetch(43, 5) // turning pages quickly, same neighbour twice
+    // Let hydration (an async no-op with no IndexedDB in this test env) settle
+    // before checking that only one fetch was actually issued.
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(calls).toHaveLength(1)
+
+    resolveInner!([{ verse: 1, text: 'v1' }])
+    await Promise.all([first, second])
+    expect(calls).toHaveLength(1)
+  })
+
+  it('deduplicates a prefetch racing the reader turning to the same chapter', async () => {
+    let resolveInner: ((verses: BibleVerseLine[]) => void) | null = null
+    const calls: [number, number][] = []
+    const provider: BibleProvider = {
+      getChapter(bookNumber, chapter) {
+        calls.push([bookNumber, chapter])
+        return new Promise(resolve => {
+          resolveInner = resolve
+        })
+      }
+    }
+    const cached = new EsvCachedBibleProvider(provider)
+
+    const prefetch = cached.prefetch(43, 5)
+    const read = cached.getChapter(43, 5) // the reader arrives before the prefetch resolved
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(calls).toHaveLength(1)
+
+    resolveInner!([{ verse: 1, text: 'v1' }])
+    const [, verses] = await Promise.all([prefetch, read])
+    expect(verses).toEqual([{ verse: 1, text: 'v1' }])
+  })
+
+  it('is silent on failure: no throw, and the reader’s own next request is unaffected', async () => {
+    let shouldFail = true
+    const calls: number[] = []
+    const provider: BibleProvider = {
+      async getChapter(_bookNumber, chapter) {
+        calls.push(chapter)
+        if (shouldFail) throw new Error('network blip')
+        return [{ verse: 1, text: 'v1' }]
+      }
+    }
+    const cached = new EsvCachedBibleProvider(provider)
+
+    await expect(cached.prefetch(43, 7)).resolves.toBeUndefined()
+    expect(calls).toHaveLength(1)
+
+    // The reader's own request behaves exactly as it does today: a plain
+    // retry-free read that still surfaces the failure if it recurs, and
+    // succeeds normally once the transient blip is gone.
+    shouldFail = false
+    await expect(cached.getChapter(43, 7)).resolves.toEqual([{ verse: 1, text: 'v1' }])
+    expect(calls).toHaveLength(2)
+  })
+})
+
+describe('esvNeighbourChapters (pure)', () => {
+  it('mid-book: both the previous and next chapter, same book', () => {
+    const john = bookByNumber(43)!
+    expect(esvNeighbourChapters(43, 3)).toEqual([
+      { bookNumber: 43, bookName: john.name, chapter: 2 },
+      { bookNumber: 43, bookName: john.name, chapter: 4 }
+    ])
+  })
+
+  it('first chapter of the first book: no previous, only next', () => {
+    expect(esvNeighbourChapters(1, 1)).toEqual([{ bookNumber: 1, bookName: 'Genesis', chapter: 2 }])
+  })
+
+  it('last chapter of a book: next rolls into the following book', () => {
+    const malachi = bookByNumber(39)!
+    const matthew = bookByNumber(40)!
+    expect(esvNeighbourChapters(malachi.number, malachi.chapters)).toEqual([
+      { bookNumber: malachi.number, bookName: malachi.name, chapter: malachi.chapters - 1 },
+      { bookNumber: matthew.number, bookName: matthew.name, chapter: 1 }
+    ])
+  })
+
+  it('last chapter of Revelation: no next, only previous', () => {
+    const revelation = bookByNumber(66)!
+    expect(esvNeighbourChapters(revelation.number, revelation.chapters)).toEqual([
+      { bookNumber: 66, bookName: revelation.name, chapter: revelation.chapters - 1 }
+    ])
+  })
+})
+
+describe('scheduleEsvNeighbourPrefetch', () => {
+  it('schedules a prefetch for every neighbour that exists', () => {
+    const prefetch = vi.fn()
+    scheduleEsvNeighbourPrefetch(43, 3, prefetch, run => run())
+    expect(prefetch).toHaveBeenCalledTimes(2)
+    expect(prefetch).toHaveBeenCalledWith(43, 2)
+    expect(prefetch).toHaveBeenCalledWith(43, 4)
+  })
+
+  it('schedules only the one neighbour that exists at a canon edge', () => {
+    const prefetch = vi.fn()
+    scheduleEsvNeighbourPrefetch(1, 1, prefetch, run => run())
+    expect(prefetch).toHaveBeenCalledTimes(1)
+    expect(prefetch).toHaveBeenCalledWith(1, 2)
+  })
+
+  it('uses requestIdleCallback when available, not a bare synchronous call', () => {
+    const idle = vi.fn((cb: () => void) => {
+      cb()
+      return 1
+    })
+    vi.stubGlobal('requestIdleCallback', idle)
+    const prefetch = vi.fn()
+
+    scheduleEsvNeighbourPrefetch(43, 3, prefetch)
+
+    expect(idle).toHaveBeenCalledTimes(2)
+    expect(prefetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('falls back to a short timeout when requestIdleCallback is unavailable', () => {
+    vi.stubGlobal('requestIdleCallback', undefined)
+    vi.useFakeTimers()
+    const prefetch = vi.fn()
+
+    scheduleEsvNeighbourPrefetch(43, 3, prefetch)
+    expect(prefetch).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(250)
+    expect(prefetch).toHaveBeenCalledTimes(2)
   })
 })

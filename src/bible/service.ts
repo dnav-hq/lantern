@@ -6,6 +6,7 @@ import type {
   TranslationId
 } from './provider'
 import { findBookByAlias, normalizeReference } from '../utils/bibleBooks'
+import { adjacentChapter, type ChapterRef } from '../utils/useChapterNavigation'
 import { HelloaoBibleProvider } from './helloao'
 import { CachedBibleProvider, CachedConnectionsProvider } from './cache'
 import { HelloaoConnectionsProvider } from './connections'
@@ -68,7 +69,11 @@ const kjvProvider: BibleProvider = new FallbackBibleProvider(
 // have (see esv.ts's header). A proxy/quota/offline failure is a plain thrown
 // CodedError; getBibleVerse below catches it and degrades to null rather than
 // silently substituting another translation's text.
-const esvProvider: BibleProvider = new EsvCachedBibleProvider(new EsvBibleProvider())
+// Held as its concrete type (not just BibleProvider) so the idle-time
+// neighbour prefetch below can reach its `prefetch` method, which on-demand
+// reads never need.
+const esvCache = new EsvCachedBibleProvider(new EsvBibleProvider())
+const esvProvider: BibleProvider = esvCache
 
 // Tamil: the same keyless helloao path BSB uses, just a different translation
 // code — no key, no proxy, no quota (both are CC BY-SA 4.0; the attribution
@@ -112,6 +117,59 @@ const providers: Record<TranslationId, BibleProvider> = {
   NET: netProvider,
   IRV: irvProvider,
   TCV: tcvProvider
+}
+
+/* ─── ESV neighbour prefetch ────────────────────────────────────────────────
+   Every other chapter turn is a network round trip on ESV, which is where the
+   app feels slowest — there is no self-hosted bundle to fall back to for a
+   copyrighted translation (see esv.ts), so ESV never gets the instant-turn
+   feel BSB/KJV/NET already have via their cache-forever layer. This quietly
+   warms the ESV cache for the chapters either side of the one just read,
+   scheduled on idle so it can never compete with the reader's own request.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The chapters either side of (bookNumber, chapter), following real book
+ * boundaries — pure and exported so the edge cases (first chapter of the
+ * first book, last chapter of a book, last chapter of Revelation) are plain
+ * unit tests. Delegates to `adjacentChapter` (useChapterNavigation.ts, already
+ * proven against every canon edge by the swipe-navigation feature) rather than
+ * re-deriving the same book-boundary math a second time.
+ */
+export function esvNeighbourChapters(bookNumber: number, chapter: number): ChapterRef[] {
+  const previous = adjacentChapter(bookNumber, chapter, -1)
+  const next = adjacentChapter(bookNumber, chapter, 1)
+  return [previous, next].filter((ref): ref is ChapterRef => ref !== null)
+}
+
+/**
+ * requestIdleCallback where available, a short setTimeout fallback otherwise
+ * (Safari has no requestIdleCallback, and a non-DOM test environment has
+ * neither the function nor the global it would hang off).
+ */
+function scheduleIdle(run: () => void): void {
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(run, { timeout: 1200 })
+    return
+  }
+  setTimeout(run, 250)
+}
+
+/**
+ * Schedule `prefetch` for each neighbour of (bookNumber, chapter) on idle.
+ * `prefetch` and `schedule` are injected (not read from module state) purely
+ * so this is testable without touching the real ESV cache, a timer, or the
+ * network — see esv.test.ts.
+ */
+export function scheduleEsvNeighbourPrefetch(
+  bookNumber: number,
+  chapter: number,
+  prefetch: (bookNumber: number, chapter: number) => void,
+  schedule: (run: () => void) => void = scheduleIdle
+): void {
+  for (const neighbour of esvNeighbourChapters(bookNumber, chapter)) {
+    schedule(() => prefetch(neighbour.bookNumber, neighbour.chapter))
+  }
 }
 
 // Cross-references, one instance for the whole app and every translation
@@ -193,6 +251,13 @@ export async function getBibleVerse(
   let servedTranslation: TranslationId | undefined
   try {
     chapterVerses = await providers[translation].getChapter(parsed.bookNumber, parsed.chapterStart)
+    // ESV only, and only once the chapter actually asked for has succeeded —
+    // never ahead of it, never for a chapter served by a fallback translation.
+    if (translation === 'ESV') {
+      scheduleEsvNeighbourPrefetch(parsed.bookNumber, parsed.chapterStart, (b, c) => {
+        void esvCache.prefetch(b, c)
+      })
+    }
   } catch (err) {
     // BSB/KJV/NET each have a self-hosted fallback wrapped INSIDE their
     // provider, so reaching here for them means both the network and the
