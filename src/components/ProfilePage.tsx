@@ -132,12 +132,7 @@ export default function ProfilePage({
           >
             <div className="wn-header">
               <span className="wn-title">What's new</span>
-              <button
-                type="button"
-                className="wn-close"
-                onClick={closeWhatsNew}
-                aria-label="Close"
-              >
+              <button type="button" className="wn-close" onClick={closeWhatsNew} aria-label="Close">
                 <svg
                   width="14"
                   height="14"
