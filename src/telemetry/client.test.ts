@@ -14,25 +14,41 @@ import {
 describe('shouldReportTelemetry', () => {
   it('reports in production, with backend keys, from a remote origin', () => {
     expect(
-      shouldReportTelemetry({ isProductionBuild: true, hasBackendKeys: true, hostname: 'lanternword.com' })
+      shouldReportTelemetry({
+        isProductionBuild: true,
+        hasBackendKeys: true,
+        hostname: 'lanternword.com'
+      })
     ).toBe(true)
   })
 
   it('does NOT report in a development build, even from a remote origin', () => {
     expect(
-      shouldReportTelemetry({ isProductionBuild: false, hasBackendKeys: true, hostname: 'lanternword.com' })
+      shouldReportTelemetry({
+        isProductionBuild: false,
+        hasBackendKeys: true,
+        hostname: 'lanternword.com'
+      })
     ).toBe(false)
   })
 
   it('does NOT report a production build served from localhost', () => {
     expect(
-      shouldReportTelemetry({ isProductionBuild: true, hasBackendKeys: true, hostname: 'localhost' })
+      shouldReportTelemetry({
+        isProductionBuild: true,
+        hasBackendKeys: true,
+        hostname: 'localhost'
+      })
     ).toBe(false)
   })
 
   it('does NOT report when backend keys are missing', () => {
     expect(
-      shouldReportTelemetry({ isProductionBuild: true, hasBackendKeys: false, hostname: 'lanternword.com' })
+      shouldReportTelemetry({
+        isProductionBuild: true,
+        hasBackendKeys: false,
+        hostname: 'lanternword.com'
+      })
     ).toBe(false)
   })
 })

@@ -67,7 +67,12 @@ const enabled = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
 
 /** localhost, 127.0.0.1, ::1, or any `.local` mDNS hostname. */
 export function isLocalDevHost(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.endsWith('.local')
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname.endsWith('.local')
+  )
 }
 
 export function shouldReportTelemetry(params: {
@@ -184,7 +189,12 @@ function send(
     !shouldReportTelemetry({
       isProductionBuild: import.meta.env.PROD,
       hasBackendKeys: enabled,
-      hostname: window.location.hostname
+      // `typeof window` guard: this whole app only ever runs in a browser, but
+      // the test suite runs under Node with no jsdom (see draft.test.ts), and
+      // `enabled` (no backend keys configured there) already short-circuits
+      // `shouldReportTelemetry` before the hostname would matter — this just
+      // keeps that argument from throwing while it's evaluated regardless.
+      hostname: typeof window !== 'undefined' ? window.location.hostname : ''
     })
   ) {
     return
