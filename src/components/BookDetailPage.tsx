@@ -1902,30 +1902,21 @@ function ChapterView({
                   </span>
                   {/* The doors are REMOVED while a selection is live, not left
                       inert (§10a.3): capture owns the verse, and a door you
-                      have turned off is worse than no door. */}
-                  {wordSpan && mark ? (
-                    // The words the reader marked, tinted in place. Rendering
-                    // the text here rather than through FootnoteVerseText means
-                    // a verse showing a word-level mark shows no footnote door
-                    // for as long as the mark is there — the one cost of this
-                    // slice, and the smaller one: the alternative is the
-                    // reader's own marked words not appearing where they put
-                    // them. The text itself is character-for-character the same.
-                    <span className="verse-text">
-                      {v.text.slice(0, wordSpan.start)}
-                      <mark className={`verse-word-mark cat-${mark.category}`}>
-                        {v.text.slice(wordSpan.start, wordSpan.end)}
-                      </mark>
-                      {v.text.slice(wordSpan.end)}
-                    </span>
-                  ) : (
-                    <FootnoteVerseText
-                      verse={v}
-                      doors={selRange === null}
-                      canOpen={canOpenFootnote}
-                      chapterReference={`${bookName} ${chapter}`}
-                    />
-                  )}
+                      have turned off is worse than no door. A word-level mark
+                      is unaffected by that — it's the reader's own existing
+                      note, not this selection — and is threaded through as
+                      `highlight` so FootnoteVerseText resolves the doors and
+                      the tint together in one pass (see verseSegments' own
+                      overlap note): a door whose phrase the mark reaches into
+                      stays one tappable unit, with just the overlapping
+                      characters tinted inside it. */}
+                  <FootnoteVerseText
+                    verse={v}
+                    doors={selRange === null}
+                    canOpen={canOpenFootnote}
+                    chapterReference={`${bookName} ${chapter}`}
+                    highlight={wordSpan && mark ? { ...wordSpan, category: mark.category } : null}
+                  />
                   {/* The category NAME is what tells a mark apart from a
                       selection: both tint the row, only a mark says what it is.
                       Carries the reader's own naming. */}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { alternativeWordCount, footnoteSpan, footnoteSpans } from './footnoteSpan'
+import { alternativeWordCount, footnoteSpan, footnoteSpans, verseSegments } from './footnoteSpan'
 
 // Every verse text, note and marker position in this file is VERBATIM from a
 // live fetch of https://bible.helloao.org/api/BSB/complete.json (2026-09-01),
@@ -270,5 +270,74 @@ describe('no door rather than a door in the wrong place', () => {
     expect(underlined(JOHN_1_5, JOHN_1_5, 'Or comprehended')).toBe('it')
     const span = footnoteSpan(JOHN_1_5, JOHN_1_5.length + 50, 'Or comprehended')
     expect(span && JOHN_1_5.slice(span.start, span.end)).toBe('it')
+  })
+})
+
+describe('verseSegments — a door and a word-level mark, resolved together', () => {
+  const note = {
+    offset: 'The Light shines in the darkness, and the darkness has not overcome'.length,
+    text: 'Or comprehended'
+  }
+  // Strategy A, one word: the door lands on "overcome" alone (see the
+  // strategy-A suite above).
+  const doorSpan = footnoteSpans(JOHN_1_5, [note])[0]
+
+  function doorPieces(
+    segments: ReturnType<typeof verseSegments>
+  ): { text: string; marked: boolean }[] {
+    const door = segments.find(s => s.kind === 'door')
+    if (door?.kind !== 'door') throw new Error('expected a door segment')
+    return door.pieces.map(p => ({ text: p.text, marked: p.marked }))
+  }
+
+  function markedText(segments: ReturnType<typeof verseSegments>): string[] {
+    const marks: string[] = []
+    for (const seg of segments) {
+      if (seg.kind === 'text' && seg.marked) marks.push(seg.text)
+      if (seg.kind === 'door') marks.push(...seg.pieces.filter(p => p.marked).map(p => p.text))
+    }
+    return marks
+  }
+
+  it('no span at all: renders exactly what footnoteSpans alone would', () => {
+    const segments = verseSegments(JOHN_1_5, [note], null)
+    expect(doorPieces(segments)).toEqual([{ text: 'overcome', marked: false }])
+    expect(markedText(segments)).toEqual([])
+  })
+
+  it('no overlap: the mark tints its own words and the door is untouched', () => {
+    const segments = verseSegments(JOHN_1_5, [note], { start: 0, end: 'The Light'.length })
+    expect(doorPieces(segments)).toEqual([{ text: 'overcome', marked: false }])
+    expect(markedText(segments)).toEqual(['The Light'])
+  })
+
+  it('anchor inside the span: a mark that surrounds the door tints all of it, still as one piece', () => {
+    const around = { start: doorSpan.start - 1, end: doorSpan.end + 1 }
+    const segments = verseSegments(JOHN_1_5, [note], around)
+    expect(doorPieces(segments)).toEqual([{ text: 'overcome', marked: true }])
+  })
+
+  it('anchor at the boundary: a mark ending exactly at the door start does not overlap it', () => {
+    const segments = verseSegments(JOHN_1_5, [note], { start: 0, end: doorSpan.start })
+    expect(doorPieces(segments)).toEqual([{ text: 'overcome', marked: false }])
+    expect(markedText(segments)).toEqual([JOHN_1_5.slice(0, doorSpan.start)])
+  })
+
+  it('anchor at the boundary: a mark starting exactly at the door end does not overlap it', () => {
+    const segments = verseSegments(JOHN_1_5, [note], { start: doorSpan.end, end: JOHN_1_5.length })
+    expect(doorPieces(segments)).toEqual([{ text: 'overcome', marked: false }])
+    expect(markedText(segments)).toEqual([JOHN_1_5.slice(doorSpan.end)])
+  })
+
+  it('a mark that only partly overlaps the door splits it into marked and unmarked pieces, still one door', () => {
+    const segments = verseSegments(JOHN_1_5, [note], { start: 0, end: doorSpan.start + 1 })
+    const door = segments.find(s => s.kind === 'door')
+    if (door?.kind !== 'door') throw new Error('expected a door segment')
+    expect(door.pieces).toEqual([
+      { start: doorSpan.start, end: doorSpan.start + 1, text: 'o', marked: true },
+      { start: doorSpan.start + 1, end: doorSpan.end, text: 'vercome', marked: false }
+    ])
+    // Still a SINGLE door — its phrase was never split into two doors.
+    expect(segments.filter(s => s.kind === 'door')).toHaveLength(1)
   })
 })

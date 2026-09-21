@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { BibleVerse } from '../types'
-import { footnoteSpans } from '../utils/footnoteSpan'
+import { verseSegments, type HighlightRange, type TextPiece } from '../utils/footnoteSpan'
 import { isMobileViewport } from '../platform/install'
 import { findBookByAlias } from '../utils/bibleBooks'
 import CrossVersionPanel from './CrossVersionPanel'
@@ -79,12 +79,18 @@ function NoteCard({ text }: { text: string }): React.ReactElement {
 
 function Door({
   phrase,
+  display,
   note,
   canOpen,
   verseReference,
   bsbVerseText
 }: {
   phrase: string
+  // What to actually render inside the door — defaults to `phrase` plain, but
+  // a verse also carrying a word-level mark passes the same text split into
+  // marked/unmarked pieces (see FootnoteVerseText), so the door's tappable
+  // area is still the whole phrase even where part of it is tinted.
+  display?: React.ReactNode
   note: string
   canOpen?: () => boolean
   // Present only when the caller threads a chapter reference through (see
@@ -188,7 +194,7 @@ function Door({
         }
       }}
     >
-      {phrase}
+      {display ?? phrase}
       {open && !sheet && (
         <span
           className="footnote-note"
@@ -278,57 +284,88 @@ function CompareTrigger({ onOpen }: { onOpen: () => void }): React.ReactElement 
   )
 }
 
+/** One `<mark>` over a piece of text, or the plain text when it isn't marked —
+ * shared between the plain-text segments and the pieces inside a door. */
+function renderPiece(piece: TextPiece, category: string, key: React.Key): React.ReactNode {
+  if (!piece.marked) return piece.text
+  return (
+    <mark key={key} className={`verse-word-mark cat-${category}`}>
+      {piece.text}
+    </mark>
+  )
+}
+
 /**
- * A verse's text, with a door under every phrase the translators flagged.
+ * A verse's text, with a door under every phrase the translators flagged AND
+ * (optionally) the reader's own word-level mark tinted in place — the same
+ * `verseSegments` pass produces both, so the two features can't knock each
+ * other out again (see the overlap note on that function).
  *
  * Renders the same `<span className="verse-text">` every reading surface
- * already renders, so a chapter with no notes — and a chapter served by the
- * self-hosted fallback, which carries none — is character-for-character what it
- * was before.
+ * already renders, so a chapter with no notes and no mark — and a chapter
+ * served by the self-hosted fallback, which carries no notes — is
+ * character-for-character what it was before.
  *
  * @param doors false while a verse selection is live. The underline is REMOVED
- *              for the duration, not left inert (§10a.3).
+ *              for the duration, not left inert (§10a.3). The mark, if any,
+ *              is unaffected — it's the reader's own note, not this selection.
  * @param canOpen the page's tap guard, so a drag never opens a note.
  * @param chapterReference the chapter's reference (e.g. "John 1"), so a door
  *              can build this verse's full reference for the cross-version
  *              panel (docs/proposals/cross-version-renderings.md). Optional:
  *              a caller that doesn't pass it simply gets no second door — the
  *              underline and note are unaffected either way.
+ * @param highlight the resolved span of a word-level mark on this verse (see
+ *              highlightSpan.ts), or omitted/null when there is none — the
+ *              whole-verse-tint fallback is a caller concern (it never calls
+ *              in here with a span at all) and is unaffected either way.
  */
 export default function FootnoteVerseText({
   verse,
   doors = true,
   canOpen,
-  chapterReference
+  chapterReference,
+  highlight
 }: {
   verse: BibleVerse
   doors?: boolean
   canOpen?: () => boolean
   chapterReference?: string
+  highlight?: (HighlightRange & { category: string }) | null
 }): React.ReactElement {
   const text = verse.text
   const notes = verse.notes
-  const spans = useMemo(() => (notes?.length ? footnoteSpans(text, notes) : []), [text, notes])
+  const highlightStart = highlight?.start
+  const highlightEnd = highlight?.end
+  const segments = useMemo(() => {
+    const range: HighlightRange | null =
+      highlightStart !== undefined && highlightEnd !== undefined
+        ? { start: highlightStart, end: highlightEnd }
+        : null
+    return verseSegments(text, notes, range)
+  }, [text, notes, highlightStart, highlightEnd])
 
-  if (!doors || spans.length === 0) return <span className="verse-text">{text}</span>
+  const hasNotes = !!notes?.length
+  if ((!doors || !hasNotes) && !highlight) return <span className="verse-text">{text}</span>
 
   const verseReference = chapterReference ? `${chapterReference}:${verse.verse}` : undefined
-  const parts: React.ReactNode[] = []
-  let at = 0
-  for (const span of spans) {
-    if (span.start > at) parts.push(text.slice(at, span.start))
-    parts.push(
+  const category = highlight?.category ?? ''
+  const parts: React.ReactNode[] = segments.map(seg => {
+    if (seg.kind === 'text') return renderPiece(seg, category, `${seg.start}-${seg.end}`)
+
+    const display = seg.pieces.map((p, i) => renderPiece(p, category, i))
+    if (!doors) return <React.Fragment key={`${seg.start}-${seg.end}`}>{display}</React.Fragment>
+    return (
       <Door
-        key={`${span.start}-${span.end}`}
-        phrase={text.slice(span.start, span.end)}
-        note={span.note.text}
+        key={`${seg.start}-${seg.end}`}
+        phrase={seg.pieces.map(p => p.text).join('')}
+        display={display}
+        note={seg.note.text}
         canOpen={canOpen}
         verseReference={verseReference}
         bsbVerseText={text}
       />
     )
-    at = span.end
-  }
-  if (at < text.length) parts.push(text.slice(at))
+  })
   return <span className="verse-text">{parts}</span>
 }

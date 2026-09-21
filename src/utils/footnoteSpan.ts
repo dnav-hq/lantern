@@ -174,3 +174,101 @@ export function footnoteSpans<T extends { offset: number; text: string }>(
   }
   return spans
 }
+
+/* ─── Coexisting with a reader's own word-level mark ───────────────────────
+   A footnote door and a word-level highlight (src/utils/highlightSpan.ts) each
+   used to rewrite the verse's text on their own, so whichever one ran second
+   silently erased the other's markup. `verseSegments` is the fix: ONE pass
+   over the text that knows about both, so the caller (FootnoteVerseText)
+   never has to choose between them again.
+
+   OVERLAP RULE, stated once here rather than left implicit at each call site:
+   a footnote's phrase is never split apart or hidden by the highlight — it
+   stays exactly the one span `footnoteSpans` found, so its door is still one
+   contiguous, tappable unit. Instead, the PIECES of that phrase that fall
+   inside the highlighted range are marked as `marked: true`, so the caller can
+   tint just those characters *inside* the door rather than let the tint own
+   the text and swallow the door underneath it. Where the two don't overlap at
+   all, each renders exactly as it would alone. */
+
+/** Half-open character range to tint, in the same coordinate space as a `FootnoteSpan`. */
+export interface HighlightRange {
+  start: number
+  end: number
+}
+
+/** One run of text, and whether it falls inside the highlighted range. */
+export interface TextPiece {
+  start: number
+  end: number
+  text: string
+  marked: boolean
+}
+
+/** One segment of a verse: either an ordinary run of text, or a footnote door
+ * (carrying its note and the door's own text split into marked/unmarked pieces). */
+export type VerseSegment<T> =
+  | ({ kind: 'text' } & TextPiece)
+  | { kind: 'door'; note: T; start: number; end: number; pieces: TextPiece[] }
+
+/** Split `[from, end)` at the highlight's own boundaries, so a highlight that
+ * starts or ends mid-run marks exactly the characters it covers and no more. */
+function splitByHighlight(
+  from: number,
+  to: number,
+  text: string,
+  highlight: HighlightRange | null
+): TextPiece[] {
+  if (to <= from) return []
+  if (!highlight) return [{ start: from, end: to, text: text.slice(from, to), marked: false }]
+  const cuts = [from, to]
+  if (highlight.start > from && highlight.start < to) cuts.push(highlight.start)
+  if (highlight.end > from && highlight.end < to) cuts.push(highlight.end)
+  cuts.sort((a, b) => a - b)
+  const pieces: TextPiece[] = []
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const a = cuts[i]
+    const b = cuts[i + 1]
+    if (b <= a) continue
+    pieces.push({
+      start: a,
+      end: b,
+      text: text.slice(a, b),
+      marked: a >= highlight.start && b <= highlight.end
+    })
+  }
+  return pieces
+}
+
+/**
+ * Every footnote door AND the reader's word-level highlight, resolved together
+ * in reading order. `highlight` is optional — pass `null` and every segment
+ * comes back unmarked, character-for-character what `footnoteSpans` alone
+ * would have produced.
+ */
+export function verseSegments<T extends { offset: number; text: string }>(
+  text: string,
+  notes: readonly T[] | undefined,
+  highlight: HighlightRange | null
+): VerseSegment<T>[] {
+  const spans = notes?.length ? footnoteSpans(text, notes) : []
+  const segments: VerseSegment<T>[] = []
+  let at = 0
+  for (const span of spans) {
+    for (const piece of splitByHighlight(at, span.start, text, highlight)) {
+      segments.push({ kind: 'text', ...piece })
+    }
+    segments.push({
+      kind: 'door',
+      note: span.note,
+      start: span.start,
+      end: span.end,
+      pieces: splitByHighlight(span.start, span.end, text, highlight)
+    })
+    at = span.end
+  }
+  for (const piece of splitByHighlight(at, text.length, text, highlight)) {
+    segments.push({ kind: 'text', ...piece })
+  }
+  return segments
+}
