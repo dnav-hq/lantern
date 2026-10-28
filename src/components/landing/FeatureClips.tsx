@@ -69,7 +69,7 @@ function ClipFourLenses({ reduce }: { reduce: boolean }): React.JSX.Element {
       </div>
       <div className="lf-stage">
         <div className="lf-v">
-          <span className="lf-vn">5</span>The light shines in the darkness, and the darkness has not
+          <span className="lf-vn">5</span>The Light shines in the darkness, and the darkness has not
           overcome it.
         </div>
         <div className="lf-lens-notes">
@@ -189,13 +189,13 @@ function ClipNotesOnVerse({ reduce }: { reduce: boolean }): React.JSX.Element {
               <span className="lf-vn">2</span>He was with God in the beginning.
             </div>
             <div className="lf-v" data-sv="3">
-              <span className="lf-vn">3</span>Through him all things were made.
+              <span className="lf-vn">3</span>Through Him all things were made.
             </div>
             <div className="lf-v" data-sv="4">
-              <span className="lf-vn">4</span>In him was life, the light of all.
+              <span className="lf-vn">4</span>In Him was life, the light of men.
             </div>
             <div className="lf-v" data-sv="5">
-              <span className="lf-vn">5</span>The light shines in the darkness…
+              <span className="lf-vn">5</span>The Light shines in the darkness…
             </div>
           </div>
         </div>

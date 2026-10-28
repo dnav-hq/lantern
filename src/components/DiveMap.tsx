@@ -36,6 +36,8 @@ import { bookByNumber } from '../utils/bibleBooks'
 import {
   arrowPull,
   chevronPathData,
+  chooseLandmarks,
+  CONTEXT_FRAME,
   easeCalm,
   inFrame,
   legBows,
@@ -43,7 +45,7 @@ import {
   placeLabels,
   type XY
 } from '../utils/diveMap'
-import { placesForVerse, type ChapterMap } from '../utils/diveMapLoader'
+import { placesForVerse, type CardPlace, type ChapterMap } from '../utils/diveMapLoader'
 import { loadMapArtwork, MAP_VIEW_BOX, type MapBaseArtwork } from '../utils/mapData'
 import { legArrivalVerse, type RouteLeg } from '../utils/mapDataLoader'
 import {
@@ -177,14 +179,22 @@ export default function DiveMap({
   }, [])
 
   const fit = useMemo(() => (size ? fitViewBox(EXTENT, size) : null), [size])
+  // A place-only chapter is framed WITH a few landmarks (2026-10-28: Ararat
+  // alone, zoomed in, told nobody where they were), so the frame is wide
+  // enough to orient and the references are in it. A journey frames exactly as
+  // it always has.
+  const landmarks = useMemo<CardPlace[]>(
+    () => (route ? [] : chooseLandmarks(map.places, map.landmarks)),
+    [route, map.places, map.landmarks]
+  )
   const home = useMemo<ViewBox | null>(() => {
     if (!size || !fit) return null
-    const points: XY[] = route ? route.stops : map.places
+    const points: XY[] = route ? route.stops : [...map.places, ...landmarks]
     if (points.length === 0) return fit
     return route
       ? journeyViewBox(points, size, EXTENT, fit, { padding: 0.28, minSpan: 60 })
-      : frameViewBox(points, size, EXTENT, fit, { padding: 0.3, minSpan: 60 })
-  }, [size, fit, route, map.places])
+      : frameViewBox(points, size, EXTENT, fit, CONTEXT_FRAME)
+  }, [size, fit, route, map.places, landmarks])
 
   const [vb, setVb] = useState<ViewBox | null>(null)
   const vbRef = useRef<ViewBox | null>(null)
@@ -435,15 +445,24 @@ export default function DiveMap({
   const fontSize = px(11)
   const places = useMemo(() => placesForVerse(map, verse), [map, verse])
   const routeNames = useMemo(() => new Set(stops.map(s => s.name)), [stops])
+  // Landmarks are laid out in the same pass as the chapter's places, after
+  // them, so a muted reference label gives way to the chapter's own and
+  // never sits on top of it.
   const labelled = useMemo(() => {
     if (!home) return []
     const plain = route ? places.filter(p => !routeNames.has(p.name)) : places
-    return placeLabels(plain, home, fontSize)
-  }, [home, places, route, routeNames, fontSize])
-  const bearings = useMemo(
-    () => (home ? map.bearings.filter(b => inFrame(b, home, w * 0.6)) : []),
-    [home, map.bearings, w]
-  )
+    const items = [
+      ...plain.map(p => ({ ...p, landmark: false })),
+      ...landmarks.map(p => ({ ...p, landmark: true }))
+    ]
+    return placeLabels(items, home, fontSize)
+  }, [home, places, route, routeNames, fontSize, landmarks])
+  const bearings = useMemo(() => {
+    if (!home) return []
+    // A bearing that is also a chosen landmark is drawn once, as the landmark.
+    const taken = new Set(landmarks.map(l => `${l.x},${l.y}`))
+    return map.bearings.filter(b => inFrame(b, home, w * 0.6) && !taken.has(`${b.x},${b.y}`))
+  }, [home, map.bearings, w, landmarks])
 
   const view = vb ?? home
   const terrain = artwork?.terrain ?? null
@@ -618,17 +637,30 @@ export default function DiveMap({
                 })}
               </g>
             )}
-            {labelled.map(l => (
-              <g
-                key={`${l.item.x},${l.item.y}`}
-                className={`dive-place${l.item.inVerse ? ' in-verse' : ''}`}
-              >
-                <circle cx={l.item.x} cy={l.item.y} r={px(2.7)} />
-                <text x={l.x} y={l.y} textAnchor={l.anchor}>
-                  {l.item.name}
-                </text>
-              </g>
-            ))}
+            {labelled.map(l =>
+              l.item.landmark ? (
+                <g
+                  key={`${l.item.x},${l.item.y}`}
+                  className="dive-landmark"
+                  style={{ fontSize: px(9) }}
+                >
+                  <circle cx={l.item.x} cy={l.item.y} r={px(1.8)} />
+                  <text x={l.x} y={l.y} textAnchor={l.anchor}>
+                    {l.item.name}
+                  </text>
+                </g>
+              ) : (
+                <g
+                  key={`${l.item.x},${l.item.y}`}
+                  className={`dive-place${l.item.inVerse ? ' in-verse' : ''}`}
+                >
+                  <circle cx={l.item.x} cy={l.item.y} r={px(2.7)} />
+                  <text x={l.x} y={l.y} textAnchor={l.anchor}>
+                    {l.item.name}
+                  </text>
+                </g>
+              )
+            )}
           </svg>
         )}
         <div className="dive-map-tools">

@@ -20,7 +20,8 @@ import CategoryMenu from './CategoryMenu'
 import { isHighlight } from '../utils/noteKind'
 import { findHighlightSpan, trimToWordBoundaries } from '../utils/highlightSpan'
 import { useNoteCategories } from '../utils/useNoteCategories'
-import MobileSelectionBar from './MobileSelectionBar'
+import MobileSelectionBar, { MARK_HINT } from './MobileSelectionBar'
+import { shareReference } from '../utils/share'
 import StudyWorkbench, { type AnchorRequest, type StudyRange } from './StudyWorkbench'
 import ReadingControls from './ReadingControls'
 import type { DisplayPrefs } from './ReadingPrefs'
@@ -44,7 +45,9 @@ import {
 import FootnoteVerseText from './FootnoteDoor'
 import VerseDoorways from './VerseDoorways'
 import { loadChapterDepth } from '../utils/chapterDepth'
+import { warmConnectionTexts } from '../utils/connectionsLoader'
 import { chapterDoorCount } from '../utils/footnotes'
+import { nextSelection } from '../utils/verseSelection'
 import { markInstallEngagement } from '../utils/installNudge'
 import { formatRelativeTime } from '../utils/relativeTime'
 
@@ -313,7 +316,7 @@ function ChapterView({
   onOpenMap
 }: ChapterViewProps): React.ReactElement {
   const api = useApi()
-  const [translation, setTranslation] = useReadingTranslation()
+  const [translation] = useReadingTranslation()
   // Frozen at mount: this instance is keyed per chapter, so whether it arrived
   // via a swipe is decided once. Freezing it means a later re-render (notes
   // loading) can't drop the class and accidentally trigger the entrance
@@ -328,6 +331,9 @@ function ChapterView({
     let live = true
     setDepth(new Set())
     loadChapterDepth(bookNumber, chapter).then(set => live && setDepth(set))
+    // Warm the text bundle the dive-in reads its rows from, so the first
+    // tap on a dotted verse answers from memory (connectionsLoader.ts).
+    warmConnectionTexts(translation)
     return () => {
       live = false
     }
@@ -360,6 +366,9 @@ function ChapterView({
   const [highlightPicking, setHighlightPicking] = useState(false)
 
   const isMobile = useIsMobile()
+  // "Link copied" for a moment after a clipboard share (a share sheet needs
+  // no confirmation of its own).
+  const [shareState, setShareState] = useState<'copied' | null>(null)
   // Study is a DESKTOP mode (a workbench beside the text). On mobile there is no
   // such surface — capture is the inline composer — so study behaviour must be
   // inert here regardless of the studyOpen prop. Without this, the Study nav tab
@@ -381,6 +390,7 @@ function ChapterView({
   // Point-of-use hint: shown once near the verse list until the reader's first
   // real selection, then auto-dismissed (also dismissible explicitly).
   const [showVerseHint, setShowVerseHint] = useState(() => !verseHintAlreadySeen())
+  const [hintLeaving, setHintLeaving] = useState(false)
   const [localNotes, setLocalNotes] = useState<NoteWithPassageInfo[]>(notes)
 
   // Verse -> category, for every HIGHLIGHT (a note with no body) anchored in
@@ -669,34 +679,7 @@ function ChapterView({
     onServedTranslation?.(bibleData?.servedTranslation)
   }, [bibleData?.servedTranslation, onServedTranslation])
 
-  // The deep dive (the footnote door today, the word door later) exists only on
-  // the BSB: helloao's footnotes are walked for BSB alone (FOOTNOTE_TRANSLATIONS
-  // in src/bible/helloao.ts), so on KJV/ESV/NET a verse simply carries no
-  // `notes` and the dotted underline never appears. A reader must not be denied
-  // that silently. Judged on the text actually on screen, not the preference:
-  // ESV substituted by BSB during an outage IS the BSB, doors and all.
   const servedTranslation = bibleData?.servedTranslation ?? translation
-  const deepDiveElsewhere = bibleData !== null && servedTranslation !== 'BSB'
-  // Switching keeps this ChapterView (it is keyed by chapter, not translation)
-  // and so the selection — but the parent scrolls a switched chapter to verse 1
-  // (the switcher lives at its foot). Coming from the selection bar the reader
-  // wants THEIR verse, so bring it back once the BSB text has landed.
-  const revealAfterSwitchRef = useRef<number | null>(null)
-  const viewSelectionInBsb = (): void => {
-    revealAfterSwitchRef.current = selAnchor
-    setTranslation('BSB')
-  }
-  useEffect(() => {
-    if (switching || loading || bibleData === null) return
-    const verse = revealAfterSwitchRef.current
-    if (verse === null) return
-    revealAfterSwitchRef.current = null
-    requestAnimationFrame(() => {
-      armProgrammaticScroll(chromeScrollGuard)
-      verseRowRefs.current.get(verse)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    })
-  }, [switching, loading, bibleData, chromeScrollGuard])
-
   useEffect(() => {
     setLocalNotes(notes)
   }, [notes])
@@ -808,29 +791,18 @@ function ChapterView({
       setHighlightedNoteIds(new Set(anchored.map(n => n.id)))
     }
     setHighlightedVerses(new Set())
-    // Drive the range selection.
-    if (selAnchor === null) {
-      setSelAnchor(v)
-      setSelFocus(v)
+    // Drive the selection with the one toggle rule every Bible app shares
+    // (utils/verseSelection.ts): a tap adds or removes ONE verse, and only a
+    // Shift-click (or the marquee) grows the range to a far verse. The old
+    // "tap another to extend" read as a bug to a first-time reader (world-class
+    // pass 2026-10-28).
+    const next = nextSelection(selRange, v, extend)
+    if (next === null) {
+      clearSelection()
       return
     }
-    // Tapping an already-selected verse clears. On touch that means ANY verse
-    // in the range (the prototype's rule) — with no hover there is no other way
-    // to say "never mind" mid-range. With a mouse it stays the single-verse
-    // case, so clicking back inside a range still re-aims it.
-    const insideSelection = selRange !== null && v >= selRange[0] && v <= selRange[1]
-    if (isMobile ? insideSelection : selFocus === v && selAnchor === v) {
-      clearSelection()
-    } else if (isMobile || extend) {
-      // Extend the range to the newly tapped verse. On touch that is what a
-      // second tap means (there is no Shift); with a mouse it needs Shift, the
-      // convention everywhere else, so a plain click moves on to a new verse
-      // instead of quietly growing the range (Dennis, 2026-09-17).
-      setSelFocus(v)
-    } else {
-      setSelAnchor(v)
-      setSelFocus(v)
-    }
+    setSelAnchor(next[0])
+    setSelFocus(next[1])
   }
 
   // Desktop marquee (box) selection over the scripture area: click-drag draws a
@@ -886,14 +858,27 @@ function ChapterView({
     clearAll()
   }
 
-  // "Study these verses" — Study is a mode on this page now, not a destination,
-  // so this flips the toggle and hands the workbench the selection as its
-  // starting anchor. (It used to navigate to the standalone StudyMode page.)
-  const handleStudyOnSelection = (): void => {
+  // Share the selection: the share sheet where there is one, else the link
+  // onto the clipboard (utils/share.ts). The link is the same /read/… deep
+  // link the address bar carries, with the first verse, so it lands exactly
+  // here for whoever opens it — signed in or not.
+  const handleShare = async (): Promise<void> => {
     if (selRange === null) return
-    aimStudyAnchor(selRange[0], selRange[1])
-    clearSelection()
-    onEnterStudy()
+    const text = verses
+      .filter(v => v.verse >= selRange[0] && v.verse <= selRange[1])
+      .map(v => v.text)
+      .join(' ')
+    const result = await shareReference({
+      bookNumber,
+      chapter,
+      verseStart: selRange[0],
+      verseEnd: selRange[1],
+      label: selReference,
+      text: text.length > 280 ? `${text.slice(0, 277)}…` : text
+    })
+    if (result !== 'copied') return
+    setShareState('copied')
+    window.setTimeout(() => setShareState(null), 1600)
   }
 
   const handleQuickNoteFromSelection = (): void => {
@@ -1722,7 +1707,7 @@ function ChapterView({
                 the door itself already follows. */}
             {doorCount > 0 && (
               <button type="button" className="chapter-notes-count" onClick={jumpToFirstDoor}>
-                {doorCount} translator note{doorCount === 1 ? '' : 's'}
+                {doorCount} translators’ note{doorCount === 1 ? '' : 's'}, underlined
               </button>
             )}
           </div>
@@ -1757,21 +1742,28 @@ function ChapterView({
         )}
 
         {showVerseHint && (
-          <div className="verse-select-hint" role="note">
+          <div className={`verse-select-hint${hintLeaving ? ' is-leaving' : ''}`} role="note">
             <span className="verse-select-hint-text">
               <span className="hint-text-desktop">
-                Click a verse to select it. Click another to extend the range.
+                Click a verse to choose it; Shift-click to choose a run of verses. A dot under a
+                verse number means there is more beneath it.
               </span>
               <span className="hint-text-mobile">
-                Tap a verse to select it. Tap another to extend the range.
+                Tap a verse to choose it, and the next one to add it. A dot under a verse number
+                means there is more beneath it.
               </span>
             </span>
             <button
               type="button"
               className="verse-select-hint-dismiss"
               onClick={() => {
+                // Fade and fold the card away over a beat rather than yanking
+                // it: the verses below used to jump up under the finger, so
+                // the next tap landed on the wrong verse (world-class pass
+                // 2026-10-28, finding 8).
                 markVerseHintSeen()
-                setShowVerseHint(false)
+                setHintLeaving(true)
+                window.setTimeout(() => setShowVerseHint(false), 240)
               }}
             >
               Got it
@@ -1888,7 +1880,7 @@ function ChapterView({
                     if (tapRef.current) tapRef.current.moved = true
                   }}
                   onClick={e => handleVerseClick(v.verse, e.shiftKey)}
-                  style={isDimmed ? { opacity: 0.35 } : undefined}
+                  style={isDimmed ? { opacity: 0.72 } : undefined}
                 >
                   {bracketByVerse.has(v.verse) && (
                     <span
@@ -1945,11 +1937,10 @@ function ChapterView({
                   selRange[0] === v.verse &&
                   selRange[1] === v.verse &&
                   composerVerse === null &&
-                  !showInline &&
-                  // The word index is aligned to the BSB's words; under another
-                  // translation's verse the chips would not match the text on
-                  // screen. The selection bar's notice offers the way to BSB.
-                  !deepDiveElsewhere && (
+                  !showInline && (
+                    // On every translation (2026-10-28): the connections and the
+                    // map are verse-anchored; VerseDoorways reads the rows in the
+                    // BSB where the screen's text is metered (ESV) and says so.
                     <VerseDoorways
                       key={v.verse}
                       book={bookNumber}
@@ -1959,6 +1950,7 @@ function ChapterView({
                       verseText={v.text}
                       onOpenMap={onOpenMap}
                       translation={servedTranslation}
+                      expected={depth.has(v.verse)}
                     />
                   )}
 
@@ -2099,8 +2091,8 @@ function ChapterView({
         wordHintPending={wordHintPending}
         highlightedAs={selectedHighlightCategory}
         onRemoveHighlight={() => void handleRemoveHighlight()}
-        offerBsb={deepDiveElsewhere}
-        onViewInBsb={viewSelectionInBsb}
+        onShare={handleShare}
+        shareState={shareState}
       />
 
       {/* Portaled to <body>, like MobileSelectionBar: this bar is position:fixed,
@@ -2118,7 +2110,7 @@ function ChapterView({
             <span className="verse-action-ref">{selReference}</span>
             <div className="verse-action-btns">
               <button className="verse-action-btn primary" onClick={handleQuickNoteFromSelection}>
-                Quick note
+                Note
               </button>
               {/* Same two choices as mobile: writing and marking are different
                   acts and should look like it. */}
@@ -2133,7 +2125,8 @@ function ChapterView({
                 {highlightPicking && (
                   <div className="verse-action-hl-menu">
                     <CategoryMenu
-                      title="Highlight as…"
+                      title="Mark as…"
+                      hint={MARK_HINT}
                       onPick={key => {
                         setHighlightPicking(false)
                         void handleHighlight(key as NoteCategory)
@@ -2142,9 +2135,37 @@ function ChapterView({
                   </div>
                 )}
               </div>
-              <button className="verse-action-btn" onClick={handleStudyOnSelection}>
-                Study these verses
+              {/* Two acts and a quiet share. "Study these verses" went: the
+                  Read/Study toggle in the header is the one way into Study,
+                  and four buttons here was three too many (Dennis, 2026-10-28). */}
+              <button
+                type="button"
+                className="verse-action-icon"
+                onClick={() => void handleShare()}
+                aria-label="Share these verses"
+                title="Share"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 3v12" />
+                  <polyline points="7 8 12 3 17 8" />
+                  <path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
+                </svg>
               </button>
+              {shareState === 'copied' && (
+                <span className="verse-action-copied" role="status">
+                  Link copied
+                </span>
+              )}
             </div>
             <button
               className="verse-action-clear"
@@ -2189,7 +2210,7 @@ function ChapterView({
             // the workbench never has to know the deep dive exists — it only
             // knows which verse the draft is aimed at.
             const line = verses.find(v => v.verse === verse)
-            if (!line || deepDiveElsewhere) return null
+            if (!line) return null
             return (
               <VerseDoorways
                 key={verse}

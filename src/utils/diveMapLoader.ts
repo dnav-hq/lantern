@@ -30,7 +30,7 @@ import {
   type JourneyRoute,
   type PlaceMarker
 } from './mapDataLoader'
-import { BEARING_NAMES, GREAT_SEA_LONLAT, type XY } from './diveMap'
+import { BEARING_NAMES, GREAT_SEA_LONLAT, LANDMARK_NAMES, type XY } from './diveMap'
 
 /** One labelled point on the card: a chapter place, with same-point places merged. */
 export interface CardPlace extends XY {
@@ -53,6 +53,12 @@ export interface ChapterMap {
   route: JourneyRoute | null
   /** Fixed bearings that are not already the chapter's own places. */
   bearings: (XY & { name: string })[]
+  /**
+   * Every landmark the bundle has (LANDMARK_NAMES, resolved once for the
+   * app's lifetime; a missing name is simply absent). The card and the whole
+   * map pick a few of these to orient a place-only chapter (chooseLandmarks).
+   */
+  landmarks: CardPlace[]
   /** The Great Sea's label position, in view units. */
   sea: XY
   /** Bundle indexes of the chapter's places, keyed by verse, for `inVerse`. */
@@ -65,6 +71,7 @@ let modelPromise: Promise<{
   markers: PlaceMarker[]
   byIndex: Map<number, PlaceMarker>
   byId: Map<string, PlaceMarker>
+  landmarks: CardPlace[]
 }> | null = null
 
 function model(): Promise<{
@@ -72,16 +79,19 @@ function model(): Promise<{
   markers: PlaceMarker[]
   byIndex: Map<number, PlaceMarker>
   byId: Map<string, PlaceMarker>
+  landmarks: CardPlace[]
 }> {
   if (!modelPromise) {
     modelPromise = loadMapPlaces()
       .then(bundle => {
         const { markers } = buildViewModel(bundle)
+        const byIndex = new Map(markers.map(m => [m.index, m]))
         return {
           bundle,
           markers,
-          byIndex: new Map(markers.map(m => [m.index, m])),
-          byId: indexMarkersByPlaceId(markers, bundle)
+          byIndex,
+          byId: indexMarkersByPlaceId(markers, bundle),
+          landmarks: resolveLandmarks(bundle, byIndex)
         }
       })
       .catch(err => {
@@ -122,8 +132,37 @@ export function mergeSamePoint(markers: readonly PlaceMarker[]): CardPlace[] {
   return [...byPoint.values()]
 }
 
+/**
+ * The landmarks as card places, in LANDMARK_NAMES order, by the bundle's own
+ * names. A name the bundle does not carry (or carries with no location) is
+ * left out rather than guessed at.
+ */
+export function resolveLandmarks(
+  bundle: Pick<MapPlaceBundle, 'p'>,
+  byIndex: Map<number, Pick<PlaceMarker, 'index' | 'name' | 'type' | 'point'>>
+): CardPlace[] {
+  const out: CardPlace[] = []
+  for (const name of LANDMARK_NAMES) {
+    const index = bundle.p.findIndex(p => p.n === name)
+    const m = index === -1 ? undefined : byIndex.get(index)
+    if (!m) continue
+    out.push({
+      x: m.point.x,
+      y: m.point.y,
+      name: displayPlaceName(m.name),
+      type: m.type,
+      indexes: [m.index],
+      inVerse: false
+    })
+  }
+  return out
+}
+
 async function build(book: number, chapter: number): Promise<ChapterMap | null> {
-  const [journeys, { bundle, byIndex, byId }] = await Promise.all([loadMapJourneys(), model()])
+  const [journeys, { bundle, byIndex, byId, landmarks }] = await Promise.all([
+    loadMapJourneys(),
+    model()
+  ])
   const indexes = bundle.ch[chapterKey(book, chapter)] ?? []
   const markers = indexes.map(i => byIndex.get(i)).filter((m): m is PlaceMarker => !!m)
   const journey = findJourneyForChapter(journeys, book, chapter)
@@ -150,6 +189,7 @@ async function build(book: number, chapter: number): Promise<ChapterMap | null> 
     placeNames: [...new Set(markers.map(m => displayPlaceName(m.name)))],
     route,
     bearings,
+    landmarks,
     sea: { x: sx, y: sy },
     versePlaces
   }

@@ -68,11 +68,12 @@ describe('createConnectionsLoader', () => {
       ['James 2:23', 'quotes'],
       ['Galatians 3:6–14', 'quotes'],
       ['Romans 4:9', 'quotes'],
-      ['Romans 4:3–6', 'quotes'],
-      ['Hebrews 11:8', 'echoes']
+      ['Romans 4:3–6', 'quotes']
     ])
+    // Hebrews 11:8 shares no content word with the held verse, so the sheet
+    // cannot say why it is there and does not list it (2026-10-28).
     expect(found!.quotes).toBe(4)
-    expect(found!.echoes).toBe(1)
+    expect(found!.echoes).toBe(0)
     expect(found!.top).toBe(85)
     const rom = found!.rows[3]
     expect(rom.text!.slice(...rom.shared!)).toBe('it was credited to him as righteousness')
@@ -116,7 +117,7 @@ describe('createConnectionsLoader', () => {
     expect(s.text.mock.calls.filter(c => c[0] === 45).length).toBe(1)
   })
 
-  it('a row whose text cannot be read is an echo, still listed', async () => {
+  it('a row whose text cannot be read is not listed: it has no reason to show', async () => {
     const s = sources()
     s.text.mockImplementation(async (book: number) =>
       book === 59
@@ -129,9 +130,8 @@ describe('createConnectionsLoader', () => {
           ]
     )
     const found = await createConnectionsLoader(s.sources).verse(1, 15, 6, 'BSB')
-    expect(found!.rows[0].label).toBe('James 2:23')
-    expect(found!.rows[0].kind).toBe('echoes')
-    expect(found!.rows[0].text).toBeNull()
+    expect(found!.rows.map(r => r.label)).not.toContain('James 2:23')
+    expect(found!.rows[0].label).toBe('Galatians 3:6–14')
   })
 })
 

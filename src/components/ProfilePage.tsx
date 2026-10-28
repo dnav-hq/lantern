@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNotesExport } from '../utils/useNotesExport'
+import { useApi } from '../api/context'
 
 interface ProfilePageProps {
   displayName: string | null
@@ -27,6 +28,25 @@ export default function ProfilePage({
   onInstall
 }: ProfilePageProps): React.ReactElement {
   const { state: exportState, run: runExport } = useNotesExport()
+  const api = useApi()
+  // Guest only: whether there is anything on this device to carry into an
+  // account, so the sign-in button can say what it will actually do.
+  const [guestNoteCount, setGuestNoteCount] = useState(0)
+  useEffect(() => {
+    if (!guestSignIn) return
+    let active = true
+    api
+      .getAllNotes()
+      .then(ns => {
+        if (active) setGuestNoteCount(ns.length)
+      })
+      .catch(() => {
+        /* the button falls back to plain "Sign in" */
+      })
+    return () => {
+      active = false
+    }
+  }, [api, guestSignIn])
 
   const initial = (displayName || '?').trim().charAt(0).toUpperCase() || '?'
 
@@ -38,14 +58,14 @@ export default function ProfilePage({
           {displayName || (guestSignIn ? 'Trying Lantern' : 'Studying locally')}
         </div>
         <div className="profile-page-workspace">
-          {guestSignIn ? 'Nothing here is saved yet' : 'Personal workspace'}
+          {guestSignIn ? 'Your notes stay on this device until you sign in.' : 'Personal workspace'}
         </div>
       </div>
 
       {guestSignIn && (
         <div className="profile-page-actions">
           <button className="profile-page-btn profile-page-btn-primary" onClick={guestSignIn}>
-            Sign in to keep your notes
+            {guestNoteCount > 0 ? 'Sign in and keep these notes' : 'Sign in'}
           </button>
         </div>
       )}

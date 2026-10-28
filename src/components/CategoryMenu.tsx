@@ -45,11 +45,33 @@ import { useLongPress } from '../utils/useLongPress'
  * Keyboard: Enter commits, Escape backs out one layer at a time. Committing
  * writes through to the shared store so every other surface updates at once.
  */
+const MARK_HINT_KEY = 'berean.mark-hint-seen'
+function markHintSeenAlready(): boolean {
+  try {
+    return localStorage.getItem(MARK_HINT_KEY) === '1'
+  } catch {
+    return true
+  }
+}
+function markMarkHintSeen(): void {
+  try {
+    localStorage.setItem(MARK_HINT_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
 export interface CategoryMenuProps {
   /** Called with the chosen category key. */
   onPick: (key: string) => void
-  /** Rendered above the rows, e.g. "Highlight as…". */
+  /** Rendered above the rows, e.g. "Mark as…". */
   title?: string
+  /**
+   * One quiet line under the title, shown until the reader has picked a
+   * category once anywhere (localStorage), so the four lenses are explained
+   * exactly once and never again (world-class pass 2026-10-28, finding 9).
+   */
+  hint?: string
   /** Currently applied key, if this menu is showing a selection. */
   selected?: string | null
   /** Offered before the categories, for a note with no category. */
@@ -142,6 +164,7 @@ function CategoryRow({
 
 export default function CategoryMenu({
   onPick,
+  hint,
   title,
   selected = null,
   noneLabel,
@@ -152,6 +175,7 @@ export default function CategoryMenu({
   onToggleScope,
   scopePending = false
 }: CategoryMenuProps): React.ReactElement {
+  const [showHint] = useState(() => !markHintSeenAlready())
   const api = useApi()
   const categories = useNoteCategories()
   const retired = archivedCategories()
@@ -327,6 +351,7 @@ export default function CategoryMenu({
       }}
     >
       {title && <div className="cat-menu-title">{title}</div>}
+      {hint && showHint && <p className="cat-menu-hint">{hint}</p>}
 
       {/* ── Scope, when there is a choice of scope ───────────────────────────
           ONE row, above the colours, that says what the next pick will mark.
@@ -432,7 +457,10 @@ export default function CategoryMenu({
                 if (el) rows.current.set(cat.key, el)
                 else rows.current.delete(cat.key)
               }}
-              onPick={() => onPick(cat.key)}
+              onPick={() => {
+                markMarkHintSeen()
+                onPick(cat.key)
+              }}
               onMore={() => {
                 setColoringKey(null)
                 setEditingKey(null)

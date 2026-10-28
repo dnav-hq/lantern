@@ -2,8 +2,20 @@ import React, { Suspense, lazy, useEffect, useState } from 'react'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import Onboarding from './components/Onboarding'
+import GuestKeepNotice from './components/GuestKeepNotice'
 import { ApiProvider } from './api/context'
-import { createMemoryApi, seedMemoryApi } from './api/memory'
+import {
+  GUEST_STORE_KEY,
+  clearGuestStore,
+  createMemoryApi,
+  restoreGuestStore,
+  seedMemoryApi,
+  snapshotGuestStore
+} from './api/memory'
+import { guestSnapshotHasNotes, replayGuestSnapshot } from './utils/guestReplay'
+import { GuestSignInContext } from './utils/guestContext'
+import { reportError } from './telemetry/client'
+import { toTelemetrySafe } from './errors'
 import { supabase, isSupabaseConfigured } from './api/supabase'
 import { SupabaseBereanApi } from './api/berean-api'
 import { getProfile, getSession, onAuthStateChange, signOut, type Profile } from './api/auth'
@@ -18,12 +30,14 @@ import { parseDeepLink, type DeepLinkTarget } from './utils/deepLink'
 
 // `guest` is a signed-OUT phase, not a lesser signed-in one. It runs the REAL
 // App — same NavBar, reading page, Read/Study toggle, Journal — backed by the
-// ephemeral in-memory API instead of Supabase, so a guest gets the actual
-// product (not an imitation of it) with a backend that simply forgets on
-// reload. The "limit" is only that nothing persists and there is no account;
-// signing in is one tap away. (This supersedes the earlier isolated
-// guest-reader tree; the memory API has no credentials, so there is nothing to
-// leak by letting guest reach it.)
+// in-memory API instead of Supabase, so a guest gets the actual product (not
+// an imitation of it). The guest api persists to localStorage (GUEST_STORE_KEY)
+// so a reload keeps a guest's notes, and signing in replays them into the new
+// account (see enter() and utils/guestReplay.ts) — nothing a guest writes is
+// thrown away. The "limit" is only that there is no account yet; signing in is
+// one tap away. (This supersedes the earlier isolated guest-reader tree; the
+// memory API has no credentials, so there is nothing to leak by letting guest
+// reach it.)
 type Phase = 'loading' | 'signedOut' | 'guest' | 'onboarding' | 'ready'
 
 // The landing page is the signed-out surface: marketing copy, four looping
@@ -45,7 +59,32 @@ function signedOutPhase(): Phase {
 // re-deriving it on a later render would be pointless. A miss (unknown book,
 // out-of-range chapter, anything malformed) is just `null`, and every reader
 // below already has a no-deep-link path — that's the whole degrade story.
-const deepLinkTarget: DeepLinkTarget | null = parseDeepLink(window.location.pathname)
+const deepLinkTarget: DeepLinkTarget | null = parseDeepLink(
+  window.location.pathname,
+  window.location.search
+)
+
+// Carry a guest's notes into the account that just signed in. Runs BEFORE the
+// phase flips so the Journal is complete on first paint. The store is cleared
+// first — enter() can run more than once per sign-in (getSession plus the auth
+// listener) and a second pass must find nothing to duplicate — and written
+// back if the replay fails, so the next sign-in retries rather than losing
+// them. Never blocks sign-in: a failure is reported and swallowed.
+async function carryGuestNotes(api: BereanApi): Promise<void> {
+  const snap = snapshotGuestStore()
+  if (!guestSnapshotHasNotes(snap) || !snap) return
+  clearGuestStore()
+  try {
+    await replayGuestSnapshot(api, snap)
+  } catch (err) {
+    restoreGuestStore(snap)
+    try {
+      reportError(toTelemetrySafe(err), 'guest-replay')
+    } catch {
+      /* telemetry is best-effort */
+    }
+  }
+}
 
 // ─── Memory (dev) path ───────────────────────────────────────────────────────
 function MemoryRoot(): React.ReactElement {
@@ -71,16 +110,29 @@ function SupabaseRoot(): React.ReactElement {
   // handed to App as a prop so it can seed-or-hydrate on first render rather
   // than flashing local values before an async fetch resolves.
   const [accountSettings, setAccountSettings] = useState<UserSettings | null>(null)
-  // The guest backend: a fresh, UNSEEDED in-memory API. It holds a guest's
-  // notes for the length of the session and forgets them on reload — the
-  // ephemeral "try it out" store. Created once so navigating within guest keeps
-  // its data.
-  const [guestApi] = useState(() => createMemoryApi())
+  // The guest backend: an UNSEEDED in-memory API persisted under
+  // GUEST_STORE_KEY, so a guest's notes survive a reload and are there for
+  // sign-in to carry over. Wrapped so the FIRST successful note flips
+  // `guestNoted`, which mounts the one-time "kept on this device" strip. Created
+  // once so navigating within guest keeps its data.
+  const [guestNoted, setGuestNoted] = useState(false)
+  const [guestApi] = useState<BereanApi>(() => {
+    const base = createMemoryApi({ persistKey: GUEST_STORE_KEY })
+    return {
+      ...base,
+      async createNote(data) {
+        const note = await base.createNote(data)
+        setGuestNoted(true)
+        return note
+      }
+    }
+  })
 
   // Resolve api + profile for a signed-in user and pick the phase.
   const enter = React.useCallback(async (): Promise<void> => {
     try {
       const nextApi = await SupabaseBereanApi.create(supabase!)
+      await carryGuestNotes(nextApi)
       const [prof, settings] = await Promise.all([
         getProfile(),
         nextApi.getSettings().catch(() => ({}) as UserSettings)
@@ -134,6 +186,11 @@ function SupabaseRoot(): React.ReactElement {
     await signOut()
   }
 
+  const guestSignIn = React.useCallback((): void => {
+    exitGuestMode()
+    setPhase('signedOut')
+  }, [])
+
   if (phase === 'loading') {
     return <div className="app-boot" />
   }
@@ -152,21 +209,24 @@ function SupabaseRoot(): React.ReactElement {
   }
 
   if (phase === 'guest') {
-    // The real App on the ephemeral memory API. `guestSignIn` is the one
+    // The real App on the persisted memory API. `guestSignIn` is the one
     // account nudge: it leaves guest for good (the landing page holds the real
     // sign-in CTAs, and a later reload must not bounce a half-signed-in visitor
-    // back into guest).
+    // back into guest). The notes stay in the guest store until enter() carries
+    // them into the account. Provided through GuestSignInContext too, so the
+    // locked ESV row in the translation pickers can reach it without App
+    // threading one more prop.
     return (
       <ApiProvider api={guestApi}>
-        <App
-          displayName={null}
-          onSignOut={null}
-          guestSignIn={() => {
-            exitGuestMode()
-            setPhase('signedOut')
-          }}
-          initialDeepLink={deepLinkTarget}
-        />
+        <GuestSignInContext.Provider value={guestSignIn}>
+          <App
+            displayName={null}
+            onSignOut={null}
+            guestSignIn={guestSignIn}
+            initialDeepLink={deepLinkTarget}
+          />
+          {guestNoted && <GuestKeepNotice onSignIn={guestSignIn} />}
+        </GuestSignInContext.Provider>
       </ApiProvider>
     )
   }

@@ -14,6 +14,81 @@ belongs to and why that arc comes when it does.
 
 ## Deferred
 
+- **World-class pass (2026-10-28) — BUILT the same day, awaiting Dennis's local
+  check before deploy.** What landed: guest notes persist on the device
+  (`berean.guest-store`) and are replayed into the account on first sign-in
+  (`utils/guestReplay.ts`), with a one-time strip after the first guest note;
+  ESV shown locked for guests with "Sign in to read in ESV"; onboarding asks
+  which Bible (no name step, no language question); the update pill is gone and
+  updates apply when the app has been hidden five minutes or on next launch; the
+  URL follows the reader (`/read/<book>/<chapter>/<verse>`, Back works) and the
+  selection bars carry Share (share sheet, else clipboard); word search is
+  ranked (whole word, phrase, density, NT prior) and references parse with
+  space/`v`/`.` separators, Enter opens the first result; the selection is a
+  toggle (`utils/verseSelection.ts`), the dim is lighter, the hint folds away
+  and explains the dot; the picker says "Mark as…" with a one-time lens hint;
+  the dive-in entrance carries a constant "Dive in" label with a skeleton under
+  dotted verses, rows pass a quality bar (`selectRows`: strongest first, a fifth
+  of the top score, cap 8) and the dot needs a score of 50 (`DEPTH_THRESHOLD`);
+  the dive-in opens on every translation, reading rows in the BSB on ESV and
+  saying so; one Study entrance (the header toggle), "Study these verses" only
+  above 1160px, the Study editor holds prose only; the "Personal" switcher is
+  hidden; the library has a continue-reading card; the landing hero reads BSB,
+  names the translations, has a dive-in section and the free line.
+  SECOND PASS on Dennis's review (same day): no translation is singled out
+  in the reader any more (the "view this verse in BSB" notice and the
+  "passages shown in the BSB" line are gone; the connections read in the
+  reader's own translation, ESV included, at one chapter fetch per connected
+  chapter through the ESV cache, so a dive on ESV spends roughly six proxy
+  calls; a multi-reference proxy endpoint would make that one call); the
+  entrance is labelled "Connections" in a muted register so the reference
+  beside it is the only accent; the sheet lost its eyebrow and the repeated
+  verse and every row now states WHY it is there ("both say “…”", "also names
+  Damascus", "shares earth, formless, void", with those words marked in the
+  text; `sharedWords` in connections.ts) and a row with no sayable reason is
+  not listed; the desktop bar is Note · Highlight · share icon · ×, with
+  "Study these verses" gone (the header toggle is the one entrance); the
+  continue-reading card is a wide row with "Chapter n of m" and a chevron.
+  THIRD PASS (same day): the sheet holds the verse at the top with the shared
+  run lit, rows are reference + heading + text with the shared words marked
+  (no "shares …" line; the italic heading no longer clips); the connections
+  read their row texts from the shipped BSB/KJV/NET bundles (warmed on chapter
+  open), so the entrance answers in about 60 ms instead of one to two seconds,
+  and ESV chapter fetches run all at once; the map card frames a place-only
+  chapter with up to four landmark places (`chooseLandmarks` in diveMap.ts,
+  25 names resolved from the bundle) in a muted style so Ararat sits among
+  Haran, Nineveh, Susa and Jerusalem; the full map lost the unlocated-places
+  list and the paragraphs, keeping one attribution line; the continue card is
+  a single row.
+  STILL OPEN from the audit: translators' notes on ESV (Crossway's API can
+  return the ESV's own footnotes; needs the proxy to pass `include-footnotes`
+  and a parser), scripture word search on ESV (the search endpoint spends the
+  shared quota; BSB-only for now and labelled), the word door on ESV (not
+  possible, no open per-word data), a paragraph reading option, audio.
+
+- **World-class pass (2026-10-28, `docs/audits/world-class-pass-2026-10-28.md`) — findings as written.**
+  Walked live as a guest at phone, 1024 and desktop widths after Dennis
+  started sharing the app with friends. Ranked, most costly first: (1) "Sign
+  in to keep your notes" drops the guest's notes (`Root.tsx` discards the
+  guest memory API; no handoff exists); (2) ESV is absent from the guest
+  picker with no hint that sign-in provides it, so the ESV-only friend
+  concludes Lantern lacks it; (3) no share: the URL never changes and the
+  selection bar has no Share / copy link; (4) scripture word search is a
+  canonical-order substring scan capped at 40, so "faith" never reaches
+  Romans or Hebrews; (5) "rom 8 28" / "jn 3 16" fail to parse and Enter does
+  not open a found reference; (6) the dive-in entrance is unlabelled and
+  appears 1–2 s after selection; (7) selection dims the whole chapter; (8)
+  the "Got it" hint reflows the page under the tap; (9) "Highlight as
+  Observation" reads as a colour picker; (10) `v4` / `@historical` tokens
+  leak into desktop note text; (11) two Study entrances at ≥1160 px and a
+  broken "Study these verses" layout at 1024 px; (12) landing page quotes
+  NIV text in the hero, names no translation, and shows none of the dive-in
+  / map / search / Tamil work; (13) library has no continue-reading card;
+  (14) onboarding never asks which translation. Translations position
+  restated in the audit §F: free with no ads or donations while ESV is in
+  the app, ESV first-class within that, all features except the two
+  BSB-bound layers at parity on every translation. Suggested order in §H.
+
 - **World-class pass (2026-09-18, `docs/audits/world-class-pass-2026-09-18.md`) — ALL FIXED the same day.**
   Scripture full-text search (in-browser scan of the shipped BSB bundle,
   `utils/scriptureSearch.ts`, third section of search); the mobile composer

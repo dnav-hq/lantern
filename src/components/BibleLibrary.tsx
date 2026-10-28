@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Passage } from '../types'
-import { BIBLE_BOOKS, BibleBook } from '../utils/bibleBooks'
+import { BIBLE_BOOKS, BibleBook, bookByNumber } from '../utils/bibleBooks'
+import { readLastRead } from '../utils/lastRead'
 
 // Module-scoped, not React state: true only until the very first
 // BibleLibrary mount in this tab's lifetime finishes claiming it. Bible is
@@ -25,6 +26,9 @@ interface BibleLibraryProps {
   // for: mid-service, find a reference fast — the top-right icon button
   // alone read as too subtle/easy to miss for that.
   onOpenSearch?: () => void
+  // Opens a chapter directly: the "Continue reading" card and the two
+  // starting points offered to a reader with no history both land here.
+  onContinue?: (bookName: string, chapter: number) => void
 }
 
 const OT = BIBLE_BOOKS.filter(b => b.testament === 'OT')
@@ -69,6 +73,7 @@ function TestamentSection({
                 type="button"
                 className={`bible-book-row${studied ? ' studied' : ''}`}
                 onClick={() => onSelectBook(book.name)}
+                aria-label={book.name}
               >
                 <span className={`bible-book-dot${studied ? ' visible' : ''}`} />
                 <span className="bible-book-name">{book.name}</span>
@@ -91,12 +96,21 @@ export default function BibleLibrary({
   passages,
   onSelectBook,
   displayName,
-  onOpenSearch
+  onOpenSearch,
+  onContinue
 }: BibleLibraryProps): React.ReactElement {
   const [playBootFade] = useState(() => !hasBooted)
   useEffect(() => {
     hasBooted = true
   }, [])
+
+  // Where the reader left off, read once per mount: the library remounts on
+  // every visit (see App.tsx's renderMain), so this is always current.
+  const [lastRead] = useState(() => {
+    const r = readLastRead()
+    const book = r ? bookByNumber(r.bookNumber) : undefined
+    return r && book ? { bookName: book.name, chapter: r.chapter } : null
+  })
 
   const countByBook = new Map<number, number>()
   for (const p of passages) {
@@ -114,7 +128,7 @@ export default function BibleLibrary({
         <p className="bible-library-sub">
           {passageCount > 0
             ? `${studiedBookCount} ${studiedBookCount === 1 ? 'book' : 'books'} · ${passageCount} ${passageCount === 1 ? 'passage' : 'passages'} studied`
-            : 'Click any book to begin reading'}
+            : 'Choose a book to begin reading'}
         </p>
         {onOpenSearch && (
           <button type="button" className="library-search-entry" onClick={onOpenSearch}>
@@ -136,6 +150,58 @@ export default function BibleLibrary({
           </button>
         )}
       </div>
+
+      {onContinue &&
+        (lastRead ? (
+          <button
+            type="button"
+            className="library-continue"
+            onClick={() => onContinue(lastRead.bookName, lastRead.chapter)}
+          >
+            <span className="library-continue-body">
+              <span className="library-continue-label">Continue reading</span>
+              <span className="library-continue-ref">
+                {lastRead.bookName} {lastRead.chapter}
+              </span>
+              <span className="library-continue-sub">
+                Chapter {lastRead.chapter} of{' '}
+                {BIBLE_BOOKS.find(b => b.name === lastRead.bookName)?.chapters ?? '?'}
+              </span>
+            </span>
+            <svg
+              className="library-continue-chevron"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="9 6 15 12 9 18" />
+            </svg>
+          </button>
+        ) : (
+          <p className="library-start">
+            New here? Start with{' '}
+            <button
+              type="button"
+              className="library-start-link"
+              onClick={() => onContinue('John', 1)}
+            >
+              John 1
+            </button>{' '}
+            or{' '}
+            <button
+              type="button"
+              className="library-start-link"
+              onClick={() => onContinue('Psalms', 23)}
+            >
+              Psalm 23
+            </button>
+            .
+          </p>
+        ))}
 
       <TestamentSection
         label="Old Testament"

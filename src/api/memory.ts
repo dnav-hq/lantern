@@ -30,12 +30,160 @@ const WORKSPACE_ID = 'personal-stub'
 
 const now = (): string => new Date().toISOString()
 
-const passages = new Map<string, Passage>()
-const sessions = new Map<string, Session>()
-const notes = new Map<string, Note>()
+// One store = everything a memory api holds. The dev stub shares the single
+// module-level one below (so seedMemoryApi can fill it before the api is
+// asked); a PERSISTED api (the guest backend, see createMemoryApi's persistKey)
+// gets its own instance, loaded from storage and written back after every
+// mutation.
+interface MemoryStore {
+  passages: Map<string, Passage>
+  sessions: Map<string, Session>
+  notes: Map<string, Note>
+  // Category definitions. Empty means "nothing customised" and the caller
+  // falls back to the built-in four; see src/utils/noteCategories.ts.
+  //
+  // Rows carry `archived_at` exactly as the Supabase table does since migration
+  // 0011, so retire/restore behaves identically with no backend — which is the
+  // path a fresh checkout and every UI-only session actually take.
+  categories: StoredCategoryDef[]
+}
+
+function emptyStore(): MemoryStore {
+  return { passages: new Map(), sessions: new Map(), notes: new Map(), categories: [] }
+}
+
+const MODULE_STORE: MemoryStore = emptyStore()
+const passages = MODULE_STORE.passages
+const sessions = MODULE_STORE.sessions
+const notes = MODULE_STORE.notes
 // Account-synced preferences stub: one blob, same reset-on-reload lifetime as
 // everything else here.
 let settings: UserSettings = {}
+
+// ─── Persistence (guest store) ───────────────────────────────────────────────
+// A guest's notes live in localStorage under GUEST_STORE_KEY so a reload keeps
+// them and sign-in can carry them into the account (see Root.tsx's enter() and
+// src/utils/guestReplay.ts). The serialised shape is deliberately the plain
+// row arrays — nothing derived — so a snapshot can be replayed through the
+// real BereanApi field for field.
+
+export const GUEST_STORE_KEY = 'berean.guest-store'
+
+/** The slice of Storage this module needs — injectable so it can be tested without a DOM. */
+export interface KeyValueStore {
+  getItem(key: string): string | null
+  setItem(key: string, value: string): void
+  removeItem(key: string): void
+}
+
+export interface GuestSnapshot {
+  passages: Passage[]
+  sessions: Session[]
+  notes: Note[]
+  categories: StoredCategoryDef[]
+}
+
+function defaultStorage(): KeyValueStore | null {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
+function parseSnapshot(raw: string | null): GuestSnapshot | null {
+  if (!raw) return null
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    const o = parsed as Partial<Record<keyof GuestSnapshot, unknown>>
+    return {
+      passages: Array.isArray(o.passages) ? (o.passages as Passage[]) : [],
+      sessions: Array.isArray(o.sessions) ? (o.sessions as Session[]) : [],
+      notes: Array.isArray(o.notes) ? (o.notes as Note[]) : [],
+      categories: Array.isArray(o.categories) ? (o.categories as StoredCategoryDef[]) : []
+    }
+  } catch {
+    return null
+  }
+}
+
+function readSnapshot(storage: KeyValueStore | null, key: string): GuestSnapshot | null {
+  try {
+    return parseSnapshot(storage?.getItem(key) ?? null)
+  } catch {
+    return null
+  }
+}
+
+function writeSnapshot(storage: KeyValueStore | null, key: string, snap: GuestSnapshot): void {
+  // A quota or private-window failure must never break the app: the notes
+  // still exist for this session, they just are not remembered.
+  try {
+    storage?.setItem(key, JSON.stringify(snap))
+  } catch {
+    /* ignore */
+  }
+}
+
+function storeFromSnapshot(snap: GuestSnapshot | null): MemoryStore {
+  const store = emptyStore()
+  if (!snap) return store
+  for (const p of snap.passages) store.passages.set(p.id, p)
+  for (const s of snap.sessions) store.sessions.set(s.id, s)
+  for (const n of snap.notes) store.notes.set(n.id, n)
+  store.categories = snap.categories
+  return store
+}
+
+function snapshotOf(store: MemoryStore): GuestSnapshot {
+  return {
+    passages: [...store.passages.values()],
+    sessions: [...store.sessions.values()],
+    notes: [...store.notes.values()],
+    categories: store.categories
+  }
+}
+
+/** What the guest store holds right now, or null when there is nothing stored. */
+export function snapshotGuestStore(
+  storage: KeyValueStore | null = defaultStorage(),
+  key: string = GUEST_STORE_KEY
+): GuestSnapshot | null {
+  return readSnapshot(storage, key)
+}
+
+/** Forget the guest store — after its notes have been carried into an account. */
+export function clearGuestStore(
+  storage: KeyValueStore | null = defaultStorage(),
+  key: string = GUEST_STORE_KEY
+): void {
+  try {
+    storage?.removeItem(key)
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Write a snapshot back — used to retry a replay that failed mid-way. */
+export function restoreGuestStore(
+  snap: GuestSnapshot,
+  storage: KeyValueStore | null = defaultStorage(),
+  key: string = GUEST_STORE_KEY
+): void {
+  writeSnapshot(storage, key, snap)
+}
+
+export interface MemoryApiOptions {
+  /**
+   * When set, this api keeps its own store, loaded from `storage` under this
+   * key on creation and written back after every mutation. Absent (the dev
+   * stub) it shares the module-level maps that seedMemoryApi fills.
+   */
+  persistKey?: string
+  /** Defaults to localStorage; injectable for tests. */
+  storage?: KeyValueStore | null
+}
 
 function passageInfo(p: Passage): Omit<NoteWithPassageInfo, keyof Note> {
   return {
@@ -48,14 +196,23 @@ function passageInfo(p: Passage): Omit<NoteWithPassageInfo, keyof Note> {
   }
 }
 
-export function createMemoryApi(): BereanApi {
-  // Category definitions. Empty means "nothing customised" and the caller
-  // falls back to the built-in four; see src/utils/noteCategories.ts.
-  //
-  // Rows carry `archived_at` exactly as the Supabase table does since migration
-  // 0011, so retire/restore behaves identically with no backend — which is the
-  // path a fresh checkout and every UI-only session actually take.
-  let noteCategories: StoredCategoryDef[] = []
+export function createMemoryApi(options: MemoryApiOptions = {}): BereanApi {
+  const { persistKey } = options
+  const storage = persistKey
+    ? options.storage === undefined
+      ? defaultStorage()
+      : options.storage
+    : null
+  // The persisted api owns its store; the dev stub shares MODULE_STORE so
+  // seedMemoryApi (which writes the module maps directly) is visible to it.
+  const store: MemoryStore = persistKey
+    ? storeFromSnapshot(readSnapshot(storage, persistKey))
+    : MODULE_STORE
+  const { passages, sessions, notes } = store
+  // Called after every mutation. A no-op for the dev stub.
+  const persist = (): void => {
+    if (persistKey) writeSnapshot(storage, persistKey, snapshotOf(store))
+  }
   return {
     async getPassages() {
       return [...passages.values()].sort((a, b) =>
@@ -79,6 +236,7 @@ export function createMemoryApi(): BereanApi {
         ...data
       }
       passages.set(p.id, p)
+      persist()
       return p
     },
 
@@ -91,6 +249,7 @@ export function createMemoryApi(): BereanApi {
         sessions.delete(s.id)
       }
       passages.delete(passageId)
+      persist()
       return { deletedPassageId: passageId }
     },
 
@@ -124,6 +283,7 @@ export function createMemoryApi(): BereanApi {
     async createSession(passageId) {
       const s: Session = { id: uuid(), passage_id: passageId, created_at: now() }
       sessions.set(s.id, s)
+      persist()
       return s
     },
 
@@ -182,6 +342,7 @@ export function createMemoryApi(): BereanApi {
         highlighted_text: data.highlighted_text ?? null
       }
       notes.set(n.id, n)
+      persist()
       return n
     },
 
@@ -190,17 +351,20 @@ export function createMemoryApi(): BereanApi {
       if (!existing) throw new CodedError('NOTE_NOT_FOUND', `Note ${id} not found`)
       const updated: Note = { ...existing, ...data, updated_at: now() }
       notes.set(id, updated)
+      persist()
       return updated
     },
 
     async deleteNote(id) {
       notes.delete(id)
+      persist()
     },
 
     async deleteNoteAndCascade(id): Promise<DeleteNoteResult> {
       const note = notes.get(id)
       if (!note) return { deletedNoteId: id }
       notes.delete(id)
+      persist()
       const result: DeleteNoteResult = { deletedNoteId: id }
 
       const sessionId = note.session_id
@@ -208,6 +372,7 @@ export function createMemoryApi(): BereanApi {
       if (!sessionEmpty) return result
       const session = sessions.get(sessionId)
       sessions.delete(sessionId)
+      persist()
       result.deletedSessionId = sessionId
       if (!session) return result
 
@@ -215,6 +380,7 @@ export function createMemoryApi(): BereanApi {
       const passageEmpty = ![...sessions.values()].some(s => s.passage_id === passageId)
       if (!passageEmpty) return result
       passages.delete(passageId)
+      persist()
       result.deletedPassageId = passageId
       return result
     },
@@ -268,14 +434,15 @@ export function createMemoryApi(): BereanApi {
     // anything — so the built-in fallback is what tests and a fresh checkout
     // actually exercise.
     async getNoteCategories() {
-      return noteCategories
+      return store.categories
     },
 
     async saveNoteCategories(defs) {
       // Copied rather than aliased, and archived_at normalised to null the way
       // a column would, so the stub cannot hand a caller back an object the
       // caller still holds a reference to.
-      noteCategories = defs.map(d => ({ ...d, archived_at: d.archived_at ?? null }))
+      store.categories = defs.map(d => ({ ...d, archived_at: d.archived_at ?? null }))
+      persist()
     }
   }
 }

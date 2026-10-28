@@ -239,6 +239,10 @@
   font-size: var(--text-sm);
   color: var(--text-faint);
 }
+/* The translations, named once, in the same fine-print register. */
+.ll-hero-fine--tr {
+  margin-top: 4px;
+}
 .ll-hero-verse {
   margin-top: 40px;
   padding-top: 22px;
@@ -865,6 +869,90 @@
   margin-top: 2px;
 }
 
+/* card 4 — the dive-in beneath a verse (DiveInCard.tsx), static.
+   The frame grows with its content rather than holding the clips' fixed
+   height: the verse wraps to four lines on a phone and a clipped verse is worse
+   than a slightly taller card. Declared after the 1440px rule above so the
+   height override wins. */
+.lf-frame--dive {
+  height: auto;
+  min-height: 290px;
+}
+.lf-dive {
+  height: auto;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 12px;
+  align-items: stretch;
+}
+.lf-dive-text {
+  min-width: 0;
+}
+.lf-dive-label {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 12px 0 6px;
+}
+.lf-xrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  margin-bottom: 6px;
+}
+.lf-xh {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.lf-dive-map {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 10px 8px 8px;
+  background: var(--bg);
+  min-width: 0;
+}
+.lf-route {
+  width: 100%;
+  height: auto;
+  display: block;
+  color: var(--accent);
+}
+.lf-route-stop circle {
+  fill: var(--accent);
+}
+.lf-route-stop text {
+  font-family: var(--ui-font);
+  font-size: 9.5px;
+  font-weight: 600;
+  fill: var(--text-muted);
+}
+/* Jerusalem is named by the verse as the place Paul did NOT go. */
+.lf-route-stop--faint circle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+.lf-route-stop--faint text {
+  fill: var(--text-faint);
+  font-weight: 500;
+}
+.lf-dive-map-cap {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 9px;
+  color: var(--text-faint);
+}
+
 /* ═══ THE NAME ═══
    Editorial two-column: the claim on the left, the prose on the right. Uses the
    wide measure without letting the paragraphs run past a readable line. */
@@ -1199,5 +1287,16 @@
   }
   .ll-cta-inner {
     padding: 36px 26px;
+  }
+  /* The dive-in card stacks: the verse and its passages, then the route. */
+  .lf-dive {
+    grid-template-columns: 1fr;
+  }
+  .lf-dive-map {
+    padding: 6px 8px 8px;
+  }
+  .lf-route {
+    max-width: 240px;
+    margin: 0 auto;
   }
 }

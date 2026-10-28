@@ -3,6 +3,7 @@ import Wordmark from '../Wordmark'
 import SignIn from '../SignIn'
 import HeroFlythrough from './HeroFlythrough'
 import FeatureClips from './FeatureClips'
+import DiveInCard from './DiveInCard'
 import '../../assets/landing.css'
 
 // The public landing page — what an unauthenticated visitor sees. Root's
@@ -93,6 +94,9 @@ export default function Landing({ onReadAsGuest }: LandingProps): React.JSX.Elem
                 </button>
               </div>
               <p className="ll-hero-fine">Nothing to buy. Your notes stay private to you.</p>
+              <p className="ll-hero-fine ll-hero-fine--tr">
+                Berean Standard Bible, KJV and NET, offline. ESV with an account.
+              </p>
               <div className="ll-hero-verse">
                 <span className="ll-v serif">
                   "Your word is a lamp to my feet and a light to my path."
@@ -108,6 +112,7 @@ export default function Landing({ onReadAsGuest }: LandingProps): React.JSX.Elem
 
       <div className="ll-wrap ll-features">
         <FeatureClips />
+        <DiveInCard />
       </div>
 
       {/* Why it exists, in a plain voice. This is the section that separates a
@@ -137,7 +142,10 @@ export default function Landing({ onReadAsGuest }: LandingProps): React.JSX.Elem
           <div className="ll-cta-inner">
             <div>
               <h2 className="serif">Ready when you are.</h2>
-              <p>One passage and a few notes. It will be here when you come back.</p>
+              <p>
+                Free, with no ads and nothing to unlock. One passage and a few notes, and it will be
+                here when you come back.
+              </p>
             </div>
             <button className="ll-btn ll-btn-primary ll-btn-lg" type="button" onClick={openLogin}>
               Get started

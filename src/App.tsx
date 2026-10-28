@@ -20,7 +20,8 @@ import { GuestContext } from './utils/guestContext'
 import { useTextSize } from './utils/useTextSize'
 import { useInstallPrompt } from './utils/useInstallPrompt'
 import { resolveSettingsAdoption, type UserSettings } from './api/types'
-import type { DeepLinkTarget } from './utils/deepLink'
+import { buildDeepLink, parseDeepLink, type DeepLinkTarget } from './utils/deepLink'
+import { writeLastRead } from './utils/lastRead'
 
 // Persisted "hide all notes" preference — the standalone reading control, kept
 // separate from the transient Focus toggle (which hides notes for the session
@@ -100,8 +101,9 @@ interface AppProps {
   accountSettings?: UserSettings | null
   // A resolved G4a deep link (Root.tsx parses `/read/<book>/<chapter>` once at
   // startup) — where a signed-in visitor's reading surface should open instead
-  // of the library. Read once, into the initial state below; v1 is on-load
-  // parsing only, so this is never consulted again after mount.
+  // of the library. Read once, into the initial state below; after mount the
+  // URL is kept in step by the history effect further down, and Back/Forward
+  // re-parse it there.
   initialDeepLink?: DeepLinkTarget | null
   // Set only in guest mode: leaves the ephemeral preview and starts real
   // sign-in. Its presence is what puts the whole App in "guest" framing — a
@@ -256,9 +258,9 @@ export default function App({
       selectedBookName: deepLinkBook?.name ?? null,
       selectedPassageId: null,
       selectedChapter: deepLinkBook ? initialDeepLink!.chapter : null,
-      // Deep links are chapter-level today (/read/<book>/<chapter>), so nothing
-      // to land on. If they ever carry a verse, this is where it arrives.
-      selectedVerse: null
+      // A link can name a verse (/read/<book>/<chapter>/<verse> or ?v=);
+      // BookDetailPage highlights and scrolls to it like a search jump.
+      selectedVerse: deepLinkBook ? (initialDeepLink!.verse ?? null) : null
     }
   })
   // Map surface. Opened by the doorways row (onOpenMap) or the ?map review URL.
@@ -418,6 +420,72 @@ export default function App({
   const selectedBibleBook = selectedBookName
     ? BIBLE_BOOKS.find(b => b.name === selectedBookName) || null
     : null
+
+  // ─── THE URL FOLLOWS THE READER ───────────────────────────────────────────
+  // The address bar names the chapter on screen (`/read/<book>/<chapter>`,
+  // plus the verse when a jump landed on one) and is `/` everywhere else, so a
+  // copied URL is always a working link. Moving between chapters or books
+  // PUSHES, so Back returns to the previous chapter; everything else REPLACES,
+  // so the history is a trail of chapters rather than every tab tap. No
+  // routing library: one effect writes, one popstate listener reads.
+  // The `?map=` review URL is left alone while the map is open (parseMapEntry
+  // read it at mount; rewriting it under the map would break a reload).
+  const shownChapter = destination === 'bible' && selectedBibleBook ? (selectedChapter ?? 1) : null
+  const shownBookNumber = shownChapter !== null ? selectedBibleBook!.number : null
+  const lastWrittenRef = useRef<{ book: number; chapter: number } | null>(null)
+  const fromPopRef = useRef(false)
+  useEffect(() => {
+    if (mapOpen) return
+    const path =
+      shownBookNumber !== null && shownChapter !== null
+        ? buildDeepLink(shownBookNumber, shownChapter, selectedVerse)
+        : '/'
+    const current = window.location.pathname + window.location.search
+    const last = lastWrittenRef.current
+    const movedChapter =
+      shownBookNumber !== null &&
+      last !== null &&
+      (last.book !== shownBookNumber || last.chapter !== shownChapter)
+    try {
+      if (current !== path) {
+        if (movedChapter && !fromPopRef.current) history.pushState(null, '', path)
+        else history.replaceState(null, '', path)
+      }
+    } catch {
+      /* a sandboxed frame can refuse; the app works without the URL */
+    }
+    fromPopRef.current = false
+    lastWrittenRef.current =
+      shownBookNumber !== null && shownChapter !== null
+        ? { book: shownBookNumber, chapter: shownChapter }
+        : null
+    if (shownBookNumber !== null && shownChapter !== null) {
+      writeLastRead(shownBookNumber, shownChapter)
+    }
+  }, [shownBookNumber, shownChapter, selectedVerse, mapOpen])
+
+  useEffect(() => {
+    const onPop = (): void => {
+      const target = parseDeepLink(window.location.pathname, window.location.search)
+      const book = target ? BIBLE_BOOKS.find(b => b.number === target.bookNumber) : undefined
+      fromPopRef.current = true
+      setMapOpen(false)
+      setMapChapter(null)
+      setStudyOpen(false)
+      setSearchOpen(false)
+      setState(prev => ({
+        ...prev,
+        destination: 'bible',
+        selectedPassageId: null,
+        selectedBookName: book?.name ?? null,
+        selectedChapter: book ? target!.chapter : null,
+        selectedVerse: book ? (target!.verse ?? null) : null
+      }))
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+  // ──────────────────────────────────────────────────────────────────────────
 
   // The two surfaces that are "just reading": a chapter and a saved passage.
   // Only these get the auto-hiding chrome and the Focus toggle — hiding the nav
@@ -583,6 +651,7 @@ export default function App({
         onSelectBook={handleSelectBook}
         displayName={displayName}
         onOpenSearch={() => setSearchOpen(true)}
+        onContinue={handleJumpToChapter}
       />
     )
   }

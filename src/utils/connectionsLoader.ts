@@ -26,12 +26,18 @@
 // pure-web rule in CLAUDE.md.
 import type { BibleVerseLine, TranslationId } from '../bible/provider'
 import { getBibleVerse, getChapterConnections } from '../bible/service'
+import { SelfHostedBibleProvider } from '../bible/self-hosted'
+import { KjvSelfHostedBibleProvider } from '../bible/kjv-self-hosted'
+import { NetSelfHostedBibleProvider } from '../bible/net-self-hosted'
+import type { BibleProvider } from '../bible/provider'
 import { bookByNumber } from './bibleBooks'
 import {
+  selectRows,
   connectionsForVerse,
   doorOpens,
   sharedPlaces,
   sharedRun,
+  sharedWords,
   type ChapterConnections,
   type ConnectionKind,
   type RawConnection
@@ -64,6 +70,12 @@ export interface ConnectionRow {
   text: string | null
   /** The lit run inside `text`, quote rows only. */
   shared: [number, number] | null
+  /**
+   * Content words the two passages share (connections.ts sharedWords), in the
+   * target's own forms: the row's "why" where it neither quotes the verse nor
+   * names one of its places. Empty where the texts were not both read.
+   */
+  words: string[]
   /** The same run inside the held verse's text, so the source can show it too. */
   sharedInSource: [number, number] | null
   /**
@@ -116,9 +128,42 @@ export interface ConnectionsSources {
   chapterPlaces?(book: number, chapter: number): Promise<string[]>
 }
 
+// The whole-Bible bundles Lantern ships for the open translations. A dive
+// reads up to eight chapters at once; through the network path that was eight
+// round trips (helloao, or the ESV proxy) and the sheet arrived a second or
+// two after the tap. From the bundle, once it is in memory, every chapter is a
+// lookup. Lazy: nothing is fetched until the first dive (or warmConnectionTexts).
+const bundled: Partial<Record<TranslationId, BibleProvider>> = {
+  BSB: new SelfHostedBibleProvider(),
+  KJV: new KjvSelfHostedBibleProvider(),
+  NET: new NetSelfHostedBibleProvider()
+}
+
+/**
+ * Start the bundle download for a translation in the background, so the first
+ * dive on a chapter does not pay for it. Safe to call often; no-op for a
+ * translation without a bundle (ESV reads through its proxy and cache).
+ */
+export function warmConnectionTexts(translation: TranslationId): void {
+  const provider = bundled[translation]
+  if (!provider) return
+  const idle =
+    typeof requestIdleCallback === 'function'
+      ? requestIdleCallback
+      : (cb: () => void) => window.setTimeout(cb, 800)
+  idle(() => {
+    void provider.getChapter(1, 1).catch(() => undefined)
+  })
+}
+
 const defaultSources: ConnectionsSources = {
   chapterConnections: getChapterConnections,
   async chapterText(book, chapter, translation) {
+    const provider = bundled[translation]
+    if (provider) {
+      const lines = await provider.getChapter(book, chapter).catch(() => null)
+      if (lines) return lines
+    }
     const name = bookByNumber(book)?.name
     if (!name) return null
     const passage = await getBibleVerse(`${name} ${chapter}`, translation).catch(() => null)
@@ -230,29 +275,35 @@ export function createConnectionsLoader(
       () => null
     )
 
+    // The rows worth showing: strongest first, the long tail of one-vote
+    // echoes dropped, capped (connections.ts selectRows). The parallel row —
+    // the dataset's first, when the door opened that way — is always kept.
+    const top0 = raw[0]
+    const rows0 = selectRows(raw, c => parallel && c === top0)
+
     // The held verse's own words, and each connected chapter once.
     const wanted = new Map<string, [number, number]>()
     wanted.set(`${book}/${chapter}`, [book, chapter])
-    for (const c of raw) wanted.set(`${c.book}/${c.chapter}`, [c.book, c.chapter])
+    for (const c of rows0) wanted.set(`${c.book}/${c.chapter}`, [c.book, c.chapter])
     const texts = new Map<string, BibleVerseLine[] | null>()
+    // All at once: the rows are capped at eight (selectRows), the bundles
+    // answer from memory, and the ESV proxy's per-minute limit is far above
+    // this. Four-at-a-time batching was the slow part of a dive on ESV.
     const entries = [...wanted.entries()]
-    for (let i = 0; i < entries.length; i += 4) {
-      const batch = await Promise.all(
-        entries.slice(i, i + 4).map(async ([key, [b, ch]]) => {
-          const lines = await sources.chapterText(b, ch, translation).catch(() => null)
-          return [key, lines] as const
-        })
-      )
-      for (const [key, lines] of batch) texts.set(key, lines)
-    }
+    const fetched = await Promise.all(
+      entries.map(async ([key, [b, ch]]) => {
+        const lines = await sources.chapterText(b, ch, translation).catch(() => null)
+        return [key, lines] as const
+      })
+    )
+    for (const [key, lines] of fetched) texts.set(key, lines)
     const lineText = (b: number, ch: number, v: number): string | null =>
       texts.get(`${b}/${ch}`)?.find(line => line.verse === v)?.text ?? null
 
     const settings = await settingsPromise
     const placeNames = await placesPromise
     const source = lineText(book, chapter, verse)
-    let quotes = 0
-    const rows: ConnectionRow[] = raw.map(c => {
+    const rows: ConnectionRow[] = rows0.map(c => {
       // A ranged row is compared and marked against its WHOLE range, so a
       // place named in verse 22 of Acts 9:20-25 still counts.
       const last = c.endVerse ?? c.verse
@@ -266,7 +317,6 @@ export function createConnectionsLoader(
               .filter((t): t is string => t !== null)
               .join(' ')
       const run = source !== null && whole !== null ? sharedRun(source, whole) : null
-      if (run) quotes += 1
       return {
         book: c.book,
         chapter: c.chapter,
@@ -278,10 +328,25 @@ export function createConnectionsLoader(
         shared: run ? run.target : null,
         sharedInSource: run ? run.source : null,
         places: source !== null && whole !== null ? sharedPlaces(placeNames, source, whole) : [],
+        words: source !== null && whole !== null ? sharedWords(source, whole) : [],
         setting: settingLineIn(settings, c.book, c.chapter, c.verse)
       }
     })
-    return { rows, quotes, echoes: rows.length - quotes, top: raw[0]?.score ?? 0, parallel }
+    // A row the sheet cannot explain is not shown: no quoted run, no shared
+    // place, no shared content word (connections.ts). The parallel row is the
+    // one exception, since the chapter's places already explain it.
+    const shown = rows.filter(
+      (r, i) =>
+        (parallel && i === 0) || r.shared !== null || r.places.length > 0 || r.words.length > 0
+    )
+    const shownQuotes = shown.filter(r => r.shared !== null).length
+    return {
+      rows: shown,
+      quotes: shownQuotes,
+      echoes: shown.length - shownQuotes,
+      top: raw[0]?.score ?? 0,
+      parallel
+    }
   }
 
   return {

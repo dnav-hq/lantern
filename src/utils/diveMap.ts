@@ -186,3 +186,103 @@ export function inFrame(p: XY, vb: ViewBox, margin = 0): boolean {
     p.y <= vb.y + vb.h + margin
   )
 }
+
+/* ── Context landmarks (2026-10-28) ──
+   Dennis, reviewing Genesis 8: the card was "one zoomed-in picture with a
+   label that doesn't mean anything to the person" — Ararat alone, at a scale
+   where nothing familiar is in frame. A place-only chapter is now framed with
+   a few LANDMARKS beside its own places: well-known names, chosen near the
+   chapter and spread around it, drawn muted so the eye still lands on the
+   chapter's place first. The journey card is untouched. */
+
+/**
+ * The landmarks, by the place bundle's own `n` (OpenBible friendly ids, so
+ * the numbered homonyms are spelled out: "Babylon 1" is the city on the
+ * Euphrates, "Antioch 1" the Syrian one). A name the bundle lacks is simply
+ * absent from the resolved list.
+ */
+export const LANDMARK_NAMES: readonly string[] = [
+  'Jerusalem',
+  'Damascus',
+  'Babylon 1',
+  'Nineveh',
+  'Ur 2',
+  'Haran',
+  'Memphis',
+  'Mount Sinai',
+  'Tyre',
+  'Sidon',
+  'Antioch 1',
+  'Ephesus',
+  'Athens',
+  'Rome',
+  'Susa',
+  'Samaria 1',
+  'Bethlehem 1',
+  'Jericho 1',
+  'Hebron',
+  'Shechem',
+  'Mount Carmel',
+  'Beersheba 1',
+  'Joppa',
+  'Caesarea',
+  'Dan'
+]
+
+/** Jerusalem is always a landmark within this reach (view units; ≈ 15°). */
+export const JERUSALEM_REACH = 300
+
+/**
+ * How a place-only chapter is framed once its landmarks are in: less padding
+ * than the bare chapter frame (the landmarks already push the edges out) and
+ * a far wider floor — 160 units is about 8° of longitude, enough that a
+ * Judean village sits in a frame that shows the coast, the Jordan and the
+ * Negev rather than a few streets of hills.
+ */
+export const CONTEXT_FRAME = { padding: 0.25, minSpan: 160 } as const
+
+/**
+ * Pick the landmarks that orient a chapter's places: never one of the
+ * chapter's own (same name or same point), Jerusalem whenever it is within
+ * reach, then the nearest to the chapter's centre — preferring, among the
+ * near ones, candidates in a DIFFERENT direction from those already chosen
+ * (at least 60° apart) so the chapter sits among its references instead of
+ * at one end of a line of them. Three or four in all, fewer only when the
+ * list runs out. Pure, so the rule is under test (diveMap.test.ts).
+ */
+export function chooseLandmarks<T extends XY & { name: string }>(
+  own: readonly XY[],
+  landmarks: readonly T[],
+  options: { count?: number; jerusalemReach?: number; spreadDeg?: number } = {}
+): T[] {
+  if (own.length === 0 || landmarks.length === 0) return []
+  const count = options.count ?? 4
+  const reach = options.jerusalemReach ?? JERUSALEM_REACH
+  const spread = ((options.spreadDeg ?? 60) * Math.PI) / 180
+  const ownKeys = new Set(own.map(p => `${p.x},${p.y}`))
+  const cx = own.reduce((s, p) => s + p.x, 0) / own.length
+  const cy = own.reduce((s, p) => s + p.y, 0) / own.length
+  const pool = landmarks
+    .filter(l => !ownKeys.has(`${l.x},${l.y}`))
+    .map(l => ({ l, d: Math.hypot(l.x - cx, l.y - cy), a: Math.atan2(l.y - cy, l.x - cx) }))
+    .sort((p, q) => p.d - q.d)
+  const chosen: typeof pool = []
+  const jerusalem = pool.find(p => p.l.name === 'Jerusalem')
+  if (jerusalem && jerusalem.d <= reach) chosen.push(jerusalem)
+  const apart = (a: number, b: number): boolean => {
+    const diff = Math.abs(a - b) % (2 * Math.PI)
+    return Math.min(diff, 2 * Math.PI - diff) >= spread
+  }
+  // First pass: nearest-first, but only in a fresh direction.
+  for (const p of pool) {
+    if (chosen.length >= count) break
+    if (chosen.includes(p)) continue
+    if (chosen.every(c => apart(c.a, p.a))) chosen.push(p)
+  }
+  // Second pass: fill any slots left with the nearest remaining, regardless.
+  for (const p of pool) {
+    if (chosen.length >= count) break
+    if (!chosen.includes(p)) chosen.push(p)
+  }
+  return chosen.map(p => p.l)
+}

@@ -2,7 +2,8 @@
 //
 // The mark beside a verse number says PRESENCE and nothing else: tapping this
 // verse would open something. It is computed from the same facts the entrance
-// opens on (docs/proposals/dive-in-2.md): a connection over the salience line,
+// opens on (docs/proposals/dive-in-2.md): a connection over the DOT's own line
+// (DEPTH_THRESHOLD, higher than the entrance's; connections.ts says why),
 // a geocoded place the verse names, or a journey leg cited from it. The one
 // thing it cannot see without fetching text is the parallel-account gate, so a
 // verse that opens ONLY that way carries no mark; the entrance still appears
@@ -15,7 +16,7 @@
 // Nothing here may import a Node API — this file lives under src/ and obeys
 // the pure-web rule in CLAUDE.md.
 import { getChapterConnections } from '../bible/service'
-import { connectionsForVerse, doorOpens } from './connections'
+import { connectionsForVerse, hasDepth } from './connections'
 import { citationSpan, loadChapterMap } from './diveMapLoader'
 
 const chapters = new Map<string, Promise<ReadonlySet<number>>>()
@@ -29,7 +30,7 @@ async function build(book: number, chapter: number): Promise<ReadonlySet<number>
   if (connections) {
     for (const key of Object.keys(connections)) {
       const verse = Number(key)
-      if (doorOpens(connectionsForVerse(connections, verse))) out.add(verse)
+      if (hasDepth(connectionsForVerse(connections, verse))) out.add(verse)
     }
   }
   if (map) {

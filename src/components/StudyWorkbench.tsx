@@ -216,6 +216,16 @@ export default function StudyWorkbench({
   const activeRange = rangeOf(text)
   const prose = noteProse(text)
 
+  // The stored line from the prose the editor holds plus the anchor and
+  // category the controls hold. A "@tag" the reader types inside the prose
+  // still counts (parseNoteLine reads it from the composed line), so the
+  // autocomplete keeps working; it is just moved to the head on the way out.
+  const compose = (p: string): string => {
+    const anchored = activeRange ? withAnchor(p, activeRange.start, activeRange.end) : p
+    const typed = parseNoteLine(anchored).category
+    return withCategory(anchored, typed ?? category)
+  }
+
   // Live verse highlighting: whatever the editor is anchored to right now.
   useEffect(() => {
     onActiveRangeChange(activeRange)
@@ -335,13 +345,21 @@ export default function StudyWorkbench({
       data-editing={editingNote ? 'note' : 'draft'}
     >
       <div className="study-editor-inner">
+        {/* The editor holds the PROSE only. The anchor and the category are
+            controls beside it (the "Anchored to" line and the chips), and the
+            stored content — "v4 @historical …" — is composed on the way out
+            (`compose`). The tokens used to sit in the body as pills, which
+            read as syntax to anyone who had not written the parser
+            (world-class pass 2026-10-28, finding 10). */}
         <RichEditInput
           key={`${editingId ?? 'new'}-${seed}`}
-          initialValue={text}
-          onChange={setText}
+          initialValue={prose}
+          onChange={p => setText(compose(p))}
           onSave={handleSave}
           onCancel={handleCancel}
           className="study-editor-body"
+          placeholder="What do you notice?"
+          ariaLabel="Note"
         />
         <div className="study-editor-anchor">
           {activeRange ? (
@@ -355,9 +373,7 @@ export default function StudyWorkbench({
               </b>
             </>
           ) : (
-            <>
-              Type <b>v5</b> or <b>v4-6</b>, or click a verse, to anchor
-            </>
+            <>Click a verse to anchor this note, or drag across several</>
           )}
         </div>
         <div className="study-editor-foot">

@@ -207,6 +207,52 @@ describe('parseScriptureQuery — search reference jump', () => {
     ])
   })
 
+  it('accepts a space, "v", "V" or "." between chapter and verse', () => {
+    const target = { bookNumber: 43, bookName: 'John', chapter: 3, verse: 16, kind: 'verse' }
+    expect(parseScriptureQuery('john 3 16')).toEqual([target])
+    expect(parseScriptureQuery('john 3v16')).toEqual([target])
+    expect(parseScriptureQuery('john 3V16')).toEqual([target])
+    expect(parseScriptureQuery('john 3.16')).toEqual([target])
+    expect(parseScriptureQuery('john 3 : 16')).toEqual([target])
+    expect(parseScriptureQuery('jn 3 16')).toEqual([target])
+    expect(parseScriptureQuery('rom 8 28')[0]).toMatchObject({
+      bookName: 'Romans',
+      chapter: 8,
+      verse: 28
+    })
+  })
+
+  it('keeps the start verse of a range', () => {
+    expect(parseScriptureQuery('john 3:16-18')[0]).toMatchObject({ chapter: 3, verse: 16 })
+    expect(parseScriptureQuery('john 3 16 18')[0]).toMatchObject({ chapter: 3, verse: 16 })
+  })
+
+  it('keeps a leading number as part of the book name', () => {
+    expect(parseScriptureQuery('1 john 3 16')).toEqual([
+      { bookNumber: 62, bookName: '1 John', chapter: 3, verse: 16, kind: 'verse' }
+    ])
+    expect(parseScriptureQuery('1 john 3')).toEqual([
+      { bookNumber: 62, bookName: '1 John', chapter: 3, verse: null, kind: 'chapter' }
+    ])
+    expect(parseScriptureQuery('2 kings 5')[0]).toMatchObject({ bookName: '2 Kings', chapter: 5 })
+    expect(parseScriptureQuery('1 john')[0]).toMatchObject({ bookName: '1 John', kind: 'book' })
+  })
+
+  it('handles multi-word books and the "v" of lev/rev', () => {
+    expect(parseScriptureQuery('song of solomon 2')[0]).toMatchObject({
+      bookName: 'Song of Solomon',
+      chapter: 2,
+      kind: 'chapter'
+    })
+    expect(parseScriptureQuery('Ps 23')[0]).toMatchObject({ bookName: 'Psalms', chapter: 23 })
+    expect(parseScriptureQuery('rev 3 4')[0]).toMatchObject({
+      bookName: 'Revelation',
+      chapter: 3,
+      verse: 4
+    })
+    expect(parseScriptureQuery('lev 3')[0]).toMatchObject({ bookName: 'Leviticus', chapter: 3 })
+  })
+
   it('parses a full book name + chapter only ("john 1")', () => {
     expect(parseScriptureQuery('john 1')).toEqual([
       { bookNumber: 43, bookName: 'John', chapter: 1, verse: null, kind: 'chapter' }

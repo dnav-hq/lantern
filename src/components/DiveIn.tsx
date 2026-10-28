@@ -108,7 +108,8 @@ function Row({
   const textRef = useRef<HTMLParagraphElement>(null)
   const anchor = row.text ? anchorOf(row) : 0
   const win = row.text ? windowAround(row.text, anchor) : null
-  const marked = row.shared !== null || row.places.length > 0
+  const marked = row.shared !== null || row.places.length > 0 || row.words.length > 0
+  const names = [...row.places, ...row.words]
   return (
     <div className={`dive-row${open ? ' is-open' : ''}`}>
       <div className="dive-row-head">
@@ -128,12 +129,12 @@ function Row({
           onClick={() => textRef.current && onToggle(textRef.current)}
         >
           {open ? (
-            <Marked text={row.text} run={row.shared} names={row.places} />
+            <Marked text={row.text} run={row.shared} names={names} />
           ) : (
             <Marked
               text={win.text}
               run={row.shared}
-              names={row.places}
+              names={names}
               from={win.offset}
               ellipsis={win.offset > 0}
             />
@@ -218,7 +219,11 @@ function Stacked({
             <span className="conn-passage-num">{line.verse}</span>
             <span className="conn-passage-text">
               {here ? (
-                <Marked text={line.text} run={inLine ? run : null} names={row.places} />
+                <Marked
+                  text={line.text}
+                  run={inLine ? run : null}
+                  names={[...row.places, ...row.words]}
+                />
               ) : (
                 line.text
               )}
@@ -230,15 +235,10 @@ function Stacked({
   )
 }
 
+/** Attribution for the data on the sheet, once, small. The headings are the BSB's own and public domain; only the cross-references and the map carry a licence to name. */
 function provenance(found: VerseConnections | null, map: ChapterMap | null): string {
   const parts: string[] = []
-  if (found) {
-    parts.push('Cross-references: OpenBible.info, CC BY 4.0')
-    if (found.rows.some(r => r.setting?.source === 'h')) {
-      parts.push('section headings: Berean Standard Bible')
-    }
-    if (found.rows.some(r => r.setting?.source === 's')) parts.push('psalm titles as they stand')
-  }
+  if (found) parts.push('Cross-references: OpenBible.info, CC BY 4.0')
   if (map) parts.push('map: Natural Earth, OpenBible geocoding')
   return parts.join(' · ') + '.'
 }
@@ -281,7 +281,6 @@ export function DiveBody({
 
   const rowsBlock = rows.length > 0 && (
     <div className="dive-rows">
-      <p className="dive-eyebrow">Where Scripture picks this up</p>
       {rows.slice(0, more ? rows.length : GLANCE_ROWS).map((row, i) => (
         <Row
           key={`${row.book}/${row.chapter}/${row.verse}`}
@@ -312,7 +311,10 @@ export function DiveBody({
 
   return (
     <>
-      <p className="word-door-verse">
+      {/* The verse itself, held at the top: the reader chose it, and the
+          rows below are read against it. The words its strongest row shares
+          are lit here too, so the link reads in both directions. */}
+      <p className="dive-held">
         <Marked text={address.verseText} run={lead} />
       </p>
       {journeyFirst ? (

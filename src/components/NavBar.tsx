@@ -13,6 +13,10 @@ export type Destination = 'bible' | 'journal' | 'study' | 'profile'
 // length (see .bottomnav-indicator), so it stays 1:1 with however many tabs render.
 const BOTTOMNAV_ORDER: Destination[] = ['bible', 'journal', 'profile']
 
+// The "Personal ▾" workspace switcher: hidden until shared group spaces exist,
+// since its menu has nothing to switch to. Flip to true when they do.
+const WORKSPACE_SWITCHER = false
+
 interface NavBarProps {
   destination: Destination
   onNavigate: (dest: Destination) => void
@@ -33,9 +37,8 @@ interface NavBarProps {
   // than offering something that can't happen. See platform/install.ts.
   canInstall?: boolean
   onInstall?: () => void
-  // The Study workbench has a hard 1160px floor (App.tsx's STUDY_QUERY). Below
-  // it the tab used to stay in the bar and do nothing at all when clicked, so
-  // it is hidden instead of lying about being a destination.
+  // Kept for App.tsx: Study no longer has a nav tab at all (its one entrance is
+  // the Read/Study toggle in the chapter header), so this is unused here.
   canStudy?: boolean
 }
 
@@ -57,11 +60,12 @@ function useClickOutside(
 
 /**
  * App navigation: a top bar on desktop, a bottom tab bar on mobile.
- * Destinations: Bible · Journal · + Study · Profile.
+ * Destinations: Bible · Journal · Profile. (Study is a mode of the reading
+ * page, reached from its header toggle, not a destination here.)
  *
- * The "Personal ▾" workspace selector is a deliberate stub — it renders the
- * personal workspace only, so the future group switcher drops in without
- * restructuring the bar.
+ * The "Personal ▾" workspace selector is a deliberate stub, hidden behind
+ * WORKSPACE_SWITCHER until there is a second workspace to switch to; the code
+ * stays so the group switcher drops in without restructuring the bar.
  */
 export default function NavBar({
   destination,
@@ -73,8 +77,7 @@ export default function NavBar({
   searchSlot,
   onOpenSearch,
   canInstall = false,
-  onInstall,
-  canStudy
+  onInstall
 }: NavBarProps): React.ReactElement {
   const { state: exportState, run: runExport } = useNotesExport()
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
@@ -84,14 +87,11 @@ export default function NavBar({
   const profileRef = useRef<HTMLDivElement>(null)
   // Desktop tab indicator: a measured sliding pill, matching the mobile
   // bottom bar's jump-between-tabs feel instead of each tab just recoloring
-  // in place independently. Measured (not the mobile bar's plain 25%-per-
-  // column transform) because desktop tabs are text-sized, not equal-width
-  // columns. Only tracks Bible/Journal — Study already has its own distinct
-  // permanent look (an accent-outlined pill at rest, solid-filled when
-  // active), so sliding a second, differently-styled highlight underneath it
-  // would double up/clash. The indicator instead fades out when Study
-  // becomes active (staying parked at wherever it last was) and fades back
-  // in at the right spot when the user returns to Bible or Journal.
+  // in place independently. Measured (not the mobile bar's plain per-column
+  // transform) because desktop tabs are text-sized, not equal-width columns.
+  // Only tracks Bible/Journal, the two tabs that render; any other destination
+  // (profile, or the legacy 'study' value) fades it out where it last was and
+  // it fades back in when the user returns to Bible or Journal.
   const topnavTabsRef = useRef<HTMLElement>(null)
   const [indicatorStyle, setIndicatorStyle] = useState<{
     left: number
@@ -191,29 +191,6 @@ export default function NavBar({
       <line x1="9" y1="12" x2="14" y2="12" />
     </svg>
   )
-  // Desktop hides this (.topnav-tabs .nav-tab svg { display:none }; that tab
-  // is text-first, "+ Study"). Two prior attempts at a special mobile
-  // treatment (accent color, then a filled shape badge) both read as
-  // "strange" — an odd-one-out among three consistent line icons draws the
-  // eye for the wrong reason. Reverted to the same plain-line style as
-  // Bible/Journal/Profile; Study is differentiated by label and function,
-  // not by icon decoration. See BACKLOG for the mobile nav priority
-  // discussion this is part of.
-  const studyIcon = (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  )
   const profileIcon = (
     <svg
       width="18"
@@ -236,59 +213,61 @@ export default function NavBar({
       <header className="topnav">
         <div className="topnav-lead">
           <Wordmark size={19} />
-          <div className="workspace-selector" ref={workspaceRef}>
-            <button
-              className="workspace-btn"
-              onClick={() => setWorkspaceOpen(o => !o)}
-              aria-haspopup="menu"
-              aria-expanded={workspaceOpen}
-            >
-              Personal
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
-            {/* Kept mounted so it can animate closed as well as open — shared
-                menu-motion pattern (see .nav-menu in motion.css). */}
-            <div
-              className={`nav-menu workspace-menu${workspaceOpen ? ' open' : ''}`}
-              role="menu"
-              aria-hidden={!workspaceOpen}
-            >
+          {WORKSPACE_SWITCHER && (
+            <div className="workspace-selector" ref={workspaceRef}>
               <button
-                className="nav-menu-item active"
-                role="menuitem"
-                onClick={() => setWorkspaceOpen(false)}
+                className="workspace-btn"
+                onClick={() => setWorkspaceOpen(o => !o)}
+                aria-haspopup="menu"
+                aria-expanded={workspaceOpen}
               >
-                <span className="workspace-dot" />
                 Personal
                 <svg
-                  width="12"
-                  height="12"
+                  width="10"
+                  height="10"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  style={{ marginLeft: 'auto' }}
                 >
-                  <polyline points="20 6 9 17 4 12" />
+                  <polyline points="6 9 12 15 18 9" />
                 </svg>
               </button>
-              <div className="nav-menu-divider" />
-              <div className="nav-menu-hint">Shared group spaces — coming later</div>
+              {/* Kept mounted so it can animate closed as well as open — shared
+                menu-motion pattern (see .nav-menu in motion.css). */}
+              <div
+                className={`nav-menu workspace-menu${workspaceOpen ? ' open' : ''}`}
+                role="menu"
+                aria-hidden={!workspaceOpen}
+              >
+                <button
+                  className="nav-menu-item active"
+                  role="menuitem"
+                  onClick={() => setWorkspaceOpen(false)}
+                >
+                  <span className="workspace-dot" />
+                  Personal
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </button>
+                <div className="nav-menu-divider" />
+                <div className="nav-menu-hint">Shared group spaces — coming later</div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <nav
@@ -307,7 +286,8 @@ export default function NavBar({
           />
           {navTab('bible', 'Bible', bibleIcon)}
           {navTab('journal', 'Journal', journalIcon)}
-          {canStudy !== false && navTab('study', '+ Study', studyIcon)}
+          {/* No "+ Study" tab: Study has one entrance, the Read/Study toggle in
+              the chapter header (2026-10-28). */}
         </nav>
 
         {/* Grouped so the grid's outer two columns (lead / right) are forced to
@@ -421,7 +401,7 @@ export default function NavBar({
                           guestSignIn()
                         }}
                       >
-                        Sign in to keep your notes
+                        Sign in
                       </button>
                     </>
                   ) : (

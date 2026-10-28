@@ -150,9 +150,23 @@ export function useReadingTranslation(): [TranslationId, (t: TranslationId) => v
   return [isGuest ? toGuestTranslation(translation) : translation, set]
 }
 
-// The translations a picker should offer: a guest gets BSB/KJV only (English,
-// ESV-free); everyone else gets the chosen language's full list.
+// The translations a picker should offer: a guest gets BSB/KJV/NET only
+// (English, ESV-free); everyone else gets the chosen language's full list.
 export function useTranslationOptions(language: BibleLanguageId): TranslationOption[] {
   const isGuest = useIsGuest()
   return isGuest ? GUEST_TRANSLATIONS : translationsForLanguage(language)
+}
+
+// The English translations a guest can SEE but not select — ESV today. Pure:
+// what the switcher renders after its live rows, muted, as the reason to sign
+// in. The data rule above is untouched; a locked row never reaches
+// setTranslation.
+export const LOCKED_GUEST_TRANSLATIONS = TRANSLATIONS.filter(
+  t => t.language === 'eng' && !GUEST_TRANSLATIONS.some(g => g.id === t.id)
+)
+
+/** The locked rows for the current reader: ESV for a guest, nothing otherwise. */
+export function useLockedTranslationOptions(): TranslationOption[] {
+  const isGuest = useIsGuest()
+  return isGuest ? LOCKED_GUEST_TRANSLATIONS : []
 }

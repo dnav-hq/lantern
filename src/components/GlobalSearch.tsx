@@ -105,8 +105,8 @@ export default function GlobalSearch({
     null
   )
   // Keyboard nav through the combined result list (scripture results first,
-  // then notes — same order as rendered). -1 = nothing highlighted yet, so a
-  // bare Enter with no arrow-key use doesn't fire a surprise action.
+  // then notes, then verses — same order as rendered). -1 = nothing
+  // highlighted yet; a bare Enter then opens the first result (see onKeyDown).
   const [activeIndex, setActiveIndex] = useState(-1)
 
   // Section 1: scripture reference(s) — synchronous, from the query alone.
@@ -486,9 +486,15 @@ export default function GlobalSearch({
             } else if (e.key === 'ArrowUp') {
               e.preventDefault()
               setActiveIndex(i => (i - 1 + flatResults.length) % flatResults.length)
-            } else if (e.key === 'Enter' && activeIndex >= 0) {
+            } else if (e.key === 'Enter') {
               e.preventDefault()
-              flatResults[activeIndex]?.onSelect()
+              // With nothing highlighted, Enter takes the most likely result:
+              // the reference if the query reads as one, else the first verse
+              // whose words matched, else the first note. Typing "rom 8 28"
+              // and pressing Enter should simply go there.
+              const fallback =
+                scriptureResults.length > 0 ? 0 : textHits.hits.length > 0 ? noteResults.length : 0
+              flatResults[activeIndex >= 0 ? activeIndex : fallback]?.onSelect()
             }
           }}
           onBlur={() => {

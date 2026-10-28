@@ -1,7 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { TranslationId } from '../bible/provider'
-import { useReadingTranslation, useTranslationOptions } from '../utils/useTranslation'
+import {
+  useLockedTranslationOptions,
+  useReadingTranslation,
+  useTranslationOptions
+} from '../utils/useTranslation'
 import { useBibleLanguage } from '../utils/useBibleLanguage'
+import { useGuestSignIn } from '../utils/guestContext'
 
 /** Closes the picker on an outside click OR any scroll (the menu is anchored to
  * a position that scrolls away, so it should dismiss rather than float). Mirrors
@@ -70,6 +75,10 @@ export default function TranslationFooter({
   const [language] = useBibleLanguage()
   const options = useTranslationOptions(language)
   const current = options.find(t => t.id === translation)
+  // A guest sees ESV after the live rows, muted and locked; choosing it goes to
+  // sign-in instead of changing the translation (useTranslation.ts's guest rule).
+  const locked = useLockedTranslationOptions()
+  const guestSignIn = useGuestSignIn()
 
   return (
     <div className="translation-footer" ref={hostRef}>
@@ -136,6 +145,25 @@ export default function TranslationFooter({
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               )}
+            </button>
+          ))}
+          {locked.map(t => (
+            <button
+              key={t.id}
+              className="nav-menu-item nav-menu-item-locked"
+              role="menuitem"
+              aria-disabled="true"
+              onClick={() => {
+                setOpen(false)
+                guestSignIn?.()
+              }}
+            >
+              <span className="translation-chip-menu-abbr">{t.id}</span>
+              <span className="nav-menu-item-stack">
+                {t.label}
+                <span className="translation-option-sub">Sign in to read in {t.id}</span>
+              </span>
+              <span className="translation-chip-tag">Sign in</span>
             </button>
           ))}
         </div>

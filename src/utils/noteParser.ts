@@ -262,16 +262,26 @@ export function parseScriptureQuery(query: string): ScriptureQuery[] {
   const trimmed = query.trim().replace(/\s+/g, ' ')
   if (!trimmed) return []
 
-  // "<book> <chapter>[:<verse>]" — book + a trailing chapter[:verse].
-  const withChapter = /^(.+?)\s+(\d+)(?::(\d+))?\s*$/.exec(trimmed)
-  if (withChapter) {
-    const book = findBookByAlias(withChapter[1])
+  // "<book> <chapter> <verse>" — the chapter and verse separated by ":", ".",
+  // "v"/"V" or a plain space, with spaces allowed around the separator, so
+  // "rom 8 28", "jn 3v16" and "john 3.16" all land on the verse; a trailing
+  // range ("3:16-18", "3 16 18") is accepted and only its start verse kept.
+  // The chapter must follow whitespace, so the "v" of "lev"/"rev" is never
+  // read as a separator and a numbered book ("1 john 3 16") keeps its number.
+  const withVerse = /^(.+?)\s+(\d+)\s*(?:[:.vV]|\s)\s*(\d+)(?:\s*[-–\s]\s*\d+)?\s*$/.exec(trimmed)
+  // "<book> <chapter>" — book + a trailing chapter. Tried when the verse
+  // shape did not resolve to a book, so "1 john 3" is 1 John 3 and never
+  // book "1", chapter "john".
+  const withChapter = /^(.+?)\s+(\d+)\s*$/.exec(trimmed)
+  for (const match of [withVerse, withChapter]) {
+    if (!match) continue
+    const book = findBookByAlias(match[1])
     if (book) {
-      let chapter = parseInt(withChapter[2], 10)
+      let chapter = parseInt(match[2], 10)
       if (chapter < 1) chapter = 1
       if (chapter > book.chapters) chapter = book.chapters
 
-      const verse = withChapter[3] ? parseInt(withChapter[3], 10) : null
+      const verse = match[3] ? parseInt(match[3], 10) : null
 
       return [
         {

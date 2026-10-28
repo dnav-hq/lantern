@@ -1,8 +1,12 @@
 import React from 'react'
 import { LOOKS, type LookId } from '../utils/useTheme'
 import { TEXT_SIZES, type TextSizeId } from '../utils/useTextSize'
-import { useReadingTranslation, useTranslationOptions } from '../utils/useTranslation'
-import { useIsGuest } from '../utils/guestContext'
+import {
+  useLockedTranslationOptions,
+  useReadingTranslation,
+  useTranslationOptions
+} from '../utils/useTranslation'
+import { useGuestSignIn, useIsGuest } from '../utils/guestContext'
 import {
   BIBLE_LANGUAGES,
   HAS_MULTIPLE_LANGUAGES,
@@ -184,6 +188,10 @@ function TranslationSection(): React.ReactElement {
   const [translation, setTranslation] = useReadingTranslation()
   const [language] = useBibleLanguage()
   const options = useTranslationOptions(language)
+  // A guest SEES ESV, muted and locked, after the live rows — the row is the
+  // reason to sign in, and tapping it goes there rather than changing anything.
+  const locked = useLockedTranslationOptions()
+  const guestSignIn = useGuestSignIn()
   return (
     <div className="rpref-section">
       <div className="rpref-section-label">Translation</div>
@@ -199,8 +207,46 @@ function TranslationSection(): React.ReactElement {
             {t.label}
           </button>
         ))}
+        {locked.map(t => (
+          <button
+            key={t.id}
+            className="translation-option translation-option-locked"
+            onClick={() => guestSignIn?.()}
+            role="radio"
+            aria-checked={false}
+            aria-disabled="true"
+            title={`Sign in to read in ${t.id}`}
+          >
+            <span className="translation-option-row">
+              <LockGlyph />
+              {t.label}
+              <span className="translation-chip-tag">Sign in</span>
+            </span>
+            <span className="translation-option-sub">Sign in to read in {t.id}</span>
+          </button>
+        ))}
       </div>
     </div>
+  )
+}
+
+function LockGlyph(): React.ReactElement {
+  return (
+    <svg
+      className="translation-lock"
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
   )
 }
 

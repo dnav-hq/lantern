@@ -44,6 +44,8 @@ import {
   type ViewBox
 } from '../utils/mapViewport'
 import { BIBLE_BOOKS } from '../utils/bibleBooks'
+import { chooseLandmarks, CONTEXT_FRAME, LANDMARK_NAMES } from '../utils/diveMap'
+import { displayPlaceName } from '../utils/mapDataLoader'
 import { usePrefersReducedMotion } from '../utils/useChapterNavigation'
 
 /** Matches --dur-3 — the close fade/slide MapView plays before telling its
@@ -189,6 +191,21 @@ export function MapCanvas({
     () => (storySet ? model.markers.filter(m => storySet.has(m.index)) : null),
     [model, storySet]
   )
+  // A framed chapter with no journey gets the same few muted landmarks the
+  // dive-in card draws (2026-10-28), chosen by the same rule, so a one-place
+  // chapter has its bearings here too. The world view ("All") never draws them.
+  const landmarks = useMemo(() => {
+    if (journey || !storyMarkers || storyMarkers.length === 0) return []
+    const byName = new Map(model.markers.map(m => [m.name, m]))
+    const pool = LANDMARK_NAMES.flatMap(n => {
+      const m = byName.get(n)
+      return m ? [{ x: m.point.x, y: m.point.y, name: displayPlaceName(m.name), marker: m }] : []
+    })
+    return chooseLandmarks(
+      storyMarkers.map(m => m.point),
+      pool
+    )
+  }, [journey, storyMarkers, model])
   // The reader's way out to the whole dataset: every place, at world zoom. The
   // home control (and this button again) comes back to the story.
   const [showAll, setShowAll] = useState(false)
@@ -212,14 +229,15 @@ export function MapCanvas({
     }
     if (storyMarkers && storyMarkers.length > 0) {
       return frameViewBox(
-        storyMarkers.map(m => m.point),
+        [...storyMarkers.map(m => m.point), ...landmarks],
         size,
         extent,
-        fit
+        fit,
+        CONTEXT_FRAME
       )
     }
     return fit
-  }, [size, journey, storyMarkers, extent, fit])
+  }, [size, journey, storyMarkers, landmarks, extent, fit])
 
   // The committed viewBox — what React renders (and what the `viewBox`
   // attribute is set to). The ref is the live one that gestures move; they
@@ -624,6 +642,24 @@ export function MapCanvas({
             </g>
           )}
 
+          {/* The landmarks, under the chapter's own markers and set muted: a
+              small dot and a quiet name, for bearings only. Hidden the moment
+              the whole dataset is shown, where every place is drawn anyway. */}
+          {!showAll && landmarks.length > 0 && (
+            <g className="map-landmarks" aria-hidden="true">
+              {landmarks.map(l => (
+                <g key={l.marker.index} transform={`translate(${l.x} ${l.y})`}>
+                  <g className="map-place-scale">
+                    <circle className="map-landmark-dot" cx={0} cy={0} r={2} />
+                    <text className="map-label is-landmark" x={7} y={0}>
+                      {l.name}
+                    </text>
+                  </g>
+                </g>
+              ))}
+            </g>
+          )}
+
           <g className="map-markers">
             {visibleMarkers.map(marker => (
               <PlaceGlyph key={marker.index} marker={marker} selected={marker.index === selected} />
@@ -942,7 +978,7 @@ export default function MapView({ chapter = null, onClose }: MapViewProps): Reac
   const [places, setPlaces] = useState<MapPlaceBundle | null>(null)
   const [journeys, setJourneys] = useState<JourneyBundle | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [view, setView] = useState<MapBaseView>('plain')
+  const [view, setView] = useState<MapBaseView>('relief')
   const [selected, setSelected] = useState<number | null>(null)
   // Plays the close motion (fade + settle) before telling App.tsx to swap the
   // map back out — the same own-the-exit shape as DeepDiveSheet/
@@ -1121,38 +1157,13 @@ export default function MapView({ chapter = null, onClose }: MapViewProps): Reac
             />
           )}
 
-          <section className="map-unlocated">
-            <h2 className="map-unlocated-title">Places nobody can locate</h2>
-            <p className="map-unlocated-note">
-              These are in the Bible and in the dataset, and no one knows where they were. They are
-              listed rather than plotted — putting a dot on the map for them would be a guess.
-            </p>
-            <ul className="map-unlocated-list">
-              {model.unlocated.map(place => (
-                <li key={place.index}>
-                  <span className="map-unlocated-name">{place.name}</span>
-                  <span className="map-unlocated-type">{place.type}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <footer className="map-attribution">
-            <p>{places.attribution}</p>
-            <p>{artwork.terrain?.attribution ?? 'Base map: Natural Earth (public domain)'}</p>
-            <p>
-              The coastlines and rivers are <strong>modern</strong> geography, with ancient places
-              plotted on them. The Dead Sea, the Nile delta and Tyre&rsquo;s isthmus have all moved
-              since; this is the land as it is now, not as it was.
-            </p>
-            <p>
-              The scholarly sources behind each identification are published at{' '}
-              <a href="https://www.openbible.info/geo/" rel="noreferrer noopener" target="_blank">
-                openbible.info
-              </a>
-              .
-            </p>
-          </footer>
+          {/* One line of credit, nothing more (2026-10-28: the unlocated list
+              and the paragraphs on sources and modern geography were "so much
+              random text at the bottom"). The CC BY licence needs the
+              attribution; the rest is behind the place cards and openbible. */}
+          <p className="map-credit">
+            Places: OpenBible.info, CC BY 4.0 · Base map: Natural Earth. Coastlines are modern.
+          </p>
         </>
       )}
     </div>

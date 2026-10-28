@@ -338,8 +338,8 @@ export default function HeroFlythrough(): React.JSX.Element {
               ref={v3Ref}
               style={{ gridRow: 4, '--c': 'var(--cat-personal)' } as React.CSSProperties}
             >
-              <span className="lh-vn">3</span>Through him all things were made; without him nothing
-              was made that has been made.
+              <span className="lh-vn">3</span>Through Him all things were made, and without Him
+              nothing was made that has been made.
             </div>
             <div
               className={`lh-note rail${shown}`}
@@ -360,8 +360,7 @@ export default function HeroFlythrough(): React.JSX.Element {
               className="lh-v anch"
               style={{ gridRow: 5, '--c': 'var(--cat-application)' } as React.CSSProperties}
             >
-              <span className="lh-vn">4</span>In him was life, and that life was the light of all
-              mankind.
+              <span className="lh-vn">4</span>In Him was life, and that life was the light of men.
             </div>
             <div
               className="lh-note inline pre"
@@ -375,7 +374,7 @@ export default function HeroFlythrough(): React.JSX.Element {
               className="lh-v anch"
               style={{ gridRow: 7, '--c': 'var(--cat-personal)' } as React.CSSProperties}
             >
-              <span className="lh-vn">5</span>The light shines in the darkness, and the darkness has
+              <span className="lh-vn">5</span>The Light shines in the darkness, and the darkness has
               not overcome it.
             </div>
             <div
@@ -390,13 +389,15 @@ export default function HeroFlythrough(): React.JSX.Element {
               className="lh-v anch"
               style={{ gridRow: 9, '--c': 'var(--cat-historical)' } as React.CSSProperties}
             >
-              <span className="lh-vn">6</span>There was a man sent from God whose name was John.
+              <span className="lh-vn">6</span>There came a man who was sent from God. His name was
+              John.
             </div>
             <div
               className="lh-v anch"
               style={{ gridRow: 10, '--c': 'var(--cat-historical)' } as React.CSSProperties}
             >
-              <span className="lh-vn">7</span>He came as a witness to testify concerning that light.
+              <span className="lh-vn">7</span>He came as a witness to testify about the Light, so
+              that through him everyone might believe.
             </div>
             <div
               className="lh-note rail pre"
@@ -410,8 +411,8 @@ export default function HeroFlythrough(): React.JSX.Element {
               className="lh-v anch"
               style={{ gridRow: 11, '--c': 'var(--cat-observation)' } as React.CSSProperties}
             >
-              <span className="lh-vn">8</span>He himself was not the light; he came only as a
-              witness to the light.
+              <span className="lh-vn">8</span>He himself was not the Light, but he came to testify
+              about the Light.
             </div>
             <div
               className="lh-note inline pre"
@@ -425,15 +426,15 @@ export default function HeroFlythrough(): React.JSX.Element {
               className="lh-v"
               style={{ gridRow: 13, '--c': 'var(--cat-application)' } as React.CSSProperties}
             >
-              <span className="lh-vn">9</span>The true light that gives light to everyone was coming
-              into the world.
+              <span className="lh-vn">9</span>The true Light, who gives light to everyone, was
+              coming into the world.
             </div>
             <div
               className="lh-v anch"
               style={{ gridRow: 14, '--c': 'var(--cat-application)' } as React.CSSProperties}
             >
               <span className="lh-vn">10</span>He was in the world, and though the world was made
-              through him, the world did not recognize him.
+              through Him, the world did not recognize Him.
             </div>
             <div
               className="lh-note rail pre"
@@ -447,15 +448,14 @@ export default function HeroFlythrough(): React.JSX.Element {
               className="lh-v anch"
               style={{ gridRow: 15, '--c': 'var(--cat-personal)' } as React.CSSProperties}
             >
-              <span className="lh-vn">11</span>He came to that which was his own, but his own did
-              not receive him.
+              <span className="lh-vn">11</span>He came to His own, and His own did not receive Him.
             </div>
             <div
               className="lh-v anch"
               style={{ gridRow: 16, '--c': 'var(--cat-personal)' } as React.CSSProperties}
             >
-              <span className="lh-vn">12</span>Yet to all who did receive him, he gave the right to
-              become children of God.
+              <span className="lh-vn">12</span>But to all who did receive Him, to those who believed
+              in His name, He gave the right to become children of God—
             </div>
             <div
               className="lh-note rail pre"
@@ -469,14 +469,16 @@ export default function HeroFlythrough(): React.JSX.Element {
               className="lh-v"
               style={{ gridRow: 17, '--c': 'var(--cat-historical)' } as React.CSSProperties}
             >
-              <span className="lh-vn">13</span>children born not of natural descent, nor of human
-              decision, but born of God.
+              <span className="lh-vn">13</span>children born not of blood, nor of the desire or will
+              of man, but born of God.
             </div>
             <div
               className="lh-v anch"
               style={{ gridRow: 18, '--c': 'var(--cat-historical)' } as React.CSSProperties}
             >
-              <span className="lh-vn">14</span>The Word became flesh and made his dwelling among us.
+              <span className="lh-vn">14</span>The Word became flesh and made His dwelling among us.
+              We have seen His glory, the glory of the one and only Son from the Father, full of
+              grace and truth.
             </div>
             <div
               className="lh-note inline pre"

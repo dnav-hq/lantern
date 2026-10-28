@@ -5,19 +5,27 @@
  * content. A journey chapter leads with the route; otherwise the strongest
  * passage that picks the verse up, with the words the two verses share
  * already marked, and how many more there are; otherwise the places the
- * chapter names. A verse with nothing beneath shows nothing at all. No label,
- * no button costume, no menu: the line IS what is behind the verse, and the
- * count is the only promise it makes.
+ * chapter names. A verse with nothing beneath shows nothing at all.
+ *
+ * Two things changed on 2026-10-28 (world-class pass, finding 6). The line
+ * now carries one constant word, "Dive in", so a first-time reader can tell
+ * it is a control and not a stray verse; and while the connections load it
+ * holds its place with a quiet skeleton — but only under a verse the gutter
+ * dot already promised something for (`expected`), so a verse with nothing
+ * beneath never flashes a placeholder. The line used to appear a second or
+ * two after the tap, under a verse that had looked empty until then.
+ *
+ * Translation: the connections are verse-anchored and the same for every
+ * translation, and the rows are read in the translation on screen, ESV
+ * included (one chapter fetch per connected chapter, through the same cache
+ * the reader's own chapters use). No translation is singled out anywhere in
+ * the reader (Dennis, 2026-10-28).
  *
  * Cost discipline is the loaders': selecting a verse asks the connections
  * loader (one cross-reference chapter, cached forever, plus the chapter's
  * texts only once a door is real) and the chapter-map loader (the journeys
  * table and the place bundle, once per app lifetime). Nothing heavier — no
- * artwork, no relief — until the line is tapped. The word door stays inside
- * the translators' note, where a translator's alternative belongs.
- *
- * This replaced the two-pill doorways row (2026-09-17); the file keeps its
- * name because every reading surface mounts it by that name.
+ * artwork, no relief — until the line is tapped.
  */
 import React, { useEffect, useState } from 'react'
 import type { TranslationId } from '../bible/provider'
@@ -46,6 +54,13 @@ interface Props {
   /** The translation whose text is on screen. Falls back to the reading preference. */
   translation?: TranslationId
   /**
+   * The gutter dot's verdict for this verse: true means the chapter's depth
+   * pass already found something beneath it, so the entrance may hold its
+   * place with a skeleton while the rows load. Unknown or false means the
+   * line appears only once there is something to show.
+   */
+  expected?: boolean
+  /**
    * Study (desktop): the whole dive-in body, open, beside the note — not the
    * one-line entrance. Same content, same rules; only the costume differs,
    * because the workbench already has the room (Dennis, 2026-09-18).
@@ -62,9 +77,16 @@ const GLYPH = (
   </svg>
 )
 
+const CHEVRON = (
+  <svg className="dive-entry-chevron" viewBox="0 0 24 24" aria-hidden="true">
+    <polyline points="9 6 15 12 9 18" />
+  </svg>
+)
+
 export default function VerseDoorways({
   onOpenMap,
   translation,
+  expected = false,
   inline = false,
   ...address
 }: Props): React.ReactElement | null {
@@ -99,6 +121,7 @@ export default function VerseDoorways({
   const route = verseMap?.route ?? null
   const places = verseMap ? placesForVerse(verseMap, verse).filter(p => p.inVerse) : []
   const count = rows.length
+  const loading = found === undefined || map === undefined
 
   let line: React.ReactNode = null
   if (route) {
@@ -145,8 +168,9 @@ export default function VerseDoorways({
     )
   }
 
-  if (!line) return null
+  if (!line && !(loading && expected)) return null
   if (inline) {
+    if (!line) return null
     const diveAddress = {
       book,
       chapter,
@@ -176,6 +200,18 @@ export default function VerseDoorways({
       </div>
     )
   }
+  if (!line) {
+    // Promised by the dot, not yet here: hold the line's place so the verse
+    // below does not jump when it lands.
+    return (
+      <div className="verse-doorways" aria-hidden="true">
+        <div className="dive-entry is-loading">
+          <span className="dive-entry-label">Connections</span>
+          <span className="dive-entry-skeleton" />
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="verse-doorways" onClick={e => e.stopPropagation()}>
       <button
@@ -184,7 +220,9 @@ export default function VerseDoorways({
         aria-label={`Dive into ${reference}`}
         onClick={() => setOpen(true)}
       >
+        <span className="dive-entry-label">Connections</span>
         {line}
+        {CHEVRON}
       </button>
       {open && (
         <DiveIn

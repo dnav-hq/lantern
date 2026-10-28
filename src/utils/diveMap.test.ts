@@ -73,3 +73,63 @@ describe('inFrame', () => {
     expect(inFrame({ x: 11, y: 5 }, vb, 2)).toBe(true)
   })
 })
+
+// ── context landmarks (2026-10-28): the place-only card frames a few known names ──
+import { CONTEXT_FRAME, chooseLandmarks, JERUSALEM_REACH, LANDMARK_NAMES } from './diveMap'
+
+describe('chooseLandmarks', () => {
+  // Real view-unit positions from the shipped projection, rounded.
+  const L = {
+    jerusalem: { x: 504, y: 324, name: 'Jerusalem' },
+    damascus: { x: 523, y: 287, name: 'Damascus' },
+    nineveh: { x: 637, y: 222, name: 'Nineveh' },
+    babylon: { x: 666, y: 300, name: 'Babylon' },
+    haran: { x: 568, y: 216, name: 'Haran' },
+    memphis: { x: 432, y: 363, name: 'Memphis' },
+    sinai: { x: 481, y: 391, name: 'Mount Sinai' },
+    rome: { x: 148, y: 73, name: 'Rome' },
+    bethlehem: { x: 504, y: 325, name: 'Bethlehem' },
+    hebron: { x: 502, y: 329, name: 'Hebron' }
+  }
+  const all = Object.values(L)
+  const ararat = { x: 650, y: 151 }
+
+  it('gives Ararat three to four references, Jerusalem among them, never itself', () => {
+    const out = chooseLandmarks([ararat], all)
+    expect(out.length).toBeGreaterThanOrEqual(3)
+    expect(out.length).toBeLessThanOrEqual(4)
+    expect(out.map(l => l.name)).toContain('Jerusalem')
+    expect(out.map(l => l.name)).toContain('Nineveh')
+  })
+  it('spreads the picks around the chapter rather than lining them up', () => {
+    const out = chooseLandmarks([ararat], all)
+    // Nineveh and Haran are both south-west of Ararat; only one of them makes
+    // the first pass, so Babylon (south) gets in ahead of the other.
+    expect(out.map(l => l.name)).toContain('Babylon')
+  })
+  it('leaves Jerusalem out beyond its reach, and never picks a chapter place', () => {
+    // From Rome, Jerusalem is not forced in: with one slot the nearest wins.
+    const one = chooseLandmarks([{ x: 148, y: 73 }], all, { count: 1 })
+    expect(one.map(l => l.name)).toEqual(['Memphis'])
+    expect(chooseLandmarks([{ x: 148, y: 73 }], all).map(l => l.name)).not.toContain('Rome')
+    // From Ararat it is, even though five others are nearer.
+    expect(chooseLandmarks([ararat], all, { count: 1 }).map(l => l.name)).toEqual(['Jerusalem'])
+    expect(chooseLandmarks([L.jerusalem], all, { jerusalemReach: JERUSALEM_REACH })).not.toContain(
+      L.jerusalem
+    )
+  })
+  it('is empty with nothing to orient or nothing to orient by', () => {
+    expect(chooseLandmarks([], all)).toEqual([])
+    expect(chooseLandmarks([ararat], [])).toEqual([])
+  })
+  it('honours the count and is stable in order', () => {
+    const a = chooseLandmarks([ararat], all, { count: 3 })
+    expect(a).toHaveLength(3)
+    expect(chooseLandmarks([ararat], all, { count: 3 })).toEqual(a)
+  })
+  it('ships a landmark list and a wider frame than the bare chapter frame', () => {
+    expect(LANDMARK_NAMES).toContain('Jerusalem')
+    expect(new Set(LANDMARK_NAMES).size).toBe(LANDMARK_NAMES.length)
+    expect(CONTEXT_FRAME.minSpan).toBeGreaterThan(60)
+  })
+})

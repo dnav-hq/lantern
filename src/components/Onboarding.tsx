@@ -1,32 +1,31 @@
 import React, { useState } from 'react'
 import Wordmark from './Wordmark'
-import { updateDisplayName, markOnboardingDone } from '../api/auth'
+import { markOnboardingDone } from '../api/auth'
+import type { TranslationId } from '../bible/provider'
+import { translationsForLanguage, useTranslation } from '../utils/useTranslation'
 
 interface OnboardingProps {
-  // Called when the flow finishes; App re-reads the profile and enters the app.
+  // Called when the flow finishes; Root re-reads the profile and enters the app.
   onDone: () => void
 }
 
-// First-run flow after the first sign-in: one skippable screen for an optional
-// name. The explainer screens this used to show (study mode, reading mode) were
-// removed — point-of-use hints now teach those mechanics in context instead of
-// front-loading them here. Copy is plain and quiet — no exclamation marks, no
-// marketing.
+// First-run flow after the first sign-in: one screen, one question — which
+// Bible you read. The name question that used to live here is gone (the
+// display name is optional and null is handled everywhere); the language
+// choice stays in Settings. The choice is written through the same store the
+// app reads (useTranslation), so App picks it up on mount and its account-sync
+// adoption seeds the account with it. Copy is plain and quiet — no reasoning
+// paragraphs, no marketing.
 export default function Onboarding({ onDone }: OnboardingProps): React.ReactElement {
-  const [name, setName] = useState('')
+  const [, setTranslation] = useTranslation()
+  const [choice, setChoice] = useState<TranslationId>('BSB')
   const [saving, setSaving] = useState(false)
+  const options = translationsForLanguage('eng')
 
   const finish = async (): Promise<void> => {
     setSaving(true)
+    setTranslation(choice)
     try {
-      const trimmed = name.trim()
-      if (trimmed) {
-        try {
-          await updateDisplayName(trimmed)
-        } catch {
-          // Name is optional; a failure here should not block onboarding.
-        }
-      }
       await markOnboardingDone()
     } catch {
       // Even if marking fails, let the user in — the gate falls back to
@@ -43,27 +42,29 @@ export default function Onboarding({ onDone }: OnboardingProps): React.ReactElem
       <div className="welcome-card">
         <Wordmark size={30} style={{ display: 'block' }} />
 
-        <h1 className="welcome-title">What should we call you?</h1>
-        <p className="welcome-body">Optional. Used to greet you when you open the app.</p>
-        <div className="auth-form">
-          <input
-            className="auth-input"
-            type="text"
-            autoFocus
-            placeholder="Your name"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') finish()
-            }}
-          />
-          <button className="welcome-btn-primary" onClick={finish} disabled={saving}>
-            {saving ? 'Getting things ready…' : 'Start reading'}
-          </button>
+        <h1 className="welcome-title">Which Bible do you read?</h1>
+        <p className="welcome-body">You can change this any time.</p>
+        <div className="onboard-bibles" role="radiogroup" aria-label="Bible translation">
+          {options.map(t => {
+            const active = choice === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                className={`onboard-bible${active ? ' active' : ''}`}
+                role="radio"
+                aria-checked={active}
+                onClick={() => setChoice(t.id)}
+              >
+                <span className="onboard-bible-name">{t.label}</span>
+                {t.id === 'BSB' && <span className="onboard-bible-tag">recommended</span>}
+                {t.id === 'ESV' && <span className="onboard-bible-tag">online</span>}
+              </button>
+            )
+          })}
         </div>
-
-        <button className="onboarding-skip" onClick={finish} disabled={saving}>
-          Skip
+        <button className="welcome-btn-primary" onClick={finish} disabled={saving}>
+          {saving ? 'Getting things ready…' : 'Start reading'}
         </button>
       </div>
     </div>

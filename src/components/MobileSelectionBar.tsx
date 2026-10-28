@@ -56,15 +56,15 @@ interface MobileSelectionBarProps {
    */
   highlightedAs?: string | null
   onRemoveHighlight?: () => void
-  /**
-   * True when the text on screen is not the BSB, so the deep dive (the
-   * footnote door) would be silently missing for this selection. Renders one
-   * quiet line above the bar offering the same verse in BSB — the study text.
-   */
-  offerBsb?: boolean
-  /** Switches the reading translation to BSB, keeping chapter and selection. */
-  onViewInBsb?: () => void
+  /** Shares a link to the selection (the share sheet, or the clipboard). */
+  onShare?: () => Promise<void> | void
+  /** 'copied' for a moment after a clipboard share, so the bar can say so. */
+  shareState?: 'copied' | null
 }
+
+/** Said once under the picker's title, until the reader has marked something. */
+export const MARK_HINT =
+  'Each colour is a lens: what you observe, the history behind it, how it applies, and what it means to you.'
 
 export default function MobileSelectionBar({
   shown,
@@ -77,8 +77,8 @@ export default function MobileSelectionBar({
   wordHintPending = false,
   highlightedAs = null,
   onRemoveHighlight,
-  offerBsb = false,
-  onViewInBsb
+  onShare,
+  shareState = null
 }: MobileSelectionBarProps): React.ReactElement | null {
   const [mounted, setMounted] = useState(shown)
   const [leaving, setLeaving] = useState(false)
@@ -91,8 +91,8 @@ export default function MobileSelectionBar({
   // The selection (and so the reference) clears the instant `shown` goes false,
   // but the bar is still sliding out — freeze the last content so it reads right
   // for the length of that exit.
-  const last = useRef({ reference, offerBsb })
-  if (shown) last.current = { reference, offerBsb }
+  const last = useRef({ reference })
+  if (shown) last.current = { reference }
 
   useEffect(() => {
     if (shown) {
@@ -119,7 +119,7 @@ export default function MobileSelectionBar({
   if (!shown && picking) setPicking(false)
   if (wordScope && (!picking || !selectedWords)) setWordScope(false)
   if (!mounted) return null
-  const content = shown ? { reference, offerBsb } : last.current
+  const content = shown ? { reference } : last.current
 
   return createPortal(
     <div
@@ -127,18 +127,34 @@ export default function MobileSelectionBar({
       role="toolbar"
       aria-label="Selection actions"
     >
-      {/* The deep dive lives on the BSB only. Said once, quietly, with the way
-          there — never on BSB, and never as a modal or a disabled button. */}
-      {content.offerBsb && onViewInBsb && (
-        <p className="mobile-selbar-notice" role="status">
-          The deep dive works on the BSB.{' '}
-          <button type="button" className="mobile-selbar-notice-link" onClick={onViewInBsb}>
-            View this verse in BSB
-          </button>
-        </p>
-      )}
-      <span className="mobile-selbar-ref">{content.reference}</span>
+      <span className="mobile-selbar-ref">
+        {shareState === 'copied' ? 'Link copied' : content.reference}
+      </span>
       <span className="mobile-selbar-spacer" />
+      {onShare && (
+        <button
+          type="button"
+          className="mobile-selbar-share"
+          onClick={() => void onShare()}
+          aria-label="Share these verses"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M12 3v12" />
+            <polyline points="7 8 12 3 17 8" />
+            <path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
+          </svg>
+        </button>
+      )}
       <button
         type="button"
         className="mobile-selbar-clear"
@@ -177,13 +193,8 @@ export default function MobileSelectionBar({
         {picking && (
           <div className="mobile-selbar-menu">
             <CategoryMenu
-              title={
-                wordScope
-                  ? 'Highlight these words as…'
-                  : highlightedAs
-                    ? 'Highlighted as…'
-                    : 'Highlight as…'
-              }
+              title={wordScope ? 'Mark these words as…' : highlightedAs ? 'Marked as…' : 'Mark as…'}
+              hint={MARK_HINT}
               selected={highlightedAs}
               // One row, and only once there are words to offer. Nothing about
               // this bar changes for a reader who never selects any.

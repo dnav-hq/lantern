@@ -39,6 +39,57 @@ export type ConnectionKind = 'quotes' | 'echoes'
 /** Brief §5: the recommended salience line, measured over a 200-verse sample. */
 export const THRESHOLD = 30
 
+/**
+ * The gutter mark's own line, higher than the entrance's. Measured on live
+ * data (2026-10-28): at 30 the dot sat under 14 of John 1's 51 verses and 26
+ * of Romans 8's 39, which is a texture, not a signal. At 50 it marks 8 and 16,
+ * every verse of Psalm 23, two of Genesis 15 and one of Hosea 1 — the verses a
+ * reader would actually want told about. The entrance still opens at THRESHOLD
+ * once a verse is chosen; the dot only promises the strong cases.
+ */
+export const DEPTH_THRESHOLD = 50
+
+/** Whether the gutter dot is earned by the connections alone. */
+export function hasDepth(connections: RawConnection[]): boolean {
+  const top = topScore(connections)
+  return top !== null && top >= DEPTH_THRESHOLD
+}
+
+/**
+ * The rows the dive-in shows, from the dataset's full list: strongest first,
+ * only those that hold up against the strongest (a fifth of its score, and
+ * never under the entrance line's half), and at most ROW_CAP of them. A verse
+ * like John 1:1 carried 36 rows, most of them one-vote echoes; the reader
+ * asked for the good ones, not the long tail (world-class pass 2026-10-28).
+ * A parallel-account row (`keep`) is always kept, whatever its score.
+ */
+export const ROW_CAP = 8
+
+export function selectRows<T extends RawConnection>(
+  connections: T[],
+  keep: (c: T) => boolean = () => false
+): T[] {
+  const top = topScore(connections)
+  if (top === null) return []
+  // A door that opened as a parallel account has low votes throughout (votes
+  // measure doctrine, not narrative), so the floor would empty it; there the
+  // cap alone applies.
+  const floor = connections.some(keep) ? 0 : Math.max(THRESHOLD / 2, top * 0.2)
+  const sorted = [...connections].sort((a, b) => b.score - a.score)
+  const out: T[] = []
+  for (const c of sorted) {
+    if (keep(c)) {
+      out.push(c)
+      continue
+    }
+    if (c.score < floor) continue
+    out.push(c)
+  }
+  const kept = out.filter(keep)
+  const rest = out.filter(c => !keep(c)).slice(0, Math.max(0, ROW_CAP - kept.length))
+  return sorted.filter(c => kept.includes(c) || rest.includes(c))
+}
+
 /** Brief §4: how many shared non-trivial words make a quote. */
 export const QUOTE_RUN = 4
 
@@ -223,4 +274,109 @@ export function sharedRun(source: string, target: string): SharedRun | null {
 /** Brief §4's rule, as a label. */
 export function classify(source: string, target: string): ConnectionKind {
   return sharedRun(source, target) ? 'quotes' : 'echoes'
+}
+
+/**
+ * Words too common to explain a link on their own. The dive-in shows a row
+ * only where it can SAY why the two verses sit together (world-class pass
+ * 2026-10-28: "I just don't understand why these verses are shown to me"),
+ * and "God" or "said" is not a reason.
+ */
+const COMMON_WORDS: ReadonlySet<string> = new Set([
+  'god',
+  'lord',
+  'said',
+  'says',
+  'will',
+  'shall',
+  'who',
+  'whom',
+  'him',
+  'his',
+  'her',
+  'them',
+  'they',
+  'their',
+  'you',
+  'your',
+  'not',
+  'but',
+  'for',
+  'with',
+  'from',
+  'all',
+  'are',
+  'have',
+  'has',
+  'had',
+  'this',
+  'these',
+  'those',
+  'one',
+  'man',
+  'men',
+  'then',
+  'when',
+  'there',
+  'upon',
+  'into',
+  'out',
+  'also',
+  'may',
+  'let',
+  'now',
+  'even',
+  'thus',
+  'because',
+  'come',
+  'came',
+  'went',
+  'make',
+  'made',
+  'give',
+  'gave',
+  'day',
+  'days',
+  'people',
+  'before',
+  'after',
+  'over',
+  'own'
+])
+
+/** A light stem so "waters" meets "water" and "created" meets "create". */
+function stem(word: string): string {
+  let w = word
+  if (w.length > 5 && w.endsWith('ing')) w = w.slice(0, -3)
+  else if (w.length > 4 && w.endsWith('ed')) w = w.slice(0, -2)
+  else if (w.length > 4 && w.endsWith('es')) w = w.slice(0, -2)
+  else if (w.length > 3 && w.endsWith('s')) w = w.slice(0, -1)
+  return w
+}
+
+/**
+ * The content words two verses share, as they appear in the TARGET, in the
+ * target's own order, at most `max`. This is the "why" of a row that neither
+ * quotes the verse nor names one of its places: Genesis 1:2 and Psalm 104:30
+ * sit together because both say "Spirit", "face" and "earth". Stop words,
+ * common words and anything under four letters are never a reason.
+ */
+export function sharedWords(source: string, target: string, max = 4): string[] {
+  const have = new Set(
+    contentTokens(source)
+      .map(t => t.word)
+      .filter(w => w.length >= 4 && !COMMON_WORDS.has(w))
+      .map(stem)
+  )
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const t of contentTokens(target)) {
+    if (t.word.length < 4 || COMMON_WORDS.has(t.word)) continue
+    const s = stem(t.word)
+    if (!have.has(s) || seen.has(s)) continue
+    seen.add(s)
+    out.push(target.slice(t.start, t.end))
+    if (out.length >= max) break
+  }
+  return out
 }

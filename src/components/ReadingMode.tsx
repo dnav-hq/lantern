@@ -20,6 +20,7 @@ import { formatRelativeTime } from '../utils/relativeTime'
 import { useVerseMarquee } from '../utils/useVerseMarquee'
 import { useChromeAutoHide } from '../utils/useScrollDirection'
 import { bookByNumber } from '../utils/bibleBooks'
+import { nextSelection } from '../utils/verseSelection'
 import { markInstallEngagement } from '../utils/installNudge'
 import { useCategoryLabels } from '../utils/useNoteCategories'
 
@@ -134,10 +135,6 @@ function RenderedNoteContent({ content }: { content: string }): React.ReactEleme
     </>
   )
 }
-
-/** A touch screen, where a tap cannot carry Shift. */
-const coarsePointer = (): boolean =>
-  typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches
 
 export default function ReadingMode({
   passage,
@@ -287,21 +284,20 @@ export default function ReadingMode({
       setHighlightedNoteIds(new Set(anchored.map(n => n.id)))
       setHighlightedVerses(new Set())
     }
-    // Drive the range selection (same tap-anchor/tap-extend gesture as
-    // ChapterView's Bible-home reader).
-    if (selAnchor === null) {
-      setSelAnchor(verseNum)
-      setSelFocus(verseNum)
-    } else if (selFocus === verseNum && selAnchor === verseNum) {
+    // Drive the selection with the same toggle rule as the chapter reader
+    // (utils/verseSelection.ts): a tap adds or removes one verse; Shift-click
+    // grows the range.
+    const current: [number, number] | null =
+      selAnchor === null || selFocus === null
+        ? null
+        : [Math.min(selAnchor, selFocus), Math.max(selAnchor, selFocus)]
+    const next = nextSelection(current, verseNum, extend)
+    if (next === null) {
       clearSelection()
-    } else if (extend || coarsePointer()) {
-      // A second tap extends on touch; with a mouse only Shift-click does
-      // (same rule as the Bible-home reader, Dennis 2026-09-17).
-      setSelFocus(verseNum)
-    } else {
-      setSelAnchor(verseNum)
-      setSelFocus(verseNum)
+      return
     }
+    setSelAnchor(next[0])
+    setSelFocus(next[1])
   }
 
   // Desktop marquee (box) selection over the scripture area: click-drag draws a
@@ -819,7 +815,7 @@ export default function ReadingMode({
                       }}
                       className={`reading-verse-row${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}`}
                       onClick={e => handleVerseClick(v.verse, e.shiftKey)}
-                      style={isDimmed ? { opacity: 0.35 } : undefined}
+                      style={isDimmed ? { opacity: 0.72 } : undefined}
                     >
                       {bracketByVerse.has(v.verse) && (
                         <span
