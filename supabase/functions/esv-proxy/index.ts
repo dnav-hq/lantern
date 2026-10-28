@@ -57,7 +57,7 @@
 // request this function rejects for being over the rate limit is, for the
 // same reason, never metered as 'ok' — see handler.ts.
 
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { createClient } from 'npm:@supabase/supabase-js@2'
 import { createEsvProxyHandler } from './handler.ts'
 import { IpRateLimiter } from './ratelimit.ts'
 

@@ -3,6 +3,7 @@ import { useApi } from '../api/context'
 import { exportAllNotesAsZip } from '../platform/export'
 import { type LookId } from '../utils/useTheme'
 import { type TextSizeId } from '../utils/useTextSize'
+import { useParagraphBreaks } from '../utils/useParagraphBreaks'
 import ReadingPrefs from './ReadingPrefs'
 import { isTelemetryOptedOut, setTelemetryOptedOut } from '../telemetry/client'
 
@@ -41,6 +42,9 @@ export default function SettingsModal({
   const api = useApi()
   const [exportState, setExportState] = useState<'idle' | 'exporting' | 'error'>('idle')
   const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(() => !isTelemetryOptedOut())
+  // Self-contained store (useParagraphBreaks.ts), not lifted through App: every
+  // mounted reader observes the same value the moment it changes here.
+  const [paragraphBreaks, setParagraphBreaks] = useParagraphBreaks()
 
   const handleDiagnosticsToggle = useCallback((checked: boolean) => {
     setDiagnosticsEnabled(checked)
@@ -121,6 +125,16 @@ export default function SettingsModal({
               Leaves only scripture on the reading screens. Your notes stay untouched; open a study
               to see and edit them.
             </p>
+            <label className="smodal-checkbox-row">
+              <input
+                type="checkbox"
+                className="smodal-checkbox"
+                checked={paragraphBreaks}
+                onChange={e => setParagraphBreaks(e.target.checked)}
+              />
+              <span className="smodal-checkbox-label">Paragraph breaks</span>
+            </label>
+            <p className="smodal-vault-desc">A little space where a new paragraph begins.</p>
           </div>
 
           <div className="smodal-divider" />

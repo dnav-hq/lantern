@@ -34,8 +34,24 @@ export interface VerseNote {
   text: string
 }
 
+// One verse range inside a chapter — the unit the connections sheet reads.
+export interface PassageRef {
+  book: number
+  chapter: number
+  verse: number
+  endVerse?: number
+}
+
 export interface BibleProvider {
   getChapter(bookNumber: number, chapter: number): Promise<BibleVerseLine[]>
+  /**
+   * Several short ranges in one round trip, keyed `${book}/${chapter}` with
+   * the verses of every range in that chapter (ranges in the same chapter are
+   * merged). OPTIONAL: only a provider whose source charges per request (ESV,
+   * through its proxy) has a reason to implement it; the bundled translations
+   * answer getChapter from memory and need nothing of the kind.
+   */
+  getPassages?(refs: PassageRef[]): Promise<Map<string, BibleVerseLine[]>>
 }
 
 // The translation dimension threaded through getBibleVerse (service.ts) and

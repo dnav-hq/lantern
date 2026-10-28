@@ -13,7 +13,8 @@
     "build:word-index": "tsx scripts/build-word-index.mjs",
     "build:map-data": "tsx scripts/build-map-data.mjs",
     "build:journeys": "node scripts/build-journeys.mjs",
-    "build:setting-lines": "node scripts/build-setting-lines.mjs"
+    "build:setting-lines": "node scripts/build-setting-lines.mjs",
+    "build:paragraphs": "node scripts/build-paragraphs.mjs"
   },
   "dependencies": {
     "@fontsource/newsreader": "^5.2.10",

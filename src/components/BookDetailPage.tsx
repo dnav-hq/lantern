@@ -46,6 +46,8 @@ import FootnoteVerseText from './FootnoteDoor'
 import VerseDoorways from './VerseDoorways'
 import { loadChapterDepth } from '../utils/chapterDepth'
 import { warmConnectionTexts } from '../utils/connectionsLoader'
+import { loadParagraphStarts } from '../utils/paragraphs'
+import { useParagraphBreaks } from '../utils/useParagraphBreaks'
 import { chapterDoorCount } from '../utils/footnotes'
 import { nextSelection } from '../utils/verseSelection'
 import { markInstallEngagement } from '../utils/installNudge'
@@ -337,7 +339,21 @@ function ChapterView({
     return () => {
       live = false
     }
+  }, [bookNumber, chapter, translation])
+
+  // Where paragraphs begin (utils/paragraphs.ts): a little space before
+  // each, on every translation, when the reader keeps the preference on.
+  const [paragraphBreaks] = useParagraphBreaks()
+  const [paragraphStarts, setParagraphStarts] = useState<ReadonlySet<number>>(() => new Set())
+  useEffect(() => {
+    let live = true
+    setParagraphStarts(new Set())
+    loadParagraphStarts(bookNumber, chapter).then(set => live && setParagraphStarts(set))
+    return () => {
+      live = false
+    }
   }, [bookNumber, chapter])
+
   const [loading, setLoading] = useState(!preloaded)
   // A translation switch on a chapter that is ALREADY on screen. The text stays
   // put (dimmed) until the new one lands, instead of collapsing to a skeleton:
@@ -474,6 +490,17 @@ function ChapterView({
   // selecting the verse the instant you paused before scrolling. Record the
   // press so handleVerseClick can accept only a real tap (short + still).
   const tapRef = useRef<{ t: number; x: number; y: number; moved: boolean } | null>(null)
+  // HOLD a verse on a phone to write about it: one gesture from the thought
+  // to the composer, with no select-then-Note step between (the mobile note
+  // capture, 2026-10-28). A hold that fires swallows the click that follows.
+  const holdTimer = useRef(0)
+  const heldRef = useRef(false)
+  const clearHold = (): void => {
+    if (holdTimer.current !== 0) {
+      window.clearTimeout(holdTimer.current)
+      holdTimer.current = 0
+    }
+  }
   // Study mode: the last verse click / marquee release, handed to the workbench
   // so it can REFRESH the draft's leading anchor. Nonce-stamped so re-selecting
   // the same range still re-aims (a plain range would look unchanged).
@@ -1749,7 +1776,7 @@ function ChapterView({
                 verse number means there is more beneath it.
               </span>
               <span className="hint-text-mobile">
-                Tap a verse to choose it, and the next one to add it. A dot under a verse number
+                Tap a verse to choose it, or hold it to write a note. A dot under a verse number
                 means there is more beneath it.
               </span>
             </span>
@@ -1858,7 +1885,7 @@ function ChapterView({
             return (
               <div
                 key={v.verse}
-                className={`reading-verse-block${runState}`}
+                className={`reading-verse-block${runState}${paragraphBreaks && i > 0 && paragraphStarts.has(v.verse) ? ' para-start' : ''}`}
                 style={{ gridRow: i + 1, '--stagger-i': i } as React.CSSProperties}
               >
                 <div
@@ -1869,17 +1896,50 @@ function ChapterView({
                   className={`reading-verse-row${isHighlighted ? ' highlighted' : ''}${isSelected ? ' selected' : ''}${wordSelectArmed ? ' word-select-armed' : ''}${rowMark ? ` marked cat-${rowMark}` : ''}`}
                   onPointerDown={e => {
                     tapRef.current = { t: Date.now(), x: e.clientX, y: e.clientY, moved: false }
+                    clearHold()
+                    heldRef.current = false
+                    // Touch and pen only: a held mouse button is a drag.
+                    if (!isMobile || e.pointerType === 'mouse' || studyMode) return
+                    if (composing !== null || editingNoteId !== null) return
+                    const verse = v.verse
+                    holdTimer.current = window.setTimeout(() => {
+                      holdTimer.current = 0
+                      if (tapRef.current?.moved) return
+                      heldRef.current = true
+                      try {
+                        navigator.vibrate?.(8)
+                      } catch {
+                        /* no haptics */
+                      }
+                      setSelAnchor(verse)
+                      setSelFocus(verse)
+                      setHighlightedNoteIds(new Set())
+                      setHighlightedVerses(new Set())
+                      setComposing({ mode: 'create', start: verse, end: verse })
+                    }, 450)
                   }}
                   onPointerMove={e => {
                     const p = tapRef.current
                     if (p && !p.moved && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10) {
                       p.moved = true
+                      clearHold()
                     }
                   }}
+                  onPointerUp={clearHold}
                   onPointerCancel={() => {
+                    clearHold()
                     if (tapRef.current) tapRef.current.moved = true
                   }}
-                  onClick={e => handleVerseClick(v.verse, e.shiftKey)}
+                  onContextMenu={e => {
+                    if (isMobile) e.preventDefault()
+                  }}
+                  onClick={e => {
+                    if (heldRef.current) {
+                      heldRef.current = false
+                      return
+                    }
+                    handleVerseClick(v.verse, e.shiftKey)
+                  }}
                   style={isDimmed ? { opacity: 0.72 } : undefined}
                 >
                   {bracketByVerse.has(v.verse) && (

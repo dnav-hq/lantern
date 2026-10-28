@@ -1,5 +1,6 @@
-import type { BibleProvider, BibleVerseLine } from './provider'
+import type { BibleProvider, BibleVerseLine, PassageRef } from './provider'
 import { indexedDbEsvStore, type EsvStore } from './esv-store'
+import { EsvRefsUnsupportedError } from './esv'
 
 // ESV's counterpart to cache.ts, but NOT cache-forever: Crossway's terms cap
 // local storage at <=500 verses, or half of any one book, whichever is
@@ -33,6 +34,10 @@ const MAX_CACHED_VERSES = 500
 interface CacheEntry {
   key: string
   verses: BibleVerseLine[]
+  // Only some of the chapter's verses (see getPassages). Never served by
+  // getChapter, which needs the whole chapter; replaced by the whole chapter
+  // the first time the reader opens it.
+  partial?: true
 }
 
 function chapterKey(bookNumber: number, chapter: number): string {
@@ -101,7 +106,7 @@ export class EsvCachedBibleProvider implements BibleProvider {
     await this.hydrate()
     const key = chapterKey(bookNumber, chapter)
     const cached = this.entries.get(key)
-    if (cached) {
+    if (cached && !cached.partial) {
       // Touch: move this entry to the most-recently-used (end) position so it
       // survives the next eviction pass ahead of chapters not being revisited.
       this.entries.delete(key)
@@ -115,11 +120,113 @@ export class EsvCachedBibleProvider implements BibleProvider {
     }
 
     const verses = await this.inner.getChapter(bookNumber, chapter)
-    this.entries.set(key, { key, verses })
-    this.totalVerses += verses.length
+    this.put({ key, verses })
+    return verses
+  }
+
+  /** Insert or replace an entry at the most-recently-used position, under the cap. */
+  private put(entry: CacheEntry): void {
+    const previous = this.entries.get(entry.key)
+    if (previous) {
+      this.entries.delete(entry.key)
+      this.totalVerses -= previous.verses.length
+    }
+    this.entries.set(entry.key, entry)
+    this.totalVerses += entry.verses.length
     this.evict()
     this.persist()
+  }
 
-    return verses
+  /**
+   * The verses of several short ranges, keyed `${book}/${chapter}`. A chapter
+   * already cached whole (or a partial entry that already holds every verse
+   * asked for) is served from the cache; the rest go to the proxy in ONE
+   * call, and what comes back is written into the cache as a partial entry
+   * — counted against the same 500-verse cap, evicted by the same LRU — so a
+   * dive costs the licence ceiling nothing it did not already allow.
+   *
+   * An older proxy without ?refs= (EsvRefsUnsupportedError, remembered by
+   * the inner provider for the session) degrades to one getChapter per
+   * chapter, which caches whole chapters as it always has.
+   */
+  async getPassages(refs: PassageRef[]): Promise<Map<string, BibleVerseLine[]>> {
+    await this.hydrate()
+    const out = new Map<string, BibleVerseLine[]>()
+    const wanted = new Map<string, { book: number; chapter: number; verses: Set<number> }>()
+    for (const r of refs) {
+      const key = chapterKey(r.book, r.chapter)
+      let w = wanted.get(key)
+      if (!w) {
+        w = { book: r.book, chapter: r.chapter, verses: new Set() }
+        wanted.set(key, w)
+      }
+      const last = r.endVerse !== undefined && r.endVerse > r.verse ? r.endVerse : r.verse
+      for (let v = r.verse; v <= last; v++) w.verses.add(v)
+    }
+
+    const missing: PassageRef[] = []
+    for (const [key, w] of wanted) {
+      const cached = this.entries.get(key)
+      const covered =
+        cached &&
+        (!cached.partial || [...w.verses].every(v => cached.verses.some(l => l.verse === v)))
+      if (cached && covered) {
+        this.entries.delete(key)
+        this.entries.set(key, cached)
+        out.set(
+          key,
+          cached.verses.filter(l => w.verses.has(l.verse))
+        )
+        continue
+      }
+      for (const r of refs) {
+        if (chapterKey(r.book, r.chapter) === key) missing.push(r)
+      }
+    }
+    if (missing.length === 0) {
+      if (out.size > 0) this.persist()
+      return out
+    }
+
+    let fetched: Map<string, BibleVerseLine[]>
+    try {
+      if (!this.inner.getPassages) throw new EsvRefsUnsupportedError()
+      fetched = await this.inner.getPassages(missing)
+    } catch (err) {
+      if (!(err instanceof EsvRefsUnsupportedError)) throw err
+      fetched = new Map()
+      const chapters = new Map<string, PassageRef>()
+      for (const r of missing) chapters.set(chapterKey(r.book, r.chapter), r)
+      for (const [key, r] of chapters) {
+        // Whole chapters, through getChapter, so they cache as whole chapters.
+        fetched.set(key, await this.getChapter(r.book, r.chapter))
+      }
+      for (const [key, lines] of fetched) {
+        const w = wanted.get(key)
+        if (w)
+          out.set(
+            key,
+            lines.filter(l => w.verses.has(l.verse))
+          )
+      }
+      return out
+    }
+
+    for (const [key, lines] of fetched) {
+      const w = wanted.get(key)
+      if (!w) continue
+      const previous = this.entries.get(key)
+      const merged = previous?.partial ? [...previous.verses] : []
+      for (const line of lines) {
+        if (!merged.some(m => m.verse === line.verse)) merged.push(line)
+      }
+      merged.sort((a, b) => a.verse - b.verse)
+      if (merged.length > 0) this.put({ key, verses: merged, partial: true })
+      out.set(
+        key,
+        merged.filter(l => w.verses.has(l.verse))
+      )
+    }
+    return out
   }
 }

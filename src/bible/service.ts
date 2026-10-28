@@ -1,8 +1,10 @@
 import type { BiblePassage } from '../types'
 import type {
   BibleProvider,
+  BibleVerseLine,
   ChapterConnections,
   ConnectionsProvider,
+  PassageRef,
   TranslationId
 } from './provider'
 import { findBookByAlias, normalizeReference } from '../utils/bibleBooks'
@@ -68,7 +70,18 @@ const kjvProvider: BibleProvider = new FallbackBibleProvider(
 // have (see esv.ts's header). A proxy/quota/offline failure is a plain thrown
 // CodedError; getBibleVerse below catches it and degrades to null rather than
 // silently substituting another translation's text.
-const esvProvider: BibleProvider = new EsvCachedBibleProvider(new EsvBibleProvider())
+const esvProvider = new EsvCachedBibleProvider(new EsvBibleProvider())
+
+/**
+ * Several short ESV ranges in one proxy call, keyed `${book}/${chapter}` —
+ * what the connections sheet reads (src/utils/connectionsLoader.ts). Goes
+ * through the same capped ESV cache as a chapter read, so nothing here can
+ * hold more than the licence allows. Throws the same CodedErrors getChapter
+ * does; the caller degrades to "no text" as it would for a chapter.
+ */
+export function getEsvPassages(refs: PassageRef[]): Promise<Map<string, BibleVerseLine[]>> {
+  return esvProvider.getPassages(refs)
+}
 
 // Tamil: the same keyless helloao path BSB uses, just a different translation
 // code — no key, no proxy, no quota (both are CC BY-SA 4.0; the attribution

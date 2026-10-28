@@ -215,3 +215,68 @@ describe('shared places and the parallel-account gate (dive-in-2)', () => {
     expect(found!.rows.every(r => r.places.length === 0)).toBe(true)
   })
 })
+
+// ── rangeTexts: one call for the whole sheet on ESV ─────────────────────────
+describe('rangeTexts', () => {
+  function withRanges(translationSeen: string[]): {
+    sources: ConnectionsSources
+    ranges: ReturnType<typeof vi.fn>
+    text: ReturnType<typeof vi.fn>
+  } {
+    const base = sources()
+    const ranges = vi.fn(async (wanted: { book: number; chapter: number }[], t: string) => {
+      translationSeen.push(t)
+      const out = new Map<string, { verse: number; text: string }[]>()
+      for (const r of wanted) {
+        const lines = TEXT[`${r.book}/${r.chapter}`]
+        if (!lines) continue
+        out.set(
+          `${r.book}/${r.chapter}`,
+          Object.entries(lines).map(([v, t]) => ({ verse: Number(v), text: t }))
+        )
+      }
+      return out
+    })
+    return { sources: { ...base.sources, rangeTexts: ranges }, ranges, text: base.text }
+  }
+
+  it('on ESV reads every range in ONE call and no chapters at all', async () => {
+    const seen: string[] = []
+    const s = withRanges(seen)
+    const found = await createConnectionsLoader(s.sources).verse(1, 15, 6, 'ESV')
+    expect(found!.rows.map(r => r.label)).toEqual([
+      'James 2:23',
+      'Galatians 3:6–14',
+      'Romans 4:9',
+      'Romans 4:3–6'
+    ])
+    expect(s.ranges).toHaveBeenCalledTimes(1)
+    expect(s.text).not.toHaveBeenCalled()
+    expect(seen).toEqual(['ESV'])
+    const asked = s.ranges.mock.calls[0][0] as { book: number; chapter: number; verse: number }[]
+    expect(asked[0]).toEqual({ book: 1, chapter: 15, verse: 6 })
+    expect(asked.map(r => `${r.book}/${r.chapter}:${r.verse}`)).toEqual([
+      '1/15:6',
+      '59/2:23',
+      '48/3:6',
+      '45/4:9',
+      '45/4:3',
+      '58/11:8'
+    ])
+  })
+
+  it('on BSB the bundled chapter path is used, untouched', async () => {
+    const s = withRanges([])
+    await createConnectionsLoader(s.sources).verse(1, 15, 6, 'BSB')
+    expect(s.ranges).not.toHaveBeenCalled()
+    expect(s.text).toHaveBeenCalled()
+  })
+
+  it('when rangeTexts cannot read, the chapter path is tried instead', async () => {
+    const s = withRanges([])
+    s.ranges.mockImplementation(async () => null)
+    const found = await createConnectionsLoader(s.sources).verse(1, 15, 6, 'ESV')
+    expect(found!.rows).toHaveLength(4)
+    expect(s.text).toHaveBeenCalled()
+  })
+})

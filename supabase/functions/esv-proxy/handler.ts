@@ -5,6 +5,21 @@
 // so a test can assert e.g. "over the cap: 429, and the upstream fetch is
 // never called" without a live deploy. index.ts wires this up with the real
 // Deno fetch, a real IpRateLimiter and the real Supabase-backed recordUsage.
+//
+// Two request forms, one upstream call each:
+//
+//   ?book=John&chapter=1                       -> { verses: [...] }
+//   ?refs=Jeremiah 4:23;Psalm 104:30;...       -> { passages: [{ reference, verses }] }
+//
+// The second exists for the connections sheet, which reads up to nine short
+// passages at once: Crossway's text endpoint takes several references in one
+// `q` (semicolon-separated) and answers with `passages` in the same order, so
+// nine ranges cost ONE metered call instead of nine chapter fetches.
+//
+// Each verse is `{ verse, text, notes? }`. `notes` carries the ESV's own
+// translators' footnotes for that verse, anchored by character offset into
+// `text` — the same shape src/bible/provider.ts's VerseNote has, so the client
+// passes them straight through. Absent (not empty) on a verse without any.
 
 import type { IpRateLimiter } from './ratelimit.ts'
 import { clientIpFrom, hashIp } from './ratelimit.ts'
@@ -20,10 +35,51 @@ export interface EsvProxyDeps {
   now?: () => number
 }
 
+export interface EsvVerseNote {
+  // Index into `text` where the footnote's caller sat, i.e. the end of the
+  // word (or clause) the translators flagged. Mirrors VerseNote.offset.
+  offset: number
+  // The footnote body, verbatim from Crossway, with its "(n) c:v" lead removed.
+  text: string
+}
+
+export interface EsvVerse {
+  verse: number
+  text: string
+  notes?: EsvVerseNote[]
+}
+
+export interface EsvPassage {
+  reference: string
+  verses: EsvVerse[]
+}
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, OPTIONS'
+}
+
+// The multi-reference form's limits. Twelve is comfortably above the nine the
+// connections sheet needs and well under anything that would make one upstream
+// call expensive; the reference grammar is deliberately narrow (a book name of
+// letters, digits and spaces, then chapter:verse[-verse]) so nothing but a
+// verse range can be relayed to Crossway under this application's key.
+export const MAX_REFS = 12
+const REF_PATTERN = /^([A-Za-z0-9 ]{1,40}) (\d{1,3}):(\d{1,3})(?:-(\d{1,3}))?$/
+
+export function parseRefsParam(refs: string): string[] | null {
+  const parts = refs
+    .split(';')
+    .map(r => r.trim().replace(/\s+/g, ' '))
+    .filter(r => r.length > 0)
+  if (parts.length === 0 || parts.length > MAX_REFS) return null
+  for (const part of parts) {
+    const m = REF_PATTERN.exec(part)
+    if (!m) return null
+    if (m[4] !== undefined && parseInt(m[4], 10) < parseInt(m[3], 10)) return null
+  }
+  return parts
 }
 
 function json(body: unknown, status = 200): Response {
@@ -33,18 +89,93 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
+// With include-footnote-body=true the plain-text passage ends in a block:
+//
+//   Footnotes
+//
+//   (1) 1:3 Or was not anything made. That which has been made was life in him
+//   (2) 1:5 Or understood
+//
+// one footnote per line, led by its caller number and the chapter:verse it
+// belongs to. The heading sits on its own line after a blank line. Crossway's
+// docs (api.esv.org/docs/passage-text/) describe the block but print no sample
+// of it, so this is parsed defensively: a passage without the block parses
+// exactly as before, and a continuation line (no "(n)" lead) is folded into
+// the note above it rather than dropped.
+const FOOTNOTES_HEADING = /\n[ \t]*Footnotes[ \t]*\n/
+const FOOTNOTE_LINE = /^\((\d+)\)\s+(?:\d+:\d+\s+)?(.*)$/
+
+export function splitFootnotes(raw: string): { body: string; footnotes: Map<number, string> } {
+  const footnotes = new Map<number, string>()
+  const at = raw.search(FOOTNOTES_HEADING)
+  if (at === -1) return { body: raw, footnotes }
+  const body = raw.slice(0, at)
+  const block = raw.slice(at).replace(FOOTNOTES_HEADING, '')
+  let last: number | null = null
+  for (const line of block.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    const m = FOOTNOTE_LINE.exec(trimmed)
+    if (m) {
+      last = parseInt(m[1], 10)
+      footnotes.set(last, m[2].trim())
+    } else if (last !== null) {
+      footnotes.set(last, `${footnotes.get(last) ?? ''} ${trimmed}`.trim())
+    }
+  }
+  return { body, footnotes }
+}
+
+// Inside the verse text a footnote caller is the same "(n)" number, placed
+// right after the word it belongs to ("made.(1) In him was life"). Only a
+// caller whose number the Footnotes block defines is treated as one, so a
+// genuine parenthesised numeral in scripture is never eaten. The caller is cut
+// out, any space immediately before it is closed up, and the index where it
+// sat in the CLEANED text is the note's offset — the end of the anchored word.
+const CALLER = /\((\d+)\)/g
+
+export function stripCallers(
+  text: string,
+  footnotes: Map<number, string>
+): { text: string; notes: EsvVerseNote[] } {
+  const raw = text.replace(/\s+/g, ' ').trim()
+  const notes: EsvVerseNote[] = []
+  if (footnotes.size === 0) return { text: raw, notes }
+  let cleaned = ''
+  let last = 0
+  for (const m of raw.matchAll(CALLER)) {
+    const n = parseInt(m[1], 10)
+    const body = footnotes.get(n)
+    if (body === undefined) continue
+    cleaned += raw.slice(last, m.index)
+    last = (m.index ?? 0) + m[0].length
+    // "word (1) next" -> "word next": the space before the caller goes, the
+    // one after it stays as the separator; "word(1), next" needs nothing.
+    cleaned = cleaned.replace(/ +$/, '')
+    notes.push({ offset: cleaned.length, text: body })
+  }
+  cleaned += raw.slice(last)
+  const final = cleaned.replace(/\s+/g, ' ').trim()
+  // Trimming cannot move anything the notes point at except a verse-final
+  // caller's trailing space; clamp so offset never exceeds the text.
+  for (const note of notes) note.offset = Math.min(note.offset, final.length)
+  return { text: final, notes }
+}
+
 // ESV's plain-text passage response embeds verse numbers as "[16]" markers,
 // one immediately before each verse's text, with headings/whitespace/poetic
 // indentation around them. This splits on those markers rather than trying to
 // use ESV's `passage_meta` (which gives chapter-level, not per-verse, ranges).
-function parseEsvText(raw: string): { verse: number; text: string }[] {
-  const parts = raw.split(/\[(\d+)\]/)
-  const verses: { verse: number; text: string }[] = []
+export function parseEsvText(raw: string): EsvVerse[] {
+  const { body, footnotes } = splitFootnotes(raw)
+  const parts = body.split(/\[(\d+)\]/)
+  const verses: EsvVerse[] = []
   // parts[0] is anything before the first verse marker (headings) — discard.
   for (let i = 1; i < parts.length; i += 2) {
     const verse = parseInt(parts[i], 10)
-    const text = (parts[i + 1] ?? '').replace(/\s+/g, ' ').trim()
-    if (Number.isFinite(verse) && text) verses.push({ verse, text })
+    const { text, notes } = stripCallers(parts[i + 1] ?? '', footnotes)
+    if (!Number.isFinite(verse) || !text) continue
+    verses.push(notes.length > 0 ? { verse, text, notes } : { verse, text })
   }
   return verses
 }
@@ -78,21 +209,31 @@ export function createEsvProxyHandler(deps: EsvProxyDeps): (req: Request) => Pro
     }
 
     const url = new URL(req.url)
-    const book = url.searchParams.get('book')?.trim()
-    const chapter = url.searchParams.get('chapter')?.trim()
-    if (!book || !chapter || !/^\d+$/.test(chapter)) {
-      return json({ error: 'invalid_request' }, 400)
+    const refsParam = url.searchParams.get('refs')
+    let refs: string[] | null = null
+    if (refsParam !== null) {
+      refs = parseRefsParam(refsParam)
+      if (!refs) return json({ error: 'invalid_request' }, 400)
+    } else {
+      const book = url.searchParams.get('book')?.trim()
+      const chapter = url.searchParams.get('chapter')?.trim()
+      if (!book || !chapter || !/^\d+$/.test(chapter)) {
+        return json({ error: 'invalid_request' }, 400)
+      }
+      refs = [`${book} ${chapter}`]
     }
 
-    const reference = `${book} ${chapter}`
     const query = new URLSearchParams({
-      q: reference,
+      q: refs.join(';'),
       'include-headings': 'false',
-      'include-footnotes': 'false',
-      'include-footnote-body': 'false',
+      // The translators' notes ride along: callers in the text, bodies in a
+      // trailing block. Both are parsed out above into per-verse `notes`.
+      'include-footnotes': 'true',
+      'include-footnote-body': 'true',
       'include-short-copyright': 'false',
       'include-passage-references': 'false',
-      'include-verse-numbers': 'true'
+      'include-verse-numbers': 'true',
+      'include-first-verse-numbers': 'true'
     })
 
     let upstream: Response
@@ -125,17 +266,35 @@ export function createEsvProxyHandler(deps: EsvProxyDeps): (req: Request) => Pro
 
     // A real, successful upstream call — this is what consumes the shared
     // quota, metered here regardless of whether parsing the body below
-    // succeeds.
+    // succeeds. One call whatever the number of references in it.
     deps.recordUsage('ok')
 
-    let data: { passages?: string[] }
+    let data: { passages?: unknown }
     try {
       data = await upstream.json()
     } catch {
       return json({ error: 'upstream_bad_json' }, 502)
     }
 
-    const passage = data.passages?.[0]
+    const passages = Array.isArray(data.passages)
+      ? data.passages.map(p => (typeof p === 'string' ? p : ''))
+      : []
+
+    if (refsParam !== null) {
+      // Crossway answers in request order; an unparseable reference yields an
+      // empty (or missing) passage, which comes back as an empty verse list
+      // rather than failing the whole batch.
+      const out: EsvPassage[] = refs.map((reference, i) => ({
+        reference,
+        verses: parseEsvText(passages[i] ?? '')
+      }))
+      if (out.every(p => p.verses.length === 0)) {
+        return json({ error: 'not_found' }, 404)
+      }
+      return json({ passages: out })
+    }
+
+    const passage = passages[0]
     if (!passage) {
       return json({ error: 'not_found' }, 404)
     }

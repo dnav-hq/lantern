@@ -35,7 +35,15 @@ const STATE_KEY = 'esv-lru'
 
 export interface PersistedEntry {
   key: string
+  // Whole BibleVerseLine records, `notes` included: the translators' notes
+  // are part of the verse, and a cached chapter must read back exactly as the
+  // proxy served it or the footnote doors vanish on the second read.
   verses: BibleVerseLine[]
+  // True for an entry that holds only the verses a connections sheet asked
+  // for (esv-cache.ts getPassages), never a whole chapter. A record written
+  // before this flag existed has no field, which reads as a full chapter —
+  // which is what every such record was.
+  partial?: true
 }
 
 /** Least-recently-used FIRST, matching the in-memory Map's iteration order. */

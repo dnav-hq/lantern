@@ -24,8 +24,8 @@
 //
 // Nothing here may import a Node API — this file lives under src/ and obeys the
 // pure-web rule in CLAUDE.md.
-import type { BibleVerseLine, TranslationId } from '../bible/provider'
-import { getBibleVerse, getChapterConnections } from '../bible/service'
+import type { BibleVerseLine, PassageRef, TranslationId } from '../bible/provider'
+import { getBibleVerse, getChapterConnections, getEsvPassages } from '../bible/service'
 import { SelfHostedBibleProvider } from '../bible/self-hosted'
 import { KjvSelfHostedBibleProvider } from '../bible/kjv-self-hosted'
 import { NetSelfHostedBibleProvider } from '../bible/net-self-hosted'
@@ -114,6 +114,18 @@ export interface ConnectionsSources {
     translation: TranslationId
   ): Promise<BibleVerseLine[] | null>
   /**
+   * Several verse ranges at once, keyed `${book}/${chapter}` with the verses
+   * of each range. Used instead of chapterText for a translation whose text
+   * costs a metered request per read (ESV through its proxy): a dive's nine
+   * passages become one call. The bundled translations never need it — a
+   * chapter from the bundle is a lookup — so it is asked for only on ESV.
+   * Null where nothing could be read; a thrown error degrades the same way.
+   */
+  rangeTexts?(
+    ranges: PassageRef[],
+    translation: TranslationId
+  ): Promise<Map<string, BibleVerseLine[]> | null>
+  /**
    * The setting-line bundle. Lazy on purpose: it is asked for only once a door
    * has actually opened (setting-line.md §7.2), never with the chapter, and it
    * never throws — no lines is a quieter door, not an error.
@@ -169,6 +181,10 @@ const defaultSources: ConnectionsSources = {
     const passage = await getBibleVerse(`${name} ${chapter}`, translation).catch(() => null)
     return passage?.verses ?? null
   },
+  async rangeTexts(ranges, translation) {
+    if (translation !== 'ESV') return null
+    return getEsvPassages(ranges).catch(() => null)
+  },
   settingLines: () => loadSettingLines(),
   async chapterPlaces(book, chapter) {
     const bundle = await loadMapPlaces()
@@ -219,6 +235,40 @@ export function createConnectionsLoader(
     return p
   }
 
+  // The texts of several ranges, keyed by chapter. On ESV, with a rangeTexts
+  // source, that is ONE proxy call for the whole sheet; otherwise one
+  // chapterText per distinct chapter, which the bundles answer from memory.
+  // Never throws: a range that could not be read is simply absent.
+  const readTexts = async (
+    ranges: PassageRef[],
+    translation: TranslationId
+  ): Promise<Map<string, BibleVerseLine[] | null>> => {
+    const texts = new Map<string, BibleVerseLine[] | null>()
+    if (translation === 'ESV' && sources.rangeTexts) {
+      const found = await sources.rangeTexts(ranges, translation).catch(() => null)
+      if (found) {
+        for (const r of ranges) {
+          const key = `${r.book}/${r.chapter}`
+          texts.set(key, found.get(key) ?? null)
+        }
+        return texts
+      }
+    }
+    const chapters = new Map<string, [number, number]>()
+    for (const r of ranges) chapters.set(`${r.book}/${r.chapter}`, [r.book, r.chapter])
+    // All at once: the rows are capped at eight (selectRows), the bundles
+    // answer from memory, and the ESV proxy's per-minute limit is far above
+    // this. Four-at-a-time batching was the slow part of a dive on ESV.
+    const fetched = await Promise.all(
+      [...chapters.entries()].map(async ([key, [b, ch]]) => {
+        const lines = await sources.chapterText(b, ch, translation).catch(() => null)
+        return [key, lines] as const
+      })
+    )
+    for (const [key, lines] of fetched) texts.set(key, lines)
+    return texts
+  }
+
   const build = async (
     book: number,
     chapter: number,
@@ -253,10 +303,20 @@ export function createConnectionsLoader(
       const names = await placesPromise
       if (names.length === 0) return null
       const top = raw[0]
-      const [held, other] = await Promise.all([
-        sources.chapterText(book, chapter, translation).catch(() => null),
-        sources.chapterText(top.book, top.chapter, translation).catch(() => null)
-      ])
+      const pair = await readTexts(
+        [
+          { book, chapter, verse },
+          {
+            book: top.book,
+            chapter: top.chapter,
+            verse: top.verse,
+            ...(top.endVerse !== undefined ? { endVerse: top.endVerse } : {})
+          }
+        ],
+        translation
+      )
+      const held = pair.get(`${book}/${chapter}`)
+      const other = pair.get(`${top.book}/${top.chapter}`)
       const source = held?.find(line => line.verse === verse)?.text ?? null
       const last = top.endVerse ?? top.verse
       const text =
@@ -281,22 +341,19 @@ export function createConnectionsLoader(
     const top0 = raw[0]
     const rows0 = selectRows(raw, c => parallel && c === top0)
 
-    // The held verse's own words, and each connected chapter once.
-    const wanted = new Map<string, [number, number]>()
-    wanted.set(`${book}/${chapter}`, [book, chapter])
-    for (const c of rows0) wanted.set(`${c.book}/${c.chapter}`, [c.book, c.chapter])
-    const texts = new Map<string, BibleVerseLine[] | null>()
-    // All at once: the rows are capped at eight (selectRows), the bundles
-    // answer from memory, and the ESV proxy's per-minute limit is far above
-    // this. Four-at-a-time batching was the slow part of a dive on ESV.
-    const entries = [...wanted.entries()]
-    const fetched = await Promise.all(
-      entries.map(async ([key, [b, ch]]) => {
-        const lines = await sources.chapterText(b, ch, translation).catch(() => null)
-        return [key, lines] as const
-      })
+    // The held verse's own words, and each connected range.
+    const texts = await readTexts(
+      [
+        { book, chapter, verse },
+        ...rows0.map(c => ({
+          book: c.book,
+          chapter: c.chapter,
+          verse: c.verse,
+          ...(c.endVerse !== undefined ? { endVerse: c.endVerse } : {})
+        }))
+      ],
+      translation
     )
-    for (const [key, lines] of fetched) texts.set(key, lines)
     const lineText = (b: number, ch: number, v: number): string | null =>
       texts.get(`${b}/${ch}`)?.find(line => line.verse === v)?.text ?? null
 

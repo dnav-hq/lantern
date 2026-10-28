@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { EsvBibleProvider } from './esv'
+import { EsvBibleProvider, EsvRefsUnsupportedError } from './esv'
 import { EsvCachedBibleProvider } from './esv-cache'
 import type { EsvStore, PersistedState } from './esv-store'
 import { CodedError } from '../errors'
-import type { BibleProvider, BibleVerseLine } from './provider'
+import type { BibleProvider, BibleVerseLine, PassageRef } from './provider'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -108,6 +108,97 @@ describe('EsvBibleProvider', () => {
   it('throws BIBLE_UNKNOWN_BOOK for an out-of-range book number', async () => {
     const p = new EsvBibleProvider('https://fake.supabase.co/functions/v1/esv-proxy')
     await expectCoded(p.getChapter(67, 1), 'BIBLE_UNKNOWN_BOOK')
+  })
+
+  it("carries the translators' notes through, shipping only the alternate-rendering class", async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        fakeJsonResponse(200, {
+          verses: [
+            {
+              verse: 4,
+              text: 'In him was life, and the life was the light of men.',
+              notes: [
+                { offset: 16, text: 'Or understood' },
+                { offset: 16, text: 'Some manuscripts read differently' },
+                { offset: 999, text: 'Or out of range' }
+              ]
+            },
+            { verse: 5, text: 'The light shines in the darkness.' }
+          ]
+        })
+      )
+    )
+    const p = new EsvBibleProvider('https://fake.supabase.co/functions/v1/esv-proxy')
+    const verses = await p.getChapter(43, 1)
+    expect(verses[0].notes).toEqual([{ offset: 16, text: 'Or understood' }])
+    // absent, not empty, where nothing ships
+    expect(verses[1]).not.toHaveProperty('notes')
+  })
+})
+
+describe('EsvBibleProvider.getPassages', () => {
+  const URL = 'https://fake.supabase.co/functions/v1/esv-proxy'
+
+  it('asks the proxy for every range in ONE ?refs= call and keys the answer by chapter', async () => {
+    const fetchMock = vi.fn(async (_url: string) =>
+      fakeJsonResponse(200, {
+        passages: [
+          { reference: 'Jeremiah 4:23', verses: [{ verse: 23, text: 'I looked' }] },
+          {
+            reference: 'Psalm 104:30',
+            verses: [
+              { verse: 30, text: 'When you send', notes: [{ offset: 4, text: 'Or breath' }] }
+            ]
+          },
+          {
+            reference: 'Isaiah 45:18-19',
+            verses: [
+              { verse: 18, text: 'For thus' },
+              { verse: 19, text: 'I did not' }
+            ]
+          },
+          { reference: 'Isaiah 45:12', verses: [{ verse: 12, text: 'I made' }] }
+        ]
+      })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const p = new EsvBibleProvider(URL)
+    const found = await p.getPassages([
+      { book: 24, chapter: 4, verse: 23 },
+      { book: 19, chapter: 104, verse: 30 },
+      { book: 23, chapter: 45, verse: 18, endVerse: 19 },
+      { book: 23, chapter: 45, verse: 12 }
+    ])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const url = decodeURIComponent(fetchMock.mock.calls[0][0])
+    expect(url).toContain('refs=Jeremiah 4:23;Psalms 104:30;Isaiah 45:18-19;Isaiah 45:12')
+    expect([...found.keys()]).toEqual(['24/4', '19/104', '23/45'])
+    expect(found.get('19/104')).toEqual([
+      { verse: 30, text: 'When you send', notes: [{ offset: 4, text: 'Or breath' }] }
+    ])
+    // two ranges in one chapter are merged, in verse order
+    expect(found.get('23/45')!.map(v => v.verse)).toEqual([12, 18, 19])
+  })
+
+  it('on a 400 (older proxy) throws EsvRefsUnsupportedError and remembers it without another fetch', async () => {
+    const fetchMock = vi.fn(async () => fakeJsonResponse(400, { error: 'invalid_request' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const p = new EsvBibleProvider(URL)
+    const refs = [{ book: 43, chapter: 1, verse: 1 }]
+    await expect(p.getPassages(refs)).rejects.toBeInstanceOf(EsvRefsUnsupportedError)
+    await expect(p.getPassages(refs)).rejects.toBeInstanceOf(EsvRefsUnsupportedError)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('a quota 429 degrades like a chapter read does', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => fakeJsonResponse(429, { error: 'quota_exceeded' }))
+    )
+    const p = new EsvBibleProvider(URL)
+    await expectCoded(p.getPassages([{ book: 43, chapter: 1, verse: 1 }]), 'ESV_FETCH_FAILED')
   })
 })
 
@@ -301,6 +392,27 @@ describe('EsvCachedBibleProvider persistence', () => {
     expect(order[order.length - 1]).toBe('43/1') // most-recently-used last
   })
 
+  it("keeps the translators' notes through the cache AND across a reload", async () => {
+    const { store } = makeStore()
+    const noted: BibleVerseLine[] = [
+      { verse: 1, text: 'In the beginning', notes: [{ offset: 6, text: 'Or at first' }] },
+      { verse: 2, text: 'He was' }
+    ]
+    const inner: BibleProvider = { getChapter: async () => noted }
+    const before = new EsvCachedBibleProvider(inner, store)
+    await before.getChapter(43, 1)
+    // second read: from memory
+    expect(await before.getChapter(43, 1)).toEqual(noted)
+    // third read: a new instance, from disk
+    const never: BibleProvider = {
+      getChapter: async () => {
+        throw new Error('should be served from the store')
+      }
+    }
+    const after = new EsvCachedBibleProvider(never, store)
+    expect(await after.getChapter(43, 1)).toEqual(noted)
+  })
+
   it('still works when the store fails entirely', async () => {
     const failing: EsvStore = {
       load: async () => {
@@ -314,5 +426,127 @@ describe('EsvCachedBibleProvider persistence', () => {
     const cached = new EsvCachedBibleProvider(inner.provider, failing)
     // Hydration rejecting must not take the read down with it.
     await expect(cached.getChapter(43, 1)).rejects.toThrow('storage blocked')
+  })
+})
+
+describe('EsvCachedBibleProvider.getPassages', () => {
+  function lines(book: number, chapter: number, from: number, to: number): BibleVerseLine[] {
+    return Array.from({ length: to - from + 1 }, (_, i) => ({
+      verse: from + i,
+      text: `book${book} ch${chapter} v${from + i}`
+    }))
+  }
+  function makeInner(versesPerChapter: number): {
+    provider: BibleProvider
+    chapterCalls: number[]
+    passageCalls: PassageRef[][]
+  } {
+    const chapterCalls: number[] = []
+    const passageCalls: PassageRef[][] = []
+    return {
+      chapterCalls,
+      passageCalls,
+      provider: {
+        async getChapter(book, chapter) {
+          chapterCalls.push(chapter)
+          return lines(book, chapter, 1, versesPerChapter)
+        },
+        async getPassages(refs) {
+          passageCalls.push(refs)
+          const out = new Map<string, BibleVerseLine[]>()
+          for (const r of refs) {
+            const key = `${r.book}/${r.chapter}`
+            const have = out.get(key) ?? []
+            have.push(...lines(r.book, r.chapter, r.verse, r.endVerse ?? r.verse))
+            out.set(key, have)
+          }
+          return out
+        }
+      }
+    }
+  }
+
+  it('serves a whole-cached chapter from the cache and fetches only the rest, in one call', async () => {
+    const inner = makeInner(10)
+    const cached = new EsvCachedBibleProvider(inner.provider)
+    await cached.getChapter(43, 1)
+    const found = await cached.getPassages([
+      { book: 43, chapter: 1, verse: 3, endVerse: 4 },
+      { book: 45, chapter: 4, verse: 3 },
+      { book: 45, chapter: 4, verse: 9 }
+    ])
+    expect(inner.passageCalls).toHaveLength(1)
+    expect(inner.passageCalls[0].map(r => `${r.book}/${r.chapter}:${r.verse}`)).toEqual([
+      '45/4:3',
+      '45/4:9'
+    ])
+    expect(found.get('43/1')!.map(v => v.verse)).toEqual([3, 4])
+    expect(found.get('45/4')!.map(v => v.verse)).toEqual([3, 9])
+  })
+
+  it('a partial entry never answers getChapter, and is replaced by the whole chapter', async () => {
+    const inner = makeInner(10)
+    const cached = new EsvCachedBibleProvider(inner.provider)
+    await cached.getPassages([{ book: 45, chapter: 4, verse: 3 }])
+    const whole = await cached.getChapter(45, 4)
+    expect(whole).toHaveLength(10)
+    expect(inner.chapterCalls).toEqual([4])
+    // now fully cached: the next range read costs nothing
+    await cached.getPassages([{ book: 45, chapter: 4, verse: 9 }])
+    expect(inner.passageCalls).toHaveLength(1)
+  })
+
+  it('a partial entry that already holds the verses answers without a fetch; a new verse refetches and merges', async () => {
+    const inner = makeInner(10)
+    const cached = new EsvCachedBibleProvider(inner.provider)
+    await cached.getPassages([{ book: 45, chapter: 4, verse: 3, endVerse: 6 }])
+    await cached.getPassages([{ book: 45, chapter: 4, verse: 4 }])
+    expect(inner.passageCalls).toHaveLength(1)
+    const found = await cached.getPassages([{ book: 45, chapter: 4, verse: 9 }])
+    expect(inner.passageCalls).toHaveLength(2)
+    expect(found.get('45/4')!.map(v => v.verse)).toEqual([9])
+    // merged: 3-6 and 9 both resident now
+    const again = await cached.getPassages([{ book: 45, chapter: 4, verse: 5, endVerse: 9 }])
+    expect(inner.passageCalls).toHaveLength(3) // 7 and 8 were never fetched
+    expect(again.get('45/4')!.map(v => v.verse)).toEqual([5, 6, 7, 8, 9])
+  })
+
+  it('range reads count against the same 500-verse cap', async () => {
+    const saved: PersistedState[] = []
+    const store: EsvStore = {
+      load: async () => null,
+      save: async state => {
+        saved.push(state)
+      }
+    }
+    const inner = makeInner(100)
+    const cached = new EsvCachedBibleProvider(inner.provider, store)
+    for (let ch = 1; ch <= 5; ch++) await cached.getChapter(43, ch)
+    await cached.getPassages([{ book: 45, chapter: 4, verse: 1, endVerse: 50 }])
+    for (const state of saved) {
+      const verses = state.entries.reduce((n, e) => n + e.verses.length, 0)
+      expect(verses).toBeLessThanOrEqual(500)
+    }
+    const latest = saved[saved.length - 1]
+    expect(latest.entries.find(e => e.key === '45/4')?.partial).toBe(true)
+    expect(latest.entries.some(e => e.key === '43/1')).toBe(false) // the LRU chapter went
+  })
+
+  it('falls back to whole-chapter reads when the proxy does not know ?refs=', async () => {
+    const inner = makeInner(10)
+    inner.provider.getPassages = async () => {
+      throw new EsvRefsUnsupportedError()
+    }
+    const cached = new EsvCachedBibleProvider(inner.provider)
+    const found = await cached.getPassages([
+      { book: 45, chapter: 4, verse: 3 },
+      { book: 45, chapter: 4, verse: 9 },
+      { book: 59, chapter: 2, verse: 23 }
+    ])
+    expect(inner.chapterCalls).toEqual([4, 2])
+    expect(found.get('45/4')!.map(v => v.verse)).toEqual([3, 9])
+    // cached as WHOLE chapters, so a reader opening the chapter pays nothing
+    await cached.getChapter(45, 4)
+    expect(inner.chapterCalls).toEqual([4, 2])
   })
 })

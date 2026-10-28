@@ -10989,3 +10989,22 @@ body.dark .dive-relief.is-ready {
   font-size: var(--text-sm);
   color: var(--text-muted);
 }
+
+/* ─── paragraph breaks on the reading page (2026-10-28) ─── */
+.reading-verse-block.para-start {
+  margin-top: 18px;
+}
+
+/* ─── paragraph breaks (2026-10-28) ─── */
+/* Settings > Reading carries two checkbox rows now; a row that follows a
+   description needs air above it so the pairs read as pairs. */
+.smodal-vault-desc + .smodal-checkbox-row {
+  margin-top: 14px;
+}
+
+/* The space before a verse that begins a paragraph, for the reading page to
+   use (src/utils/paragraphs.ts says which verses). One token so every reader
+   and every translation leaves the same gap. */
+:root {
+  --paragraph-gap: 0.85em;
+}

@@ -23,6 +23,8 @@ import { bookByNumber } from '../utils/bibleBooks'
 import { nextSelection } from '../utils/verseSelection'
 import { markInstallEngagement } from '../utils/installNudge'
 import { useCategoryLabels } from '../utils/useNoteCategories'
+import { loadParagraphStarts } from '../utils/paragraphs'
+import { useParagraphBreaks } from '../utils/useParagraphBreaks'
 
 interface ReadingModeProps {
   passage: Passage
@@ -161,6 +163,19 @@ export default function ReadingMode({
     let live = true
     setDepth(new Set())
     loadChapterDepth(passage.book_number, passage.chapter_start).then(set => live && setDepth(set))
+    return () => {
+      live = false
+    }
+  }, [passage.book_number, passage.chapter_start])
+  // Paragraph breaks, the same data and preference as the chapter reader.
+  const [paragraphBreaks] = useParagraphBreaks()
+  const [paragraphStarts, setParagraphStarts] = useState<ReadonlySet<number>>(() => new Set())
+  useEffect(() => {
+    let live = true
+    setParagraphStarts(new Set())
+    loadParagraphStarts(passage.book_number, passage.chapter_start).then(
+      set => live && setParagraphStarts(set)
+    )
     return () => {
       live = false
     }
@@ -805,7 +820,7 @@ export default function ReadingMode({
                 return (
                   <div
                     key={v.verse}
-                    className="reading-verse-block"
+                    className={`reading-verse-block${paragraphBreaks && i > 0 && paragraphStarts.has(v.verse) ? ' para-start' : ''}`}
                     style={{ gridRow: i + 1, '--stagger-i': i } as React.CSSProperties}
                   >
                     <div

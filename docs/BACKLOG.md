@@ -60,7 +60,26 @@ belongs to and why that arc comes when it does.
   Haran, Nineveh, Susa and Jerusalem; the full map lost the unlocated-places
   list and the paragraphs, keeping one attribution line; the continue card is
   a single row.
-  STILL OPEN from the audit: translators' notes on ESV (Crossway's API can
+  NEXT-LEVEL ROUND (2026-10-28, after go-live of cb841c1): (a) hold a verse on
+  a phone to open the composer on it (BookDetailPage, 450 ms, haptic tick);
+  the quick-settings sheet the August capture asked for already existed (the
+  aA control is a bottom sheet on phones), so that capture is closed; (b)
+  paragraph breaks on every translation from the BSB's own paragraphing:
+  `scripts/build-paragraphs.mjs` → `public/bible/paragraphs.json.gz` (9.5 KB),
+  `utils/paragraphs.ts`, `useParagraphBreaks` (Settings › Reading, default on),
+  `.para-start` on both readers; (c) ESV translators' notes: the proxy now asks
+  Crossway for footnotes, strips the `(n)` callers into `{offset, text}` notes,
+  the client keeps the alternate-rendering class only (`footnoteShips`), and
+  the ESV cache stores notes; (d) a `?refs=` form on the proxy (up to 12
+  references, one metered call) with `getPassages` on the ESV provider and
+  cache, used by the connections loader on ESV, falling back to per-chapter
+  reads while an old proxy answers 400. DEPLOYED the same day (the `jsr:`
+  import of supabase-js timed out in Supabase's remote bundler twice; switched
+  to `npm:@supabase/supabase-js@2` and it bundled); verified live: Genesis 1
+  returns 8 verses with notes, no stray callers, and the refs form answers in
+  one call. Crossway marks italics inside note text with asterisks; the
+  client strips them.
+  STILL OPEN from the audit: (Crossway's API can
   return the ESV's own footnotes; needs the proxy to pass `include-footnotes`
   and a parser), scripture word search on ESV (the search endpoint spends the
   shared quota; BSB-only for now and labelled), the word door on ESV (not
