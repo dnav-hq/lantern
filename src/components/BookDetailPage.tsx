@@ -1825,7 +1825,11 @@ function ChapterView({
             // stayed live in production even after the switch was flipped off
             // (2026-09-13 investigation). Armed only for the one verse word
             // capture can actually land on.
-            const wordSelectArmed = WORD_CAPTURE_ENABLED && v.verse === singleSelVerse
+            // Not while the composer is open: a HOLD that opened it still has the
+            // finger down, and an armed verse would hand that press to the native
+            // text selection (Dennis, 2026-10-28).
+            const wordSelectArmed =
+              WORD_CAPTURE_ENABLED && v.verse === singleSelVerse && composing === null
             // Read dims everything outside the highlight to make one passage
             // stand out for a moment. Study's highlight is a standing anchor,
             // not a moment — dimming the chapter for as long as a note is open
@@ -1916,6 +1920,12 @@ function ChapterView({
                       setHighlightedNoteIds(new Set())
                       setHighlightedVerses(new Set())
                       setComposing({ mode: 'create', start: verse, end: verse })
+                      // The press is still down: drop any selection the browser
+                      // starts from it, now and once the composer has mounted.
+                      const drop = (): void => window.getSelection()?.removeAllRanges()
+                      drop()
+                      window.setTimeout(drop, 120)
+                      window.setTimeout(drop, 450)
                     }, 450)
                   }}
                   onPointerMove={e => {

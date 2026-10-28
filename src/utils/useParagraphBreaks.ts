@@ -3,16 +3,16 @@ import { useSyncExternalStore } from 'react'
 const STORAGE_KEY = 'berean.paragraph-breaks'
 
 // Whether the reading page leaves a little space where a new paragraph begins
-// (see src/utils/paragraphs.ts for where the breaks come from). On by default.
+// (see src/utils/paragraphs.ts for where the breaks come from). Off by default (Dennis, 2026-10-28).
 // Shaped after useTranslation.ts: a module-level store with subscribers, so
 // every mounted reader updates the moment Settings flips it, with no App.tsx
 // lifting. Guarded the same way: a browser that denies storage falls back to
 // the default rather than taking the app down on a preference read.
 function readStored(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) !== 'off'
+    return localStorage.getItem(STORAGE_KEY) === 'on'
   } catch {
-    return true
+    return false
   }
 }
 

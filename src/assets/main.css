@@ -11008,3 +11008,71 @@ body.dark .dive-relief.is-ready {
 :root {
   --paragraph-gap: 0.85em;
 }
+
+/* ─── settings switches (2026-10-28) ─── */
+/* The Reading / Privacy toggles as a quiet switch instead of the browser's
+   checkbox: a 34×20 track in the border colour, the accent when on, the knob
+   sliding with the calm curve. The row reads as one tappable line. */
+.smodal-checkbox-row {
+  justify-content: space-between;
+  gap: 14px;
+  padding: 6px 0;
+  margin-bottom: 4px;
+}
+.smodal-checkbox-row .smodal-checkbox-label {
+  order: 0;
+  font-size: 14px;
+}
+.smodal-checkbox {
+  order: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  border-radius: 10px;
+  background: var(--border-strong, var(--border));
+  position: relative;
+  transition: background 180ms ease-out;
+  accent-color: initial;
+}
+.smodal-checkbox::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 180ms var(--ease-out, ease-out);
+}
+.smodal-checkbox:checked {
+  background: var(--accent);
+}
+.smodal-checkbox:checked::after {
+  transform: translateX(14px);
+  background: var(--on-accent, #fff);
+}
+.smodal-checkbox:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .smodal-checkbox,
+  .smodal-checkbox::after {
+    transition: none;
+  }
+}
+
+/* The composer's quoted verse and its chrome never take a native selection:
+   the hold that opened it is often still pressing (2026-10-28). */
+.mobile-composer-quote,
+.mobile-composer-head,
+.mobile-composer-ref {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
