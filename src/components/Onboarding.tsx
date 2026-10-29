@@ -58,7 +58,6 @@ export default function Onboarding({ onDone }: OnboardingProps): React.ReactElem
               >
                 <span className="onboard-bible-name">{t.label}</span>
                 {t.id === 'BSB' && <span className="onboard-bible-tag">recommended</span>}
-                {t.id === 'ESV' && <span className="onboard-bible-tag">online</span>}
               </button>
             )
           })}

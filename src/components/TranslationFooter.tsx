@@ -126,10 +126,10 @@ export default function TranslationFooter({
             >
               <span className="translation-chip-menu-abbr">{t.id}</span>
               {t.label}
-              {/* ESV is read over Crossway's API under a shared quota; it never
-                  caches for offline reading. Said where the reader chooses it,
-                  so nobody learns it on a train (Dennis, 2026-09-18). */}
-              {t.id === 'ESV' && <span className="translation-chip-tag">online only</span>}
+              {/* No tag on ESV any more: no translation is singled out in the
+                  reader (Dennis, 2026-10-29). Offline it falls back to the BSB
+                  with the existing notice, which says it at the moment it
+                  matters rather than every time the menu opens. */}
               {t.id === translation && (
                 <svg
                   width="12"
